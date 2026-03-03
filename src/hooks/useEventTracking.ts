@@ -45,7 +45,7 @@ export function useEventTracking() {
         value: params.value,
         currency: params.currency,
       });
-      gtmViewContent(params.content_name, params.content_ids, params.value);
+      gtmViewContent(params.content_name, params.content_ids, params.value, params.currency);
     },
     [metaViewContent, gtmViewContent]
   );
@@ -61,7 +61,7 @@ export function useEventTracking() {
         num_items: qty,
       });
       supaAddToCart(name, price, qty);
-      gtmAddToCart(name, ids, price, qty);
+      gtmAddToCart(name, ids, price, qty, currency);
     },
     [metaAddToCart, supaAddToCart, gtmAddToCart]
   );
@@ -84,7 +84,7 @@ export function useEventTracking() {
         num_items: totalQty,
       });
       trackEngagement("checkout_start");
-      gtmInitiateCheckout(ids, totalPrice, totalQty);
+      gtmInitiateCheckout(ids, totalPrice, totalQty, currency);
     },
     [metaInitiateCheckout, trackEngagement, gtmInitiateCheckout]
   );

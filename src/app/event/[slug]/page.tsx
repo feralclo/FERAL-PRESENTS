@@ -201,6 +201,29 @@ export default async function EventPage({
     />
   );
 
+  // Server-rendered ViewContent — fires synchronously in the browser before
+  // React hydrates, just like Shopify does it. This guarantees the Meta Pixel
+  // Helper and Test Events always see ViewContent, regardless of React timing.
+  // The event ID is stored in window.__META_HTML_VIEWCONTENT_ID so the React
+  // hook reuses it for CAPI deduplication instead of double-firing.
+  const activeTickets = (event.ticket_types || []).filter(
+    (tt: { status: string }) => tt.status === "active"
+  );
+  const vcTicketIds = activeTickets.map((tt: { id: string }) => tt.id);
+  const vcMinPrice = activeTickets.length > 0
+    ? Math.min(...activeTickets.map((tt: { price: number | string }) => Number(tt.price)))
+    : 0;
+  const vcCurrency = event.currency || "GBP";
+
+  // Only fire ViewContent for events with tickets (not external)
+  const viewContentScript = event.payment_method !== "external" && vcTicketIds.length > 0 ? (
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `if(window.fbq){var vcId='vc-'+Date.now()+'-'+Math.random().toString(36).substr(2,9);fbq('track','ViewContent',{content_name:${JSON.stringify(event.name + " — Event Page")},content_ids:${JSON.stringify(vcTicketIds)},content_type:'product',content_category:'Events',value:${vcMinPrice},currency:${JSON.stringify(vcCurrency)}},{eventID:vcId});window.__META_HTML_VIEWCONTENT_ID=vcId;}`,
+      }}
+    />
+  ) : null;
+
   // External ticketing — simplified page with CTA linking out
   if (event.payment_method === "external") {
     return (
@@ -219,6 +242,7 @@ export default async function EventPage({
     return (
       <>
         {structuredData}
+        {viewContentScript}
         <AuraEventPage event={event} />
       </>
     );
@@ -226,6 +250,7 @@ export default async function EventPage({
   return (
     <>
       {structuredData}
+      {viewContentScript}
       <MidnightEventPage event={event} />
     </>
   );

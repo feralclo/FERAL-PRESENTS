@@ -20,14 +20,14 @@ export function useDataLayer() {
   }, []);
 
   const trackViewContent = useCallback(
-    (contentName: string, contentIds: string[], value: number) => {
+    (contentName: string, contentIds: string[], value: number, currency?: string) => {
       push({
         event: "view_content",
         content_name: contentName,
         content_ids: contentIds,
         content_type: "product",
         value,
-        currency: "GBP",
+        currency: currency || "GBP",
       });
     },
     [push]
@@ -38,7 +38,8 @@ export function useDataLayer() {
       contentName: string,
       contentIds: string[],
       value: number,
-      numItems: number
+      numItems: number,
+      currency?: string
     ) => {
       push({
         event: "add_to_cart",
@@ -46,7 +47,7 @@ export function useDataLayer() {
         content_ids: contentIds,
         content_type: "product",
         value,
-        currency: "GBP",
+        currency: currency || "GBP",
         num_items: numItems,
       });
     },
@@ -65,13 +66,13 @@ export function useDataLayer() {
   );
 
   const trackInitiateCheckout = useCallback(
-    (contentIds: string[], value: number, numItems: number) => {
+    (contentIds: string[], value: number, numItems: number, currency?: string) => {
       push({
         event: "initiate_checkout",
         content_ids: contentIds,
         content_type: "product",
         value,
-        currency: "GBP",
+        currency: currency || "GBP",
         num_items: numItems,
       });
     },

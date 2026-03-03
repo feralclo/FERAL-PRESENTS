@@ -71,7 +71,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: null });
     }
 
-    return NextResponse.json({ data: data.data });
+    // Strip sensitive fields from public marketing settings responses.
+    // The CAPI token is only needed server-side (in /api/meta/capi route).
+    let responseData = data.data;
+    if (isPublicSettingsKey(key) && key.endsWith("_marketing") && responseData) {
+      const { meta_capi_token: _stripped, ...safeData } = responseData as Record<string, unknown>;
+      responseData = safeData;
+    }
+
+    return NextResponse.json({ data: responseData });
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

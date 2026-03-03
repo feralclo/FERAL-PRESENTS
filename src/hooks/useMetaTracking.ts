@@ -18,19 +18,36 @@ let _settings: MarketingSettings | null = null;
 let _fetchPromise: Promise<MarketingSettings | null> | null = null;
 let _pixelLoaded = false;
 let _fbclidCaptured = false;
-
-// Pixel script load tracking — resolves when fbevents.js has loaded and
-// set the _fbp cookie, so CAPI events can include it for matching.
-let _pixelScriptReady = false;
-let _resolvePixelReady: (() => void) | null = null;
-const _pixelReadyPromise = new Promise<void>((resolve) => {
-  _resolvePixelReady = resolve;
-});
+let _advancedMatchingApplied = false;
 
 /** localStorage key for stored customer match data (persists across sessions) */
 const META_MATCH_KEY = "feral_meta_match";
 
+// ─── Pixel availability (synchronous check) ─────────────────────────────────
+// The root layout renders the pixel inline in <head> when tracking is enabled.
+// If window.fbq exists, we know the pixel is initialized and can fire events
+// immediately — no need to wait for the async settings fetch.
+
+/**
+ * Check if the Meta Pixel is available on the page.
+ * The pixel is loaded by the inline script in layout.tsx <head> — if it
+ * exists, tracking is enabled and we can fire events synchronously.
+ */
+function isPixelReady(): boolean {
+  return typeof window !== "undefined" && typeof window.fbq === "function";
+}
+
+/**
+ * Get the pixel ID from the server-rendered global (set by layout.tsx).
+ * This avoids needing the async settings fetch to know the pixel ID.
+ */
+function getHtmlPixelId(): string | null {
+  if (typeof window === "undefined") return null;
+  return (window as any).__META_PIXEL_ID || null;
+}
+
 /** Fetch marketing settings from our API (cached for the page lifecycle).
+ *  Only needed for CAPI (server route needs the token).
  *  Failed fetches are NOT cached — the next call will retry. */
 function getSettings(orgId: string): Promise<MarketingSettings | null> {
   if (_settings) return Promise.resolve(_settings);
@@ -48,24 +65,20 @@ function getSettings(orgId: string): Promise<MarketingSettings | null> {
       _settings = (json?.data as MarketingSettings) || null;
       if (!_settings) {
         console.warn(
-          "[Meta] Marketing settings not found — check admin/marketing config.",
-          "API response data:", json?.data
+          "[Meta] Marketing settings not found — CAPI events will be skipped.",
+          "Pixel events still fire via HTML snippet."
         );
-        // Clear cached promise so the next call retries instead of
-        // permanently returning null for the rest of the page lifecycle.
         _fetchPromise = null;
       } else {
         console.debug(
-          "[Meta] Settings loaded — tracking:",
-          _settings.meta_tracking_enabled ? "enabled" : "disabled",
-          "| pixel:", _settings.meta_pixel_id ? "configured" : "missing"
+          "[Meta] Settings loaded — CAPI:",
+          _settings.meta_capi_token ? "configured" : "no token (CAPI disabled)"
         );
       }
       return _settings;
     })
     .catch((err) => {
       console.warn("[Meta] Failed to fetch marketing settings:", err);
-      // Clear cached promise so subsequent calls retry
       _fetchPromise = null;
       return null;
     });
@@ -176,109 +189,89 @@ export function storeMetaMatchData(data: StoredMatchData) {
   }
 }
 
-/** Load Meta Pixel base code and init with pixel ID (once per page) */
-function loadPixel(pixelId: string) {
-  if (_pixelLoaded) return;
-  _pixelLoaded = true;
+/**
+ * Apply Advanced Matching data to an already-initialized pixel.
+ * Only runs once — subsequent calls are no-ops. This avoids the double-init
+ * issue where the HTML snippet calls fbq('init', pixelId) and then React
+ * would call it again. Instead, we only re-init if we have user data to add.
+ */
+function applyAdvancedMatching() {
+  if (_advancedMatchingApplied) return;
 
-  const w = window as any;
+  const pixelId = getHtmlPixelId();
+  if (!pixelId || !window.fbq) return;
 
-  if (!w.fbq) {
-    // Create the fbq queue function
-    const n: any = (w.fbq = function () {
-      n.callMethod
-        ? n.callMethod.apply(n, arguments)
-        : n.queue.push(arguments);
-    });
-    if (!w._fbq) w._fbq = n;
-    n.push = n;
-    n.loaded = true;
-    n.version = "2.0";
-    n.queue = [];
-
-    // Inject the fbevents.js script
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "https://connect.facebook.net/en_US/fbevents.js";
-
-    // Signal when the pixel script has loaded — CAPI events wait for this
-    // so they can include the _fbp cookie that the pixel sets on load.
-    script.onload = () => {
-      // Small delay to ensure fbevents.js has finished initializing and
-      // set the _fbp cookie (init runs synchronously after script load).
-      setTimeout(() => {
-        _pixelScriptReady = true;
-        _resolvePixelReady?.();
-        console.debug("[Meta] Pixel script loaded — _fbp:", getCookie("_fbp") ? "set" : "not set");
-      }, 100);
-    };
-    script.onerror = () => {
-      // Don't block CAPI events forever if the pixel script fails to load
-      _pixelScriptReady = true;
-      _resolvePixelReady?.();
-      console.warn("[Meta] Pixel script failed to load");
-    };
-
-    document.head.appendChild(script);
-  } else {
-    // Pixel was already loaded from server-rendered HTML (standard snippet in layout).
-    // Mark as ready immediately so CAPI events don't wait for a script load that already happened.
-    _pixelScriptReady = true;
-    _resolvePixelReady?.();
-    console.debug("[Meta] Pixel already loaded from HTML — _fbp:", getCookie("_fbp") ? "set" : "not set");
-  }
-
-  // Advanced Matching: pass any stored customer data during init.
-  // The pixel JS hashes raw PII automatically before sending to Meta.
   const matchData = getStoredMatchData();
   const hasMatchData = matchData.em || matchData.fn || matchData.ln || matchData.ph || matchData.external_id;
 
   if (hasMatchData) {
-    w.fbq("init", pixelId, {
+    // Re-init with user data — Meta pixel handles this gracefully for the same pixel ID
+    window.fbq("init", pixelId, {
       em: matchData.em || undefined,
       fn: matchData.fn || undefined,
       ln: matchData.ln || undefined,
       ph: matchData.ph || undefined,
       external_id: matchData.external_id || undefined,
     });
-    console.debug("[Meta] Pixel initialized with Advanced Matching:", Object.keys(matchData).filter(k => matchData[k as keyof StoredMatchData]).join(", "));
-  } else {
-    w.fbq("init", pixelId);
-    console.debug("[Meta] Pixel loaded and initialized:", pixelId);
+    _advancedMatchingApplied = true;
+    console.debug("[Meta] Advanced Matching applied:", Object.keys(matchData).filter(k => matchData[k as keyof StoredMatchData]).join(", "));
   }
 }
 
 /**
- * Try to load the pixel if settings are available and consent is granted.
- * Safe to call multiple times — loadPixel itself is idempotent.
+ * Load Meta Pixel base code (only needed for SPA paths without HTML snippet).
+ * If the HTML already loaded the pixel (standard path), this is a no-op.
  */
-function tryLoadPixel() {
+function loadPixelIfNeeded(pixelId: string) {
   if (_pixelLoaded) return;
-  if (!_settings?.meta_tracking_enabled || !_settings.meta_pixel_id) {
-    if (_settings && !_settings.meta_tracking_enabled) {
-      console.debug("[Meta] Tracking disabled in settings — pixel not loaded");
-    }
+  _pixelLoaded = true;
+
+  const w = window as any;
+
+  if (w.fbq) {
+    // Pixel was already loaded from server-rendered HTML — no need to inject again.
+    console.debug("[Meta] Pixel already loaded from HTML — _fbp:", getCookie("_fbp") ? "set" : "not set");
     return;
   }
-  if (!hasMarketingConsent()) {
-    console.debug("[Meta] Marketing consent not granted — pixel not loaded");
-    return;
-  }
-  loadPixel(_settings.meta_pixel_id);
+
+  // SPA path: create the fbq queue function and inject fbevents.js
+  const n: any = (w.fbq = function () {
+    n.callMethod
+      ? n.callMethod.apply(n, arguments)
+      : n.queue.push(arguments);
+  });
+  if (!w._fbq) w._fbq = n;
+  n.push = n;
+  n.loaded = true;
+  n.version = "2.0";
+  n.queue = [];
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = "https://connect.facebook.net/en_US/fbevents.js";
+  script.onerror = () => console.warn("[Meta] Pixel script failed to load");
+  document.head.appendChild(script);
+
+  w.fbq("init", pixelId);
+  console.debug("[Meta] Pixel loaded and initialized (SPA path):", pixelId);
 }
 
-/** Fire a pixel event (client-side) */
+/** Fire a pixel event (client-side, synchronous). */
 function firePixelEvent(
   eventName: string,
   params: Record<string, unknown>,
   eventId: string
 ) {
-  if (!hasMarketingConsent()) return;
-  if (typeof window === "undefined" || !window.fbq) {
-    console.debug(`[Meta] Pixel not available — skipping client ${eventName}`);
-    return;
+  if (!hasMarketingConsent()) {
+    console.debug(`[Meta] Consent blocked — skipping pixel ${eventName}`);
+    return false;
+  }
+  if (!isPixelReady()) {
+    console.debug(`[Meta] Pixel not available — skipping pixel ${eventName}`);
+    return false;
   }
   window.fbq("track", eventName, params, { eventID: eventId });
+  return true;
 }
 
 /** Optional PII to send along with CAPI events for better matching */
@@ -295,11 +288,6 @@ interface CAPIUserData {
 /**
  * Wait for the _fbp cookie to exist (set by fbevents.js after it loads).
  * Polls every 50ms, max wait 3 seconds — then sends without _fbp.
- *
- * This is more reliable than tracking script-load state because the HTML
- * inline snippet creates `window.fbq` as a stub before fbevents.js actually
- * loads.  Checking `_pixelScriptReady` would resolve immediately (stub exists)
- * but the cookie wouldn't be set yet.  Polling the cookie directly avoids that.
  */
 function waitForFbpCookie(): Promise<void> {
   if (getCookie("_fbp")) return Promise.resolve();
@@ -318,10 +306,11 @@ function waitForFbpCookie(): Promise<void> {
 
 /**
  * Send a CAPI event via our server route (fire-and-forget).
- * Waits for the _fbp cookie to be set by fbevents.js for matching.
- * Max wait: 3 seconds — after that, sends without _fbp rather than blocking.
+ * Waits for settings (needs the server route to have the CAPI token)
+ * and for the _fbp cookie for matching.
  */
 function sendCAPI(
+  orgId: string,
   eventName: string,
   eventId: string,
   customData?: Record<string, unknown>,
@@ -329,48 +318,61 @@ function sendCAPI(
 ) {
   const eventSourceUrl = window.location.href;
 
-  waitForFbpCookie().then(() => {
-    // Layer 1: Browser cookies (_fbp, _fbc)
-    const browserUserData: CAPIUserData = {
-      fbp: getCookie("_fbp"),
-      fbc: getCookie("_fbc"),
-    };
+  // Fire CAPI async — needs settings for the server route to have the token.
+  // This is fine because CAPI is server-side and doesn't affect Pixel Helper.
+  getSettings(orgId).then((s) => {
+    if (!s?.meta_tracking_enabled) return;
 
-    // Layer 2: Stored match data from localStorage (returning visitors)
-    const storedMatch = getStoredMatchData();
+    waitForFbpCookie().then(() => {
+      // Layer 1: Browser cookies (_fbp, _fbc)
+      const browserUserData: CAPIUserData = {
+        fbp: getCookie("_fbp"),
+        fbc: getCookie("_fbc"),
+      };
 
-    // Merge: browser cookies → stored match data → explicit PII (explicit wins)
-    const mergedUserData = { ...browserUserData, ...storedMatch, ...userData };
+      // Layer 2: Stored match data from localStorage (returning visitors)
+      const storedMatch = getStoredMatchData();
 
-    const payload: MetaCAPIRequest = {
-      event_name: eventName,
-      event_id: eventId,
-      event_source_url: eventSourceUrl,
-      user_data: mergedUserData,
-      custom_data: customData,
-    };
+      // Merge: browser cookies → stored match data → explicit PII (explicit wins)
+      const mergedUserData = { ...browserUserData, ...storedMatch, ...userData };
 
-    fetch("/api/meta/capi", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      keepalive: true, // Survive page navigations
-    }).catch(() => {}); // Fire and forget
+      const payload: MetaCAPIRequest = {
+        event_name: eventName,
+        event_id: eventId,
+        event_source_url: eventSourceUrl,
+        user_data: mergedUserData,
+        custom_data: customData,
+      };
+
+      fetch("/api/meta/capi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true, // Survive page navigations
+      }).catch(() => {}); // Fire and forget
+    });
   });
 }
 
 /**
  * Unified Meta tracking hook.
- * Loads the pixel once, then provides functions that fire both
- * client-side pixel events and server-side CAPI events with
- * matching event_id for deduplication.
+ *
+ * Architecture: Pixel events fire IMMEDIATELY (synchronous) when window.fbq
+ * exists (loaded by the inline HTML snippet in layout.tsx). CAPI events fire
+ * ASYNC after settings are fetched (the server route needs the CAPI token).
+ * This separation ensures the Pixel Helper and Meta Test Events always see
+ * client-side events, even if the settings fetch is slow or fails.
  *
  * Full funnel coverage:
  *   PageView → ViewContent → AddToCart → InitiateCheckout → AddPaymentInfo → Purchase
  *
+ * Server-rendered events (from inline <script> tags):
+ *   - PageView: fired in layout.tsx <head> → deduped via __META_HTML_PAGEVIEW_ID
+ *   - ViewContent: fired in event/[slug]/page.tsx → deduped via __META_HTML_VIEWCONTENT_ID
+ *
  * Advanced Matching:
  *   - Captures fbclid from URL → _fbc cookie (before pixel loads)
- *   - Passes stored customer data to fbq('init') for pixel-side matching
+ *   - Passes stored customer data via fbq('init') for pixel-side matching
  *   - Merges stored customer data into all CAPI events for server-side matching
  *   - Components call storeMetaMatchData() to persist customer PII
  *
@@ -382,30 +384,47 @@ export function useMetaTracking() {
   const orgId = useOrgId();
   const initialised = useRef(false);
 
-  // Fetch settings and load pixel immediately (track by default)
+  // One-time init: capture fbclid, apply advanced matching, prefetch settings
   useEffect(() => {
     if (initialised.current) return;
     initialised.current = true;
 
-    // Capture fbclid IMMEDIATELY — before settings fetch or pixel load.
-    // This ensures we never lose the click ID even if the pixel loads late.
+    // Capture fbclid IMMEDIATELY — before anything else
     captureFbclid();
 
-    getSettings(orgId).then(() => {
-      // Load pixel immediately — hasMarketingConsent() defaults to true
-      tryLoadPixel();
+    // Apply stored customer data for Advanced Matching (if pixel already loaded from HTML)
+    applyAdvancedMatching();
+
+    // Prefetch settings for CAPI (fire-and-forget — pixel events don't need this)
+    getSettings(orgId).then((s) => {
+      // If pixel wasn't loaded from HTML (rare — SPA entry without HTML render),
+      // try to load it now that we have the pixel ID from settings
+      if (s?.meta_tracking_enabled && s.meta_pixel_id && !isPixelReady()) {
+        if (hasMarketingConsent()) {
+          loadPixelIfNeeded(s.meta_pixel_id);
+        }
+      }
     });
 
-    // Listen for consent changes — if user explicitly rejects via cookie
-    // banner, future firePixelEvent calls will be blocked. If they later
-    // re-accept, pixel will load if it wasn't already.
+    // Listen for consent changes
     const onStorage = (e: StorageEvent) => {
       if (e.key !== "feral_cookie_consent") return;
-      tryLoadPixel();
+      // If consent is re-granted, try to load pixel from settings
+      getSettings(orgId).then((s) => {
+        if (s?.meta_tracking_enabled && s.meta_pixel_id && !isPixelReady() && hasMarketingConsent()) {
+          loadPixelIfNeeded(s.meta_pixel_id);
+        }
+      });
     };
     window.addEventListener("storage", onStorage);
 
-    const onConsentUpdate = () => tryLoadPixel();
+    const onConsentUpdate = () => {
+      getSettings(orgId).then((s) => {
+        if (s?.meta_tracking_enabled && s.meta_pixel_id && !isPixelReady() && hasMarketingConsent()) {
+          loadPixelIfNeeded(s.meta_pixel_id);
+        }
+      });
+    };
     window.addEventListener("feral_consent_update", onConsentUpdate);
 
     return () => {
@@ -414,28 +433,27 @@ export function useMetaTracking() {
     };
   }, []);
 
+  // ─── Tracking functions ─────────────────────────────────────────────────────
+  // Each function fires the pixel event IMMEDIATELY (synchronous) and then
+  // fires the CAPI event in the background (async). The pixel event doesn't
+  // depend on settings — if window.fbq exists, it fires.
+
   const trackPageView = useCallback(() => {
-    getSettings(orgId).then((s) => {
-      if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
+    const w = window as any;
+    const htmlPageViewId = w.__META_HTML_PAGEVIEW_ID;
 
-      // Check if the server-rendered HTML already fired a PageView (from layout.tsx).
-      // If so, reuse its event_id for CAPI deduplication and skip the pixel call.
-      const w = window as any;
-      const htmlPageViewId = w.__META_HTML_PAGEVIEW_ID;
-
-      if (htmlPageViewId) {
-        // HTML already fired pixel PageView — only fire CAPI with the same event_id
-        delete w.__META_HTML_PAGEVIEW_ID; // Consume it so SPA navigations fire fresh
-        sendCAPI("PageView", htmlPageViewId);
-        console.debug("[Meta] PageView CAPI (dedup with HTML):", htmlPageViewId);
-      } else {
-        // No HTML PageView (e.g., SPA navigation) — fire both pixel and CAPI
-        const eventId = crypto.randomUUID();
-        firePixelEvent("PageView", {}, eventId);
-        sendCAPI("PageView", eventId);
-        console.debug("[Meta] PageView fired:", eventId);
-      }
-    });
+    if (htmlPageViewId) {
+      // HTML already fired pixel PageView — only fire CAPI with the same event_id
+      delete w.__META_HTML_PAGEVIEW_ID; // Consume so SPA navigations fire fresh
+      sendCAPI(orgId, "PageView", htmlPageViewId);
+      console.debug("[Meta] PageView CAPI (dedup with HTML):", htmlPageViewId);
+    } else {
+      // SPA navigation — fire both pixel and CAPI
+      const eventId = crypto.randomUUID();
+      firePixelEvent("PageView", {}, eventId);
+      sendCAPI(orgId, "PageView", eventId);
+      console.debug("[Meta] PageView fired:", eventId);
+    }
   }, []);
 
   const trackViewContent = useCallback(
@@ -447,14 +465,22 @@ export function useMetaTracking() {
       value?: number;
       currency?: string;
     }) => {
-      getSettings(orgId).then((s) => {
-        if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
+      const enriched = { content_category: "Events", ...params };
+      const w = window as any;
+      const htmlVcId = w.__META_HTML_VIEWCONTENT_ID;
+
+      if (htmlVcId) {
+        // HTML already fired pixel ViewContent — only fire CAPI with the same event_id
+        delete w.__META_HTML_VIEWCONTENT_ID;
+        sendCAPI(orgId, "ViewContent", htmlVcId, enriched);
+        console.debug("[Meta] ViewContent CAPI (dedup with HTML):", params.content_name, htmlVcId);
+      } else {
+        // No HTML ViewContent — fire pixel immediately + CAPI async
         const eventId = crypto.randomUUID();
-        const enriched = { content_category: "Events", ...params };
         firePixelEvent("ViewContent", enriched, eventId);
-        sendCAPI("ViewContent", eventId, enriched);
+        sendCAPI(orgId, "ViewContent", eventId, enriched);
         console.debug("[Meta] ViewContent fired:", params.content_name, eventId);
-      });
+      }
     },
     []
   );
@@ -469,14 +495,15 @@ export function useMetaTracking() {
       currency?: string;
       num_items?: number;
     }) => {
-      getSettings(orgId).then((s) => {
-        if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
-        const eventId = crypto.randomUUID();
-        const enriched = { content_category: "Events", ...params };
-        firePixelEvent("AddToCart", enriched, eventId);
-        sendCAPI("AddToCart", eventId, enriched);
-        console.debug("[Meta] AddToCart fired:", params.value, params.currency, eventId);
-      });
+      const eventId = crypto.randomUUID();
+      const enriched = { content_category: "Events", ...params };
+
+      // Fire pixel immediately — no settings wait
+      firePixelEvent("AddToCart", enriched, eventId);
+      // Fire CAPI async
+      sendCAPI(orgId, "AddToCart", eventId, enriched);
+
+      console.debug("[Meta] AddToCart fired:", params.content_name, params.value, params.currency, eventId);
     },
     []
   );
@@ -490,14 +517,13 @@ export function useMetaTracking() {
       currency?: string;
       num_items?: number;
     }) => {
-      getSettings(orgId).then((s) => {
-        if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
-        const eventId = crypto.randomUUID();
-        const enriched = { content_category: "Events", ...params };
-        firePixelEvent("InitiateCheckout", enriched, eventId);
-        sendCAPI("InitiateCheckout", eventId, enriched);
-        console.debug("[Meta] InitiateCheckout fired:", eventId);
-      });
+      const eventId = crypto.randomUUID();
+      const enriched = { content_category: "Events", ...params };
+
+      firePixelEvent("InitiateCheckout", enriched, eventId);
+      sendCAPI(orgId, "InitiateCheckout", eventId, enriched);
+
+      console.debug("[Meta] InitiateCheckout fired:", params.value, params.currency, eventId);
     },
     []
   );
@@ -511,14 +537,13 @@ export function useMetaTracking() {
       currency?: string;
       num_items?: number;
     }, userData?: { em?: string; fn?: string; ln?: string }) => {
-      getSettings(orgId).then((s) => {
-        if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
-        const eventId = crypto.randomUUID();
-        const enriched = { content_category: "Events", ...params };
-        firePixelEvent("AddPaymentInfo", enriched, eventId);
-        sendCAPI("AddPaymentInfo", eventId, enriched, userData);
-        console.debug("[Meta] AddPaymentInfo fired:", eventId);
-      });
+      const eventId = crypto.randomUUID();
+      const enriched = { content_category: "Events", ...params };
+
+      firePixelEvent("AddPaymentInfo", enriched, eventId);
+      sendCAPI(orgId, "AddPaymentInfo", eventId, enriched, userData);
+
+      console.debug("[Meta] AddPaymentInfo fired:", eventId);
     },
     []
   );
@@ -533,24 +558,21 @@ export function useMetaTracking() {
       num_items?: number;
       order_id?: string;
     }, userData?: { em?: string; fn?: string; ln?: string; ph?: string; external_id?: string }) => {
-      getSettings(orgId).then((s) => {
-        if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
-        // Use deterministic event_id based on order_id so server-side CAPI
-        // and client-side pixel fire the same ID for deduplication.
-        const eventId = params.order_id
-          ? `purchase-${params.order_id}`
-          : crypto.randomUUID();
-        const enriched = { content_category: "Events", ...params };
-        firePixelEvent("Purchase", enriched, eventId);
-        sendCAPI("Purchase", eventId, enriched, userData);
-        console.debug("[Meta] Purchase fired:", params.order_id, eventId);
-      });
+      // Use deterministic event_id based on order_id for deduplication
+      const eventId = params.order_id
+        ? `purchase-${params.order_id}`
+        : crypto.randomUUID();
+      const enriched = { content_category: "Events", ...params };
+
+      firePixelEvent("Purchase", enriched, eventId);
+      sendCAPI(orgId, "Purchase", eventId, enriched, userData);
+
+      console.debug("[Meta] Purchase fired:", params.order_id, params.value, params.currency, eventId);
     },
     []
   );
 
-  // Return a stable object — all callbacks have [] deps so they never change,
-  // meaning this useMemo value is created once and reused forever.
+  // Return a stable object — all callbacks have [] deps so they never change
   return useMemo(
     () => ({
       trackPageView,

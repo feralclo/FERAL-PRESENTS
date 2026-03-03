@@ -766,6 +766,7 @@ function SetupForm({
                 <SelectItem value="DE">Germany</SelectItem>
                 <SelectItem value="FR">France</SelectItem>
                 <SelectItem value="ES">Spain</SelectItem>
+                <SelectItem value="JP">Japan</SelectItem>
                 <SelectItem value="US">United States</SelectItem>
               </SelectContent>
             </Select>

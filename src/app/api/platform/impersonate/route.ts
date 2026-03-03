@@ -6,9 +6,12 @@ import { TABLES } from "@/lib/constants";
 /**
  * POST /api/platform/impersonate
  *
- * Generates a magic link for a tenant's owner user so the platform owner
+ * Generates a one-time token for a tenant's owner user so the platform owner
  * can log into their admin dashboard (in an incognito window).
  * Platform owner only.
+ *
+ * Returns { token_hash, email } — the frontend constructs the callback URL
+ * using window.location.origin so it always points to the admin host.
  */
 export async function POST(request: NextRequest) {
   const auth = await requirePlatformOwner();
@@ -43,18 +46,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-  // Generate a magic link via Supabase admin API
+  // Generate a magic link to extract the hashed token
   const { data, error: linkErr } = await supabase.auth.admin.generateLink({
     type: "magiclink",
     email: owner.email,
-    options: {
-      redirectTo: `${siteUrl}/auth/callback?next=/admin/`,
-    },
   });
 
-  if (linkErr || !data?.properties?.action_link) {
+  if (linkErr || !data?.properties?.hashed_token) {
     console.error("[impersonate] Failed to generate magic link:", linkErr);
     return NextResponse.json(
       { error: "Failed to generate login link" },
@@ -63,7 +61,7 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
-    url: data.properties.action_link,
+    token_hash: data.properties.hashed_token,
     email: owner.email,
   });
 }

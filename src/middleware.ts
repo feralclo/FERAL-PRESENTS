@@ -191,6 +191,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/team/accept-invite",
   "/api/announcement/signup",
   "/api/beta/",
+  "/api/platform/impersonate/callback", // Opened in incognito — no auth
   "/api/monitoring", // Sentry tunnel (bypasses ad blockers)
   "/api/merch-store/payment-intent",
   "/api/merch-store/confirm-order",

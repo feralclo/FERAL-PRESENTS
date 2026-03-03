@@ -752,8 +752,9 @@ export default function TenantDetailPage() {
         const json = await res.json();
         throw new Error(json.error || "Failed to generate link");
       }
-      const { url } = await res.json();
-      await navigator.clipboard.writeText(url);
+      const { token_hash } = await res.json();
+      const callbackUrl = `${window.location.origin}/api/platform/impersonate/callback?token_hash=${encodeURIComponent(token_hash)}`;
+      await navigator.clipboard.writeText(callbackUrl);
       setImpersonateMsg("Link copied — open in incognito");
       setTimeout(() => setImpersonateMsg(""), 4000);
     } catch (err) {

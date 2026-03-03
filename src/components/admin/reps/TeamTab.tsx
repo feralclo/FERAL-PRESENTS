@@ -84,14 +84,20 @@ export function TeamTab() {
   // Signup link copy
   const [copiedSignup, setCopiedSignup] = useState(false);
 
-  // Current admin user (for self-deletion guard)
+  // Current admin user (for self-deletion guard + platform owner check)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isPlatformOwner, setIsPlatformOwner] = useState(false);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
     if (!supabase) return;
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setCurrentUserId(data.user.id);
+      if (data.user) {
+        setCurrentUserId(data.user.id);
+        if (data.user.app_metadata?.is_platform_owner === true) {
+          setIsPlatformOwner(true);
+        }
+      }
     });
   }, []);
 
@@ -402,7 +408,7 @@ export function TeamTab() {
                           </Button>
                         </>
                       )}
-                      {rep.status === "active" && rep.auth_user_id && (
+                      {isPlatformOwner && rep.status === "active" && rep.auth_user_id && (
                         <Button
                           variant="ghost"
                           size="icon-xs"

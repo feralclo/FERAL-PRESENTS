@@ -92,6 +92,8 @@ async function getWalletPassSettings(orgId: string): Promise<WalletPassSettings>
 
 /**
  * Fetch PDF ticket design settings for an org.
+ * Falls back to branding settings (logo, accent color, org name)
+ * so tenants don't need to separately configure PDF tickets.
  */
 async function getPdfTicketSettings(orgId: string): Promise<PdfTicketSettings> {
   try {
@@ -104,9 +106,43 @@ async function getPdfTicketSettings(orgId: string): Promise<PdfTicketSettings> {
       .eq("key", `${orgId}_pdf_ticket`)
       .single();
 
-    if (data?.data && typeof data.data === "object") {
-      return { ...DEFAULT_PDF_TICKET_SETTINGS, ...(data.data as Partial<PdfTicketSettings>) };
+    const pdfSettings = data?.data && typeof data.data === "object"
+      ? { ...DEFAULT_PDF_TICKET_SETTINGS, ...(data.data as Partial<PdfTicketSettings>) }
+      : { ...DEFAULT_PDF_TICKET_SETTINGS };
+
+    // Branding fallback: if PDF settings has no logo, pull from branding
+    if (!pdfSettings.logo_url || pdfSettings.brand_name === DEFAULT_PDF_TICKET_SETTINGS.brand_name) {
+      try {
+        const { data: brandingRow } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", brandingKey(orgId))
+          .single();
+        if (brandingRow?.data) {
+          const branding = brandingRow.data as {
+            logo_url?: string; accent_color?: string;
+            org_name?: string; logo_height?: number;
+          };
+          if (!pdfSettings.logo_url && branding.logo_url) {
+            pdfSettings.logo_url = branding.logo_url;
+          }
+          if (branding.accent_color) {
+            // Only override accent if PDF settings weren't explicitly customized
+            if (pdfSettings.accent_color === DEFAULT_PDF_TICKET_SETTINGS.accent_color) {
+              pdfSettings.accent_color = branding.accent_color;
+            }
+          }
+          if (branding.org_name && pdfSettings.brand_name === DEFAULT_PDF_TICKET_SETTINGS.brand_name) {
+            pdfSettings.brand_name = branding.org_name;
+          }
+          if (branding.logo_height && pdfSettings.logo_height === DEFAULT_PDF_TICKET_SETTINGS.logo_height) {
+            pdfSettings.logo_height = branding.logo_height;
+          }
+        }
+      } catch { /* branding not found */ }
     }
+
+    return pdfSettings;
   } catch {
     // Settings not found — use defaults
   }

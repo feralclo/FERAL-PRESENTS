@@ -48,6 +48,7 @@ const TIMEZONES = TZ_LIST;
 export default function GeneralSettings() {
   const orgId = useOrgId();
   const [settings, setSettings] = useState<OrgSettings>(DEFAULT_SETTINGS);
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
@@ -64,6 +65,8 @@ export default function GeneralSettings() {
         }
       } catch {
         // Settings may not exist yet — use defaults
+      } finally {
+        setLoaded(true);
       }
     })();
   }, [orgId]);
@@ -89,6 +92,14 @@ export default function GeneralSettings() {
       setSaving(false);
     }
   }, [settings, orgId]);
+
+  if (!loaded) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={20} className="animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 p-6">

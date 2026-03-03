@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { subscribeToKlaviyo, identifyInKlaviyo } from "@/lib/klaviyo";
+import { storeMetaMatchData } from "@/hooks/useMetaTracking";
 import { usePopupSettings } from "@/hooks/usePopupSettings";
 import { useBranding } from "@/hooks/useBranding";
 import { cn } from "@/lib/utils";
@@ -168,6 +169,9 @@ export function MidnightDiscountPopup() {
         await subscribeToKlaviyo(email);
         identifyInKlaviyo(email);
       }
+
+      // Store email for Meta Advanced Matching (persists for CAPI on future events)
+      storeMetaMatchData({ em: email.trim().toLowerCase() });
 
       // Capture customer in Entry backend (fire-and-forget)
       fetch("/api/popup/capture", {

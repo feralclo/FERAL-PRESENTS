@@ -15,11 +15,10 @@ export function hashSHA256(value: string): string {
 /** Fetch marketing settings from Supabase (server-side).
  *  @param orgId — the org to fetch settings for. Required for multi-tenant correctness.
  */
-export async function fetchMarketingSettings(orgId?: string): Promise<MarketingSettings | null> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+export async function fetchMarketingSettings(orgId: string): Promise<MarketingSettings | null> {
+  if (!orgId || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
 
-  // Use the provided orgId, or fall back to "feral" for backwards compat in non-request contexts
-  const settingsKey = marketingKey(orgId || "feral");
+  const settingsKey = marketingKey(orgId);
 
   try {
     const res = await fetch(

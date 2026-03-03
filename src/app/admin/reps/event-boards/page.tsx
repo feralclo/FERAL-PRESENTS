@@ -44,6 +44,8 @@ import {
   Check,
 } from "lucide-react";
 import { DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
+import { fmtMoney } from "@/lib/format";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -106,6 +108,7 @@ interface ActiveRep {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export default function EventBoardsPage() {
+  const { currency: orgCurrency } = useOrgCurrency();
   const [events, setEvents] = useState<EventWithReps[]>([]);
   const [loading, setLoading] = useState(true);
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -409,7 +412,7 @@ export default function EventBoardsPage() {
                           })
                         : "No date set"}
                       {" · "}
-                      {event.reps_count} reps · {event.total_sales} sales · £{event.total_revenue.toFixed(0)} revenue
+                      {event.reps_count} reps · {event.total_sales} sales · {fmtMoney(event.total_revenue, orgCurrency)} revenue
                     </p>
 
                     {/* Position rewards preview */}
@@ -733,7 +736,7 @@ export default function EventBoardsPage() {
                       {entry.total_sales}
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs">
-                      £{Number(entry.total_revenue).toFixed(0)}
+                      {fmtMoney(Number(entry.total_revenue), orgCurrency)}
                     </TableCell>
                   </TableRow>
                 ))}

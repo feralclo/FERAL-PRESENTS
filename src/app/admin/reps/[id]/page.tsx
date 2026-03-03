@@ -53,6 +53,8 @@ import {
   Globe,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
+import { fmtMoney } from "@/lib/format";
 import type {
   Rep,
   RepStatus,
@@ -79,6 +81,7 @@ const STATUS_VARIANT: Record<
 export default function RepDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { currency: orgCurrency } = useOrgCurrency();
   const repId = params.id as string;
 
   const [rep, setRep] = useState<Rep | null>(null);
@@ -472,7 +475,7 @@ export default function RepDetailPage() {
               <div>
                 <p className="text-[11px] text-muted-foreground">Revenue</p>
                 <p className="font-mono text-lg font-bold tabular-nums text-foreground">
-                  £{Number(rep.total_revenue).toFixed(2)}
+                  {fmtMoney(Number(rep.total_revenue), orgCurrency)}
                 </p>
               </div>
             </div>
@@ -856,7 +859,7 @@ export default function RepDetailPage() {
                         {re.sales_count}
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs tabular-nums">
-                        £{Number(re.revenue).toFixed(2)}
+                        {fmtMoney(Number(re.revenue), orgCurrency)}
                       </TableCell>
                     </TableRow>
                   ))}

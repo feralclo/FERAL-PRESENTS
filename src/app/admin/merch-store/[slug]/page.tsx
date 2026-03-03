@@ -46,6 +46,7 @@ import type { Product } from "@/types/products";
 import type { Event } from "@/types/events";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import { fmtMoney } from "@/lib/format";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 
 type CollectionStatus = "draft" | "active" | "archived";
 
@@ -75,6 +76,7 @@ interface CollectionItemFormData {
 export default function CollectionEditorPage() {
   const params = useParams();
   const router = useRouter();
+  const { currency: orgCurrency } = useOrgCurrency();
   const slug = params.slug as string;
 
   // Collection state
@@ -794,8 +796,8 @@ export default function CollectionEditorPage() {
                           const min = Math.min(...prices);
                           const max = Math.max(...prices);
                           return min === max
-                            ? fmtMoney(min)
-                            : `${fmtMoney(min)} – ${fmtMoney(max)}`;
+                            ? fmtMoney(min, orgCurrency)
+                            : `${fmtMoney(min, orgCurrency)} – ${fmtMoney(max, orgCurrency)}`;
                         })()
                       : "—"}
                   </span>
@@ -864,7 +866,7 @@ export default function CollectionEditorPage() {
                       </div>
                       {product.price > 0 && (
                         <span className="shrink-0 text-xs font-mono text-muted-foreground">
-                          {fmtMoney(product.price)}
+                          {fmtMoney(product.price, orgCurrency)}
                         </span>
                       )}
                       <Plus size={14} className="shrink-0 text-primary/60" />

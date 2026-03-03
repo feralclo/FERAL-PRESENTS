@@ -38,6 +38,7 @@ import {
   X,
 } from "lucide-react";
 import type { Event } from "@/types/events";
+import { fmtMoney } from "@/lib/format";
 
 function slugify(text: string): string {
   return text
@@ -513,7 +514,7 @@ export default function EventsPage() {
                       ) : null}
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs tabular-nums text-success">
-                      £{stats.revenue.toFixed(2)}
+                      {fmtMoney(stats.revenue, evt.currency || "GBP")}
                     </TableCell>
                     <TableCell>
                       <Badge

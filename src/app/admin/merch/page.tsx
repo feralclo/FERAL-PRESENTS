@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import type { Product, ProductStatus, ProductType } from "@/types/products";
 import { fmtMoney } from "@/lib/format";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 
 const STATUS_VARIANT: Record<ProductStatus, "success" | "warning" | "secondary"> = {
   active: "success",
@@ -59,6 +60,7 @@ type FilterTab = "all" | ProductStatus;
 
 export default function MerchPage() {
   const router = useRouter();
+  const { currency: orgCurrency, currencySymbol } = useOrgCurrency();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterTab>("all");
@@ -263,7 +265,7 @@ export default function MerchPage() {
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs tabular-nums">
                     {product.price > 0
-                      ? fmtMoney(product.price)
+                      ? fmtMoney(product.price, orgCurrency)
                       : "—"}
                   </TableCell>
                 </TableRow>
@@ -310,7 +312,7 @@ export default function MerchPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Price (£)</Label>
+                <Label>Price ({currencySymbol})</Label>
                 <Input
                   type="number"
                   value={newPrice}

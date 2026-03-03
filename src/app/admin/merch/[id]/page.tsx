@@ -36,6 +36,8 @@ import {
 import type { Product, ProductType, ProductStatus, DisplayEffect } from "@/types/products";
 import { DisplayEffectPicker } from "@/components/admin/DisplayEffectPicker";
 import { CurrencyPriceOverrides } from "@/components/admin/CurrencyPriceOverrides";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
+import { fmtMoney } from "@/lib/format";
 
 interface LinkedTicketType {
   id: string;
@@ -71,6 +73,7 @@ const STATUS_VARIANT: Record<ProductStatus, "success" | "warning" | "secondary">
 export default function MerchEditorPage() {
   const params = useParams();
   const router = useRouter();
+  const { currency: orgCurrency, currencySymbol } = useOrgCurrency();
   const id = params.id as string;
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -452,7 +455,7 @@ export default function MerchEditorPage() {
               <CardTitle className="text-sm">Pricing</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6 space-y-2">
-              <Label>Price (£)</Label>
+              <Label>Price ({currencySymbol})</Label>
               <Input
                 type="number"
                 value={product.price}
@@ -465,7 +468,7 @@ export default function MerchEditorPage() {
                 ticket price.
               </p>
               <CurrencyPriceOverrides
-                baseCurrency="GBP"
+                baseCurrency={orgCurrency}
                 basePrice={Number(product.price)}
                 overrides={product.price_overrides || null}
                 onChange={(val) => update("price_overrides" as keyof Product, val)}
@@ -493,7 +496,7 @@ export default function MerchEditorPage() {
                           {lt.name}
                         </p>
                         <p className="text-[10px] text-muted-foreground truncate">
-                          {lt.event_name} &middot; £{Number(lt.price).toFixed(2)}
+                          {lt.event_name} &middot; {fmtMoney(Number(lt.price), orgCurrency)}
                         </p>
                       </div>
                     </Link>

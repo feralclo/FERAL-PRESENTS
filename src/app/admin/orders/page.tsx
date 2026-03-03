@@ -14,6 +14,7 @@ import {
   ShoppingBag, DollarSign, Ticket, Shirt, Download, Package, ArrowLeft, Tag, Search, X,
 } from "lucide-react";
 import { fmtMoney } from "@/lib/format";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 
 /* ── Types ── */
 type Period = "today" | "7d" | "30d";
@@ -430,6 +431,7 @@ export default function OrdersPage() {
 function OrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { currency: orgCurrency } = useOrgCurrency();
   const customerIdParam = searchParams.get("customer_id");
   const customerNameParam = searchParams.get("customer_name");
 
@@ -627,7 +629,7 @@ function OrdersContent() {
         />
         <StatCard
           label="Revenue"
-          value={v(fmtMoney(revenue))}
+          value={v(fmtMoney(revenue, orgCurrency))}
           icon={DollarSign}
         />
         <StatCard
@@ -637,7 +639,7 @@ function OrdersContent() {
         />
         <StatCard
           label="Merch Revenue"
-          value={v(fmtMoney(merchRevenue))}
+          value={v(fmtMoney(merchRevenue, orgCurrency))}
           icon={Shirt}
           detail={statsLoading ? undefined : `${merchItems} item${merchItems !== 1 ? "s" : ""}`}
         />

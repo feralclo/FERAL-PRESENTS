@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import type { Discount, DiscountType, DiscountStatus } from "@/types/discounts";
 import { fmtMoney } from "@/lib/format";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 
 type FilterTab = "all" | DiscountStatus;
 
@@ -50,8 +51,8 @@ const STATUS_VARIANT: Record<DiscountStatus, "success" | "secondary"> = {
   inactive: "secondary",
 };
 
-function formatValue(type: DiscountType, value: number): string {
-  return type === "percentage" ? `${value}%` : fmtMoney(value);
+function formatValue(type: DiscountType, value: number, currency: string = "GBP"): string {
+  return type === "percentage" ? `${value}%` : fmtMoney(value, currency);
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -64,6 +65,7 @@ function formatDate(iso: string | null | undefined): string {
 }
 
 export default function DiscountsPage() {
+  const { currency: orgCurrency, currencySymbol } = useOrgCurrency();
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterTab>("all");
@@ -350,7 +352,7 @@ export default function DiscountsPage() {
                     )}
                   </TableCell>
                   <TableCell className="font-mono text-xs tabular-nums">
-                    {formatValue(d.type, d.value)}
+                    {formatValue(d.type, d.value, orgCurrency)}
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs tabular-nums">
                     {d.used_count}
@@ -424,7 +426,7 @@ export default function DiscountsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="percentage">Percentage (%)</SelectItem>
-                    <SelectItem value="fixed">Fixed Amount (£)</SelectItem>
+                    <SelectItem value="fixed">Fixed Amount ({currencySymbol})</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -453,7 +455,7 @@ export default function DiscountsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Min Order (£)</Label>
+                <Label>Min Order ({currencySymbol})</Label>
                 <Input
                   type="number"
                   value={newMinOrder}
@@ -540,7 +542,7 @@ export default function DiscountsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="percentage">Percentage (%)</SelectItem>
-                    <SelectItem value="fixed">Fixed Amount (£)</SelectItem>
+                    <SelectItem value="fixed">Fixed Amount ({currencySymbol})</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -568,7 +570,7 @@ export default function DiscountsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Min Order (£)</Label>
+                <Label>Min Order ({currencySymbol})</Label>
                 <Input
                   type="number"
                   value={editMinOrder}

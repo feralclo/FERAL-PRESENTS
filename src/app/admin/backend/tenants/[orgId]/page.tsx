@@ -26,6 +26,7 @@ import {
   PoundSterling,
   Zap,
   Save,
+  LogIn,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -699,6 +700,8 @@ export default function TenantDetailPage() {
   const [tenant, setTenant] = useState<TenantDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [impersonating, setImpersonating] = useState(false);
+  const [impersonateMsg, setImpersonateMsg] = useState("");
 
   useEffect(() => {
     fetch(`/api/platform/tenants/${encodeURIComponent(orgId)}`)
@@ -735,6 +738,31 @@ export default function TenantDetailPage() {
     },
     [orgId]
   );
+
+  const handleImpersonate = useCallback(async () => {
+    setImpersonating(true);
+    setImpersonateMsg("");
+    try {
+      const res = await fetch("/api/platform/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ org_id: orgId }),
+      });
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || "Failed to generate link");
+      }
+      const { url } = await res.json();
+      await navigator.clipboard.writeText(url);
+      setImpersonateMsg("Link copied — open in incognito");
+      setTimeout(() => setImpersonateMsg(""), 4000);
+    } catch (err) {
+      setImpersonateMsg(err instanceof Error ? err.message : "Failed");
+      setTimeout(() => setImpersonateMsg(""), 4000);
+    } finally {
+      setImpersonating(false);
+    }
+  }, [orgId]);
 
   if (loading) {
     return (
@@ -807,6 +835,25 @@ export default function TenantDetailPage() {
             >
               {derivedStatus}
             </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleImpersonate}
+              disabled={impersonating}
+              className="h-7 text-xs ml-auto shrink-0"
+            >
+              {impersonating ? (
+                <Loader2 size={12} className="animate-spin mr-1" />
+              ) : (
+                <LogIn size={12} className="mr-1" />
+              )}
+              Login as Tenant
+            </Button>
+            {impersonateMsg && (
+              <span className="text-xs text-muted-foreground shrink-0">
+                {impersonateMsg}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
             <span className="font-mono">{tenant.org_id}</span>

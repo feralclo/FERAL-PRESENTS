@@ -15,20 +15,35 @@ const accountCache = new Map<string, Promise<Stripe | null>>();
  * Caches the /api/stripe/account fetch at module level so the result
  * is ready instantly when ExpressCheckout mounts.
  */
-let _accountPromise: Promise<string | undefined> | null = null;
+export interface StripeAccountInfo {
+  stripe_account_id?: string;
+  capabilities: Record<string, string>;
+}
+let _accountInfoPromise: Promise<StripeAccountInfo> | null = null;
+
+/**
+ * Preload the connected Stripe account info (ID + capabilities).
+ * Returns a cached promise — safe to call multiple times.
+ */
+export function preloadStripeAccountInfo(): Promise<StripeAccountInfo> {
+  if (!_accountInfoPromise) {
+    _accountInfoPromise = fetch("/api/stripe/account")
+      .then((res) => res.json())
+      .then((data) => ({
+        stripe_account_id: data.stripe_account_id || undefined,
+        capabilities: data.capabilities || {},
+      }))
+      .catch(() => ({ capabilities: {} }));
+  }
+  return _accountInfoPromise;
+}
 
 /**
  * Preload the connected Stripe account ID.
  * Returns a cached promise — safe to call multiple times.
  */
 export function preloadStripeAccount(): Promise<string | undefined> {
-  if (!_accountPromise) {
-    _accountPromise = fetch("/api/stripe/account")
-      .then((res) => res.json())
-      .then((data) => data.stripe_account_id || undefined)
-      .catch(() => undefined);
-  }
-  return _accountPromise;
+  return preloadStripeAccountInfo().then((info) => info.stripe_account_id);
 }
 
 /**

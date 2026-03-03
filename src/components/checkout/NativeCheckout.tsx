@@ -21,10 +21,10 @@ import { OrderConfirmation } from "./OrderConfirmation";
 import { MerchOrderConfirmation } from "@/components/shop/MerchOrderConfirmation";
 import type { MerchCollection } from "@/types/merch-store";
 import { CheckoutTimer } from "./CheckoutTimer";
-import { getStripeClient, preloadStripeAccount } from "@/lib/stripe/client";
+import { getStripeClient, preloadStripeAccountInfo } from "@/lib/stripe/client";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
-import { getCurrencySymbol, toSmallestUnit, getPaymentErrorMessage } from "@/lib/stripe/config";
+import { getCurrencySymbol, toSmallestUnit, getPaymentErrorMessage, isZeroDecimalCurrency } from "@/lib/stripe/config";
 import { convertCurrency, roundPresentmentPrice } from "@/lib/currency/conversion";
 import type { ExchangeRates } from "@/lib/currency/types";
 import { useBranding } from "@/hooks/useBranding";
@@ -191,6 +191,17 @@ function getBillingCountries(defaultCode: string): { code: string; name: string 
   const top = ALL_BILLING_COUNTRIES.find((c) => c.code === defaultCode);
   if (!top) return ALL_BILLING_COUNTRIES;
   return [top, ...ALL_BILLING_COUNTRIES.filter((c) => c.code !== defaultCode)];
+}
+
+/**
+ * Format a monetary amount for display, respecting zero-decimal currencies (e.g. JPY).
+ * GBP/EUR/USD → "10.00", JPY → "1000" (no decimals).
+ */
+function fmtAmt(amount: number, currency?: string): string {
+  if (currency && isZeroDecimalCurrency(currency)) {
+    return String(Math.round(amount));
+  }
+  return amount.toFixed(2);
 }
 
 /* ================================================================
@@ -496,13 +507,15 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
   // ── Stripe pre-initialization ─────────────────────────────────────────
   const [stripeReady, setStripeReady] = useState(false);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+  const [stripeCapabilities, setStripeCapabilities] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isStripe) return;
 
     (async () => {
-      const accountId = await preloadStripeAccount();
-      setStripePromise(getStripeClient(accountId));
+      const info = await preloadStripeAccountInfo();
+      setStripePromise(getStripeClient(info.stripe_account_id));
+      setStripeCapabilities(info.capabilities);
       setStripeReady(true);
     })();
   }, [isStripe]);
@@ -631,6 +644,7 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
       stripePromise={stripePromise}
       merchData={merchData}
       presentmentCurrency={presentmentCurrency}
+      stripeCapabilities={stripeCapabilities}
     />
   );
 }
@@ -763,6 +777,7 @@ function StripeCheckoutPage({
   presentmentCurrency,
   stripePromise,
   merchData,
+  stripeCapabilities,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -779,6 +794,7 @@ function StripeCheckoutPage({
   stripePromise: Promise<Stripe | null> | null;
   merchData?: MerchCheckoutData | null;
   presentmentCurrency?: string | null;
+  stripeCapabilities: Record<string, string>;
 }) {
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountInfo | null>(null);
 
@@ -928,6 +944,7 @@ function StripeCheckoutPage({
                 restoreData={restoreData}
                 merchData={merchData}
                 presentmentCurrency={presentmentCurrency}
+                stripeCapabilities={stripeCapabilities}
               />
             </Elements>
           </div>
@@ -975,6 +992,7 @@ function SinglePageCheckoutForm({
   restoreData,
   merchData,
   presentmentCurrency,
+  stripeCapabilities,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -991,6 +1009,7 @@ function SinglePageCheckoutForm({
   restoreData?: RestoreData | null;
   merchData?: MerchCheckoutData | null;
   presentmentCurrency?: string | null;
+  stripeCapabilities: Record<string, string>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -1017,8 +1036,8 @@ function SinglePageCheckoutForm({
   // Klarna only available in supported regions
   const klarnaAvailable = useMemo(() => KLARNA_COUNTRIES.has(getDefaultBillingCountry(event.currency)), [event.currency]);
 
-  // PayPay only available for JPY events (JP Stripe accounts)
-  const paypayAvailable = event.currency?.toUpperCase() === "JPY";
+  // PayPay only available when the connected account has an active paypay_payments capability
+  const paypayAvailable = stripeCapabilities.paypay_payments === "active";
 
   // Whether any alternative payment methods are available (for radio UI)
   const hasAltPaymentMethod = klarnaAvailable || paypayAvailable;
@@ -1753,7 +1772,7 @@ function SinglePageCheckoutForm({
                   <div className="py-0.5">
                     <p className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/80 leading-relaxed m-0 mb-1.5">
                       Pay in 30 days or 3 interest-free payments of{" "}
-                      <strong className="text-foreground font-semibold">{symbol}{(totalAmount / 3).toFixed(2)}</strong>
+                      <strong className="text-foreground font-semibold">{symbol}{fmtAmt(totalAmount / 3, presentmentCurrency || event.currency)}</strong>
                     </p>
                     <p className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/40 leading-snug m-0 mb-3.5">
                       18+, T&amp;Cs apply. Credit subject to status.
@@ -1843,8 +1862,8 @@ function SinglePageCheckoutForm({
                 : paymentMethod === "paypay"
                   ? "Continue to PayPay"
                   : merchData
-                    ? `Pre-order ${symbol}${totalAmount.toFixed(2)}`
-                    : `Pay ${symbol}${totalAmount.toFixed(2)}`}
+                    ? `Pre-order ${symbol}${fmtAmt(totalAmount, presentmentCurrency || event.currency)}`
+                    : `Pay ${symbol}${fmtAmt(totalAmount, presentmentCurrency || event.currency)}`}
           </button>
 
           {/* Trust Signal */}
@@ -2343,7 +2362,7 @@ function EmailCapture({
 
             {/* Cart items */}
             <div className="py-4">
-              <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
+              <OrderItems cartLines={cartLines} symbol={symbol} event={event} currency={event.currency} />
             </div>
 
             {/* Gradient divider */}
@@ -2358,7 +2377,7 @@ function EmailCapture({
                       Subtotal
                     </span>
                     <span className="font-[family-name:var(--font-mono)] text-sm text-foreground/50 tracking-[0.5px]">
-                      {symbol}{subtotal.toFixed(2)}
+                      {symbol}{fmtAmt(subtotal, event.currency)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-2">
@@ -2368,7 +2387,7 @@ function EmailCapture({
                       </span>
                     </span>
                     <span className="font-[family-name:var(--font-mono)] text-sm text-emerald-400/70 tracking-[0.5px]">
-                      &minus;{symbol}{discount.amount.toFixed(2)}
+                      &minus;{symbol}{fmtAmt(discount.amount, event.currency)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.05]">
@@ -2376,7 +2395,7 @@ function EmailCapture({
                       Total
                     </span>
                     <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.5px]">
-                      {symbol}{Math.max(0, subtotal - discount.amount).toFixed(2)}
+                      {symbol}{fmtAmt(Math.max(0, subtotal - discount.amount), event.currency)}
                     </span>
                   </div>
                 </>
@@ -2386,7 +2405,7 @@ function EmailCapture({
                     Total
                   </span>
                   <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.5px]">
-                    {symbol}{subtotal.toFixed(2)}
+                    {symbol}{fmtAmt(subtotal, event.currency)}
                   </span>
                 </div>
               )}
@@ -2527,7 +2546,7 @@ function OrderSummaryMobile({
   return (
     <div className="border-b border-white/[0.06] bg-[rgba(20,20,20,0.4)] lg:hidden">
       <div className="max-w-[1200px] mx-auto py-4 px-6 pb-5">
-        <OrderItems cartLines={cartLines} symbol={symbol} event={event} merchMode={merchMode} />
+        <OrderItems cartLines={cartLines} symbol={symbol} event={event} merchMode={merchMode} currency={currencyLabel || event?.currency} />
         <div className="h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent my-5" />
         {event && onApplyDiscount && onRemoveDiscount && (
           <DiscountCodeInput
@@ -2589,7 +2608,7 @@ function OrderSummaryDesktop({
 
   return (
     <div className="pb-8">
-      <OrderItems cartLines={cartLines} symbol={symbol} event={event} merchMode={merchMode} />
+      <OrderItems cartLines={cartLines} symbol={symbol} event={event} merchMode={merchMode} currency={currencyLabel || event?.currency} />
       <div className="h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent my-5" />
       {event && onApplyDiscount && onRemoveDiscount && (
         <DiscountCodeInput
@@ -2641,31 +2660,31 @@ function OrderTotals({
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between font-[family-name:var(--font-sans)] text-[13px] text-foreground/50">
         <span>Subtotal</span>
-        <span>{symbol}{subtotal.toFixed(2)}</span>
+        <span>{symbol}{fmtAmt(subtotal, currency)}</span>
       </div>
       {discount && (
         <div className="flex items-center justify-between font-[family-name:var(--font-sans)] text-[13px] text-[#4ecb71]">
           <span>Discount ({discount.code})</span>
-          <span>-{symbol}{discountAmt.toFixed(2)}</span>
+          <span>-{symbol}{fmtAmt(discountAmt, currency)}</span>
         </div>
       )}
       {vatBreakdown && vatSettings?.prices_include_vat && (
         <div className="flex items-center justify-between font-[family-name:var(--font-sans)] text-xs text-foreground/50">
           <span>Includes VAT ({vatSettings.vat_rate}%)</span>
-          <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
+          <span>{symbol}{fmtAmt(vatBreakdown.vat, currency)}</span>
         </div>
       )}
       {vatBreakdown && vatSettings && !vatSettings.prices_include_vat && (
         <div className="flex items-center justify-between font-[family-name:var(--font-sans)] text-[13px] text-foreground/50">
           <span>VAT ({vatSettings.vat_rate}%)</span>
-          <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
+          <span>{symbol}{fmtAmt(vatBreakdown.vat, currency)}</span>
         </div>
       )}
       <div className="flex items-center justify-between font-[family-name:var(--font-sans)] text-base font-semibold text-foreground pt-2.5 border-t border-white/[0.06]">
         <span>Total</span>
         <span>
           <span className="text-[11px] text-foreground/40 font-normal tracking-[0.5px]">{currency || "GBP"}</span>
-          {" "}{symbol}{total.toFixed(2)}
+          {" "}{symbol}{fmtAmt(total, currency)}
         </span>
       </div>
     </div>
@@ -2681,11 +2700,13 @@ function OrderItems({
   symbol,
   event,
   merchMode,
+  currency,
 }: {
   cartLines: CartLine[];
   symbol: string;
   event?: Event & { ticket_types: TicketTypeRow[] };
   merchMode?: boolean;
+  currency?: string;
 }) {
   const getTicketType = (id: string): TicketTypeRow | undefined =>
     event?.ticket_types?.find((t) => t.id === id);
@@ -2741,7 +2762,7 @@ function OrderItems({
                 </span>
               </div>
               <span className="shrink-0 font-[family-name:var(--font-mono)] text-[13px] font-semibold text-foreground pt-0.5">
-                {symbol}{(line.price * line.qty).toFixed(2)}
+                {symbol}{fmtAmt(line.price * line.qty, currency)}
               </span>
             </div>
           </div>
@@ -2807,7 +2828,7 @@ function OrderItems({
                 )}
               </div>
               <span className="shrink-0 font-[family-name:var(--font-mono)] text-[13px] font-semibold text-foreground pt-0.5">
-                {symbol}{(line.price * line.qty).toFixed(2)}
+                {symbol}{fmtAmt(line.price * line.qty, currency)}
               </span>
             </div>
 

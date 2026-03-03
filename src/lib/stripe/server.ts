@@ -34,10 +34,12 @@ export function getStripe(): Stripe {
  * Avoids calling stripe.accounts.retrieve() on every checkout load while
  * still catching stale/revoked accounts within a few minutes.
  */
-const verifiedAccountCache = new Map<
-  string,
-  { result: string | null; expiresAt: number }
->();
+interface VerifiedAccountEntry {
+  result: string | null;
+  capabilities: Record<string, string>;
+  expiresAt: number;
+}
+const verifiedAccountCache = new Map<string, VerifiedAccountEntry>();
 const VERIFY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
@@ -61,9 +63,16 @@ export async function verifyConnectedAccount(
   }
 
   try {
-    await stripe.accounts.retrieve(accountId);
+    const account = await stripe.accounts.retrieve(accountId);
+    const caps: Record<string, string> = {};
+    if (account.capabilities) {
+      for (const [key, val] of Object.entries(account.capabilities)) {
+        caps[key] = val;
+      }
+    }
     verifiedAccountCache.set(accountId, {
       result: accountId,
+      capabilities: caps,
       expiresAt: Date.now() + VERIFY_CACHE_TTL_MS,
     });
     return accountId;
@@ -75,6 +84,7 @@ export async function verifyConnectedAccount(
     );
     verifiedAccountCache.set(accountId, {
       result: null,
+      capabilities: {},
       expiresAt: Date.now() + VERIFY_CACHE_TTL_MS,
     });
     if (orgId) {
@@ -87,4 +97,16 @@ export async function verifyConnectedAccount(
     }
     return null;
   }
+}
+
+/**
+ * Get cached capabilities for a connected account.
+ * Must call verifyConnectedAccount() first to populate the cache.
+ */
+export function getAccountCapabilities(
+  accountId: string | null
+): Record<string, string> {
+  if (!accountId) return {};
+  const cached = verifiedAccountCache.get(accountId);
+  return cached?.capabilities || {};
 }

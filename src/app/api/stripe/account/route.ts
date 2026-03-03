@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
-import { verifyConnectedAccount } from "@/lib/stripe/server";
+import { verifyConnectedAccount, getAccountCapabilities } from "@/lib/stripe/server";
 
 /**
  * GET /api/stripe/account
  *
- * Returns the connected Stripe account ID (if any) for Express Checkout.
+ * Returns the connected Stripe account ID (if any) for Express Checkout,
+ * plus active payment capabilities (e.g. paypay_payments).
  * Used by client components to load Stripe.js with the correct account context
  * before creating a PaymentIntent (deferred intent flow).
  *
@@ -21,7 +22,7 @@ export async function GET() {
     const orgId = await getOrgId();
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
-      return NextResponse.json({ stripe_account_id: null });
+      return NextResponse.json({ stripe_account_id: null, capabilities: {} });
     }
 
     const { data } = await supabase
@@ -34,9 +35,10 @@ export async function GET() {
       (data?.data as { account_id?: string })?.account_id || null;
 
     const accountId = await verifyConnectedAccount(rawAccountId);
+    const capabilities = getAccountCapabilities(accountId);
 
-    return NextResponse.json({ stripe_account_id: accountId });
+    return NextResponse.json({ stripe_account_id: accountId, capabilities });
   } catch {
-    return NextResponse.json({ stripe_account_id: null });
+    return NextResponse.json({ stripe_account_id: null, capabilities: {} });
   }
 }

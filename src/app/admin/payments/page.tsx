@@ -373,8 +373,18 @@ export default function PaymentSettingsPage() {
                     );
                     checkStatus();
                   }}
+                  onLoadError={() => {
+                    // Embedded component not available for this country — fall back to hosted
+                    handleHostedFallback();
+                  }}
                 />
               </ConnectComponentsProvider>
+              <div className="mt-4 pt-4 border-t border-border/30 text-center">
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={handleHostedFallback}>
+                  Having trouble? Open verification in a new tab
+                  <ExternalLink className="size-3 ml-1" />
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="border-t border-border/40 px-6 py-6 text-center">

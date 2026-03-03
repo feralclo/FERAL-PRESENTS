@@ -57,6 +57,7 @@ interface TenantDetail {
   };
   stripe: {
     account_id: string;
+    country: string | null;
     charges_enabled: boolean;
     payouts_enabled: boolean;
     details_submitted: boolean;
@@ -323,6 +324,12 @@ function StripeCard({ stripe }: { stripe: TenantDetail["stripe"] }) {
                 {stripe.account_id}
               </span>
             </div>
+            {stripe.country && (
+              <div>
+                <span className="text-muted-foreground">Country: </span>
+                <span className="text-foreground">{stripe.country}</span>
+              </div>
+            )}
             <StatusRow label="Charges" enabled={stripe.charges_enabled} />
             <StatusRow label="Payouts" enabled={stripe.payouts_enabled} />
             <StatusRow

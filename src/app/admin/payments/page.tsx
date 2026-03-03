@@ -23,6 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { COUNTRIES, getDefaultCurrency, getCurrencySymbolFromMap } from "@/lib/country-currency-map";
+import { generalKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import {
   AlertCircle,
   CheckCircle2,
@@ -33,6 +36,7 @@ import {
   Banknote,
   Shield,
   Zap,
+  Info,
 } from "lucide-react";
 
 // ─── Types ───
@@ -73,6 +77,7 @@ type PageView =
  * Embedded ConnectJS onboarding for branded, in-page experience.
  */
 export default function PaymentSettingsPage() {
+  const orgId = useOrgId();
   const [view, setView] = useState<PageView>("loading");
   const [status, setStatus] = useState<AccountStatus | null>(null);
   const [error, setError] = useState("");
@@ -85,8 +90,21 @@ export default function PaymentSettingsPage() {
   // Setup form
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
-  const [country, setCountry] = useState("GB");
+  const [country, setCountry] = useState("");
   const [businessType, setBusinessType] = useState("individual");
+
+  // Pre-fill country from org general settings
+  useEffect(() => {
+    if (!orgId) return;
+    fetch(`/api/settings?key=${generalKey(orgId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const savedCountry = json?.data?.country;
+        if (savedCountry) setCountry((prev) => prev || savedCountry);
+        else setCountry((prev) => prev || "GB");
+      })
+      .catch(() => setCountry((prev) => prev || "GB"));
+  }, [orgId]);
 
   // Check URL params on mount (return from hosted onboarding)
   useEffect(() => {
@@ -780,22 +798,30 @@ function SetupForm({
             <Label>Country</Label>
             <Select value={country} onValueChange={setCountry}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select country" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="GB">United Kingdom</SelectItem>
-                <SelectItem value="IE">Ireland</SelectItem>
-                <SelectItem value="NL">Netherlands</SelectItem>
-                <SelectItem value="BE">Belgium</SelectItem>
-                <SelectItem value="DE">Germany</SelectItem>
-                <SelectItem value="FR">France</SelectItem>
-                <SelectItem value="ES">Spain</SelectItem>
-                <SelectItem value="JP">Japan</SelectItem>
-                <SelectItem value="US">United States</SelectItem>
+                {COUNTRIES.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
+
+        {country && (
+          <div className="flex items-center gap-2 rounded-md bg-primary/[0.04] px-3 py-2.5 ring-1 ring-primary/10">
+            <Info className="size-3.5 shrink-0 text-primary/70" />
+            <p className="text-xs text-muted-foreground">
+              Default currency:{" "}
+              <span className="font-medium text-foreground">
+                {getDefaultCurrency(country)} ({getCurrencySymbolFromMap(getDefaultCurrency(country))})
+              </span>
+            </p>
+          </div>
+        )}
 
         <Button type="submit" className="w-full" size="lg" disabled={settingUp}>
           {settingUp ? "Connecting..." : "Start Getting Paid"}

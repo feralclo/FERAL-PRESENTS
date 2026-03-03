@@ -3,7 +3,8 @@ import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { DEFAULT_ACCOUNT_TYPE } from "@/lib/stripe/config";
 import { requireAuth } from "@/lib/auth";
-import { TABLES, stripeAccountKey } from "@/lib/constants";
+import { TABLES, stripeAccountKey, generalKey } from "@/lib/constants";
+import { getDefaultCurrency } from "@/lib/country-currency-map";
 
 /**
  * POST /api/stripe/connect/my-account — Create a Stripe Connect account for the tenant.
@@ -120,11 +121,14 @@ export async function POST(request: NextRequest) {
     await db.from(TABLES.SITE_SETTINGS).upsert(
       {
         key: stripeAccountKey(auth.orgId),
-        data: { account_id: account.id },
+        data: { account_id: account.id, country },
         updated_at: new Date().toISOString(),
       },
       { onConflict: "key" }
     );
+
+    // Sync country + base_currency to org general settings
+    await syncGeneralSettings(db, auth.orgId, country);
 
     return NextResponse.json({
       account_id: account.id,
@@ -176,6 +180,20 @@ export async function GET() {
     try {
       const account = await stripe.accounts.retrieve(accountId);
 
+      // Lazy backfill: if stored settings don't have country, save it + sync general
+      const storedCountry = setting?.data?.country;
+      if (!storedCountry && account.country) {
+        await db.from(TABLES.SITE_SETTINGS).upsert(
+          {
+            key: stripeAccountKey(auth.orgId),
+            data: { ...setting.data, country: account.country },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "key" }
+        );
+        await syncGeneralSettings(db, auth.orgId, account.country);
+      }
+
       return NextResponse.json({
         connected: true,
         account_id: account.id,
@@ -209,4 +227,33 @@ export async function GET() {
       err instanceof Error ? err.message : "Failed to check account status";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+/**
+ * Sync country + derived base_currency to the org's general settings.
+ * Merges with existing settings so other fields (org_name, timezone, etc.) are preserved.
+ */
+async function syncGeneralSettings(
+  db: Awaited<ReturnType<typeof getSupabaseAdmin>>,
+  orgId: string,
+  country: string
+) {
+  if (!db) return;
+  const key = generalKey(orgId);
+  const { data: existing } = await db
+    .from(TABLES.SITE_SETTINGS)
+    .select("data")
+    .eq("key", key)
+    .single();
+
+  const merged = {
+    ...(existing?.data || {}),
+    country,
+    base_currency: getDefaultCurrency(country),
+  };
+
+  await db.from(TABLES.SITE_SETTINGS).upsert(
+    { key, data: merged, updated_at: new Date().toISOString() },
+    { onConflict: "key" }
+  );
 }

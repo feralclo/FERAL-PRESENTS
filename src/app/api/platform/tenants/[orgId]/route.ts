@@ -91,6 +91,7 @@ export async function GET(
 
   let stripeAccount: {
     account_id: string;
+    country: string | null;
     charges_enabled: boolean;
     payouts_enabled: boolean;
     details_submitted: boolean;
@@ -101,6 +102,7 @@ export async function GET(
       const acct = await stripe.accounts.retrieve(stripeAccountId);
       stripeAccount = {
         account_id: stripeAccountId,
+        country: acct.country ?? null,
         charges_enabled: acct.charges_enabled ?? false,
         payouts_enabled: acct.payouts_enabled ?? false,
         details_submitted: acct.details_submitted ?? false,
@@ -109,6 +111,7 @@ export async function GET(
       // Stripe unreachable or account invalid — return partial info
       stripeAccount = {
         account_id: stripeAccountId,
+        country: (stripeData as { country?: string })?.country ?? null,
         charges_enabled: false,
         payouts_enabled: false,
         details_submitted: false,

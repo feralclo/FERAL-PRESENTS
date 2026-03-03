@@ -350,6 +350,7 @@ export default function PopupAnalytics() {
       let q = supabase
         .from(TABLES.POPUP_EVENTS)
         .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
         .eq("event_type", type);
       // Only count conversions that captured an email — matches the leads list
       if (type === "conversions") q = q.not("email", "is", null);
@@ -361,6 +362,7 @@ export default function PopupAnalytics() {
     let recentQuery = supabase
       .from(TABLES.POPUP_EVENTS)
       .select("id, event_type, page, city, country, timestamp")
+      .eq("org_id", orgId)
       .order("timestamp", { ascending: false })
       .limit(20);
     if (periodStart) recentQuery = recentQuery.gte("timestamp", periodStart);
@@ -379,7 +381,7 @@ export default function PopupAnalytics() {
     if (recentResult.data) {
       setRecentEvents(recentResult.data as RecentEvent[]);
     }
-  }, [period]);
+  }, [period, orgId]);
 
   // Setup polling + realtime
   useEffect(() => {
@@ -458,7 +460,7 @@ export default function PopupAnalytics() {
 
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from(TABLES.POPUP_EVENTS).delete().neq("id", 0);
+      await supabase.from(TABLES.POPUP_EVENTS).delete().eq("org_id", orgId);
     }
 
     setStats({ impressions: 0, engaged: 0, dismissed: 0, conversions: 0 });

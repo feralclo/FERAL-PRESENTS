@@ -38,6 +38,7 @@ import {
   Search,
   Trash2,
   ExternalLink,
+  LogIn,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Rep, RepStatus, RepProgramStats } from "@/types/reps";
@@ -76,6 +77,9 @@ export function TeamTab() {
   const [deleteRepTarget, setDeleteRepTarget] = useState<Rep | null>(null);
   const [deletingRep, setDeletingRep] = useState(false);
   const [deleteRepError, setDeleteRepError] = useState("");
+
+  // Magic login
+  const [loggingInAs, setLoggingInAs] = useState<string | null>(null);
 
   // Signup link copy
   const [copiedSignup, setCopiedSignup] = useState(false);
@@ -234,6 +238,26 @@ export function TeamTab() {
     } catch { /* clipboard not available */ }
   };
 
+  const handleLoginAs = async (rep: Rep) => {
+    setLoggingInAs(rep.id);
+    try {
+      const res = await fetch("/api/rep-portal/magic-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rep_id: rep.id }),
+      });
+      const json = await res.json();
+      if (res.ok && json.url) {
+        window.open(json.url, "_blank");
+      } else {
+        alert(json.error || "Failed to generate login link");
+      }
+    } catch {
+      alert("Network error — please try again");
+    }
+    setLoggingInAs(null);
+  };
+
   const resetInviteDialog = () => {
     setShowInvite(false);
     setInviteStep("name");
@@ -377,6 +401,18 @@ export function TeamTab() {
                             <X size={13} />
                           </Button>
                         </>
+                      )}
+                      {rep.status === "active" && rep.auth_user_id && (
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => handleLoginAs(rep)}
+                          disabled={loggingInAs === rep.id}
+                          title="Login as this rep"
+                          className="text-muted-foreground hover:text-primary"
+                        >
+                          {loggingInAs === rep.id ? <Loader2 size={13} className="animate-spin" /> : <LogIn size={13} />}
+                        </Button>
                       )}
                       <Link href={`/admin/reps/${rep.id}`}>
                         <Button variant="ghost" size="icon-xs" title="View details">

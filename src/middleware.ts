@@ -188,6 +188,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/rep-portal/verify-email",
   "/api/rep-portal/invite/",
   "/api/rep-portal/push-vapid-key",
+  "/api/rep-portal/magic-login/callback", // Test magic login — no auth
   "/api/team/accept-invite",
   "/api/announcement/signup",
   "/api/beta/",

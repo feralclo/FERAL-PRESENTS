@@ -204,6 +204,8 @@ export interface HomepageSettings {
   hero_image_url: string;
   hero_focal_x: number;
   hero_focal_y: number;
+  /** Extra darkening overlay on hero image (0–80%). 0 = vignette only. */
+  hero_overlay_opacity?: number;
 }
 
 /** Row shape from site_settings table */

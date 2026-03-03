@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { useOrgId } from "@/components/OrgProvider";
@@ -1012,6 +1013,26 @@ function TicketStoreEditorPage() {
                       onChange={(url) => updateHomepage({ hero_image_url: url })}
                       label="Background Image"
                     />
+                    {homepageSettings.hero_image_url && (
+                      <>
+                        <Separator />
+                        <FieldRow label="Image Darkness">
+                          <div className="space-y-1.5">
+                            <Slider
+                              min={0}
+                              max={80}
+                              step={5}
+                              value={[homepageSettings.hero_overlay_opacity ?? 0]}
+                              onValueChange={([v]) => updateHomepage({ hero_overlay_opacity: v })}
+                            />
+                            <div className="flex justify-between text-[10px] text-muted-foreground/50">
+                              <span>None</span>
+                              <span>Dark</span>
+                            </div>
+                          </div>
+                        </FieldRow>
+                      </>
+                    )}
                   </div>
                 </EditorSection>
 

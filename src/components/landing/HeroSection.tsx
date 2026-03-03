@@ -91,6 +91,13 @@ export function HeroSection({ settings, orgId }: HeroSectionProps) {
         )}
         {/* Vignette — subtle darkening for all tenants */}
         <div className="hero__bg-overlay absolute inset-0 z-[2]" />
+        {/* Configurable darkening overlay — non-FERAL tenants only */}
+        {!isFeral && (settings.hero_overlay_opacity ?? 0) > 0 && (
+          <div
+            className="absolute inset-0 z-[2] bg-black pointer-events-none"
+            style={{ opacity: (settings.hero_overlay_opacity ?? 0) / 100 }}
+          />
+        )}
       </div>
 
       {/* Particle canvas — FERAL only */}

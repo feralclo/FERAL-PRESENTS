@@ -54,9 +54,16 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (brandingData?.data) {
-        const branding = brandingData.data as { accent_color?: string; org_name?: string };
+        const branding = brandingData.data as { accent_color?: string; org_name?: string; logo_url?: string; logo_height?: number };
         if (branding.accent_color) accentColor = branding.accent_color;
         if (branding.org_name) orgName = branding.org_name;
+        // Logo fallback: use branding logo if email settings has none
+        if (!emailSettings.logo_url && branding.logo_url) {
+          emailSettings = { ...emailSettings, logo_url: branding.logo_url };
+        }
+        if (branding.logo_height && emailSettings.logo_height === DEFAULT_EMAIL_SETTINGS.logo_height) {
+          emailSettings = { ...emailSettings, logo_height: branding.logo_height };
+        }
       }
     }
 

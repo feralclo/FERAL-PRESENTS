@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, emailKey } from "@/lib/constants";
+import { TABLES, emailKey, brandingKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import {
   buildAbandonedCartRecoveryEmail,
@@ -52,14 +52,27 @@ export async function GET(request: NextRequest) {
     let realEventData: AbandonedCartEmailData | null = null;
 
     if (supabase) {
-      const { data: settingsData } = await supabase
-        .from(TABLES.SITE_SETTINGS)
-        .select("data")
-        .eq("key", emailKey(orgId))
-        .single();
+      // Fetch email settings + branding in parallel
+      const [settingsRes, brandingRes] = await Promise.all([
+        supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", emailKey(orgId)).single(),
+        supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", brandingKey(orgId)).single(),
+      ]);
 
+      const settingsData = settingsRes.data;
       if (settingsData?.data) {
         emailSettings = { ...DEFAULT_EMAIL_SETTINGS, ...settingsData.data } as EmailSettings;
+      }
+
+      // Branding fallback: if email settings has no logo, pull from branding
+      if (!emailSettings.logo_url && brandingRes.data?.data) {
+        const branding = brandingRes.data.data as { logo_url?: string; accent_color?: string; logo_height?: number; org_name?: string };
+        if (branding.logo_url) emailSettings.logo_url = branding.logo_url;
+        if (branding.accent_color && emailSettings.accent_color === DEFAULT_EMAIL_SETTINGS.accent_color) {
+          emailSettings.accent_color = branding.accent_color;
+        }
+        if (branding.logo_height && emailSettings.logo_height === DEFAULT_EMAIL_SETTINGS.logo_height) {
+          emailSettings.logo_height = branding.logo_height;
+        }
       }
 
       // Optionally fetch a real event for authentic preview data

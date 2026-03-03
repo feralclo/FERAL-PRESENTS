@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useOrgId } from "@/components/OrgProvider";
-import { abandonedCartAutomationKey, emailKey } from "@/lib/constants";
+import { abandonedCartAutomationKey, emailKey, brandingKey } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { ColorPicker } from "@/components/ui/color-picker";
 import { saveSettings } from "@/lib/settings";
 import { fmtMoney } from "@/lib/format";
 import { useOrgCurrency } from "@/hooks/useOrgCurrency";
@@ -42,7 +41,6 @@ import {
   Smartphone,
   ImageIcon,
   Pencil,
-  Trash2,
   Palette,
 } from "lucide-react";
 
@@ -233,75 +231,6 @@ function SaveToast({ saving, status }: { saving: boolean; status: "idle" | "save
       </div>
     </div>
   );
-}
-
-/* ── Helpers ── */
-
-/* ── Logo processing: auto-trim transparent pixels + resize ── */
-function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const src = document.createElement("canvas");
-          const sCtx = src.getContext("2d")!;
-          src.width = img.width;
-          src.height = img.height;
-          sCtx.drawImage(img, 0, 0);
-
-          const pixels = sCtx.getImageData(0, 0, src.width, src.height).data;
-          let top = src.height, bottom = 0, left = src.width, right = 0;
-          for (let y = 0; y < src.height; y++) {
-            for (let x = 0; x < src.width; x++) {
-              if (pixels[(y * src.width + x) * 4 + 3] > 10) {
-                if (y < top) top = y;
-                if (y > bottom) bottom = y;
-                if (x < left) left = x;
-                if (x > right) right = x;
-              }
-            }
-          }
-
-          if (top > bottom || left > right) {
-            top = 0; bottom = src.height - 1;
-            left = 0; right = src.width - 1;
-          }
-
-          top = Math.max(0, top - 2);
-          left = Math.max(0, left - 2);
-          bottom = Math.min(src.height - 1, bottom + 2);
-          right = Math.min(src.width - 1, right + 2);
-
-          const cropW = right - left + 1;
-          const cropH = bottom - top + 1;
-          let outW = cropW, outH = cropH;
-          if (outW > maxWidth) {
-            outH = Math.round((outH * maxWidth) / outW);
-            outW = maxWidth;
-          }
-
-          const out = document.createElement("canvas");
-          out.width = outW;
-          out.height = outH;
-          out.getContext("2d")!.drawImage(src, left, top, cropW, cropH, 0, 0, outW, outH);
-          resolve(out.toDataURL("image/png"));
-        } catch { resolve(null); }
-      };
-      img.onerror = () => resolve(null);
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
-}
-
-async function processLogoFile(file: File): Promise<string | null> {
-  if (file.size > 5 * 1024 * 1024) { alert("Image too large. Maximum is 5MB."); return null; }
-  const result = await trimAndResizeLogo(file, 400);
-  if (!result) alert("Failed to process image. Try a smaller file.");
-  return result;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -936,53 +865,14 @@ function StepSettings({
   automationEnabled,
   onUpdate,
   branding,
-  onBrandingChange,
 }: {
   step: EmailStep;
   automationEnabled: boolean;
   onUpdate: (id: string, updates: Partial<EmailStep>) => void;
   branding: EmailBrandingState;
-  onBrandingChange: (updates: Partial<EmailBrandingState>) => void;
 }) {
-  const logoFileRef = useRef<HTMLInputElement>(null);
-  const [logoProcessing, setLogoProcessing] = useState(false);
-  const [logoDragging, setLogoDragging] = useState(false);
-  const [displayLogoUrl, setDisplayLogoUrl] = useState<string | null>(null);
-
   const StepIcon = step.icon;
   const isActive = automationEnabled && step.enabled;
-
-  const handleLogoFile = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/")) return;
-    setLogoProcessing(true);
-    const compressed = await processLogoFile(file);
-    if (!compressed) { setLogoProcessing(false); return; }
-    setDisplayLogoUrl(compressed);
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageData: compressed, key: "email-logo" }),
-      });
-      const json = await res.json();
-      if (res.ok && json.url) {
-        const aspectImg = new Image();
-        aspectImg.onload = () => {
-          const ratio = aspectImg.width / aspectImg.height;
-          onBrandingChange({ logo_url: json.url, logo_aspect_ratio: ratio });
-          setDisplayLogoUrl(null);
-        };
-        aspectImg.onerror = () => {
-          onBrandingChange({ logo_url: json.url });
-          setDisplayLogoUrl(null);
-        };
-        aspectImg.src = compressed;
-      }
-    } catch { /* upload failed */ }
-    setLogoProcessing(false);
-  }, [onBrandingChange]);
-
-  const logoSrc = displayLogoUrl || branding.logo_url;
 
   const timingOptions =
     step.id === "email_1" ? [
@@ -1222,78 +1112,35 @@ function StepSettings({
         </div>
       </SettingsSection>
 
-      {/* ── BRANDING — collapsed, shared across all steps ── */}
+      {/* ── BRANDING — read-only, sourced from Brand Settings ── */}
       <SettingsSection icon={Palette} label="Email Branding" badge={
         <span className="text-[8px] text-muted-foreground/40">All emails</span>
       }>
         <div className="flex items-start gap-4">
-          {/* Logo */}
+          {/* Logo — read-only from branding */}
           <div className="shrink-0">
-            {logoSrc ? (
-              <div
-                className="group relative cursor-pointer rounded-lg border border-border bg-[#08080c] p-3"
-                onClick={() => logoFileRef.current?.click()}
-              >
+            {branding.logo_url ? (
+              <div className="rounded-lg border border-border bg-[#08080c] p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={logoSrc}
+                  src={branding.logo_url}
                   alt="Logo"
                   style={{ height: 28, width: "auto", maxWidth: 120, objectFit: "contain" }}
                 />
-                <div className="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
-                    className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-primary/80"
-                  >
-                    <Pencil size={9} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); onBrandingChange({ logo_url: "", logo_aspect_ratio: undefined }); setDisplayLogoUrl(null); }}
-                    className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-red-500/80"
-                  >
-                    <Trash2 size={9} />
-                  </button>
-                </div>
-                <input
-                  ref={logoFileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
-                />
               </div>
             ) : (
-              <div
-                className={`cursor-pointer rounded-lg border-2 border-dashed p-3 text-center transition-all ${
-                  logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-                }`}
-                style={{ minWidth: "80px" }}
-                onClick={() => logoFileRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
-                onDragLeave={() => setLogoDragging(false)}
-                onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
-              >
+              <div className="rounded-lg border border-dashed border-border p-3 text-center" style={{ minWidth: "80px" }}>
                 <ImageIcon size={14} className="mx-auto text-muted-foreground/40" />
-                <p className="mt-1 text-[9px] text-muted-foreground/50">
-                  {logoProcessing ? "..." : "Logo"}
-                </p>
-                <input
-                  ref={logoFileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
-                />
+                <p className="mt-1 text-[9px] text-muted-foreground/50">No logo</p>
               </div>
             )}
           </div>
 
-          {/* Accent color */}
+          {/* Accent color — read-only display */}
           <div>
-            <ColorPicker
-              value={branding.accent_color}
-              onChange={(v) => onBrandingChange({ accent_color: v })}
+            <div
+              className="h-8 w-8 rounded-md border border-border"
+              style={{ backgroundColor: branding.accent_color }}
             />
             <p className="mt-1 text-[9px] text-muted-foreground/40">
               Accent color
@@ -1301,7 +1148,9 @@ function StepSettings({
           </div>
         </div>
         <p className="mt-2 text-[9px] text-muted-foreground/30">
-          Shared across all recovery emails
+          Pulled from{" "}
+          <Link href="/admin/settings/branding/" className="text-primary hover:underline">Brand Settings</Link>.
+          {" "}Upload your logo once there — it appears everywhere automatically.
         </p>
       </SettingsSection>
 
@@ -1649,15 +1498,17 @@ export default function AbandonedCartPage() {
     }
   }, []);
 
-  // Load settings (automation + email branding in parallel)
+  // Load settings (automation + email + branding in parallel)
   const loadSettings = useCallback(async () => {
     try {
-      const [automationRes, emailRes] = await Promise.all([
+      const [automationRes, emailRes, brandingRes] = await Promise.all([
         fetch(`/api/settings?key=${abandonedCartAutomationKey(orgId)}`),
         fetch(`/api/settings?key=${emailKey(orgId)}`),
+        fetch(`/api/settings?key=${brandingKey(orgId)}`),
       ]);
       const automationJson = await automationRes.json();
       const emailJson = await emailRes.json();
+      const brandingJson = await brandingRes.json();
 
       if (automationJson?.data) {
         const loaded = automationJson.data as AutomationSettings;
@@ -1670,16 +1521,16 @@ export default function AbandonedCartPage() {
         });
       }
 
-      if (emailJson?.data) {
-        const e = emailJson.data as Record<string, unknown>;
-        setBranding({
-          logo_url: (e.logo_url as string) || "",
-          logo_height: (e.logo_height as number) || 48,
-          logo_aspect_ratio: e.logo_aspect_ratio as number | undefined,
-          accent_color: (e.accent_color as string) || "#8B5CF6",
-          from_name: (e.from_name as string) || "",
-        });
-      }
+      // Build branding state: email settings take priority, then global branding as fallback
+      const e = (emailJson?.data || {}) as Record<string, unknown>;
+      const b = (brandingJson?.data || {}) as Record<string, unknown>;
+      setBranding({
+        logo_url: (e.logo_url as string) || (b.logo_url as string) || "",
+        logo_height: (e.logo_height as number) || (b.logo_height as number) || 48,
+        logo_aspect_ratio: e.logo_aspect_ratio as number | undefined,
+        accent_color: (e.accent_color as string) || (b.accent_color as string) || "#8B5CF6",
+        from_name: (e.from_name as string) || (b.org_name as string) || "",
+      });
     } catch {
       // Use defaults
     }
@@ -1712,31 +1563,6 @@ export default function AbandonedCartPage() {
       }
     }, 600);
   }, [orgId]);
-
-  // Save email branding settings (separate settings key)
-  const persistBranding = useCallback(async (updated: EmailBrandingState) => {
-    // Load existing email settings, merge, and save
-    try {
-      const res = await fetch(`/api/settings?key=${emailKey(orgId)}`);
-      const json = await res.json();
-      const existing = json?.data || {};
-      const merged = { ...existing, ...updated };
-      await saveSettings(emailKey(orgId), merged as unknown as Record<string, unknown>);
-      // Bump preview version to force iframe reload
-      setPreviewVersion((v) => v + 1);
-    } catch {
-      // Silent fail
-    }
-  }, [orgId]);
-
-  // Handle branding changes
-  const handleBrandingChange = useCallback((updates: Partial<EmailBrandingState>) => {
-    setBranding((prev) => {
-      const updated = { ...prev, ...updates };
-      persistBranding(updated);
-      return updated;
-    });
-  }, [persistBranding]);
 
   // Toggle master automation (functional update prevents stale closure)
   const handleToggleAutomation = useCallback((val: boolean) => {
@@ -1884,7 +1710,6 @@ export default function AbandonedCartPage() {
               automationEnabled={settings.enabled}
               onUpdate={handleUpdateStep}
               branding={branding}
-              onBrandingChange={handleBrandingChange}
             />
           ) : (
             <Card>

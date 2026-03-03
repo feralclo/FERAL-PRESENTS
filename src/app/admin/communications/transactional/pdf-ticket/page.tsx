@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, brandingKey } from "@/lib/constants";
@@ -20,56 +20,7 @@ import {
   ChevronLeft,
   CheckCircle2,
   QrCode,
-  ImageIcon,
-  Pencil,
-  Trash2,
 } from "lucide-react";
-
-/* ── Logo processing ── */
-
-function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const src = document.createElement("canvas");
-          const sCtx = src.getContext("2d")!;
-          src.width = img.width;
-          src.height = img.height;
-          sCtx.drawImage(img, 0, 0);
-          const pixels = sCtx.getImageData(0, 0, src.width, src.height).data;
-          let top = src.height, bottom = 0, left = src.width, right = 0;
-          for (let y = 0; y < src.height; y++) {
-            for (let x = 0; x < src.width; x++) {
-              if (pixels[(y * src.width + x) * 4 + 3] > 10) {
-                if (y < top) top = y;
-                if (y > bottom) bottom = y;
-                if (x < left) left = x;
-                if (x > right) right = x;
-              }
-            }
-          }
-          if (top > bottom || left > right) { top = 0; bottom = src.height - 1; left = 0; right = src.width - 1; }
-          top = Math.max(0, top - 2); left = Math.max(0, left - 2);
-          bottom = Math.min(src.height - 1, bottom + 2); right = Math.min(src.width - 1, right + 2);
-          const cropW = right - left + 1, cropH = bottom - top + 1;
-          let outW = cropW, outH = cropH;
-          if (outW > maxWidth) { outH = Math.round((outH * maxWidth) / outW); outW = maxWidth; }
-          const out = document.createElement("canvas");
-          out.width = outW; out.height = outH;
-          out.getContext("2d")!.drawImage(src, left, top, cropW, cropH, 0, 0, outW, outH);
-          resolve(out.toDataURL("image/png"));
-        } catch { resolve(null); }
-      };
-      img.onerror = () => resolve(null);
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
-}
 
 /**
  * Live PDF ticket preview — uses absolute positioning with the SAME
@@ -272,10 +223,7 @@ export default function PdfTicketPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
-  const [logoProcessing, setLogoProcessing] = useState(false);
-  const [logoDragging, setLogoDragging] = useState(false);
   const [showMerch, setShowMerch] = useState(false);
-  const logoFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -335,19 +283,6 @@ export default function PdfTicketPage() {
     setSaving(false);
   }, [settings]);
 
-  const handleLogoFile = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) return;
-    setLogoProcessing(true);
-    const result = await trimAndResizeLogo(file, 400);
-    if (!result) { setLogoProcessing(false); return; }
-    try {
-      const res = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageData: result, key: "pdf-ticket-logo" }) });
-      const json = await res.json();
-      if (res.ok && json.url) update("logo_url", json.url);
-    } catch { /* upload failed */ }
-    setLogoProcessing(false);
-  }, []);
-
   if (loading) return (
     <div className="flex items-center justify-center py-20">
       <span className="font-mono text-xs tracking-[2px] text-muted-foreground uppercase">Loading...</span>
@@ -400,56 +335,26 @@ export default function PdfTicketPage() {
                   <CardDescription>Logo or text shown at the top of every ticket</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Logo upload */}
+                  {/* Logo — pulled from Brand Settings */}
                   <div className="space-y-3">
                     <Label>Ticket Logo</Label>
-                    <p className="text-[11px] text-muted-foreground">Upload a logo to replace the brand name text. Transparent PNGs are auto-cropped.</p>
-
                     {settings.logo_url ? (
-                      <div
-                        className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] p-4"
-                        onClick={() => logoFileRef.current?.click()}
-                      >
+                      <div className="inline-block rounded-lg border border-border bg-[#08080c] p-4">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={settings.logo_url}
                           alt="Logo"
                           style={{ height: 40, width: "auto", maxWidth: 200, objectFit: "contain" }}
                         />
-                        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
-                            className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white"
-                          >
-                            <Pencil size={11} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); update("logo_url", undefined); }}
-                            className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-red-500/30 hover:text-red-400"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        </div>
-                        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = ""; }} />
                       </div>
                     ) : (
-                      <div
-                        className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all max-w-xs ${
-                          logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-                        }`}
-                        onClick={() => logoFileRef.current?.click()}
-                        onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
-                        onDragLeave={() => setLogoDragging(false)}
-                        onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const f = e.dataTransfer.files[0]; if (f) handleLogoFile(f); }}
-                      >
-                        <ImageIcon size={16} className="mx-auto mb-1.5 text-muted-foreground/50" />
-                        <p className="text-xs text-muted-foreground">{logoProcessing ? "Processing..." : "Drop image or click to upload"}</p>
-                        <p className="text-[10px] text-muted-foreground/40 mt-0.5">PNG, JPG or WebP</p>
-                        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = ""; }} />
-                      </div>
+                      <p className="text-xs text-muted-foreground/60">No logo set</p>
                     )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Pulled from{" "}
+                      <Link href="/admin/settings/branding/" className="text-primary hover:underline">Brand Settings</Link>.
+                      {" "}Upload your logo once there — it appears on tickets, emails, and wallet passes automatically.
+                    </p>
                   </div>
 
                   {/* Logo size slider — only when logo is set */}

@@ -240,11 +240,8 @@ export default function WalletPassesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
-  const [logoProcessing, setLogoProcessing] = useState(false);
-  const [logoDragging, setLogoDragging] = useState(false);
   const [stripProcessing, setStripProcessing] = useState(false);
   const [stripDragging, setStripDragging] = useState(false);
-  const logoFileRef = useRef<HTMLInputElement>(null);
   const stripFileRef = useRef<HTMLInputElement>(null);
 
   // Provider configuration status
@@ -320,19 +317,6 @@ export default function WalletPassesPage() {
     } catch { setStatus("Error: Failed to save"); }
     setSaving(false);
   }, [settings]);
-
-  const handleLogoFile = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) return;
-    setLogoProcessing(true);
-    const result = await trimAndResizeLogo(file, 400);
-    if (!result) { setLogoProcessing(false); return; }
-    try {
-      const res = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageData: result, key: "wallet-pass-logo" }) });
-      const json = await res.json();
-      if (res.ok && json.url) update("logo_url", json.url);
-    } catch { /* upload failed */ }
-    setLogoProcessing(false);
-  }, []);
 
   const handleStripFile = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) return;
@@ -501,56 +485,26 @@ export default function WalletPassesPage() {
 
                       <Separator />
 
-                      {/* Logo upload */}
+                      {/* Logo — pulled from Brand Settings */}
                       <div className="space-y-3">
                         <Label>Pass Logo</Label>
-                        <p className="text-[11px] text-muted-foreground">Displayed in the pass header. Transparent PNGs work best.</p>
-
                         {settings.logo_url ? (
-                          <div
-                            className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] p-4"
-                            onClick={() => logoFileRef.current?.click()}
-                          >
+                          <div className="inline-block rounded-lg border border-border bg-[#08080c] p-4">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={settings.logo_url}
                               alt="Logo"
                               style={{ height: 36, width: "auto", maxWidth: 200, objectFit: "contain" }}
                             />
-                            <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
-                                className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white"
-                              >
-                                <Pencil size={11} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); update("logo_url", undefined); }}
-                                className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-red-500/30 hover:text-red-400"
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            </div>
-                            <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = ""; }} />
                           </div>
                         ) : (
-                          <div
-                            className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all max-w-xs ${
-                              logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-                            }`}
-                            onClick={() => logoFileRef.current?.click()}
-                            onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
-                            onDragLeave={() => setLogoDragging(false)}
-                            onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const f = e.dataTransfer.files[0]; if (f) handleLogoFile(f); }}
-                          >
-                            <ImageIcon size={16} className="mx-auto mb-1.5 text-muted-foreground/50" />
-                            <p className="text-xs text-muted-foreground">{logoProcessing ? "Processing..." : "Drop image or click to upload"}</p>
-                            <p className="text-[10px] text-muted-foreground/40 mt-0.5">PNG, JPG or WebP</p>
-                            <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = ""; }} />
-                          </div>
+                          <p className="text-xs text-muted-foreground/60">No logo set</p>
                         )}
+                        <p className="text-[11px] text-muted-foreground">
+                          Pulled from{" "}
+                          <Link href="/admin/settings/branding/" className="text-primary hover:underline">Brand Settings</Link>.
+                          {" "}Upload your logo once there — it appears everywhere automatically.
+                        </p>
                       </div>
 
                       <Separator />

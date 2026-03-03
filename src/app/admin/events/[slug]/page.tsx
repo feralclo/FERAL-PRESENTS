@@ -72,7 +72,7 @@ export default function EventEditorPage() {
 
       // Load site_settings
       const key =
-        data.settings_key || `feral_event_${slug}`;
+        data.settings_key || `${orgId}_event_${slug}`;
       const { data: sd } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
@@ -119,7 +119,7 @@ export default function EventEditorPage() {
         if (supabase) {
           const key =
             event.settings_key ||
-            `feral_event_${event.slug}`;
+            `${orgId}_event_${event.slug}`;
 
           const dataToSave = {
             ...settings,

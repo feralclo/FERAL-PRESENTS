@@ -190,31 +190,21 @@ export function storeMetaMatchData(data: StoredMatchData) {
 }
 
 /**
- * Apply Advanced Matching data to an already-initialized pixel.
- * Only runs once — subsequent calls are no-ops. This avoids the double-init
- * issue where the HTML snippet calls fbq('init', pixelId) and then React
- * would call it again. Instead, we only re-init if we have user data to add.
+ * Mark Advanced Matching as ready (data exists in localStorage).
+ * We do NOT call fbq('init') again — re-initializing the pixel causes
+ * a phantom PageView without an event ID, leading to duplicate/ghost
+ * events in Meta Test Events. Instead, stored match data is sent
+ * via CAPI on every event (merged in sendCAPI), which provides the
+ * same match quality without the client-side re-init side effects.
  */
-function applyAdvancedMatching() {
+function markAdvancedMatchingReady() {
   if (_advancedMatchingApplied) return;
-
-  const pixelId = getHtmlPixelId();
-  if (!pixelId || !window.fbq) return;
+  _advancedMatchingApplied = true;
 
   const matchData = getStoredMatchData();
-  const hasMatchData = matchData.em || matchData.fn || matchData.ln || matchData.ph || matchData.external_id;
-
-  if (hasMatchData) {
-    // Re-init with user data — Meta pixel handles this gracefully for the same pixel ID
-    window.fbq("init", pixelId, {
-      em: matchData.em || undefined,
-      fn: matchData.fn || undefined,
-      ln: matchData.ln || undefined,
-      ph: matchData.ph || undefined,
-      external_id: matchData.external_id || undefined,
-    });
-    _advancedMatchingApplied = true;
-    console.debug("[Meta] Advanced Matching applied:", Object.keys(matchData).filter(k => matchData[k as keyof StoredMatchData]).join(", "));
+  const fields = Object.keys(matchData).filter(k => matchData[k as keyof StoredMatchData]);
+  if (fields.length > 0) {
+    console.debug("[Meta] Advanced Matching data available for CAPI:", fields.join(", "));
   }
 }
 
@@ -392,8 +382,8 @@ export function useMetaTracking() {
     // Capture fbclid IMMEDIATELY — before anything else
     captureFbclid();
 
-    // Apply stored customer data for Advanced Matching (if pixel already loaded from HTML)
-    applyAdvancedMatching();
+    // Check for stored customer data (sent via CAPI, not client re-init)
+    markAdvancedMatchingReady();
 
     // Prefetch settings for CAPI (fire-and-forget — pixel events don't need this)
     getSettings(orgId).then((s) => {

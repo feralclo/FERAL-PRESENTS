@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { BETA_MODE } from "@/lib/beta";
@@ -41,7 +41,6 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   // If already authenticated, redirect to admin dashboard
@@ -55,12 +54,12 @@ function LoginForm() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         const redirect = searchParams.get("redirect") || "/admin/";
-        router.replace(redirect);
+        window.location.href = redirect;
       } else {
         setCheckingSession(false);
       }
     });
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   // Show error from OAuth callback redirect
   useEffect(() => {
@@ -130,9 +129,11 @@ function LoginForm() {
       body: JSON.stringify({ email, password }),
     }).catch(() => {});
 
-    // Redirect to the intended page or admin dashboard
+    // Full page navigation so the middleware re-runs with the now-authenticated
+    // user and resolves the correct org_id (client-side router.replace would
+    // skip middleware, leaving org_id as the unauthenticated fallback "feral").
     const redirect = searchParams.get("redirect") || "/admin/";
-    router.replace(redirect);
+    window.location.href = redirect;
   };
 
   if (checkingSession) {

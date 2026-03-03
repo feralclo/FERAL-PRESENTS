@@ -521,15 +521,15 @@ export default function PaymentSettingsPage() {
             <CardContent className="space-y-0 px-6 py-2">
               <CapabilityRow
                 label="Card Payments"
-                enabled={status.charges_enabled}
+                status={status.charges_enabled ? "active" : "inactive"}
               />
               <CapabilityRow
                 label="Payouts"
-                enabled={status.payouts_enabled}
+                status={status.payouts_enabled ? "active" : status.disabled_reason === "requirements.pending_verification" ? "pending" : "inactive"}
               />
               <CapabilityRow
                 label="Identity Verified"
-                enabled={status.details_submitted}
+                status={status.details_submitted ? "active" : "inactive"}
                 last
               />
             </CardContent>
@@ -602,8 +602,22 @@ export default function PaymentSettingsPage() {
             </Card>
           )}
 
-          {/* Disabled reason */}
-          {status.disabled_reason && (
+          {/* Disabled reason — distinguish pending verification (normal) from actual restrictions */}
+          {status.disabled_reason && status.disabled_reason === "requirements.pending_verification" && status.charges_enabled ? (
+            <Card className="gap-0 border-info/20 py-0">
+              <CardContent className="flex items-center gap-3 px-6 py-5">
+                <Shield className="size-5 shrink-0 text-info" />
+                <div>
+                  <h2 className="font-mono text-xs font-bold uppercase tracking-[2px] text-info">
+                    Verification In Progress
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Your account is under review. You can accept payments now — payouts will begin once verification is complete (usually 1-3 business days).
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : status.disabled_reason ? (
             <Card className="gap-0 border-destructive/30 py-0">
               <CardContent className="flex items-center gap-3 px-6 py-5">
                 <AlertTriangle className="size-5 shrink-0 text-destructive" />
@@ -617,7 +631,7 @@ export default function PaymentSettingsPage() {
                 </div>
               </CardContent>
             </Card>
-          )}
+          ) : null}
 
           {/* Next Steps */}
           {status.charges_enabled && (
@@ -826,11 +840,11 @@ function DetailField({
 
 function CapabilityRow({
   label,
-  enabled,
+  status,
   last,
 }: {
   label: string;
-  enabled: boolean;
+  status: "active" | "pending" | "inactive";
   last?: boolean;
 }) {
   return (
@@ -841,8 +855,8 @@ function CapabilityRow({
       )}
     >
       <span className="text-sm text-foreground/80">{label}</span>
-      <Badge variant={enabled ? "success" : "default"}>
-        {enabled ? "Active" : "Inactive"}
+      <Badge variant={status === "active" ? "success" : status === "pending" ? "warning" : "default"}>
+        {status === "active" ? "Active" : status === "pending" ? "Pending Review" : "Inactive"}
       </Badge>
     </div>
   );

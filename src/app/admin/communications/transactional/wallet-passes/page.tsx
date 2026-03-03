@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES, walletPassesKey } from "@/lib/constants";
+import { TABLES, walletPassesKey, brandingKey } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
 import type { WalletPassSettings } from "@/types/email";
 import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
@@ -258,10 +258,38 @@ export default function WalletPassesPage() {
       try {
         const supabase = getSupabaseClient();
         if (!supabase) { setLoading(false); return; }
-        const { data } = await supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", walletPassesKey(orgId)).single();
-        if (data?.data && typeof data.data === "object") {
-          setSettings((prev) => ({ ...prev, ...(data.data as Partial<WalletPassSettings>) }));
-        }
+
+        // Fetch wallet pass settings and branding in parallel
+        const [walletRes, brandingRes] = await Promise.all([
+          supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", walletPassesKey(orgId)).single(),
+          supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", brandingKey(orgId)).single(),
+        ]);
+
+        const walletData = walletRes.data?.data as Partial<WalletPassSettings> | null;
+        const branding = brandingRes.data?.data as {
+          org_name?: string; logo_url?: string; accent_color?: string;
+        } | null;
+
+        setSettings((prev) => {
+          let next = { ...prev };
+
+          // Apply branding as base defaults (only for fields not explicitly customized)
+          if (branding) {
+            if (branding.logo_url && !walletData?.logo_url) next.logo_url = branding.logo_url;
+            if (branding.org_name && !walletData?.organization_name) next.organization_name = branding.org_name;
+            if (branding.accent_color && !walletData?.accent_color) {
+              next.accent_color = branding.accent_color;
+              next.label_color = branding.accent_color;
+            }
+          }
+
+          // Apply any explicit wallet pass settings on top
+          if (walletData && typeof walletData === "object") {
+            next = { ...next, ...walletData };
+          }
+
+          return next;
+        });
       } catch { /* defaults are fine */ }
       setLoading(false);
     })();

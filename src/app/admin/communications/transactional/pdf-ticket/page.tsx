@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES } from "@/lib/constants";
+import { TABLES, brandingKey } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
 import type { PdfTicketSettings } from "@/types/email";
 import { DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
@@ -282,10 +282,36 @@ export default function PdfTicketPage() {
       try {
         const supabase = getSupabaseClient();
         if (!supabase) { setLoading(false); return; }
-        const { data } = await supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${orgId}_pdf_ticket`).single();
-        if (data?.data && typeof data.data === "object") {
-          setSettings((prev) => ({ ...prev, ...(data.data as Partial<PdfTicketSettings>) }));
-        }
+
+        // Fetch PDF settings and branding in parallel
+        const [pdfRes, brandingRes] = await Promise.all([
+          supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${orgId}_pdf_ticket`).single(),
+          supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", brandingKey(orgId)).single(),
+        ]);
+
+        const pdfData = pdfRes.data?.data as Partial<PdfTicketSettings> | null;
+        const branding = brandingRes.data?.data as {
+          org_name?: string; logo_url?: string; accent_color?: string; logo_height?: number;
+        } | null;
+
+        setSettings((prev) => {
+          let next = { ...prev };
+
+          // Apply branding as base defaults (only for fields the tenant hasn't explicitly customized)
+          if (branding) {
+            if (branding.logo_url && !pdfData?.logo_url) next.logo_url = branding.logo_url;
+            if (branding.org_name && !pdfData?.brand_name) next.brand_name = branding.org_name;
+            if (branding.accent_color && !pdfData?.accent_color) next.accent_color = branding.accent_color;
+            if (branding.logo_height && !pdfData?.logo_height) next.logo_height = branding.logo_height;
+          }
+
+          // Apply any explicit PDF settings on top
+          if (pdfData && typeof pdfData === "object") {
+            next = { ...next, ...pdfData };
+          }
+
+          return next;
+        });
       } catch { /* defaults are fine */ }
       setLoading(false);
     })();

@@ -248,10 +248,9 @@ export async function POST(request: NextRequest) {
         );
       }
       if (discount.min_order_amount != null && subtotal < discount.min_order_amount) {
-        const evtCcy = (event.currency || "GBP").toUpperCase();
-        const sym = evtCcy === "EUR" ? "\u20ac" : evtCcy === "USD" ? "$" : "\u00a3";
+        const { formatPrice } = await import("@/lib/stripe/config");
         return NextResponse.json(
-          { error: `Minimum order of ${sym}${Number(discount.min_order_amount).toFixed(2)} required` },
+          { error: `Minimum order of ${formatPrice(Number(discount.min_order_amount), event.currency || "GBP")} required` },
           { status: 400 }
         );
       }

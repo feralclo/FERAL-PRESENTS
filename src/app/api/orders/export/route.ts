@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import { isZeroDecimalCurrency } from "@/lib/stripe/config";
+
+/** Format a monetary amount for CSV — respects zero-decimal currencies like JPY. */
+function fmtExport(amount: number | string, currency: string): string {
+  const n = Number(amount);
+  return isZeroDecimalCurrency(currency) ? String(Math.round(n)) : n.toFixed(2);
+}
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "";
 
@@ -153,6 +160,9 @@ export async function GET(request: NextRequest) {
         customer?.phone || "",
       ];
 
+      const ccy = order.currency || "GBP";
+      const baseCcy = order.base_currency || ccy;
+
       if (tickets.length === 0) {
         // Order with no tickets yet (edge case)
         rows.push([
@@ -166,12 +176,12 @@ export async function GET(request: NextRequest) {
           "",
           "",
           orderItems
-            .map((oi) => Number(oi.unit_price).toFixed(2))
+            .map((oi) => fmtExport(oi.unit_price, ccy))
             .join(", "),
-          Number(order.total).toFixed(2),
-          order.currency,
-          order.base_currency || order.currency,
-          order.base_total != null ? Number(order.base_total).toFixed(2) : Number(order.total).toFixed(2),
+          fmtExport(order.total, ccy),
+          ccy,
+          baseCcy,
+          order.base_total != null ? fmtExport(order.base_total, baseCcy) : fmtExport(order.total, ccy),
           order.exchange_rate != null ? String(order.exchange_rate) : "",
           order.payment_method,
           order.payment_ref || "",
@@ -199,12 +209,12 @@ export async function GET(request: NextRequest) {
             merchCollected,
             ticket.scanned_at || "",
             orderItems.length > 0
-              ? Number(orderItems[0].unit_price).toFixed(2)
+              ? fmtExport(orderItems[0].unit_price, ccy)
               : "",
-            Number(order.total).toFixed(2),
-            order.currency,
-            order.base_currency || order.currency,
-            order.base_total != null ? Number(order.base_total).toFixed(2) : Number(order.total).toFixed(2),
+            fmtExport(order.total, ccy),
+            ccy,
+            baseCcy,
+            order.base_total != null ? fmtExport(order.base_total, baseCcy) : fmtExport(order.total, ccy),
             order.exchange_rate != null ? String(order.exchange_rate) : "",
             order.payment_method,
             order.payment_ref || "",

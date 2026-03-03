@@ -278,10 +278,9 @@ export async function POST(request: NextRequest) {
         );
       }
       if (discount.min_order_amount != null && subtotal < discount.min_order_amount) {
-        const { getCurrencySymbol } = await import("@/lib/stripe/config");
-        const sym = getCurrencySymbol(event.currency || "GBP");
+        const { formatPrice } = await import("@/lib/stripe/config");
         return NextResponse.json(
-          { error: `Minimum order of ${sym}${Number(discount.min_order_amount).toFixed(2)} required` },
+          { error: `Minimum order of ${formatPrice(Number(discount.min_order_amount), event.currency || "GBP")} required` },
           { status: 400 }
         );
       }
@@ -436,12 +435,16 @@ export async function POST(request: NextRequest) {
 
     // For multi-currency: recalculate VAT on converted amount if applicable
     if (chargeCurrency !== baseCurrency && vatAmount > 0) {
+      const { isZeroDecimalCurrency } = await import("@/lib/stripe/config");
+      const roundMoney = isZeroDecimalCurrency(chargeCurrency)
+        ? (n: number) => Math.round(n)
+        : (n: number) => Math.round(n * 100) / 100;
       // VAT rate is a percentage — apply to converted subtotal
       if (vatInclusive) {
         // VAT is already inside the converted price — just recalculate the amount
-        vatAmount = Number((convertedSubtotal - convertedSubtotal / (1 + vatRate / 100)).toFixed(2));
+        vatAmount = roundMoney(convertedSubtotal - convertedSubtotal / (1 + vatRate / 100));
       } else {
-        vatAmount = Number((convertedSubtotal * vatRate / 100).toFixed(2));
+        vatAmount = roundMoney(convertedSubtotal * vatRate / 100);
       }
     }
 

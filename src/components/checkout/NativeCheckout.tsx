@@ -1008,7 +1008,7 @@ function SinglePageCheckoutForm({
   const [cardReady, setCardReady] = useState(false);
   const [expressAvailable, setExpressAvailable] = useState(true);
   const [expressLoaded, setExpressLoaded] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "klarna">("card");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "klarna" | "paypay">("card");
   const [marketingConsent, setMarketingConsent] = useState(true);
 
   // Billing country list — tenant's default floated to top
@@ -1016,6 +1016,12 @@ function SinglePageCheckoutForm({
 
   // Klarna only available in supported regions
   const klarnaAvailable = useMemo(() => KLARNA_COUNTRIES.has(getDefaultBillingCountry(event.currency)), [event.currency]);
+
+  // PayPay only available for JPY events (JP Stripe accounts)
+  const paypayAvailable = event.currency?.toUpperCase() === "JPY";
+
+  // Whether any alternative payment methods are available (for radio UI)
+  const hasAltPaymentMethod = klarnaAvailable || paypayAvailable;
   const cardRef = useRef<CardFieldsHandle>(null);
   const nameCaptureTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -1346,7 +1352,7 @@ function SinglePageCheckoutForm({
             setProcessing(false);
             return;
           }
-        } else {
+        } else if (paymentMethod === "klarna") {
           const stripeInstance = await stripePromise;
           if (!stripeInstance) {
             setError("Payment system not ready. Please try again.");
@@ -1372,6 +1378,35 @@ function SinglePageCheckoutForm({
             trackEngagement("payment_failed");
             setError(
               klarnaError.message || "Klarna payment failed. Please try again."
+            );
+            setProcessing(false);
+            return;
+          }
+          return;
+        } else if (paymentMethod === "paypay") {
+          const stripeInstance = await stripePromise;
+          if (!stripeInstance) {
+            setError("Payment system not ready. Please try again.");
+            setProcessing(false);
+            return;
+          }
+
+          const returnUrl = `${window.location.origin}${merchData ? `/shop/${merchData.collectionSlug}/checkout` : `/event/${slug}/checkout`}/?pi=${data.payment_intent_id}`;
+          const { error: paypayError } = await stripeInstance.confirmPayment({
+            clientSecret: data.client_secret,
+            confirmParams: {
+              payment_method_data: {
+                // @ts-expect-error — Stripe types may lag behind API support for PayPay
+                type: "paypay",
+              },
+              return_url: returnUrl,
+            },
+          });
+
+          if (paypayError) {
+            trackEngagement("payment_failed");
+            setError(
+              paypayError.message || "PayPay payment failed. Please try again."
             );
             setProcessing(false);
             return;
@@ -1616,15 +1651,15 @@ function SinglePageCheckoutForm({
             <div className="border border-white/[0.10] rounded-lg overflow-hidden">
               {/* Card option */}
               <div
-                className={`${klarnaAvailable ? "cursor-pointer" : ""} transition-colors duration-150 ${paymentMethod === "card" ? "bg-white/[0.02] cursor-default" : "hover:bg-white/[0.015]"}`}
-                onClick={() => { if (klarnaAvailable && paymentMethod !== "card") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
-                role={klarnaAvailable ? "radio" : undefined}
-                aria-checked={klarnaAvailable ? paymentMethod === "card" : undefined}
-                tabIndex={klarnaAvailable ? 0 : undefined}
-                onKeyDown={(e) => { if (klarnaAvailable && e.key === "Enter") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
+                className={`${hasAltPaymentMethod ? "cursor-pointer" : ""} transition-colors duration-150 ${paymentMethod === "card" ? "bg-white/[0.02] cursor-default" : "hover:bg-white/[0.015]"}`}
+                onClick={() => { if (hasAltPaymentMethod && paymentMethod !== "card") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
+                role={hasAltPaymentMethod ? "radio" : undefined}
+                aria-checked={hasAltPaymentMethod ? paymentMethod === "card" : undefined}
+                tabIndex={hasAltPaymentMethod ? 0 : undefined}
+                onKeyDown={(e) => { if (hasAltPaymentMethod && e.key === "Enter") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
               >
                 <div className="flex items-center gap-3 py-3.5 px-4">
-                  {klarnaAvailable && (
+                  {hasAltPaymentMethod && (
                   <span className={`w-[18px] h-[18px] border-2 rounded-full shrink-0 relative transition-colors duration-200 ${paymentMethod === "card" ? "border-white midnight-radio--checked" : "border-white/20"}`} />
                   )}
                   <span className={`flex-1 font-[family-name:var(--font-sans)] text-sm font-medium tracking-[0.2px] whitespace-nowrap transition-colors duration-150 ${paymentMethod === "card" ? "text-foreground" : "text-foreground/50"}`}>
@@ -1740,6 +1775,51 @@ function SinglePageCheckoutForm({
                 </div>
               </div>
               )}
+
+              {/* PayPay option — only for JPY events */}
+              {paypayAvailable && (
+              <div
+                className={`cursor-pointer transition-colors duration-150 border-t border-white/[0.08] ${paymentMethod === "paypay" ? "bg-white/[0.02] cursor-default" : "hover:bg-white/[0.015]"}`}
+                onClick={() => { if (paymentMethod !== "paypay") { setPaymentMethod("paypay"); trackEngagement("payment_method_selected"); } }}
+                role="radio"
+                aria-checked={paymentMethod === "paypay"}
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter") { setPaymentMethod("paypay"); trackEngagement("payment_method_selected"); } }}
+              >
+                <div className="flex items-center gap-3 py-3.5 px-4">
+                  <span className={`w-[18px] h-[18px] border-2 rounded-full shrink-0 relative transition-colors duration-200 ${paymentMethod === "paypay" ? "border-white midnight-radio--checked" : "border-white/20"}`} />
+                  <span className={`flex-1 font-[family-name:var(--font-sans)] text-sm font-medium tracking-[0.2px] whitespace-nowrap transition-colors duration-150 ${paymentMethod === "paypay" ? "text-foreground" : "text-foreground/50"}`}>
+                    PayPay
+                  </span>
+                  <span className="inline-flex items-center justify-center w-11 h-[22px] rounded-[3px] shrink-0 overflow-hidden ml-auto" style={{ background: "#FF0033" }}>
+                    <svg viewBox="0 0 32 20" fill="none" aria-label="PayPay" className="w-full h-full block">
+                      <text x="16" y="13" textAnchor="middle" fill="#fff" fontSize="5.5" fontWeight="800" fontFamily="Arial,sans-serif">PayPay</text>
+                    </svg>
+                  </span>
+                </div>
+
+                <div className={`midnight-collapse${paymentMethod === "paypay" ? " midnight-collapse--open" : ""}`}>
+                  <div className="py-0.5">
+                    <p className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/80 leading-relaxed m-0 mb-3.5">
+                      Pay securely with your PayPay account.
+                    </p>
+                    <div className="flex items-start gap-2.5 py-2.5 px-3 bg-white/[0.025] border border-white/[0.06] rounded-lg">
+                      <svg className="w-5 h-5 text-foreground/40 shrink-0 mt-px" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+                        <rect x="6" y="8" width="12" height="9" rx="1" fill="currentColor" opacity="0.15"/>
+                        <rect x="6" y="6" width="12" height="2.5" rx="0.5" fill="currentColor" opacity="0.3"/>
+                        <circle cx="8" cy="7.2" r="0.6" fill="currentColor"/>
+                        <circle cx="9.8" cy="7.2" r="0.6" fill="currentColor"/>
+                        <circle cx="11.6" cy="7.2" r="0.6" fill="currentColor"/>
+                      </svg>
+                      <span className="font-[family-name:var(--font-sans)] text-xs text-foreground/50 leading-relaxed">
+                        You will be redirected to PayPay to complete your payment.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              )}
             </div>
           </div>
 
@@ -1760,9 +1840,11 @@ function SinglePageCheckoutForm({
               ? "Processing\u2026"
               : paymentMethod === "klarna"
                 ? "Continue to Klarna"
-                : merchData
-                  ? `Pre-order ${symbol}${totalAmount.toFixed(2)}`
-                  : `Pay ${symbol}${totalAmount.toFixed(2)}`}
+                : paymentMethod === "paypay"
+                  ? "Continue to PayPay"
+                  : merchData
+                    ? `Pre-order ${symbol}${totalAmount.toFixed(2)}`
+                    : `Pay ${symbol}${totalAmount.toFixed(2)}`}
           </button>
 
           {/* Trust Signal */}

@@ -16,6 +16,7 @@ import { getStripeClient, preloadStripeAccount } from "@/lib/stripe/client";
 import { toSmallestUnit } from "@/lib/stripe/config";
 import type { Order } from "@/types/orders";
 import { useOrgId } from "@/components/OrgProvider";
+import { useMetaTracking, storeMetaMatchData } from "@/hooks/useMetaTracking";
 
 interface ExpressCheckoutProps {
   eventId: string;
@@ -47,6 +48,7 @@ function ExpressCheckoutInner({
   const stripe = useStripe();
   const elements = useElements();
   const orgId = useOrgId();
+  const { trackAddPaymentInfo } = useMetaTracking();
   const [available, setAvailable] = useState(true);
 
   // Sync Elements amount when cart total changes (e.g. ticket added/removed).
@@ -83,6 +85,26 @@ function ExpressCheckoutInner({
           onError("Email is required.");
           return;
         }
+
+        // Store customer data for Meta Advanced Matching (persists in localStorage)
+        storeMetaMatchData({
+          em: email.toLowerCase(),
+          fn: firstName,
+          ln: lastName,
+          ph: phone || undefined,
+        });
+
+        // Fire AddPaymentInfo — wallet PII used for better match quality
+        trackAddPaymentInfo(
+          {
+            content_ids: items.map((i) => i.ticket_type_id),
+            content_type: "product",
+            value: amount,
+            currency,
+            num_items: items.reduce((sum, i) => sum + i.qty, 0),
+          },
+          { em: email.toLowerCase(), fn: firstName, ln: lastName }
+        );
 
         // 1. Create PaymentIntent with customer data from wallet
         const res = await fetch("/api/stripe/payment-intent", {
@@ -159,7 +181,7 @@ function ExpressCheckoutInner({
         onError("An error occurred. Please try again.");
       }
     },
-    [stripe, elements, eventId, items, amount, currency, onSuccess, onError, discountCode]
+    [stripe, elements, eventId, items, amount, currency, onSuccess, onError, discountCode, trackAddPaymentInfo]
   );
 
   if (!available) return null;

@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useCurrencyContext } from "@/components/CurrencyProvider";
+import { MidnightTrustBar } from "./MidnightTrustBar";
 
 interface MidnightHeroProps {
   title: string;
@@ -126,6 +127,8 @@ export function MidnightHero({
             <path d="M6 9l6 6 6-6" />
           </svg>
         </Button>
+
+        <MidnightTrustBar />
       </div>
     </section>
   );

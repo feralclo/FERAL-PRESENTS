@@ -244,6 +244,8 @@ export function TeamTab() {
     } catch { /* clipboard not available */ }
   };
 
+  const [copiedRepId, setCopiedRepId] = useState<string | null>(null);
+
   const handleLoginAs = async (rep: Rep) => {
     setLoggingInAs(rep.id);
     try {
@@ -254,7 +256,9 @@ export function TeamTab() {
       });
       const json = await res.json();
       if (res.ok && json.url) {
-        window.open(json.url, "_blank");
+        await navigator.clipboard.writeText(json.url);
+        setCopiedRepId(rep.id);
+        setTimeout(() => setCopiedRepId(null), 2000);
       } else {
         alert(json.error || "Failed to generate login link");
       }
@@ -414,10 +418,10 @@ export function TeamTab() {
                           size="icon-xs"
                           onClick={() => handleLoginAs(rep)}
                           disabled={loggingInAs === rep.id}
-                          title="Login as this rep"
-                          className="text-muted-foreground hover:text-primary"
+                          title="Copy magic login link"
+                          className={copiedRepId === rep.id ? "text-success" : "text-muted-foreground hover:text-primary"}
                         >
-                          {loggingInAs === rep.id ? <Loader2 size={13} className="animate-spin" /> : <LogIn size={13} />}
+                          {loggingInAs === rep.id ? <Loader2 size={13} className="animate-spin" /> : copiedRepId === rep.id ? <Check size={13} /> : <LogIn size={13} />}
                         </Button>
                       )}
                       <Link href={`/admin/reps/${rep.id}`}>

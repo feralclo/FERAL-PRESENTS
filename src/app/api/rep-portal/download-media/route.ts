@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRepAuth } from "@/lib/rep-auth";
+import { requireRepAuth } from "@/lib/auth";
 
 /**
  * GET /api/rep-portal/download-media?url=...

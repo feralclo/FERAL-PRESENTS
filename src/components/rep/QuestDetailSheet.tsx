@@ -244,62 +244,43 @@ export function QuestDetailSheet({
             </div>
           )}
 
-          {/* ── Rewards — stagger 2 ── */}
-          {isStoryShare ? (
-            /* Compact inline rewards for story_share — saves vertical space */
-            <div className="px-5 py-2 rep-quest-reveal-2">
-              <div className="flex items-center justify-center gap-3">
-                <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ backgroundColor: `${accent.progressColor}12` }}>
-                  <Zap size={14} style={{ color: accent.progressColor }} />
-                  <span className="text-sm font-black tabular-nums" style={{ color: accent.progressColor }}>+{quest.points_reward} XP</span>
+          {/* ── Rewards — stagger 2 — big glowing display ── */}
+          <div className={cn("px-5 rep-quest-reveal-2", isStoryShare ? "py-3" : "py-4")}>
+            <div className={cn(
+              "flex items-center justify-center",
+              hasDualReward ? "gap-4" : ""
+            )}>
+              <div className="flex flex-col items-center">
+                <div
+                  className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5"
+                  style={{
+                    backgroundColor: `${accent.progressColor}12`,
+                    boxShadow: `0 0 32px ${accent.progressColor}35, 0 0 12px ${accent.progressColor}20`,
+                  }}
+                >
+                  <Zap size={24} style={{ color: accent.progressColor, filter: `drop-shadow(0 0 8px ${accent.progressColor})` }} />
                 </div>
-                {hasDualReward && (
-                  <div className="flex items-center gap-1.5 rounded-full bg-amber-400/10 px-3 py-1.5">
-                    <CurrencyIcon size={14} className="text-amber-400" />
-                    <span className="text-sm font-black tabular-nums text-amber-400">+{quest.currency_reward} {currencyName}</span>
-                  </div>
-                )}
+                <p className="text-4xl font-black tabular-nums leading-none" style={{ color: accent.progressColor, textShadow: `0 0 24px ${accent.progressColor}50` }}>
+                  +{quest.points_reward}
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">XP</p>
               </div>
-            </div>
-          ) : (
-            /* Full glowing rewards display for other quest types */
-            <div className="px-5 py-4 rep-quest-reveal-2">
-              <div className={cn(
-                "flex items-center justify-center",
-                hasDualReward ? "gap-4" : ""
-              )}>
+              {hasDualReward && (
+                <div className="h-16 w-px bg-gradient-to-b from-transparent via-white/[0.12] to-transparent mx-1" />
+              )}
+              {hasDualReward && (
                 <div className="flex flex-col items-center">
-                  <div
-                    className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5"
-                    style={{
-                      backgroundColor: `${accent.progressColor}12`,
-                      boxShadow: `0 0 32px ${accent.progressColor}35, 0 0 12px ${accent.progressColor}20`,
-                    }}
-                  >
-                    <Zap size={24} style={{ color: accent.progressColor, filter: `drop-shadow(0 0 8px ${accent.progressColor})` }} />
+                  <div className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5 bg-amber-400/12" style={{ boxShadow: "0 0 32px rgba(251,191,36,0.35), 0 0 12px rgba(251,191,36,0.2)" }}>
+                    <CurrencyIcon size={24} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,1)]" />
                   </div>
-                  <p className="text-4xl font-black tabular-nums leading-none" style={{ color: accent.progressColor, textShadow: `0 0 24px ${accent.progressColor}50` }}>
-                    +{quest.points_reward}
+                  <p className="text-4xl font-black tabular-nums text-amber-400 leading-none" style={{ textShadow: "0 0 24px rgba(251,191,36,0.5)" }}>
+                    +{quest.currency_reward}
                   </p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">XP</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">{currencyName}</p>
                 </div>
-                {hasDualReward && (
-                  <div className="h-16 w-px bg-gradient-to-b from-transparent via-white/[0.12] to-transparent mx-1" />
-                )}
-                {hasDualReward && (
-                  <div className="flex flex-col items-center">
-                    <div className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5 bg-amber-400/12" style={{ boxShadow: "0 0 32px rgba(251,191,36,0.35), 0 0 12px rgba(251,191,36,0.2)" }}>
-                      <CurrencyIcon size={24} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,1)]" />
-                    </div>
-                    <p className="text-4xl font-black tabular-nums text-amber-400 leading-none" style={{ textShadow: "0 0 24px rgba(251,191,36,0.5)" }}>
-                      +{quest.currency_reward}
-                    </p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">{currencyName}</p>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* ── Accent divider ── */}
           <div className="px-8 rep-quest-reveal-2">
@@ -365,40 +346,36 @@ export function QuestDetailSheet({
                 </a>
               )}
 
-              {/* Discount code + share — single compact row */}
+              {/* Discount code — tap to copy */}
               {discountCode && (
-                <div className="flex items-center gap-2 rounded-xl bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] p-3">
-                  <button
-                    onClick={() => copyToClipboard(discountCode, "code")}
-                    className="flex-1 flex items-center gap-2 min-w-0 transition-colors active:scale-[0.98]"
-                  >
-                    <div className="flex flex-col min-w-0 text-left">
-                      <span className="text-[10px] text-muted-foreground font-medium">Your discount code</span>
-                      <span className="text-base font-black font-mono tracking-[3px] text-foreground">{discountCode}</span>
-                    </div>
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-auto">
-                      {copiedCode ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
-                    </span>
-                  </button>
-                  {typeof navigator !== "undefined" && "share" in navigator && shareLink && (
-                    <>
-                      <div className="w-px h-8 bg-white/[0.08] shrink-0" />
-                      <button
-                        onClick={async () => {
-                          try {
-                            await navigator.share({
-                              text: `Use my code ${discountCode} for a discount!\n${shareLink}`,
-                            });
-                          } catch { /* user cancelled */ }
-                        }}
-                        className="flex items-center gap-1.5 shrink-0 rounded-lg bg-primary/10 border border-primary/20 px-3 py-2 transition-colors hover:bg-primary/15 active:scale-[0.98]"
-                      >
-                        <Share2 size={13} className="text-primary" />
-                        <span className="text-[11px] font-bold text-primary">Share Link</span>
-                      </button>
-                    </>
-                  )}
-                </div>
+                <button
+                  onClick={() => copyToClipboard(discountCode, "code")}
+                  className="w-full flex items-center gap-3 rounded-xl bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] p-3 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
+                >
+                  <div className="flex flex-col min-w-0 text-left">
+                    <span className="text-[10px] text-muted-foreground font-medium">Your discount code</span>
+                    <span className="text-base font-black font-mono tracking-[3px] text-foreground">{discountCode}</span>
+                  </div>
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-auto">
+                    {copiedCode ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy code</>}
+                  </span>
+                </button>
+              )}
+
+              {/* Rep link — tap to copy, clearly labeled */}
+              {shareLink && (
+                <button
+                  onClick={() => copyToClipboard(shareLink, "link")}
+                  className="w-full flex items-center gap-3 rounded-xl bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] p-3 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
+                >
+                  <div className="flex flex-col min-w-0 text-left">
+                    <span className="text-[10px] text-muted-foreground font-medium">Your personal rep link</span>
+                    <span className="text-xs text-foreground/70 truncate max-w-[220px]">{shareLink}</span>
+                  </div>
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-auto">
+                    {copiedLink ? <><Check size={10} /> Copied</> : <><LinkIcon size={10} /> Copy link</>}
+                  </span>
+                </button>
               )}
             </div>
           )}
@@ -406,8 +383,8 @@ export function QuestDetailSheet({
           {/* ── Action area — stagger 3 ── */}
           <div className="px-5 py-4 space-y-3 rep-quest-reveal-3">
 
-            {/* Instructions — glass card */}
-            {quest.instructions && (
+            {/* Instructions — glass card (hidden for story_share, the UI guides the flow) */}
+            {quest.instructions && !isStoryShare && (
               <div className="rounded-xl p-4 bg-white/[0.04] backdrop-blur-sm border border-white/[0.08]">
                 <div className="flex items-center gap-1.5 mb-2">
                   <BookOpen size={13} className="text-primary" />

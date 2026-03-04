@@ -505,7 +505,7 @@ export function QuestDetailSheet({
         </div>
       </div>
 
-      {/* Long-press save overlay — universal mobile fallback */}
+      {/* Hold-to-save overlay — universal mobile fallback */}
       {longPressImageUrl && (
         <div
           className="fixed inset-0 z-[250] bg-black/95 flex flex-col items-center justify-center p-6"
@@ -519,7 +519,7 @@ export function QuestDetailSheet({
             <X size={16} />
           </button>
           <p className="text-white/70 text-sm font-medium mb-4 text-center">
-            Long press the image to save to your photos
+            Hold down on image to save to your photos
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -527,6 +527,7 @@ export function QuestDetailSheet({
             alt="Story content"
             className="max-w-[85vw] max-h-[65vh] object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
+            onContextMenu={() => setLongPressImageUrl(null)}
           />
           <p className="text-white/40 text-xs mt-4 text-center">Tap anywhere to close</p>
         </div>

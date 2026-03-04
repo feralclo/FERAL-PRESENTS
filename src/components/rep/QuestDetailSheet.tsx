@@ -87,6 +87,7 @@ export function QuestDetailSheet({
 
   const [savingImage, setSavingImage] = useState(false);
   const [savedImage, setSavedImage] = useState(false);
+  const [longPressImageUrl, setLongPressImageUrl] = useState<string | null>(null);
 
   const copyToClipboard = async (text: string, type: "code" | "link") => {
     try {
@@ -96,35 +97,54 @@ export function QuestDetailSheet({
     } catch { /* clipboard not available */ }
   };
 
-  /** Fetch image via proxy and use Web Share API (iOS shows "Save Image" in share sheet) */
+  /** Save image: share sheet on mobile, download on desktop, long-press overlay as fallback */
   const handleSaveImage = async (url: string) => {
     setSavingImage(true);
-    const proxyUrl = `/api/rep-portal/download-media?url=${encodeURIComponent(url)}`;
     try {
+      const proxyUrl = `/api/rep-portal/download-media?url=${encodeURIComponent(url)}`;
       const res = await fetch(proxyUrl);
-      const blob = await res.blob();
-      const ext = blob.type.includes("png") ? "png" : "jpg";
-      const file = new File([blob], `story.${ext}`, { type: blob.type });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file] });
-        setSavedImage(true);
-        setTimeout(() => setSavedImage(false), 2000);
-        setSavingImage(false);
-        return;
+      if (res.ok) {
+        const blob = await res.blob();
+        const ext = blob.type.includes("png") ? "png" : "jpg";
+        const file = new File([blob], `story.${ext}`, { type: blob.type });
+
+        // Mobile: Web Share API → native share sheet with "Save Image"
+        if (navigator.canShare?.({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file] });
+            setSavedImage(true);
+            setTimeout(() => setSavedImage(false), 2000);
+            setSavingImage(false);
+            return;
+          } catch (e) {
+            // User cancelled share — not an error, just stop
+            if (e instanceof Error && e.name === "AbortError") {
+              setSavingImage(false);
+              return;
+            }
+          }
+        }
+
+        // Desktop: trigger download via blob URL
+        if (typeof window !== "undefined" && !("ontouchstart" in window)) {
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `story.${ext}`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+          setSavedImage(true);
+          setTimeout(() => setSavedImage(false), 2000);
+          setSavingImage(false);
+          return;
+        }
       }
-      // Desktop fallback: trigger download via hidden link
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `story.${ext}`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      setSavedImage(true);
-      setTimeout(() => setSavedImage(false), 2000);
     } catch {
-      // Last resort: navigate to proxy URL (triggers browser download via Content-Disposition)
-      window.location.href = proxyUrl;
+      /* fetch or processing failed — fall through to long-press overlay */
     }
+
+    // Fallback: show image in overlay so user can long-press to save (works everywhere)
     setSavingImage(false);
+    setLongPressImageUrl(url);
   };
 
   return (
@@ -484,6 +504,33 @@ export function QuestDetailSheet({
           )}
         </div>
       </div>
+
+      {/* Long-press save overlay — universal mobile fallback */}
+      {longPressImageUrl && (
+        <div
+          className="fixed inset-0 z-[250] bg-black/95 flex flex-col items-center justify-center p-6"
+          onClick={() => setLongPressImageUrl(null)}
+        >
+          <button
+            onClick={() => setLongPressImageUrl(null)}
+            className="absolute top-4 right-4 w-9 h-9 bg-white/8 border border-white/12 rounded-lg flex items-center justify-center text-white/70 hover:bg-white/15"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+          <p className="text-white/70 text-sm font-medium mb-4 text-center">
+            Long press the image to save to your photos
+          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={longPressImageUrl}
+            alt="Story content"
+            className="max-w-[85vw] max-h-[65vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <p className="text-white/40 text-xs mt-4 text-center">Tap anywhere to close</p>
+        </div>
+      )}
     </div>
   );
 }

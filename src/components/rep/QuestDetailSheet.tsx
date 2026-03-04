@@ -96,11 +96,12 @@ export function QuestDetailSheet({
     } catch { /* clipboard not available */ }
   };
 
-  /** Fetch image as a File and use Web Share API (iOS shows "Save Image" in share sheet) */
+  /** Fetch image via proxy and use Web Share API (iOS shows "Save Image" in share sheet) */
   const handleSaveImage = async (url: string) => {
     setSavingImage(true);
+    const proxyUrl = `/api/rep-portal/download-media?url=${encodeURIComponent(url)}`;
     try {
-      const res = await fetch(url);
+      const res = await fetch(proxyUrl);
       const blob = await res.blob();
       const ext = blob.type.includes("png") ? "png" : "jpg";
       const file = new File([blob], `story.${ext}`, { type: blob.type });
@@ -111,11 +112,18 @@ export function QuestDetailSheet({
         setSavingImage(false);
         return;
       }
+      // Desktop fallback: trigger download via hidden link
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `story.${ext}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      setSavedImage(true);
+      setTimeout(() => setSavedImage(false), 2000);
     } catch {
-      /* user cancelled share or fetch failed — fall through */
+      // Last resort: navigate to proxy URL (triggers browser download via Content-Disposition)
+      window.location.href = proxyUrl;
     }
-    // Fallback: open in new tab (desktop, or if share failed)
-    window.open(url, "_blank");
     setSavingImage(false);
   };
 

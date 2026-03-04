@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   X, Check, Clock, Zap, BookOpen, ExternalLink,
   Camera, Share2, Sparkles, Music, Instagram,
-  Download, Copy, Link as LinkIcon,
+  Download, Link as LinkIcon,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
@@ -67,7 +67,6 @@ export function QuestDetailSheet({
   quest, onClose, onSubmit, onExpandImage, currencyName = "FRL",
   discountCode, shareLink,
 }: QuestDetailSheetProps) {
-  const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const accent = getQuestAccent(quest.points_reward);
   const QuestTypeIcon = QUEST_TYPE_ICONS[quest.quest_type] || Zap;
@@ -92,11 +91,11 @@ export function QuestDetailSheet({
   const [savedImage, setSavedImage] = useState(false);
   const [longPressImageUrl, setLongPressImageUrl] = useState<string | null>(null);
 
-  const copyToClipboard = async (text: string, type: "code" | "link") => {
+  const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      if (type === "code") { setCopiedCode(true); setTimeout(() => setCopiedCode(false), 2000); }
-      else { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); }
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
     } catch { /* clipboard not available */ }
   };
 
@@ -346,10 +345,10 @@ export function QuestDetailSheet({
                 </a>
               )}
 
-              {/* Discount code — tap to copy */}
+              {/* Discount code display + copy event link (code auto-applies via ?ref=) */}
               {discountCode && (
                 <button
-                  onClick={() => copyToClipboard(discountCode, "code")}
+                  onClick={() => copyToClipboard(shareLink || discountCode)}
                   className="w-full flex items-center gap-3 rounded-xl bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] p-3 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
                 >
                   <div className="flex flex-col min-w-0 text-left">
@@ -357,23 +356,7 @@ export function QuestDetailSheet({
                     <span className="text-base font-black font-mono tracking-[3px] text-foreground">{discountCode}</span>
                   </div>
                   <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-auto">
-                    {copiedCode ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy code</>}
-                  </span>
-                </button>
-              )}
-
-              {/* Rep link — tap to copy, clearly labeled */}
-              {shareLink && (
-                <button
-                  onClick={() => copyToClipboard(shareLink, "link")}
-                  className="w-full flex items-center gap-3 rounded-xl bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] p-3 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
-                >
-                  <div className="flex flex-col min-w-0 text-left">
-                    <span className="text-[10px] text-muted-foreground font-medium">Your personal rep link</span>
-                    <span className="text-xs text-foreground/70 truncate max-w-[220px]">{shareLink}</span>
-                  </div>
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-auto">
-                    {copiedLink ? <><Check size={10} /> Copied</> : <><LinkIcon size={10} /> Copy link</>}
+                    {copiedLink ? <><Check size={10} /> Copied</> : <><LinkIcon size={10} /> Copy event link</>}
                   </span>
                 </button>
               )}

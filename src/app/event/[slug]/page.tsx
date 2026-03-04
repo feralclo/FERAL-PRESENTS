@@ -247,10 +247,21 @@ export default async function EventPage({
       </>
     );
   }
+  // ?ref=CODE auto-applies a rep's discount code
+  const refCode = typeof sp.ref === "string" ? sp.ref : undefined;
+  const refScript = refCode ? (
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `try{sessionStorage.setItem("feral_popup_discount",${JSON.stringify(refCode)})}catch(e){}`,
+      }}
+    />
+  ) : null;
+
   return (
     <>
       {structuredData}
       {viewContentScript}
+      {refScript}
       <MidnightEventPage event={event} />
     </>
   );

@@ -20,6 +20,7 @@ import { useCurrencyContext } from "@/components/CurrencyProvider";
 import { MidnightTicketCard } from "./MidnightTicketCard";
 import { MidnightCartSummary } from "./MidnightCartSummary";
 import { MidnightTierProgression } from "./MidnightTierProgression";
+import { MidnightTrustBar } from "./MidnightTrustBar";
 import { MidnightSizeSelector } from "./MidnightSizeSelector";
 import { getSequentialGroupTickets } from "@/lib/ticket-visibility";
 import type { UseCartResult } from "@/hooks/useCart";
@@ -66,6 +67,7 @@ export function MidnightTicketWidget({
   const [ctaGlow, setCtaGlow] = useState(false);
   const [expressRevealed, setExpressRevealed] = useState(false);
   const [expressAvailable, setExpressAvailable] = useState(false);
+  const [applePayAvailable, setApplePayAvailable] = useState(false);
 
   // Manual discount code entry
   const [codeOpen, setCodeOpen] = useState(false);
@@ -274,6 +276,9 @@ export function MidnightTicketWidget({
             {/* Release progression bar */}
             <MidnightTierProgression tickets={progressionTickets} currSymbol={currSymbol} />
 
+            {/* Trust signals */}
+            <MidnightTrustBar applePayAvailable={applePayAvailable} />
+
             {/* Default (ungrouped) tickets */}
             {defaultGroup.map((tt) => (
               <MidnightTicketCard
@@ -383,7 +388,10 @@ export function MidnightTicketWidget({
                       items={expressItems}
                       onSuccess={handleExpressSuccess}
                       onError={setExpressError}
-                      onAvailable={() => setExpressAvailable(true)}
+                      onAvailable={(methods) => {
+                        setExpressAvailable(true);
+                        if (methods.applePay) setApplePayAvailable(true);
+                      }}
                       discountCode={discount?.code}
                     />
                   </div>

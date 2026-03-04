@@ -8,6 +8,7 @@ import {
   toSmallestUnit,
   SUPPORTED_CURRENCIES,
   CROSS_CURRENCY_SURCHARGE_PERCENT,
+  CURRENCY_FEE_OVERRIDES,
 } from "@/lib/stripe/config";
 import { getOrgBaseCurrency } from "@/lib/org-settings";
 import { getOrgPlan } from "@/lib/plans";
@@ -434,15 +435,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get plan fees — apply cross-currency surcharge if event currency differs from org base
+    // Get plan fees — apply currency override or cross-currency surcharge
     const plan = await getOrgPlan(orgId);
     const orgBaseCurrency = await getOrgBaseCurrency(orgId);
     const eventBaseCurrency = (event.currency || "GBP").toUpperCase();
-    let effectiveFeePercent = plan.fee_percent;
-    if (eventBaseCurrency !== orgBaseCurrency.toUpperCase()) {
-      effectiveFeePercent += CROSS_CURRENCY_SURCHARGE_PERCENT;
+    const currencyOverride = CURRENCY_FEE_OVERRIDES[currency.toLowerCase()];
+    let effectiveFeePercent: number;
+    let effectiveMinFee: number;
+    if (currencyOverride) {
+      // Flat fee override for this currency (e.g. JPY 5%)
+      effectiveFeePercent = currencyOverride.fee_percent;
+      effectiveMinFee = currencyOverride.min_fee;
+    } else {
+      effectiveFeePercent = plan.fee_percent;
+      effectiveMinFee = plan.min_fee;
+      if (eventBaseCurrency !== orgBaseCurrency.toUpperCase()) {
+        effectiveFeePercent += CROSS_CURRENCY_SURCHARGE_PERCENT;
+      }
     }
-    const applicationFee = calculateApplicationFee(amountInSmallestUnit, effectiveFeePercent, plan.min_fee);
+    const applicationFee = calculateApplicationFee(amountInSmallestUnit, effectiveFeePercent, effectiveMinFee);
 
     // Ensure merch pass ticket type exists
     const merchPassTicketTypeId = await ensureMerchPassTicketType(supabase, orgId, event.id);
@@ -473,7 +484,9 @@ export async function POST(request: NextRequest) {
       metadata.customer_marketing_consent = customer.marketing_consent ? "true" : "false";
     }
 
-    if (eventBaseCurrency !== orgBaseCurrency.toUpperCase()) {
+    if (currencyOverride) {
+      metadata.currency_fee_override = String(currencyOverride.fee_percent);
+    } else if (eventBaseCurrency !== orgBaseCurrency.toUpperCase()) {
       metadata.cross_currency_surcharge = String(CROSS_CURRENCY_SURCHARGE_PERCENT);
     }
 

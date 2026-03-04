@@ -8,6 +8,7 @@ import {
   toSmallestUnit,
   SUPPORTED_CURRENCIES,
   CROSS_CURRENCY_SURCHARGE_PERCENT,
+  CURRENCY_FEE_OVERRIDES,
 } from "@/lib/stripe/config";
 import { getOrgBaseCurrency } from "@/lib/org-settings";
 import {
@@ -464,12 +465,22 @@ export async function POST(request: NextRequest) {
     // Build PaymentIntent parameters — fee rates determined by org's plan
     const plan = await getOrgPlan(orgId);
     const orgBaseCurrency = await getOrgBaseCurrency(orgId);
-    let effectiveFeePercent = plan.fee_percent;
-    // Cross-currency surcharge: event charges in different currency than org's base
-    if (baseCurrency.toUpperCase() !== orgBaseCurrency.toUpperCase()) {
-      effectiveFeePercent += CROSS_CURRENCY_SURCHARGE_PERCENT;
+    const currencyOverride = CURRENCY_FEE_OVERRIDES[currency.toLowerCase()];
+    let effectiveFeePercent: number;
+    let effectiveMinFee: number;
+    if (currencyOverride) {
+      // Flat fee override for this currency (e.g. JPY 5%)
+      effectiveFeePercent = currencyOverride.fee_percent;
+      effectiveMinFee = currencyOverride.min_fee;
+    } else {
+      effectiveFeePercent = plan.fee_percent;
+      effectiveMinFee = plan.min_fee;
+      // Cross-currency surcharge: event charges in different currency than org's base
+      if (baseCurrency.toUpperCase() !== orgBaseCurrency.toUpperCase()) {
+        effectiveFeePercent += CROSS_CURRENCY_SURCHARGE_PERCENT;
+      }
     }
-    const applicationFee = calculateApplicationFee(amountInSmallestUnit, effectiveFeePercent, plan.min_fee);
+    const applicationFee = calculateApplicationFee(amountInSmallestUnit, effectiveFeePercent, effectiveMinFee);
 
     // Build line items description
     const description = items
@@ -508,7 +519,9 @@ export async function POST(request: NextRequest) {
       if (rateLocked) metadata.rate_locked_at = rateLocked;
     }
 
-    if (baseCurrency.toUpperCase() !== orgBaseCurrency.toUpperCase()) {
+    if (currencyOverride) {
+      metadata.currency_fee_override = String(currencyOverride.fee_percent);
+    } else if (baseCurrency.toUpperCase() !== orgBaseCurrency.toUpperCase()) {
       metadata.cross_currency_surcharge = String(CROSS_CURRENCY_SURCHARGE_PERCENT);
     }
 

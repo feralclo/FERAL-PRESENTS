@@ -26,6 +26,16 @@ export const MIN_PLATFORM_FEE = 50;
 /** Cross-currency surcharge added to platform fee when event currency differs from org's base currency */
 export const CROSS_CURRENCY_SURCHARGE_PERCENT = 1.5;
 
+/**
+ * Currency-specific flat fee overrides.
+ * When a charge is in one of these currencies, the platform fee is fixed at
+ * the given rate regardless of the org's plan or cross-currency surcharge.
+ * min_fee is in the currency's smallest unit (¥50 ≈ £0.25).
+ */
+export const CURRENCY_FEE_OVERRIDES: Record<string, { fee_percent: number; min_fee: number }> = {
+  jpy: { fee_percent: 5, min_fee: 50 },
+};
+
 /** Supported currencies */
 export const SUPPORTED_CURRENCIES = ["gbp", "eur", "usd", "cad", "aud", "chf", "sek", "nok", "dkk", "jpy"] as const;
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];

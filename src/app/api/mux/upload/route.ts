@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     const asset = await mux.video.assets.create({
       inputs: [{ url: videoUrl }],
       playback_policies: ["public"],
+      mp4_support: "standard",
     });
 
     return NextResponse.json({

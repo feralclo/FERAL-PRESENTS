@@ -1,13 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import {
   X, Check, Clock, Zap, BookOpen, ExternalLink,
   Camera, Share2, Sparkles, Music, Instagram,
+  Download, Copy, Link as LinkIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { getQuestAccent } from "@/lib/rep-quest-styles";
+import { isMuxPlaybackId, getMuxThumbnailUrl, getMuxDownloadUrl } from "@/lib/mux";
 import { TikTokIcon } from "./TikTokIcon";
 import { CurrencyIcon } from "./CurrencyIcon";
+
+const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), { ssr: false });
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -52,11 +58,16 @@ interface QuestDetailSheetProps {
   onSubmit: (quest: Quest) => void;
   onExpandImage: () => void;
   currencyName?: string;
+  discountCode?: string;
+  shareLink?: string;
 }
 
 export function QuestDetailSheet({
   quest, onClose, onSubmit, onExpandImage, currencyName = "FRL",
+  discountCode, shareLink,
 }: QuestDetailSheetProps) {
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const accent = getQuestAccent(quest.points_reward);
   const QuestTypeIcon = QUEST_TYPE_ICONS[quest.quest_type] || Zap;
   const questTypeLabel = quest.quest_type.replace(/_/g, " ");
@@ -67,9 +78,20 @@ export function QuestDetailSheet({
   const isRepeatable = quest.max_completions && quest.max_completions > 1;
   const hasPending = subs.pending > 0;
   const hasImage = !!quest.image_url;
+  const isStoryShare = quest.quest_type === "story_share";
   const hasRefUrl = !!quest.reference_url;
   const refPlatform = quest.reference_url ? getReferenceUrlPlatform(quest.reference_url) : (quest.platform !== "any" ? quest.platform : null);
   const hasDualReward = quest.currency_reward > 0;
+  const hasVideo = !!quest.video_url;
+  const hasStoryMedia = isStoryShare && (hasImage || hasVideo);
+
+  const copyToClipboard = async (text: string, type: "code" | "link") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === "code") { setCopiedCode(true); setTimeout(() => setCopiedCode(false), 2000); }
+      else { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); }
+    } catch { /* clipboard not available */ }
+  };
 
   return (
     <div
@@ -137,8 +159,8 @@ export function QuestDetailSheet({
             )}
           </div>
 
-          {/* ── Platform CTA — stagger 2 — THE hero action ── */}
-          {hasRefUrl && refPlatform && (
+          {/* ── Platform CTA — stagger 2 — THE hero action (not for story_share) ── */}
+          {hasRefUrl && refPlatform && !isStoryShare && (
             <div className="px-5 pb-2 rep-quest-reveal-2">
               <a
                 href={quest.reference_url!}
@@ -227,6 +249,110 @@ export function QuestDetailSheet({
               }}
             />
           </div>
+
+          {/* ── Download & Share — story_share only — stagger 3 ── */}
+          {hasStoryMedia && (
+            <div className="px-5 pt-3 space-y-2 rep-quest-reveal-3">
+              <div className="rounded-xl p-4 bg-white/[0.04] backdrop-blur-sm border border-white/[0.08]">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <Download size={13} className="text-primary" />
+                  <span className="text-xs font-semibold text-foreground">Download & Share</span>
+                </div>
+                {hasImage && (
+                  <a
+                    href={quest.image_url}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 mb-2 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={quest.image_url!} alt="" className="h-10 w-10 rounded-md object-cover shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Download Image</p>
+                      <p className="text-[10px] text-muted-foreground">Save to your camera roll</p>
+                    </div>
+                    <Download size={16} className="text-primary shrink-0" />
+                  </a>
+                )}
+                {hasVideo && (
+                  <a
+                    href={quest.video_url && isMuxPlaybackId(quest.video_url) ? getMuxDownloadUrl(quest.video_url) : quest.video_url!}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {quest.video_url && isMuxPlaybackId(quest.video_url) ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={getMuxThumbnailUrl(quest.video_url)} alt="" className="h-10 w-10 rounded-md object-cover shrink-0" />
+                    ) : (
+                      <div className="h-10 w-10 rounded-md bg-white/[0.06] flex items-center justify-center shrink-0">
+                        <Share2 size={16} className="text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Download Video</p>
+                      <p className="text-[10px] text-muted-foreground">Long press to save on mobile</p>
+                    </div>
+                    <Download size={16} className="text-primary shrink-0" />
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Code & Link — story_share only — stagger 3 ── */}
+          {isStoryShare && discountCode && (
+            <div className="px-5 pt-1 space-y-2 rep-quest-reveal-3">
+              <div className="rounded-xl p-4 bg-white/[0.04] backdrop-blur-sm border border-white/[0.08]">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <LinkIcon size={13} className="text-primary" />
+                  <span className="text-xs font-semibold text-foreground">Your Code & Link</span>
+                </div>
+                {/* Discount code */}
+                <button
+                  onClick={() => copyToClipboard(discountCode, "code")}
+                  className="w-full flex items-center justify-between rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 mb-2 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
+                >
+                  <span className="text-lg font-black font-mono tracking-[4px] text-foreground">{discountCode}</span>
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-primary">
+                    {copiedCode ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
+                  </span>
+                </button>
+                {/* Share link */}
+                {shareLink && (
+                  <button
+                    onClick={() => copyToClipboard(shareLink, "link")}
+                    className="w-full flex items-center justify-between rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 mb-2 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
+                  >
+                    <span className="text-xs text-muted-foreground truncate max-w-[200px]">{shareLink}</span>
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-2">
+                      {copiedLink ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
+                    </span>
+                  </button>
+                )}
+                {/* Native share button */}
+                {typeof navigator !== "undefined" && "share" in navigator && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.share({
+                          text: `Use my code ${discountCode} for a discount!${shareLink ? `\n${shareLink}` : ""}`,
+                        });
+                      } catch { /* user cancelled */ }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/20 p-2.5 transition-colors hover:bg-primary/15 active:scale-[0.98]"
+                  >
+                    <Share2 size={14} className="text-primary" />
+                    <span className="text-xs font-bold text-primary">Share</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── Action area — stagger 3 ── */}
           <div className="px-5 py-4 space-y-3 rep-quest-reveal-3">

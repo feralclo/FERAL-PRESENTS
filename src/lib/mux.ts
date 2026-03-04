@@ -39,3 +39,11 @@ export function getMuxThumbnailUrl(playbackId: string): string {
 export function isMuxPlaybackId(value: string): boolean {
   return !!value && !value.startsWith("http");
 }
+
+/**
+ * Construct a Mux static MP4 download URL from a playback ID.
+ * Requires mp4_support: "standard" on the asset.
+ */
+export function getMuxDownloadUrl(playbackId: string): string {
+  return `https://stream.mux.com/${playbackId}/high.mp4`;
+}

@@ -27,6 +27,7 @@ interface Quest {
   expires_at?: string;
   my_submissions: { total: number; approved: number; pending: number; rejected: number };
   max_completions?: number;
+  event?: { id: string; name: string; slug: string } | null;
 }
 
 interface Submission {
@@ -49,6 +50,7 @@ export default function RepQuestsPage() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"active" | "completed">("active");
   const [currencyName, setCurrencyName] = useState("FRL");
+  const [discountCode, setDiscountCode] = useState<string | undefined>();
 
   // Detail + submit modals
   const [detailQuest, setDetailQuest] = useState<Quest | null>(null);
@@ -82,9 +84,10 @@ export default function RepQuestsPage() {
 
   const loadQuests = useCallback(async () => {
     try {
-      const [res, settingsRes] = await Promise.all([
+      const [res, settingsRes, discountRes] = await Promise.all([
         fetch("/api/rep-portal/quests"),
         fetch("/api/rep-portal/settings"),
+        fetch("/api/rep-portal/discount"),
       ]);
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
@@ -96,6 +99,8 @@ export default function RepQuestsPage() {
       if (json.data) setQuests(json.data);
       const settingsJson = settingsRes.ok ? await settingsRes.json() : { data: null };
       if (settingsJson.data?.currency_name) setCurrencyName(settingsJson.data.currency_name);
+      const discountJson = discountRes.ok ? await discountRes.json() : { data: [] };
+      if (discountJson.data?.[0]?.code) setDiscountCode(discountJson.data[0].code);
     } catch {
       setError("Failed to load quests — check your connection");
     }
@@ -269,6 +274,12 @@ export default function RepQuestsPage() {
           onSubmit={(q) => setSubmitQuest(q)}
           onExpandImage={() => setMediaFullscreen(true)}
           currencyName={currencyName}
+          discountCode={discountCode}
+          shareLink={
+            detailQuest.quest_type === "story_share" && discountCode && detailQuest.event?.slug
+              ? `${typeof window !== "undefined" ? window.location.origin : ""}/event/${detailQuest.event.slug}?ref=${discountCode}`
+              : undefined
+          }
         />,
         document.getElementById("rep-portal-root") || document.body
       )}

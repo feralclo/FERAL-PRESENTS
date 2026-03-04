@@ -25,7 +25,7 @@ type ProofType = "tiktok_link" | "instagram_link" | "screenshot" | "url" | "text
 
 const QUEST_PROOF_MAP: Record<string, { types: ProofType[]; default: ProofType }> = {
   social_post: { types: ["tiktok_link", "instagram_link"], default: "tiktok_link" },
-  story_share: { types: ["tiktok_link", "instagram_link", "screenshot"], default: "tiktok_link" },
+  story_share: { types: ["screenshot", "tiktok_link", "instagram_link"], default: "screenshot" },
   content_creation: { types: ["tiktok_link", "instagram_link", "screenshot"], default: "tiktok_link" },
   custom: { types: ["tiktok_link", "instagram_link", "screenshot"], default: "tiktok_link" },
 };
@@ -302,6 +302,11 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted, currencyName = "
                 {/* Screenshot upload */}
                 {proofType === "screenshot" && (
                   <div className="space-y-3">
+                    {quest.quest_type === "story_share" && !uploadedUrl && (
+                      <p className="text-[11px] text-muted-foreground text-center">
+                        Screenshot your story showing the shared content
+                      </p>
+                    )}
                     {uploadedUrl ? (
                       <div className="relative rounded-xl overflow-hidden border border-white/[0.08]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}

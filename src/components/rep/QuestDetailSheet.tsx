@@ -85,12 +85,38 @@ export function QuestDetailSheet({
   const hasVideo = !!quest.video_url;
   const hasStoryMedia = isStoryShare && (hasImage || hasVideo);
 
+  const [savingImage, setSavingImage] = useState(false);
+  const [savedImage, setSavedImage] = useState(false);
+
   const copyToClipboard = async (text: string, type: "code" | "link") => {
     try {
       await navigator.clipboard.writeText(text);
       if (type === "code") { setCopiedCode(true); setTimeout(() => setCopiedCode(false), 2000); }
       else { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); }
     } catch { /* clipboard not available */ }
+  };
+
+  /** Fetch image as a File and use Web Share API (iOS shows "Save Image" in share sheet) */
+  const handleSaveImage = async (url: string) => {
+    setSavingImage(true);
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const ext = blob.type.includes("png") ? "png" : "jpg";
+      const file = new File([blob], `story.${ext}`, { type: blob.type });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        setSavedImage(true);
+        setTimeout(() => setSavedImage(false), 2000);
+        setSavingImage(false);
+        return;
+      }
+    } catch {
+      /* user cancelled share or fetch failed — fall through */
+    }
+    // Fallback: open in new tab (desktop, or if share failed)
+    window.open(url, "_blank");
+    setSavingImage(false);
   };
 
   return (
@@ -259,22 +285,27 @@ export function QuestDetailSheet({
                   <span className="text-xs font-semibold text-foreground">Download & Share</span>
                 </div>
                 {hasImage && (
-                  <a
-                    href={quest.image_url}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 mb-2 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
-                    onClick={(e) => e.stopPropagation()}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleSaveImage(quest.image_url!); }}
+                    disabled={savingImage}
+                    className="w-full flex items-center gap-3 rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 mb-2 transition-colors hover:bg-white/[0.08] active:scale-[0.98] disabled:opacity-60"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={quest.image_url!} alt="" className="h-10 w-10 rounded-md object-cover shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">Download Image</p>
-                      <p className="text-[10px] text-muted-foreground">Save to your camera roll</p>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-semibold text-foreground">
+                        {savingImage ? "Saving..." : savedImage ? "Saved!" : "Save Image"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {savedImage ? "Image saved to your device" : "Tap to save to your photos"}
+                      </p>
                     </div>
-                    <Download size={16} className="text-primary shrink-0" />
-                  </a>
+                    {savedImage ? (
+                      <Check size={16} className="text-emerald-400 shrink-0" />
+                    ) : (
+                      <Download size={16} className="text-primary shrink-0" />
+                    )}
+                  </button>
                 )}
                 {hasVideo && (
                   <a

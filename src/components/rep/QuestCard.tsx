@@ -19,6 +19,7 @@ interface Quest {
   quest_type: string;
   platform?: "tiktok" | "instagram" | "any";
   image_url?: string;
+  banner_image_url?: string;
   video_url?: string;
   reference_url?: string | null;
   uses_sound?: boolean;
@@ -102,7 +103,7 @@ export function QuestCard({
       className={cn(
         "rep-quest-card cursor-pointer",
         accent.glowClass,
-        quest.image_url && "rep-quest-has-image"
+        (quest.banner_image_url || quest.image_url) && "rep-quest-has-image"
       )}
       style={{ animationDelay: `${index * 40}ms` }}
       onClick={() => onSelect(quest)}
@@ -110,11 +111,11 @@ export function QuestCard({
       role="button"
       tabIndex={0}
     >
-      {/* Image backdrop */}
-      {quest.image_url && (
+      {/* Image backdrop — prefer banner, fall back to content image */}
+      {(quest.banner_image_url || quest.image_url) && (
         <div className="rep-quest-ambient">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={quest.image_url} alt="" />
+          <img src={quest.banner_image_url || quest.image_url!} alt="" />
         </div>
       )}
 

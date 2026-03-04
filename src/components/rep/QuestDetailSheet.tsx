@@ -25,6 +25,7 @@ interface Quest {
   quest_type: string;
   platform?: "tiktok" | "instagram" | "any";
   image_url?: string;
+  banner_image_url?: string;
   video_url?: string;
   reference_url?: string | null;
   uses_sound?: boolean;
@@ -77,6 +78,8 @@ export function QuestDetailSheet({
   const isCompleted = quest.max_completions ? approvedCount >= quest.max_completions : false;
   const isRepeatable = quest.max_completions && quest.max_completions > 1;
   const hasPending = subs.pending > 0;
+  const backdropImage = quest.banner_image_url || quest.image_url;
+  const hasBackdrop = !!backdropImage;
   const hasImage = !!quest.image_url;
   const isStoryShare = quest.quest_type === "story_share";
   const hasRefUrl = !!quest.reference_url;
@@ -155,13 +158,13 @@ export function QuestDetailSheet({
       <div
         className={cn(
           "rep-quest-detail-sheet relative w-full max-w-md rounded-2xl max-h-[85dvh] overflow-hidden",
-          hasImage && "rep-quest-has-backdrop"
+          hasBackdrop && "rep-quest-has-backdrop"
         )}
         role="dialog"
         aria-label={quest.title}
         style={{
           ["--quest-accent" as string]: accent.progressColor,
-          boxShadow: hasImage
+          boxShadow: hasBackdrop
             ? `0 0 120px ${accent.progressColor}20, 0 0 40px ${accent.progressColor}08, 0 25px 60px rgba(0,0,0,0.7)`
             : undefined,
         }}
@@ -175,11 +178,11 @@ export function QuestDetailSheet({
           }}
         />
 
-        {/* Full-bleed atmospheric backdrop */}
-        {hasImage && (
+        {/* Full-bleed atmospheric backdrop — uses banner if available, else content image */}
+        {hasBackdrop && (
           <div className="rep-quest-detail-hero-backdrop" aria-hidden="true" onClick={onExpandImage}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={quest.image_url!} alt="" />
+            <img src={backdropImage!} alt="" />
           </div>
         )}
 
@@ -241,58 +244,62 @@ export function QuestDetailSheet({
             </div>
           )}
 
-          {/* ── Rewards — stagger 2 — big glowing display ── */}
-          <div className="px-5 py-4 rep-quest-reveal-2">
-            <div className={cn(
-              "flex items-center justify-center",
-              hasDualReward ? "gap-4" : ""
-            )}>
-              {/* XP reward */}
-              <div className="flex flex-col items-center">
-                <div
-                  className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5"
-                  style={{
-                    backgroundColor: `${accent.progressColor}12`,
-                    boxShadow: `0 0 32px ${accent.progressColor}35, 0 0 12px ${accent.progressColor}20`,
-                  }}
-                >
-                  <Zap size={24} style={{ color: accent.progressColor, filter: `drop-shadow(0 0 8px ${accent.progressColor})` }} />
+          {/* ── Rewards — stagger 2 ── */}
+          {isStoryShare ? (
+            /* Compact inline rewards for story_share — saves vertical space */
+            <div className="px-5 py-2 rep-quest-reveal-2">
+              <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ backgroundColor: `${accent.progressColor}12` }}>
+                  <Zap size={14} style={{ color: accent.progressColor }} />
+                  <span className="text-sm font-black tabular-nums" style={{ color: accent.progressColor }}>+{quest.points_reward} XP</span>
                 </div>
-                <p
-                  className="text-4xl font-black tabular-nums leading-none"
-                  style={{ color: accent.progressColor, textShadow: `0 0 24px ${accent.progressColor}50` }}
-                >
-                  +{quest.points_reward}
-                </p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
-                  XP
-                </p>
+                {hasDualReward && (
+                  <div className="flex items-center gap-1.5 rounded-full bg-amber-400/10 px-3 py-1.5">
+                    <CurrencyIcon size={14} className="text-amber-400" />
+                    <span className="text-sm font-black tabular-nums text-amber-400">+{quest.currency_reward} {currencyName}</span>
+                  </div>
+                )}
               </div>
-
-              {/* Divider between rewards */}
-              {hasDualReward && (
-                <div className="h-16 w-px bg-gradient-to-b from-transparent via-white/[0.12] to-transparent mx-1" />
-              )}
-
-              {/* Currency reward */}
-              {hasDualReward && (
+            </div>
+          ) : (
+            /* Full glowing rewards display for other quest types */
+            <div className="px-5 py-4 rep-quest-reveal-2">
+              <div className={cn(
+                "flex items-center justify-center",
+                hasDualReward ? "gap-4" : ""
+              )}>
                 <div className="flex flex-col items-center">
                   <div
-                    className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5 bg-amber-400/12"
-                    style={{ boxShadow: "0 0 32px rgba(251,191,36,0.35), 0 0 12px rgba(251,191,36,0.2)" }}
+                    className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5"
+                    style={{
+                      backgroundColor: `${accent.progressColor}12`,
+                      boxShadow: `0 0 32px ${accent.progressColor}35, 0 0 12px ${accent.progressColor}20`,
+                    }}
                   >
-                    <CurrencyIcon size={24} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,1)]" />
+                    <Zap size={24} style={{ color: accent.progressColor, filter: `drop-shadow(0 0 8px ${accent.progressColor})` }} />
                   </div>
-                  <p className="text-4xl font-black tabular-nums text-amber-400 leading-none" style={{ textShadow: "0 0 24px rgba(251,191,36,0.5)" }}>
-                    +{quest.currency_reward}
+                  <p className="text-4xl font-black tabular-nums leading-none" style={{ color: accent.progressColor, textShadow: `0 0 24px ${accent.progressColor}50` }}>
+                    +{quest.points_reward}
                   </p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
-                    {currencyName}
-                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">XP</p>
                 </div>
-              )}
+                {hasDualReward && (
+                  <div className="h-16 w-px bg-gradient-to-b from-transparent via-white/[0.12] to-transparent mx-1" />
+                )}
+                {hasDualReward && (
+                  <div className="flex flex-col items-center">
+                    <div className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5 bg-amber-400/12" style={{ boxShadow: "0 0 32px rgba(251,191,36,0.35), 0 0 12px rgba(251,191,36,0.2)" }}>
+                      <CurrencyIcon size={24} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,1)]" />
+                    </div>
+                    <p className="text-4xl font-black tabular-nums text-amber-400 leading-none" style={{ textShadow: "0 0 24px rgba(251,191,36,0.5)" }}>
+                      +{quest.currency_reward}
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">{currencyName}</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ── Accent divider ── */}
           <div className="px-8 rep-quest-reveal-2">
@@ -304,112 +311,95 @@ export function QuestDetailSheet({
             />
           </div>
 
-          {/* ── Download & Share — story_share only — stagger 3 ── */}
-          {hasStoryMedia && (
+          {/* ── Story Share actions — compact, focused ── */}
+          {isStoryShare && (
             <div className="px-5 pt-3 space-y-2 rep-quest-reveal-3">
-              <div className="rounded-xl p-4 bg-white/[0.04] backdrop-blur-sm border border-white/[0.08]">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <Download size={13} className="text-primary" />
-                  <span className="text-xs font-semibold text-foreground">Download & Share</span>
-                </div>
-                {hasImage && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleSaveImage(quest.image_url!); }}
-                    disabled={savingImage}
-                    className="w-full flex items-center gap-3 rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 mb-2 transition-colors hover:bg-white/[0.08] active:scale-[0.98] disabled:opacity-60"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={quest.image_url!} alt="" className="h-10 w-10 rounded-md object-cover shrink-0" />
-                    <div className="flex-1 min-w-0 text-left">
-                      <p className="text-sm font-semibold text-foreground">
-                        {savingImage ? "Saving..." : savedImage ? "Saved!" : "Save Image"}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {savedImage ? "Image saved to your device" : "Tap to save to your photos"}
-                      </p>
-                    </div>
-                    {savedImage ? (
-                      <Check size={16} className="text-emerald-400 shrink-0" />
-                    ) : (
-                      <Download size={16} className="text-primary shrink-0" />
-                    )}
-                  </button>
-                )}
-                {hasVideo && (
-                  <a
-                    href={quest.video_url && isMuxPlaybackId(quest.video_url) ? getMuxDownloadUrl(quest.video_url) : quest.video_url!}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {quest.video_url && isMuxPlaybackId(quest.video_url) ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={getMuxThumbnailUrl(quest.video_url)} alt="" className="h-10 w-10 rounded-md object-cover shrink-0" />
-                    ) : (
-                      <div className="h-10 w-10 rounded-md bg-white/[0.06] flex items-center justify-center shrink-0">
-                        <Share2 size={16} className="text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">Download Video</p>
-                      <p className="text-[10px] text-muted-foreground">Long press to save on mobile</p>
-                    </div>
-                    <Download size={16} className="text-primary shrink-0" />
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Code & Link — story_share only — stagger 3 ── */}
-          {isStoryShare && discountCode && (
-            <div className="px-5 pt-1 space-y-2 rep-quest-reveal-3">
-              <div className="rounded-xl p-4 bg-white/[0.04] backdrop-blur-sm border border-white/[0.08]">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <LinkIcon size={13} className="text-primary" />
-                  <span className="text-xs font-semibold text-foreground">Your Code & Link</span>
-                </div>
-                {/* Discount code */}
+              {/* Save image button */}
+              {hasImage && (
                 <button
-                  onClick={() => copyToClipboard(discountCode, "code")}
-                  className="w-full flex items-center justify-between rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 mb-2 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
+                  onClick={(e) => { e.stopPropagation(); handleSaveImage(quest.image_url!); }}
+                  disabled={savingImage}
+                  className="w-full flex items-center gap-3 rounded-xl bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] p-3 transition-colors hover:bg-white/[0.08] active:scale-[0.98] disabled:opacity-60"
                 >
-                  <span className="text-lg font-black font-mono tracking-[4px] text-foreground">{discountCode}</span>
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-primary">
-                    {copiedCode ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
-                  </span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={quest.image_url!} alt="" className="h-10 w-10 rounded-lg object-cover shrink-0" />
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-semibold text-foreground">
+                      {savingImage ? "Saving..." : savedImage ? "Saved!" : "Save Image"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {savedImage ? "Image saved to your device" : "Tap to save to your photos"}
+                    </p>
+                  </div>
+                  {savedImage ? (
+                    <Check size={16} className="text-emerald-400 shrink-0" />
+                  ) : (
+                    <Download size={16} className="text-primary shrink-0" />
+                  )}
                 </button>
-                {/* Share link */}
-                {shareLink && (
+              )}
+
+              {/* Save video button */}
+              {hasVideo && (
+                <a
+                  href={quest.video_url && isMuxPlaybackId(quest.video_url) ? getMuxDownloadUrl(quest.video_url) : quest.video_url!}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 rounded-xl bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] p-3 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {quest.video_url && isMuxPlaybackId(quest.video_url) ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={getMuxThumbnailUrl(quest.video_url)} alt="" className="h-10 w-10 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <div className="h-10 w-10 rounded-lg bg-white/[0.06] flex items-center justify-center shrink-0">
+                      <Share2 size={16} className="text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Save Video</p>
+                    <p className="text-[10px] text-muted-foreground">Hold down to save on mobile</p>
+                  </div>
+                  <Download size={16} className="text-primary shrink-0" />
+                </a>
+              )}
+
+              {/* Discount code + share — single compact row */}
+              {discountCode && (
+                <div className="flex items-center gap-2 rounded-xl bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] p-3">
                   <button
-                    onClick={() => copyToClipboard(shareLink, "link")}
-                    className="w-full flex items-center justify-between rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 mb-2 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
+                    onClick={() => copyToClipboard(discountCode, "code")}
+                    className="flex-1 flex items-center gap-2 min-w-0 transition-colors active:scale-[0.98]"
                   >
-                    <span className="text-xs text-muted-foreground truncate max-w-[200px]">{shareLink}</span>
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-2">
-                      {copiedLink ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
+                    <div className="flex flex-col min-w-0 text-left">
+                      <span className="text-[10px] text-muted-foreground font-medium">Your discount code</span>
+                      <span className="text-base font-black font-mono tracking-[3px] text-foreground">{discountCode}</span>
+                    </div>
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-auto">
+                      {copiedCode ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
                     </span>
                   </button>
-                )}
-                {/* Native share button */}
-                {typeof navigator !== "undefined" && "share" in navigator && (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await navigator.share({
-                          text: `Use my code ${discountCode} for a discount!${shareLink ? `\n${shareLink}` : ""}`,
-                        });
-                      } catch { /* user cancelled */ }
-                    }}
-                    className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/20 p-2.5 transition-colors hover:bg-primary/15 active:scale-[0.98]"
-                  >
-                    <Share2 size={14} className="text-primary" />
-                    <span className="text-xs font-bold text-primary">Share</span>
-                  </button>
-                )}
-              </div>
+                  {typeof navigator !== "undefined" && "share" in navigator && shareLink && (
+                    <>
+                      <div className="w-px h-8 bg-white/[0.08] shrink-0" />
+                      <button
+                        onClick={async () => {
+                          try {
+                            await navigator.share({
+                              text: `Use my code ${discountCode} for a discount!\n${shareLink}`,
+                            });
+                          } catch { /* user cancelled */ }
+                        }}
+                        className="flex items-center gap-1.5 shrink-0 rounded-lg bg-primary/10 border border-primary/20 px-3 py-2 transition-colors hover:bg-primary/15 active:scale-[0.98]"
+                      >
+                        <Share2 size={13} className="text-primary" />
+                        <span className="text-[11px] font-bold text-primary">Share Link</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

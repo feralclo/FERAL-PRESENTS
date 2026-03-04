@@ -19,6 +19,7 @@ interface Quest {
   quest_type: string;
   platform?: "tiktok" | "instagram" | "any";
   image_url?: string;
+  banner_image_url?: string;
   video_url?: string;
   reference_url?: string | null;
   uses_sound?: boolean;

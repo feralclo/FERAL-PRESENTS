@@ -75,6 +75,7 @@ export async function PUT(
       "quest_type",
       "platform",
       "image_url",
+      "banner_image_url",
       "video_url",
       "points_reward",
       "event_id",

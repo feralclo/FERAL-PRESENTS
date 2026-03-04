@@ -133,6 +133,7 @@ export interface RepQuest {
   quest_type: QuestType;
   platform: QuestPlatform;
   image_url?: string | null;
+  banner_image_url?: string | null;
   video_url?: string | null;
   points_reward: number;
   currency_reward: number;

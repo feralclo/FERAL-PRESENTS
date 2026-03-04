@@ -273,11 +273,11 @@ export function MidnightTicketWidget({
               Select your tickets below
             </p>
 
-            {/* Release progression bar */}
-            <MidnightTierProgression tickets={progressionTickets} currSymbol={currSymbol} />
-
             {/* Trust signals */}
             <MidnightTrustBar applePayAvailable={applePayAvailable} />
+
+            {/* Release progression bar */}
+            <MidnightTierProgression tickets={progressionTickets} currSymbol={currSymbol} />
 
             {/* Default (ungrouped) tickets */}
             {defaultGroup.map((tt) => (

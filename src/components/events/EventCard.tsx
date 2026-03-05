@@ -46,7 +46,6 @@ export function EventCard({ event }: EventCardProps) {
       href={href}
       {...linkProps}
       className="group block relative rounded-2xl border border-[var(--card-border,#2a2a2a)]/60 bg-[var(--card-bg,#1a1a1a)]/50 overflow-hidden transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-1.5 hover:border-[var(--accent,#ff0033)]/40 hover:shadow-[0_8px_40px_color-mix(in_srgb,var(--accent)_10%,transparent),0_0_0_1px_color-mix(in_srgb,var(--accent)_12%,transparent)] motion-reduce:hover:translate-y-0"
-      data-reveal=""
     >
       {/* Cover image */}
       <div className="relative aspect-video overflow-hidden">

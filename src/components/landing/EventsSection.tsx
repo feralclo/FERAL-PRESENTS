@@ -46,6 +46,7 @@ export function EventsSection({ events }: EventsSectionProps) {
               <EventCard
                 key={event.id}
                 event={event}
+                lazy={i >= 2}
                 className={i >= MOBILE_LIMIT ? "hidden md:block" : undefined}
               />
             ))}
@@ -69,7 +70,7 @@ export function EventsSection({ events }: EventsSectionProps) {
   );
 }
 
-function EventCard({ event, className }: { event: LandingEvent; className?: string }) {
+function EventCard({ event, lazy = true, className }: { event: LandingEvent; lazy?: boolean; className?: string }) {
   const d = new Date(event.date_start);
   const day = String(d.getDate()).padStart(2, "0");
   const month = d
@@ -110,7 +111,7 @@ function EventCard({ event, className }: { event: LandingEvent; className?: stri
         <img
           src={imageUrl}
           alt={event.name}
-          loading="lazy"
+          loading={lazy ? "lazy" : "eager"}
           decoding="async"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
         />

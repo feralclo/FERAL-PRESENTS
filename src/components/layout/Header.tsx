@@ -79,8 +79,16 @@ export function Header() {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      // Always reset overflow on unmount (back/forward navigation, page change)
+      document.body.style.overflow = "";
     };
   }, []);
+
+  // Reset menu on route change (client-side navigation, back/forward)
+  useEffect(() => {
+    setPhase("closed");
+    document.body.style.overflow = "";
+  }, [pathname]);
 
   useEffect(() => {
     if (phase === "opening") {

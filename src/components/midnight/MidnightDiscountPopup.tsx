@@ -59,6 +59,7 @@ export function MidnightDiscountPopup() {
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [countdown, setCountdown] = useState(config.countdown_seconds || 299);
+  const [codeExpiry, setCodeExpiry] = useState(15 * 60); // 15 minutes
   const exitIntentRef = useRef<((e: MouseEvent) => void) | null>(null);
   const hasOpenedRef = useRef(false);
   const page = typeof window !== "undefined" ? window.location.pathname : "";
@@ -72,9 +73,32 @@ export function MidnightDiscountPopup() {
     return () => clearInterval(id);
   }, [isOpen, screen]);
 
+  // Code expiry timer — ticks down from 15 min once code is revealed
+  useEffect(() => {
+    if (screen !== "code") return;
+    const id = setInterval(() => {
+      setCodeExpiry((prev) => {
+        if (prev <= 1) {
+          // Clear auto-apply when timer expires
+          try {
+            sessionStorage.removeItem("feral_popup_discount");
+            sessionStorage.removeItem("feral_popup_discount_expires");
+          } catch { /* ignore */ }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [screen]);
+
   const timerMinutes = String(Math.floor(countdown / 60)).padStart(2, "0");
   const timerSeconds = String(countdown % 60).padStart(2, "0");
   const timerUrgent = countdown < 60;
+
+  const codeExpiryMinutes = String(Math.floor(codeExpiry / 60)).padStart(2, "0");
+  const codeExpirySeconds = String(codeExpiry % 60).padStart(2, "0");
+  const codeExpiryUrgent = codeExpiry < 5 * 60; // last 5 minutes
 
   // Show popup after delay (if not dismissed and enabled).
   // Waits for cookie consent to be resolved first so the two
@@ -183,9 +207,11 @@ export function MidnightDiscountPopup() {
       trackPopupEvent("conversions", page, email.trim());
 
       // Store discount code for auto-apply at checkout + email for abandoned cart bridge
+      // Expiry timestamp lets checkout verify the code hasn't "expired"
       try {
         sessionStorage.setItem("feral_popup_discount", config.discount_code);
         sessionStorage.setItem("feral_popup_email", email.trim());
+        sessionStorage.setItem("feral_popup_discount_expires", String(Date.now() + 15 * 60 * 1000));
       } catch {
         // ignore
       }
@@ -478,55 +504,109 @@ export function MidnightDiscountPopup() {
                 className="h-8 w-auto mb-5 opacity-70"
               />
 
-              {/* Section label — victory state, no urgency */}
-              <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] text-white/40 mb-3">
-                Discount Unlocked
+              {/* Section label — urgency state */}
+              <p
+                className="flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] mb-3"
+                style={{ color: codeExpiryUrgent ? config.cta_color : "rgba(255,255,255,0.4)" }}
+              >
+                {codeExpiry > 0 && (
+                  <span
+                    className="inline-block h-1.5 w-1.5 rounded-full midnight-popup-pulse"
+                    style={{ backgroundColor: config.cta_color }}
+                  />
+                )}
+                {codeExpiry > 0 ? "Discount Unlocked" : "Discount Expired"}
               </p>
 
               {/* Headline */}
               <h2 className="font-[family-name:var(--font-sans)] text-[22px] font-bold text-white leading-tight mb-2">
-                You&apos;re In
+                {codeExpiry > 0 ? "You\u2019re In" : "Time\u2019s Up"}
               </h2>
 
               {/* Subheadline */}
-              <p className="font-[family-name:var(--font-sans)] text-[15px] text-white/50 mb-5">
-                Here&apos;s your exclusive discount code
+              <p className="font-[family-name:var(--font-sans)] text-[15px] text-white/50 mb-4">
+                {codeExpiry > 0
+                  ? "Use your code before it expires"
+                  : "This discount is no longer available"}
               </p>
 
-              {/* Code container — glass */}
-              <div
-                className={cn(
-                  "w-full py-4 px-5 rounded-xl mb-4",
-                  "bg-white/[0.04] border border-white/[0.12]"
-                )}
-              >
-                <p className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20 mb-2">
-                  Your Code
-                </p>
-                <p className="font-[family-name:var(--font-mono)] text-[20px] font-bold tracking-[0.10em] text-white">
-                  {config.discount_code}
-                </p>
-              </div>
+              {codeExpiry > 0 ? (
+                <>
+                  {/* Code container — glass */}
+                  <div
+                    className={cn(
+                      "w-full py-4 px-5 rounded-xl mb-3",
+                      "bg-white/[0.04] border border-white/[0.12]"
+                    )}
+                  >
+                    <p className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20 mb-2">
+                      Your Code
+                    </p>
+                    <p className="font-[family-name:var(--font-mono)] text-[20px] font-bold tracking-[0.10em] text-white">
+                      {config.discount_code}
+                    </p>
+                  </div>
 
-              {/* Note */}
-              <p className="font-[family-name:var(--font-sans)] text-[11px] text-white/30 mb-5">
-                This code won&apos;t be shown again. It will be applied automatically at checkout.
-              </p>
+                  {/* Expiry timer pill */}
+                  <div className={cn(
+                    "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4",
+                    "bg-white/[0.04] border border-white/[0.08]",
+                    codeExpiryUrgent && "border-white/[0.15]"
+                  )}>
+                    <span
+                      className="font-[family-name:var(--font-mono)] text-[11px] font-medium tracking-[0.04em]"
+                      style={{ color: codeExpiryUrgent ? config.cta_color : "rgba(255,255,255,0.6)" }}
+                    >
+                      Your discount expires in
+                    </span>
+                    <span
+                      className="font-[family-name:var(--font-mono)] text-[13px] font-bold tracking-[0.06em] tabular-nums"
+                      style={{ color: codeExpiryUrgent ? config.cta_color : "rgba(255,255,255,0.8)" }}
+                    >
+                      {codeExpiryMinutes}:{codeExpirySeconds}
+                    </span>
+                  </div>
 
-              {/* CTA — solid white + ambient glow */}
-              <button
-                type="button"
-                onClick={handleUseCode}
-                className={cn(
-                  "w-full h-12 rounded-xl midnight-popup-cta",
-                  "bg-white text-[#0e0e0e]",
-                  "font-[family-name:var(--font-sans)] text-[13px] font-bold tracking-[0.02em]",
-                  "active:scale-[0.97] transition-transform duration-150",
-                  "cursor-pointer touch-manipulation"
-                )}
-              >
-                Apply Discount &amp; Browse Tickets
-              </button>
+                  {/* Note */}
+                  <p className="font-[family-name:var(--font-sans)] text-[11px] text-white/30 mb-4">
+                    Applied automatically at checkout.
+                  </p>
+
+                  {/* CTA — accent colored for urgency */}
+                  <button
+                    type="button"
+                    onClick={handleUseCode}
+                    className={cn(
+                      "w-full h-12 rounded-xl midnight-popup-cta-urgent",
+                      "text-white",
+                      "font-[family-name:var(--font-sans)] text-[13px] font-bold tracking-[0.02em]",
+                      "active:scale-[0.97]",
+                      "cursor-pointer touch-manipulation"
+                    )}
+                    style={{ "--popup-accent": config.cta_color } as React.CSSProperties}
+                  >
+                    Use Code Now
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Expired state — just a close button */}
+                  <button
+                    type="button"
+                    onClick={close}
+                    className={cn(
+                      "w-full h-12 rounded-xl mt-2",
+                      "bg-white/[0.06] border border-white/[0.08]",
+                      "font-[family-name:var(--font-sans)] text-[13px] font-medium text-white/50",
+                      "hover:text-white/70 hover:bg-white/[0.10]",
+                      "transition-all duration-200",
+                      "cursor-pointer touch-manipulation"
+                    )}
+                  >
+                    Close
+                  </button>
+                </>
+              )}
             </div>
           )}
 

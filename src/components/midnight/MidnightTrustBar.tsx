@@ -7,7 +7,7 @@ export function MidnightTrustBar() {
   // SSR-safe: defaults to false, updates on mount before user can perceive.
   const [isApple, setIsApple] = useState(false);
   useEffect(() => {
-    if (/iPhone|iPad|Macintosh/.test(navigator.userAgent)) {
+    if (/iPhone|iPad/.test(navigator.userAgent)) {
       setIsApple(true);
     }
   }, []);

@@ -194,6 +194,7 @@ function ExpressCheckoutInner({
         onReady={({ availablePaymentMethods }) => {
           if (!availablePaymentMethods) {
             setAvailable(false);
+            onAvailable?.({ applePay: false, googlePay: false });
           } else {
             onAvailable?.({
               applePay: !!availablePaymentMethods.applePay,

@@ -42,6 +42,7 @@ interface MidnightTicketWidgetProps {
   discount?: DiscountDisplay | null;
   onApplyDiscount?: (d: DiscountDisplay) => void;
   onApplePayDetected?: () => void;
+  onExpressResolved?: () => void;
 }
 
 export function MidnightTicketWidget({
@@ -58,6 +59,7 @@ export function MidnightTicketWidget({
   discount,
   onApplyDiscount,
   onApplePayDetected,
+  onExpressResolved,
 }: MidnightTicketWidgetProps) {
   const { convertPrice, formatPrice: fmtPrice, isConverted, currency: presentmentCurrency } = useCurrencyContext();
   const isStripe = paymentMethod === "stripe";
@@ -386,8 +388,11 @@ export function MidnightTicketWidget({
                       onSuccess={handleExpressSuccess}
                       onError={setExpressError}
                       onAvailable={(methods) => {
-                        setExpressAvailable(true);
+                        if (methods.applePay || methods.googlePay) {
+                          setExpressAvailable(true);
+                        }
                         if (methods.applePay) onApplePayDetected?.();
+                        onExpressResolved?.();
                       }}
                       discountCode={discount?.code}
                     />

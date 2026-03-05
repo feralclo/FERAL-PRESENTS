@@ -3,6 +3,7 @@ import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/stripe/apple-pay-domain
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
       registered_on: stripeAccountId || "platform",
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Apple Pay domain registration error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to register domain";
@@ -115,6 +117,7 @@ export async function GET() {
       registered_on: stripeAccountId || "platform",
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Apple Pay domain list error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to list domains";

@@ -24,6 +24,7 @@ import {
   roundPresentmentPrice,
   areRatesFreshForCheckout,
 } from "@/lib/currency/conversion";
+import * as Sentry from "@sentry/nextjs";
 
 const paymentLimiter = createRateLimiter("merch-payment-intent", {
   limit: 10,
@@ -565,6 +566,7 @@ export async function POST(request: NextRequest) {
       vat: convertedVat > 0 ? { amount: convertedVat, rate: vatRate, inclusive: vatInclusive } : null,
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Merch PaymentIntent creation error:", err);
     logPaymentEvent({
       orgId: getOrgIdFromRequest(request),

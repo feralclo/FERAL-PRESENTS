@@ -5,6 +5,7 @@ import { getOrgIdFromRequest } from "@/lib/org";
 import { generateApplePassBundle, type WalletPassTicketData } from "@/lib/wallet-passes";
 import type { WalletPassSettings } from "@/types/email";
 import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/orders/[id]/wallet/apple — Generate Apple Wallet .pkpass for an order
@@ -109,6 +110,7 @@ export async function GET(
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[wallet/apple] Error generating pass:", err);
     return NextResponse.json({ error: "Failed to generate Apple Wallet pass" }, { status: 500 });
   }

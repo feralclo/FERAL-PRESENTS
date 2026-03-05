@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createRateLimiter } from "@/lib/rate-limit";
+import * as Sentry from "@sentry/nextjs";
 
 const limiter = createRateLimiter("team-accept-invite", { limit: 5, windowSeconds: 900 });
 
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[team/accept-invite] GET error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
@@ -246,6 +248,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[team/accept-invite] POST error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

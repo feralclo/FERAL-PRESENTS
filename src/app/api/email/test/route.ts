@@ -7,6 +7,7 @@ import { buildOrderConfirmationEmail } from "@/lib/email-templates";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
 import type { EmailSettings, OrderEmailData, PdfTicketSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/email/test
@@ -199,6 +200,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal error" },
       { status: 500 }

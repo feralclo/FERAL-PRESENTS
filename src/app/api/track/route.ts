@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createRateLimiter } from "@/lib/rate-limit";
+import * as Sentry from "@sentry/nextjs";
 
 // 60 tracking events per minute per IP — prevents analytics table flooding
 const trackLimiter = createRateLimiter("track", {
@@ -113,7 +114,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

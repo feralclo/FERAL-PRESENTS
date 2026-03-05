@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/rep-portal/rewards/[id]/claim — Claim a points_shop reward (protected)
@@ -118,6 +119,7 @@ export async function POST(
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/rewards/claim] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

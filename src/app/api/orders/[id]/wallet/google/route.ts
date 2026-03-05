@@ -5,6 +5,7 @@ import { getOrgIdFromRequest } from "@/lib/org";
 import { generateGoogleWalletUrl, type WalletPassTicketData } from "@/lib/wallet-passes";
 import type { WalletPassSettings } from "@/types/email";
 import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/orders/[id]/wallet/google — Get Google Wallet "Save" URL for an order
@@ -101,6 +102,7 @@ export async function GET(
 
     return NextResponse.json({ url });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[wallet/google] Error generating URL:", err);
     return NextResponse.json({ error: "Failed to generate Google Wallet link" }, { status: 500 });
   }

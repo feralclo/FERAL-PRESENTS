@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { SUPABASE_URL, SUPABASE_ANON_KEY, TABLES } from "@/lib/constants";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/auth/check-org — Check if the authenticated user already has an org.
@@ -61,6 +62,7 @@ export async function GET() {
 
     return NextResponse.json({ has_org: false, authenticated: true });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[check-org] GET error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

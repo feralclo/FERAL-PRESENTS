@@ -4,6 +4,7 @@ import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { awardPoints } from "@/lib/rep-points";
 import { createNotification } from "@/lib/rep-notifications";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * PUT /api/reps/quests/submissions/[id] — Approve or reject a submission
@@ -145,7 +146,8 @@ export async function PUT(
     }
 
     return NextResponse.json({ data });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

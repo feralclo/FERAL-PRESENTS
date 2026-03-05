@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 import { getRepSettings, getPlatformXPConfig } from "@/lib/rep-points";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/rep-portal/dashboard — Dashboard data (protected)
@@ -151,6 +152,7 @@ export async function GET() {
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/dashboard] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

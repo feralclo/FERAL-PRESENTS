@@ -9,6 +9,7 @@ import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import { fromSmallestUnit } from "@/lib/stripe/config";
 import { logPaymentEvent, getClientIp } from "@/lib/payment-monitor";
 import type { MetaEventPayload } from "@/types/marketing";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/stripe/confirm-order
@@ -333,6 +334,7 @@ export async function POST(request: NextRequest) {
         { status: err.statusCode }
       );
     }
+    Sentry.captureException(err);
     console.error("Confirm order error:", err);
     logPaymentEvent({
       orgId: getOrgIdFromRequest(request),

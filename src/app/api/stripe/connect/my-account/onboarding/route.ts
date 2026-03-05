@@ -3,6 +3,7 @@ import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/auth";
 import { TABLES, stripeAccountKey } from "@/lib/constants";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Resolve the tenant's connected account ID from site_settings.
@@ -59,6 +60,7 @@ export async function POST() {
       client_secret: accountSession.client_secret,
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[my-account/onboarding] Account session error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to create onboarding session";
@@ -97,6 +99,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ url: accountLink.url });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[my-account/onboarding] Account link error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to create onboarding link";

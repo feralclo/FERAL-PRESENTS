@@ -4,6 +4,7 @@ import { TABLES } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 import type { MerchCollectionItem } from "@/types/merch-store";
+import * as Sentry from "@sentry/nextjs";
 
 interface RouteContext {
   params: Promise<{ slug: string }>;
@@ -61,7 +62,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
     };
 
     return NextResponse.json({ data: collection });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -215,7 +217,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       .single();
 
     return NextResponse.json({ data: fullCollection });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -257,7 +260,8 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     }
 
     return NextResponse.json({ data: { deleted: true } });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

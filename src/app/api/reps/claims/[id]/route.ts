@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { awardPoints } from "@/lib/rep-points";
 import { createNotification } from "@/lib/rep-notifications";
 import { sendRepEmail } from "@/lib/rep-emails";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * PUT /api/reps/claims/[id] — Fulfill or cancel a claim
@@ -154,7 +155,8 @@ export async function PUT(
     }
 
     return NextResponse.json({ data });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

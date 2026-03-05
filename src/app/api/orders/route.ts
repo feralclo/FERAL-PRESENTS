@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { createOrder, OrderCreationError } from "@/lib/orders";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/orders — List orders with optional filters
@@ -103,7 +104,8 @@ export async function GET(request: NextRequest) {
       page,
       limit,
     });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -238,6 +240,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: fullOrder }, { status: 201 });
   } catch (err) {
+    Sentry.captureException(err);
     if (err instanceof OrderCreationError) {
       return NextResponse.json(
         { error: err.message },

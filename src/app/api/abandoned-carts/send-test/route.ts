@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendAbandonedCartRecoveryEmail } from "@/lib/email";
 import { requireAuth } from "@/lib/auth";
 import { TABLES } from "@/lib/constants";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/abandoned-carts/send-test
@@ -123,6 +124,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[send-test] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

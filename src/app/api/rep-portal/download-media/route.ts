@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRepAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/rep-portal/download-media?url=...
@@ -49,7 +50,8 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "private, max-age=3600",
       },
     });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Failed to fetch media" }, { status: 502 });
   }
 }

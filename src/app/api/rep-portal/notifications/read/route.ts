@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * PUT /api/rep-portal/notifications/read — Mark notifications as read
@@ -57,7 +58,8 @@ export async function PUT(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

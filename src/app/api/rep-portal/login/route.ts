@@ -3,6 +3,7 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/rep-portal/login — Rep login (public)
@@ -144,6 +145,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/login] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

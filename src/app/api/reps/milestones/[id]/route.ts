@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * PUT /api/reps/milestones/[id] — Update a milestone
@@ -80,7 +81,8 @@ export async function PUT(
     }
 
     return NextResponse.json({ data });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -131,7 +133,8 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

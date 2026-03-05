@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/merch/[id] — Get a single merch item (public)
@@ -37,7 +38,8 @@ export async function GET(
     }
 
     return NextResponse.json({ data });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -112,7 +114,8 @@ export async function PUT(
     }
 
     return NextResponse.json({ data });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -167,7 +170,8 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

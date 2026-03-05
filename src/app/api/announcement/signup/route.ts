@@ -7,6 +7,7 @@ import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { sendAnnouncementEmail } from "@/lib/email";
 import type { AnnouncementAutomationSettings } from "@/types/announcements";
+import * as Sentry from "@sentry/nextjs";
 
 const signupLimiter = createRateLimiter("announcement-signup", {
   limit: 10,
@@ -270,6 +271,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, already_signed_up: alreadySignedUp });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Announcement signup error:", err);
     return NextResponse.json(
       { error: "Internal error" },

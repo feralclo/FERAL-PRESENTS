@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { TABLES, SUPABASE_URL } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { sendRepEmail } from "@/lib/rep-emails";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Get a Supabase admin client for public verification routes.
@@ -138,6 +139,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[verify-email] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

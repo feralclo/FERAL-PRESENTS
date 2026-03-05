@@ -7,6 +7,7 @@ import { getDefaultCurrency } from "@/lib/country-currency-map";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { slugify, validateSlug, provisionOrg } from "@/lib/signup";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import * as Sentry from "@sentry/nextjs";
 
 const limiter = createRateLimiter("provision-org", { limit: 5, windowSeconds: 3600 });
 
@@ -193,6 +194,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[provision-org] POST error:", err);
     const msg = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: `Internal error: ${msg}` }, { status: 500 });

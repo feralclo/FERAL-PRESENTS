@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/rep-portal/upload — Upload an image (rep-authenticated).
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
     const url = `/api/media/${orgId}_${key}`;
     return NextResponse.json({ url });
   } catch (e) {
+    Sentry.captureException(e);
     console.error("[rep-portal/upload] Error:", e);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }

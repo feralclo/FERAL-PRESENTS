@@ -4,6 +4,7 @@ import { TABLES } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 import { getOrgBaseCurrency } from "@/lib/org-settings";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/events — List all events for the org
@@ -38,7 +39,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ data: data || [] });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -213,7 +215,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     return NextResponse.json({ data: fullEvent }, { status: 201 });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

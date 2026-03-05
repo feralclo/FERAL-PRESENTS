@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/guest-list/[eventId] — Get guest list for an event
@@ -53,7 +54,8 @@ export async function GET(
         checked_in: checkedIn,
       },
     });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -104,7 +106,8 @@ export async function PUT(request: NextRequest) {
     }
 
     return NextResponse.json({ data });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -146,7 +149,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

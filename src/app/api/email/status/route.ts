@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { requireAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/email/status
@@ -50,6 +51,7 @@ export async function GET() {
       domains,
     });
   } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({
       configured: false,
       verified: false,

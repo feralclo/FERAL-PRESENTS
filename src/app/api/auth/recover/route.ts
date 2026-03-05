@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL } from "@/lib/constants";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/auth/recover — Emergency admin account recovery
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
       message: "Admin account created. You can now log in.",
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[auth/recover] Error:", err);
     return NextResponse.json(
       { error: "Recovery failed" },

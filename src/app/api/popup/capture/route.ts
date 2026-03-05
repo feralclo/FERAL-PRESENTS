@@ -4,6 +4,7 @@ import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { generateNickname } from "@/lib/nicknames";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/popup/capture
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ customer_id: newCustomer.id, created: true });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Popup capture error:", err);
     return NextResponse.json(
       { error: "Internal error" },

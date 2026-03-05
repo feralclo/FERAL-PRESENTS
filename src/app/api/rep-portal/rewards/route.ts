@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/rep-portal/rewards — Available rewards for current rep (protected)
@@ -160,6 +161,7 @@ export async function GET() {
 
     return NextResponse.json({ data: enrichedRewards });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/rewards] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

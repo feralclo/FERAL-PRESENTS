@@ -4,6 +4,7 @@ import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { generateNickname } from "@/lib/nicknames";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/checkout/capture
@@ -235,6 +236,7 @@ export async function POST(request: NextRequest) {
       ...(cartError ? { cart_error: cartError } : {}),
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Checkout capture error:", err);
     return NextResponse.json(
       { error: "Internal error" },

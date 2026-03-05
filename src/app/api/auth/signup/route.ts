@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { slugify, validateSlug, provisionOrg } from "@/lib/signup";
+import * as Sentry from "@sentry/nextjs";
 
 const limiter = createRateLimiter("signup", { limit: 5, windowSeconds: 3600 });
 
@@ -156,6 +157,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[signup] POST error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

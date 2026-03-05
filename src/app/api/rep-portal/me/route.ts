@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/rep-portal/me — Get current rep profile (protected)
@@ -38,6 +39,7 @@ export async function GET() {
 
     return NextResponse.json({ data: rep });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/me] GET error:", err);
     return NextResponse.json(
       { error: "Internal error" },
@@ -139,6 +141,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ data: rep });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/me] PUT error:", err);
     return NextResponse.json(
       { error: "Internal error" },

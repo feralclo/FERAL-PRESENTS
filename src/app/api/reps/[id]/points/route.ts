@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getPointsHistory, awardPoints } from "@/lib/rep-points";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/reps/[id]/points — Get points history for a rep
@@ -23,7 +24,8 @@ export async function GET(
     const data = await getPointsHistory(id, orgId, limit, offset);
 
     return NextResponse.json({ data });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -80,7 +82,8 @@ export async function POST(
         new_balance: newBalance,
       },
     });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

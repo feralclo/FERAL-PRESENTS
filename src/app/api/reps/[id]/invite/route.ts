@@ -4,6 +4,7 @@ import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { createRepDiscountCode } from "@/lib/discount-codes";
 import { sendRepInviteEmail } from "@/lib/rep-emails";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/reps/[id]/invite — Generate/regenerate invite link + discount code
@@ -109,7 +110,8 @@ export async function POST(
         discount_id: discount.id,
       },
     });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

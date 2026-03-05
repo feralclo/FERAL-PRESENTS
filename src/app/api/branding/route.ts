@@ -4,6 +4,7 @@ import { TABLES, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 import type { BrandingSettings } from "@/types/settings";
+import * as Sentry from "@sentry/nextjs";
 
 /** Platform-neutral default branding — tenants override via {org_id}_branding settings */
 const DEFAULT_BRANDING: BrandingSettings = {
@@ -50,7 +51,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ data: DEFAULT_BRANDING });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ data: DEFAULT_BRANDING });
   }
 }
@@ -139,7 +141,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { getPlatformXPConfig } from "@/lib/rep-points";
 import type { PlatformXPConfig } from "@/types/reps";
+import * as Sentry from "@sentry/nextjs";
 
 const PLATFORM_XP_KEY = "entry_platform_xp";
 
@@ -17,7 +18,8 @@ export async function GET() {
 
     const config = await getPlatformXPConfig();
     return NextResponse.json({ data: config });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -91,7 +93,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ data: mergedConfig });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

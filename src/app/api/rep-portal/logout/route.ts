@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/rep-portal/logout — Sign out (public)
@@ -20,6 +21,7 @@ export async function POST() {
 
     return NextResponse.json({ data: { success: true } });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/logout] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

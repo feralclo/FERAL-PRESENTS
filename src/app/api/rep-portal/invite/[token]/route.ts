@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { sendRepEmail } from "@/lib/rep-emails";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Create a Supabase client suitable for public-facing invite routes.
@@ -80,6 +81,7 @@ export async function GET(
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/invite] GET error:", err);
     return NextResponse.json(
       { error: "Internal error" },
@@ -377,6 +379,7 @@ export async function POST(
       data: { rep_id: rep.id, status: "active", email: finalEmail, session },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/invite] POST error:", err);
     return NextResponse.json(
       { error: "Internal error" },

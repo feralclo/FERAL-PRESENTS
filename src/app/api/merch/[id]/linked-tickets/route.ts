@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/merch/[id]/linked-tickets — List ticket types linked to this merch item
@@ -44,7 +45,8 @@ export async function GET(
     });
 
     return NextResponse.json({ data: linked });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

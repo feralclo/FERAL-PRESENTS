@@ -5,6 +5,7 @@ import { DEFAULT_ACCOUNT_TYPE } from "@/lib/stripe/config";
 import { requireAuth } from "@/lib/auth";
 import { TABLES, stripeAccountKey, generalKey } from "@/lib/constants";
 import { getDefaultCurrency } from "@/lib/country-currency-map";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/stripe/connect/my-account — Create a Stripe Connect account for the tenant.
@@ -137,6 +138,7 @@ export async function POST(request: NextRequest) {
       details_submitted: account.details_submitted,
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[my-account] Stripe Connect creation error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to create account";
@@ -222,6 +224,7 @@ export async function GET() {
       });
     }
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[my-account] Stripe Connect status error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to check account status";

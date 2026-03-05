@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 const BUCKET = "artist-media";
 
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
       publicUrl: publicUrlData.publicUrl,
     });
   } catch (e) {
+    Sentry.captureException(e);
     console.error("[upload-video] Error:", e);
     return NextResponse.json({ error: "Upload setup failed" }, { status: 500 });
   }

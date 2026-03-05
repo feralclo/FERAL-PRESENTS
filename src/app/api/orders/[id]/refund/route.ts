@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { reverseRepAttribution } from "@/lib/rep-attribution";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/orders/[id]/refund — Refund an order via Stripe + update database.
@@ -207,7 +208,8 @@ export async function POST(
       success: true,
       rep_reversal: repReversal,
     });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

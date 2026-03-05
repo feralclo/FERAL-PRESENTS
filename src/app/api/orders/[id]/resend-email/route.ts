@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendOrderConfirmationEmail } from "@/lib/email";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/orders/[id]/resend-email — Resend order confirmation email
@@ -116,6 +117,7 @@ export async function POST(
       { status: 502 }
     );
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[resend-email] Error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

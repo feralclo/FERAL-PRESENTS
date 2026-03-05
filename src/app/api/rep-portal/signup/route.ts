@@ -4,6 +4,7 @@ import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { getRepSettings } from "@/lib/rep-points";
 import { sendRepEmail } from "@/lib/rep-emails";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Create a Supabase client for public-facing rep routes.
@@ -243,6 +244,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/signup] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getMuxClient } from "@/lib/mux";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/mux/upload — Create a Mux asset from a URL.
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
       assetId: asset.id,
     });
   } catch (e) {
+    Sentry.captureException(e);
     console.error("[mux/upload] Error:", e);
     const msg = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json({ error: `Mux error: ${msg}` }, { status: 500 });

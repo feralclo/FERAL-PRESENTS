@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendRepEmail } from "@/lib/rep-emails";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/reps/[id]/resend-verification — Resend verification email (admin)
@@ -70,6 +71,7 @@ export async function POST(
 
     return NextResponse.json({ data: { sent: true } });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[reps/resend-verification] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

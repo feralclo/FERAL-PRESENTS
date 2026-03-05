@@ -7,6 +7,7 @@ import { createMerchOrder, MerchOrderError } from "@/lib/merch-orders";
 import type { MerchOrderVat, MerchOrderLineItem } from "@/lib/merch-orders";
 import { fromSmallestUnit } from "@/lib/stripe/config";
 import { logPaymentEvent, getClientIp } from "@/lib/payment-monitor";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/merch-store/confirm-order
@@ -228,6 +229,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: fullOrder });
   } catch (err) {
+    Sentry.captureException(err);
     if (err instanceof MerchOrderError) {
       return NextResponse.json(
         { error: err.message },

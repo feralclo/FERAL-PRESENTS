@@ -4,6 +4,7 @@ import { TABLES } from "@/lib/constants";
 import { stripe } from "@/lib/stripe/server";
 import { logPaymentEvent } from "@/lib/payment-monitor";
 import { sendPlatformAlert } from "@/lib/payment-alerts";
+import * as Sentry from "@sentry/nextjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // 2 minutes
@@ -331,6 +332,7 @@ export async function GET(request: NextRequest) {
     results.purged.warning = warningCount || 0;
 
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[stripe-health] Cron error:", err);
     return NextResponse.json(
       { error: "Cron job failed", details: err instanceof Error ? err.message : String(err) },

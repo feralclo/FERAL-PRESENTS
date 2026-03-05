@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/rep-portal/quests/[id]/submit — Submit quest proof (protected)
@@ -233,6 +234,7 @@ export async function POST(
       { status: 201 }
     );
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/quests/submit] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

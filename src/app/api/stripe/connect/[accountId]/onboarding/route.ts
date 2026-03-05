@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/server";
 import { requirePlatformOwner } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/stripe/connect/[accountId]/onboarding
@@ -37,6 +38,7 @@ export async function POST(
       client_secret: accountSession.client_secret,
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Stripe Connect onboarding session error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to create onboarding session";
@@ -72,6 +74,7 @@ export async function GET(
 
     return NextResponse.json({ url: accountLink.url });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Stripe Connect account link error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to create account link";

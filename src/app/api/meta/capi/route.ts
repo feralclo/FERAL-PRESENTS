@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import { getOrgIdFromRequest } from "@/lib/org";
 import type { MetaCAPIRequest, MetaEventPayload } from "@/types/marketing";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/meta/capi
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, events_received: result?.events_received });
   } catch (e) {
+    Sentry.captureException(e);
     console.error("[Meta CAPI] Route error:", e);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

@@ -11,6 +11,7 @@ import { updateOrgPlanSettings } from "@/lib/plans";
 import { fromSmallestUnit } from "@/lib/stripe/config";
 import { logPaymentEvent } from "@/lib/payment-monitor";
 import type { MetaEventPayload } from "@/types/marketing";
+import * as Sentry from "@sentry/nextjs";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -186,6 +187,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Webhook handler error:", err);
     logPaymentEvent({
       orgId: getOrgIdFromRequest(request),
@@ -413,6 +415,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
       eventSlug: event.slug,
     }).catch((err) => console.error("[Meta CAPI] Webhook Purchase error:", err));
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Failed to create order for PI:", paymentIntent.id, err);
   }
 }

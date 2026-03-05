@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generatePaymentDigest } from "@/lib/payment-digest";
 import { sendPlatformAlert } from "@/lib/payment-alerts";
+import * as Sentry from "@sentry/nextjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -93,6 +94,7 @@ export async function GET(request: NextRequest) {
       summary_preview: digest.summary.slice(0, 100),
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[payment-digest] Cron error:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Digest generation failed" },

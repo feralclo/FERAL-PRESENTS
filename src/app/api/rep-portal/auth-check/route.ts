@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getRepSettings } from "@/lib/rep-points";
 import { getOrgId } from "@/lib/org";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/rep-portal/auth-check — Lightweight rep status check (protected by session)
@@ -134,6 +135,7 @@ export async function GET() {
       ...(stats && { stats }),
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[auth-check] Error:", err);
     return NextResponse.json(
       { authenticated: false, error: "Internal error" },

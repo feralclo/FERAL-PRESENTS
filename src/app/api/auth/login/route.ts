@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { SUPABASE_URL } from "@/lib/constants";
 import { createRateLimiter } from "@/lib/rate-limit";
+import * as Sentry from "@sentry/nextjs";
 
 // 5 login attempts per 15 minutes per IP — prevents brute force
 const loginLimiter = createRateLimiter("auth-login", {
@@ -78,7 +79,8 @@ export async function POST(request: NextRequest) {
         email: data.user.email,
       },
     });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json(
       { error: "Internal error" },
       { status: 500 }

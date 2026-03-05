@@ -5,6 +5,7 @@ import { TABLES } from "@/lib/constants";
 import { getWalletConfigStatus } from "@/lib/wallet-passes";
 import type { WalletPassSettings } from "@/types/email";
 import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/wallet/status — Check wallet provider configuration status
@@ -43,6 +44,7 @@ export async function GET() {
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[wallet/status] Error:", err);
     return NextResponse.json({ error: "Failed to check wallet status" }, { status: 500 });
   }

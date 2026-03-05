@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getOrderRepAttribution } from "@/lib/rep-attribution";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/orders/[id]/rep-info — Get rep attribution info for an order (admin)
@@ -20,7 +21,8 @@ export async function GET(
     const attribution = await getOrderRepAttribution(id);
 
     return NextResponse.json({ data: attribution });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRepAuth } from "@/lib/auth";
 import { savePushSubscription, removePushSubscription } from "@/lib/web-push";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/rep-portal/push-subscribe
@@ -29,7 +30,8 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json(
       { error: "Failed to save subscription" },
       { status: 500 }
@@ -55,7 +57,8 @@ export async function DELETE(req: NextRequest) {
 
     await removePushSubscription(auth.rep.id, endpoint, auth.rep.org_id);
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json(
       { error: "Failed to remove subscription" },
       { status: 500 }

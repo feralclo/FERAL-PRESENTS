@@ -5,6 +5,7 @@ import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
 import { getOrgIdFromRequest } from "@/lib/org";
 import type { PdfTicketSettings } from "@/types/email";
 import { DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/orders/[id]/pdf — Generate and download PDF tickets for an order
@@ -124,6 +125,7 @@ export async function GET(
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("PDF generation error:", err);
     return NextResponse.json(
       { error: "Failed to generate PDF" },

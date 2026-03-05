@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { logPaymentEvent, getClientIp } from "@/lib/payment-monitor";
 import { createRateLimiter } from "@/lib/rate-limit";
+import * as Sentry from "@sentry/nextjs";
 
 // Rate limit: 20 error reports per minute per IP (generous to catch bursts, but prevents abuse)
 const errorLimiter = createRateLimiter("checkout-error", {
@@ -66,7 +67,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ ok: true }); // Never fail — best effort
   }
 }

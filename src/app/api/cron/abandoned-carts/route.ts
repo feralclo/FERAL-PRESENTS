@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendAbandonedCartRecoveryEmail } from "@/lib/email";
 import { TABLES, abandonedCartAutomationKey } from "@/lib/constants";
+import * as Sentry from "@sentry/nextjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 minutes max for Vercel cron
@@ -383,6 +384,7 @@ export async function GET(request: NextRequest) {
     console.log("[cron/abandoned-carts] Run complete:", summary);
     return NextResponse.json({ status: "ok", ...summary });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[cron/abandoned-carts] Fatal error:", err);
     return NextResponse.json(
       { error: "Internal error", details: String(err) },

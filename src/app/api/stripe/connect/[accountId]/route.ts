@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/server";
 import { requirePlatformOwner } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/stripe/connect/[accountId] — Get connected account details.
@@ -40,6 +41,7 @@ export async function GET(
       created: account.created,
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Stripe Connect account retrieve error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to retrieve account";
@@ -65,6 +67,7 @@ export async function DELETE(
 
     return NextResponse.json({ deleted: true, account_id: accountId });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Stripe Connect account delete error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to delete account";

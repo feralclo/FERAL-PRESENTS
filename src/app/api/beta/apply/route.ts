@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createRateLimiter } from "@/lib/rate-limit";
+import * as Sentry from "@sentry/nextjs";
 
 const limiter = createRateLimiter("beta-apply", {
   limit: 5,
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
       message: "Application received",
     });
   } catch (error) {
+    Sentry.captureException(error);
     console.error("Beta application error:", error);
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePlatformOwner } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
+import * as Sentry from "@sentry/nextjs";
 
 export const dynamic = "force-dynamic";
 
@@ -225,6 +226,7 @@ export async function GET(request: NextRequest) {
       hourly_trend: hourlyTrend,
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[payment-health] API error:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal error" },

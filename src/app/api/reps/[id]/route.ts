@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, SUPABASE_URL } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/reps/[id] — Fetch single rep by ID
@@ -37,7 +38,8 @@ export async function GET(
     }
 
     return NextResponse.json({ data });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -121,7 +123,8 @@ export async function PUT(
     }
 
     return NextResponse.json({ data });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -242,6 +245,7 @@ export async function DELETE(
       auth_user_preserved: authUserIsAdmin,
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[DELETE /api/reps/[id]] Unexpected error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

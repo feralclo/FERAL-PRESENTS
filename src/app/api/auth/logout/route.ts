@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/auth/logout
@@ -19,7 +20,8 @@ export async function POST() {
     await supabase.auth.signOut();
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json(
       { error: "Internal error" },
       { status: 500 }

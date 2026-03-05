@@ -24,6 +24,7 @@ import { createRateLimiter } from "@/lib/rate-limit";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { logPaymentEvent, getClientIp } from "@/lib/payment-monitor";
 import { validateSequentialPurchase } from "@/lib/ticket-visibility";
+import * as Sentry from "@sentry/nextjs";
 
 // 10 payment intents per minute per IP — prevents abuse / cost attacks
 const paymentLimiter = createRateLimiter("payment-intent", {
@@ -603,6 +604,7 @@ export async function POST(request: NextRequest) {
       } : {}),
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("PaymentIntent creation error:", err);
     logPaymentEvent({
       orgId: getOrgIdFromRequest(request),

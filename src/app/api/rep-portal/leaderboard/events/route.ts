@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/rep-portal/leaderboard/events
@@ -113,6 +114,7 @@ export async function GET() {
 
     return NextResponse.json({ data: results });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/leaderboard/events] Error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

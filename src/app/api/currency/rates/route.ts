@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getExchangeRates } from "@/lib/currency/exchange-rates";
+import * as Sentry from "@sentry/nextjs";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export async function GET() {
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[currency/rates] Error:", err);
     return NextResponse.json(
       { error: "Failed to load exchange rates" },

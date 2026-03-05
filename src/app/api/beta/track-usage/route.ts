@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import * as Sentry from "@sentry/nextjs";
 
 interface InviteCode {
   code: string;
@@ -58,7 +59,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ ok: true }); // never fail visibly
   }
 }

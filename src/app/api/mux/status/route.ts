@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getMuxClient } from "@/lib/mux";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/mux/status?assetId=xxx — Check Mux asset processing status.
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ status: "ready", playbackId });
   } catch (e) {
+    Sentry.captureException(e);
     console.error("[mux/status] Error:", e);
     return NextResponse.json({ error: "Failed to check status" }, { status: 500 });
   }

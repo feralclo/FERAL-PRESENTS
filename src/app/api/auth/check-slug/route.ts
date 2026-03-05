@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { slugify, validateSlug } from "@/lib/signup";
+import * as Sentry from "@sentry/nextjs";
 
 const limiter = createRateLimiter("check-slug", { limit: 20, windowSeconds: 60 });
 
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
     const result = await validateSlug(slug);
     return NextResponse.json({ ...result, slug });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[check-slug] Error:", err);
     return NextResponse.json({ available: false }, { status: 500 });
   }

@@ -5,6 +5,7 @@ import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 import { THEME_VIBES } from "@/lib/theme-vibes";
 import type { BrandingSettings, StoreTheme, ThemeStore } from "@/types/settings";
+import * as Sentry from "@sentry/nextjs";
 
 /** Get Entry Dark preset colors for the default theme baseline */
 const entryDark = THEME_VIBES.find((p) => p.id === "entry-dark")!;
@@ -81,7 +82,8 @@ export async function GET() {
     const store = getDefaultThemeStore(existingBranding || undefined);
 
     return NextResponse.json({ data: store });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ data: getDefaultThemeStore() });
   }
 }
@@ -229,7 +231,8 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRepAuth } from "@/lib/auth";
 import { getRepSettings, getPlatformXPConfig } from "@/lib/rep-points";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/rep-portal/settings — Public-facing rep program settings (protected)
@@ -30,6 +31,7 @@ export async function GET() {
       },
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/settings] Error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { verifyDomainOnVercel } from "@/lib/vercel-domains";
+import * as Sentry from "@sentry/nextjs";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -77,6 +78,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       verified: false,
     });
   } catch (err) {
+    Sentry.captureException(err);
     const message = err instanceof Error ? err.message : "Verification check failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }

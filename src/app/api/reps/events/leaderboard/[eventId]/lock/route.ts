@@ -4,6 +4,7 @@ import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { awardPoints } from "@/lib/rep-points";
 import { getRepSettings } from "@/lib/rep-points";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/reps/events/leaderboard/[eventId]/lock
@@ -151,7 +152,8 @@ export async function POST(
         currency_name: settings.currency_name,
       },
     });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/rep-portal/discount — Get rep's discount code(s) (protected)
@@ -41,6 +42,7 @@ export async function GET() {
 
     return NextResponse.json({ data: discounts || [] });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/discount] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

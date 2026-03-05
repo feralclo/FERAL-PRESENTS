@@ -4,6 +4,7 @@ import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { fmtMoney } from "@/lib/format";
+import * as Sentry from "@sentry/nextjs";
 
 // 20 validations per minute per IP — prevents brute-force code guessing
 const validateLimiter = createRateLimiter("discount-validate", {
@@ -120,7 +121,8 @@ export async function POST(request: NextRequest) {
         value: discount.value,
       },
     });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json(
       { valid: false, error: "Something went wrong. Please try again." },
       { status: 200 }

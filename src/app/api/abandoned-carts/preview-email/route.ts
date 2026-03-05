@@ -8,6 +8,7 @@ import {
 } from "@/lib/email-templates";
 import type { EmailSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS } from "@/types/email";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/abandoned-carts/preview-email — Render abandoned cart email preview
@@ -188,7 +189,8 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "no-store",
       },
     });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

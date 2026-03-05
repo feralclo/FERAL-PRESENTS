@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRepAuth } from "@/lib/auth";
 import { getPointsHistory } from "@/lib/rep-points";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/rep-portal/points — Points history for current rep (protected)
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: history });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[rep-portal/points] Error:", err);
     return NextResponse.json(
       { error: "Internal error" },

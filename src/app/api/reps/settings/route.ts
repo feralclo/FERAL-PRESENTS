@@ -4,6 +4,7 @@ import { TABLES, repsKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { getRepSettings } from "@/lib/rep-points";
 import type { RepProgramSettings } from "@/types/reps";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/reps/settings — Get rep program settings
@@ -17,7 +18,8 @@ export async function GET(_request: NextRequest) {
     const settings = await getRepSettings(orgId);
 
     return NextResponse.json({ data: settings });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -97,7 +99,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ data: mergedSettings });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

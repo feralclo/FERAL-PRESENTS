@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { refreshExchangeRates } from "@/lib/currency/exchange-rates";
+import * as Sentry from "@sentry/nextjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
       fetched_at: rates.fetched_at,
     });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("[cron/exchange-rates] Error:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },

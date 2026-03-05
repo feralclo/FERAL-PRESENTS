@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe/server";
 import { getOrgPlanSettings } from "@/lib/plans";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/billing/portal
@@ -10,34 +11,41 @@ import { getOrgPlanSettings } from "@/lib/plans";
  * (update card, cancel subscription, view invoices).
  */
 export async function POST() {
-  const auth = await requireAuth();
-  if (auth.error) return auth.error;
-  const { orgId } = auth;
-
-  let stripe;
   try {
-    stripe = getStripe();
-  } catch {
-    return NextResponse.json(
-      { error: "Billing is not configured" },
-      { status: 503 }
-    );
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+    const { orgId } = auth;
+
+    let stripe;
+    try {
+      stripe = getStripe();
+    } catch {
+      return NextResponse.json(
+        { error: "Billing is not configured" },
+        { status: 503 }
+      );
+    }
+
+    const planSettings = await getOrgPlanSettings(orgId);
+
+    if (!planSettings?.stripe_customer_id) {
+      return NextResponse.json(
+        { error: "No billing account found. Upgrade to Pro first." },
+        { status: 400 }
+      );
+    }
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const session = await stripe.billingPortal.sessions.create({
+      customer: planSettings.stripe_customer_id,
+      return_url: `${siteUrl}/admin/settings/plan/`,
+    });
+
+    return NextResponse.json({ url: session.url });
+  } catch (err) {
+    Sentry.captureException(err);
+    console.error("Billing portal error:", err);
+    const message = err instanceof Error ? err.message : "Failed to create portal session";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const planSettings = await getOrgPlanSettings(orgId);
-
-  if (!planSettings?.stripe_customer_id) {
-    return NextResponse.json(
-      { error: "No billing account found. Upgrade to Pro first." },
-      { status: 400 }
-    );
-  }
-
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const session = await stripe.billingPortal.sessions.create({
-    customer: planSettings.stripe_customer_id,
-    return_url: `${siteUrl}/admin/settings/plan/`,
-  });
-
-  return NextResponse.json({ url: session.url });
 }

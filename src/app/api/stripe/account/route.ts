@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { verifyConnectedAccount, getAccountCapabilities } from "@/lib/stripe/server";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/stripe/account
@@ -38,7 +39,8 @@ export async function GET() {
     const capabilities = getAccountCapabilities(accountId);
 
     return NextResponse.json({ stripe_account_id: accountId, capabilities });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ stripe_account_id: null, capabilities: {} });
   }
 }

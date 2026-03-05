@@ -7,6 +7,7 @@ import {
   ensureStripePriceExists,
   updateOrgPlanSettings,
 } from "@/lib/plans";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/billing/checkout
@@ -15,73 +16,80 @@ import {
  * Redirects the tenant to Stripe-hosted checkout to enter payment details.
  */
 export async function POST() {
-  const auth = await requireAuth();
-  if (auth.error) return auth.error;
-  const { user, orgId } = auth;
-
-  let stripe;
   try {
-    stripe = getStripe();
-  } catch {
-    return NextResponse.json(
-      { error: "Billing is not configured" },
-      { status: 503 }
-    );
-  }
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+    const { user, orgId } = auth;
 
-  const planSettings = await getOrgPlanSettings(orgId);
+    let stripe;
+    try {
+      stripe = getStripe();
+    } catch {
+      return NextResponse.json(
+        { error: "Billing is not configured" },
+        { status: 503 }
+      );
+    }
 
-  // Block if already on Pro with active subscription
-  if (
-    planSettings?.plan_id === "pro" &&
-    planSettings.subscription_status === "active"
-  ) {
-    return NextResponse.json(
-      { error: "Already on Pro plan with active subscription" },
-      { status: 400 }
-    );
-  }
+    const planSettings = await getOrgPlanSettings(orgId);
 
-  // Block if billing is waived (platform-managed)
-  if (planSettings?.billing_waived) {
-    return NextResponse.json(
-      { error: "Billing is waived for this organization" },
-      { status: 400 }
-    );
-  }
+    // Block if already on Pro with active subscription
+    if (
+      planSettings?.plan_id === "pro" &&
+      planSettings.subscription_status === "active"
+    ) {
+      return NextResponse.json(
+        { error: "Already on Pro plan with active subscription" },
+        { status: 400 }
+      );
+    }
 
-  // Ensure Stripe Product + Price exist
-  const priceId = await ensureStripePriceExists();
+    // Block if billing is waived (platform-managed)
+    if (planSettings?.billing_waived) {
+      return NextResponse.json(
+        { error: "Billing is waived for this organization" },
+        { status: 400 }
+      );
+    }
 
-  // Create or reuse Stripe Customer
-  let customerId = planSettings?.stripe_customer_id;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email,
-      metadata: { org_id: orgId, platform: "entry" },
-    });
-    customerId = customer.id;
+    // Ensure Stripe Product + Price exist
+    const priceId = await ensureStripePriceExists();
 
-    await updateOrgPlanSettings(orgId, {
-      stripe_customer_id: customerId,
-    });
-  }
+    // Create or reuse Stripe Customer
+    let customerId = planSettings?.stripe_customer_id;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { org_id: orgId, platform: "entry" },
+      });
+      customerId = customer.id;
 
-  // Create Checkout Session with optional free trial
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const trialDays = PLANS.pro.trial_days;
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: customerId,
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${siteUrl}/admin/settings/plan/?upgraded=1`,
-    cancel_url: `${siteUrl}/admin/settings/plan/`,
-    metadata: { org_id: orgId },
-    subscription_data: {
+      await updateOrgPlanSettings(orgId, {
+        stripe_customer_id: customerId,
+      });
+    }
+
+    // Create Checkout Session with optional free trial
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const trialDays = PLANS.pro.trial_days;
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${siteUrl}/admin/settings/plan/?upgraded=1`,
+      cancel_url: `${siteUrl}/admin/settings/plan/`,
       metadata: { org_id: orgId },
-      ...(trialDays > 0 && { trial_period_days: trialDays }),
-    },
-  });
+      subscription_data: {
+        metadata: { org_id: orgId },
+        ...(trialDays > 0 && { trial_period_days: trialDays }),
+      },
+    });
 
-  return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url });
+  } catch (err) {
+    Sentry.captureException(err);
+    console.error("Billing checkout error:", err);
+    const message = err instanceof Error ? err.message : "Failed to create checkout session";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

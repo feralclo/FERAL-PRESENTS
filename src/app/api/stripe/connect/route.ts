@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/server";
 import { DEFAULT_ACCOUNT_TYPE } from "@/lib/stripe/config";
 import { requirePlatformOwner } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/stripe/connect — Create a new Stripe Connect account.
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Stripe Connect account creation error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to create account";
@@ -132,6 +134,7 @@ export async function GET() {
 
     return NextResponse.json({ data: simplified });
   } catch (err) {
+    Sentry.captureException(err);
     console.error("Stripe Connect list error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to list accounts";

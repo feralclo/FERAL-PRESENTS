@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Hardcoded invite codes (always valid).
@@ -73,7 +74,8 @@ export async function POST(request: NextRequest) {
     await new Promise((r) => setTimeout(r, 300));
 
     return NextResponse.json({ valid: false });
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return NextResponse.json({ valid: false });
   }
 }

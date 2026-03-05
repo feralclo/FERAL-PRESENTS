@@ -120,26 +120,22 @@ export function MerchOrderConfirmation({
     loadQRCodes();
   }, [tickets]);
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = () => {
+    if (!order.id) {
+      alert("Order is still processing. Please try again in a moment.");
+      return;
+    }
     setDownloading(true);
     trackEngagement("pdf_download");
-    try {
-      const res = await fetch(`/api/orders/${order.id}/pdf`);
-      if (!res.ok) throw new Error("Failed to generate PDF");
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${order.order_number}-merch.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      alert("Failed to download PDF. Please try again.");
-    }
-    setDownloading(false);
+    const link = document.createElement("a");
+    link.href = `/api/orders/${order.id}/pdf`;
+    link.download = `${order.order_number}-merch.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => setDownloading(false), 3000);
   };
 
   const shopUrl = collection.slug ? `/shop/${collection.slug}/` : "/shop/";

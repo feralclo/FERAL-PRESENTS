@@ -235,23 +235,13 @@ export default function OrderDetailPage() {
     setRefunding(false);
   };
 
-  const handleDownloadPDF = async () => {
-    try {
-      const res = await fetch(`/api/orders/${orderId}/pdf`);
-      if (!res.ok) throw new Error("Failed to generate PDF");
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${order?.order_number || "tickets"}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      alert("Failed to download PDF");
-    }
+  const handleDownloadPDF = () => {
+    const link = document.createElement("a");
+    link.href = `/api/orders/${orderId}/pdf`;
+    link.download = `${order?.order_number || "tickets"}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleResendEmail = async () => {

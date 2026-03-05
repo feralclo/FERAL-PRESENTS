@@ -132,51 +132,41 @@ export function OrderConfirmation({
       }
     : null;
 
-  const handleAddToAppleWallet = async () => {
+  const handleAddToAppleWallet = () => {
+    if (!order.id) return;
     setWalletDownloading("apple");
     trackEngagement("wallet_apple");
-    try {
-      const res = await fetch(`/api/orders/${order.id}/wallet/apple`);
-      if (!res.ok) throw new Error("Failed to generate wallet pass");
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      // Determine filename based on content type
-      const contentType = res.headers.get("Content-Type") || "";
-      const ext = contentType.includes("pkpasses") ? "pkpasses" : "pkpass";
-      a.download = `${order.order_number}-tickets.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      // Silently fail — wallet pass is supplementary
-    }
-    setWalletDownloading(null);
+    // Direct link — iOS natively handles .pkpass content type
+    const link = document.createElement("a");
+    link.href = `/api/orders/${order.id}/wallet/apple`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => setWalletDownloading(null), 3000);
   };
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = () => {
+    if (!order.id) {
+      alert("Order is still processing. Please try again in a moment.");
+      return;
+    }
     setDownloading(true);
     trackEngagement("pdf_download");
-    try {
-      const res = await fetch(`/api/orders/${order.id}/pdf`);
-      if (!res.ok) throw new Error("Failed to generate PDF");
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${order.order_number}-tickets.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      alert("Failed to download PDF. Please try again.");
-    }
-    setDownloading(false);
+    // Direct link to the PDF endpoint — the server returns Content-Disposition: attachment
+    // headers so the browser downloads natively. This avoids the blob URL pattern which
+    // fails silently on iOS Safari (the primary audience for ticket purchases).
+    const link = document.createElement("a");
+    link.href = `/api/orders/${order.id}/pdf`;
+    link.download = `${order.order_number}-tickets.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Reset state after a delay (download starts asynchronously)
+    setTimeout(() => setDownloading(false), 3000);
   };
 
   return (

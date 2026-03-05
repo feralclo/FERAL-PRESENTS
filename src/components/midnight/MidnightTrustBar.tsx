@@ -12,16 +12,16 @@ export function MidnightTrustBar() {
     }
   }, []);
 
+  // Inter (sans) instead of Space Mono — proportional font is ~25% more compact,
+  // giving generous spacing on 375px iPhones without cramping.
   const iconCls =
-    "w-[11px] h-[11px] max-[480px]:w-[10px] max-[480px]:h-[10px] text-foreground/40 shrink-0";
+    "w-[11px] h-[11px] text-foreground/30 shrink-0";
   const textCls =
-    "font-[family-name:var(--font-mono)] text-[10px] max-[480px]:text-[9px] tracking-[0.04em] text-foreground/40";
-  const signalCls =
-    "flex items-center gap-[4px] max-[480px]:gap-[3px] px-2 max-[480px]:px-1";
+    "font-[family-name:var(--font-sans)] text-[11px] max-[480px]:text-[10px] text-foreground/40 whitespace-nowrap";
 
   return (
-    <div className="flex items-center justify-center mt-8 max-md:mt-6 max-[480px]:mt-5">
-      <div className={signalCls}>
+    <div className="flex items-center justify-center gap-4 max-[480px]:gap-3 mt-8 max-md:mt-6 max-[480px]:mt-5">
+      <div className="flex items-center gap-1.5">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={iconCls}>
           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
           <path d="M7 7h.01" />
@@ -29,18 +29,18 @@ export function MidnightTrustBar() {
         <span className={textCls}>No Booking Fees</span>
       </div>
 
-      <div className="w-px h-2.5 bg-foreground/[0.08] shrink-0" />
+      <div className="w-px h-3 bg-foreground/[0.08] shrink-0" />
 
-      <div className={signalCls}>
+      <div className="flex items-center gap-1.5">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={iconCls}>
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
         </svg>
         <span className={textCls}>Instant E-Tickets</span>
       </div>
 
-      <div className="w-px h-2.5 bg-foreground/[0.08] shrink-0" />
+      <div className="w-px h-3 bg-foreground/[0.08] shrink-0" />
 
-      <div className={signalCls}>
+      <div className="flex items-center gap-1.5">
         {isApple ? (
           <>
             <svg viewBox="0 0 24 24" fill="currentColor" className={iconCls}>

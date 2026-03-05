@@ -68,6 +68,14 @@ export function MidnightHero({
           }}
         />
         <div className="midnight-hero-frame absolute inset-0" />
+        {/* Bottom blend — covers frame/vignette shadows at the hero's
+            bottom edge so there's no visible seam against the page bg */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-[80px]"
+          style={{
+            background: `linear-gradient(to bottom, transparent, var(--color-background))`,
+          }}
+        />
       </div>
 
       {/* Content — large cinematic typography

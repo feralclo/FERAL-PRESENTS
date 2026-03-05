@@ -1,7 +1,3 @@
-import { TABLES, brandingKey } from "@/lib/constants";
-import { getOrgId } from "@/lib/org";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import type { BrandingSettings } from "@/types/settings";
 import type { ReactNode } from "react";
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
@@ -9,42 +5,10 @@ import "@/styles/midnight-effects.css";
 export const dynamic = "force-dynamic";
 
 /**
- * Events listing layout — Server Component with branding CSS var injection (no FOUC).
- * Same pattern as shop/layout.tsx and event/[slug]/layout.tsx.
+ * Events listing layout — minimal wrapper.
+ * Branding CSS vars are injected by EventsListPage (client component)
+ * so the Header stays OUTSIDE the data-theme wrapper, matching homepage pattern.
  */
-export default async function EventsLayout({ children }: { children: ReactNode }) {
-  const orgId = await getOrgId();
-  const supabase = await getSupabaseAdmin();
-
-  let branding: BrandingSettings | null = null;
-  if (supabase) {
-    try {
-      const { data } = await supabase
-        .from(TABLES.SITE_SETTINGS)
-        .select("data")
-        .eq("key", brandingKey(orgId))
-        .single();
-      branding = (data?.data as BrandingSettings) || null;
-    } catch {
-      // Use defaults
-    }
-  }
-
-  const cssVars: Record<string, string> = {};
-  if (branding?.accent_color) cssVars["--accent"] = branding.accent_color;
-  if (branding?.background_color) cssVars["--bg-dark"] = branding.background_color;
-  if (branding?.card_color) cssVars["--card-bg"] = branding.card_color;
-  if (branding?.text_color) cssVars["--text-primary"] = branding.text_color;
-  if (branding?.heading_font) cssVars["--font-mono"] = `'${branding.heading_font}', monospace`;
-  if (branding?.body_font) cssVars["--font-sans"] = `'${branding.body_font}', sans-serif`;
-
-  return (
-    <div
-      data-theme-root
-      data-theme="midnight"
-      style={cssVars as React.CSSProperties}
-    >
-      {children}
-    </div>
-  );
+export default function EventsLayout({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }

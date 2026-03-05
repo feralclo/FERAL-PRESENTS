@@ -41,11 +41,12 @@ export default async function EventsPage() {
   const supabase = await getSupabaseAdmin();
 
   let events: ListingEvent[] = [];
+  let branding: BrandingSettings | null = null;
 
   if (supabase) {
     try {
-      // Fetch events and ticket types in parallel
-      const [eventsResult, ticketTypesResult] = await Promise.all([
+      // Fetch events, ticket types, and branding in parallel
+      const [eventsResult, ticketTypesResult, brandingResult] = await Promise.all([
         supabase
           .from(TABLES.EVENTS)
           .select(
@@ -60,7 +61,16 @@ export default async function EventsPage() {
           .select("event_id, price, capacity, sold, status")
           .eq("org_id", orgId)
           .eq("status", "active"),
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", brandingKey(orgId))
+          .single(),
       ]);
+
+      if (brandingResult.data?.data) {
+        branding = brandingResult.data.data as BrandingSettings;
+      }
 
       if (eventsResult.data) {
         // Build ticket stats per event
@@ -110,5 +120,5 @@ export default async function EventsPage() {
     }
   }
 
-  return <EventsListPage events={events} />;
+  return <EventsListPage events={events} branding={branding} />;
 }

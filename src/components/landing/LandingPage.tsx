@@ -110,7 +110,7 @@ export function LandingPage({ events, heroSettings, orgId, aboutSection, brandin
       <ThemeEditorBridge />
 
       {/* Everything below hero: Midnight Tailwind theme */}
-      <div data-theme="midnight" data-theme-root className="overflow-x-hidden" style={hasBranding ? cssVars as React.CSSProperties : undefined}>
+      <div data-theme="midnight" data-theme-root className="overflow-x-clip" style={hasBranding ? cssVars as React.CSSProperties : undefined}>
         <EventsSection events={events} />
         {orgId === "feral" ? (
           <AboutSection />

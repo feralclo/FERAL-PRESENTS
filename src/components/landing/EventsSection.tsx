@@ -46,7 +46,7 @@ export function EventsSection({ events }: EventsSectionProps) {
               <EventCard
                 key={event.id}
                 event={event}
-                lazy={i >= 2}
+                lazy={i >= MOBILE_LIMIT}
                 className={i >= MOBILE_LIMIT ? "hidden md:block" : undefined}
               />
             ))}
@@ -106,12 +106,14 @@ function EventCard({ event, lazy = true, className }: { event: LandingEvent; laz
       </div>
 
       {/* Image — 16:9 aspect ratio */}
-      <div className="relative aspect-video overflow-hidden">
+      <div className="relative aspect-video overflow-hidden bg-foreground/[0.04]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageUrl}
           alt={event.name}
           loading={lazy ? "lazy" : "eager"}
+          // @ts-expect-error -- fetchPriority not in React types yet
+          fetchPriority={lazy ? "low" : "high"}
           decoding="async"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
         />

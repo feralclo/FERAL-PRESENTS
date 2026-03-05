@@ -445,6 +445,7 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
 
   // Client-side override: countdown passed, transition away from announcement
   const [announcementComplete, setAnnouncementComplete] = useState(false);
+  const [applePayAvailable, setApplePayAvailable] = useState(false);
   // Effective announcement state: server says announcement + client hasn't completed it
   const effectiveIsAnnouncement = isAnnouncement && !announcementComplete;
 
@@ -543,6 +544,7 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
           age={event.age_restriction || "18+"}
           bannerImage={heroImage}
           tag={event.tag_line || ""}
+          applePayAvailable={applePayAvailable}
         />
 
         <section className="relative z-10 pt-16 pb-16 max-lg:-mt-[var(--midnight-hero-overlap)] max-lg:pt-0 max-md:pb-10 pointer-events-none">
@@ -602,6 +604,7 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
                     onViewMerch={handleViewMerch}
                     discount={activeDiscount}
                     onApplyDiscount={setActiveDiscount}
+                    onApplePayDetected={() => setApplePayAvailable(true)}
                   />
                 )}
               </div>

@@ -27,7 +27,7 @@ interface ExpressCheckoutProps {
   onSuccess: (order: Order) => void;
   onError: (message: string) => void;
   /** Called when express payment methods are confirmed available */
-  onAvailable?: () => void;
+  onAvailable?: (methods: { applePay: boolean; googlePay: boolean }) => void;
   /** Discount code to apply (validated server-side during payment-intent creation) */
   discountCode?: string;
 }
@@ -195,7 +195,10 @@ function ExpressCheckoutInner({
           if (!availablePaymentMethods) {
             setAvailable(false);
           } else {
-            onAvailable?.();
+            onAvailable?.({
+              applePay: !!availablePaymentMethods.applePay,
+              googlePay: !!availablePaymentMethods.googlePay,
+            });
           }
         }}
         options={{

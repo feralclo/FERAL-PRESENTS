@@ -216,7 +216,8 @@ function isPublicApiRoute(pathname: string, method: string): boolean {
 
   // Wallet pass & PDF downloads — public GET only (order UUID = unguessable access token)
   // Matches: /api/orders/[uuid]/wallet/apple, /api/orders/[uuid]/wallet/google, /api/orders/[uuid]/pdf
-  if (method === "GET" && /^\/api\/orders\/[^/]+\/(wallet\/(apple|google)|pdf)$/.test(pathname)) {
+  // Trailing slash optional — trailingSlash: true in next.config causes 308 redirect to /pdf/
+  if (method === "GET" && /^\/api\/orders\/[^/]+\/(wallet\/(apple|google)|pdf)\/?$/.test(pathname)) {
     return true;
   }
 

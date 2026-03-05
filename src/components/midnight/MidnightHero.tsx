@@ -14,8 +14,6 @@ interface MidnightHeroProps {
   tag?: string;
   minPrice?: number;
   currSymbol?: string;
-  applePayAvailable?: boolean;
-  expressResolved?: boolean;
 }
 
 export function MidnightHero({
@@ -28,8 +26,6 @@ export function MidnightHero({
   tag,
   minPrice,
   currSymbol,
-  applePayAvailable,
-  expressResolved,
 }: MidnightHeroProps) {
   const { convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
   return (
@@ -132,7 +128,7 @@ export function MidnightHero({
           </svg>
         </Button>
 
-        <MidnightTrustBar applePayAvailable={applePayAvailable} expressResolved={expressResolved} />
+        <MidnightTrustBar />
       </div>
     </section>
   );

@@ -2,40 +2,26 @@
 
 import { useState, useEffect } from "react";
 
-interface MidnightTrustBarProps {
-  applePayAvailable?: boolean;
-  /** True once Stripe ExpressCheckout has resolved (data-driven, no guessing) */
-  expressResolved?: boolean;
-}
-
-export function MidnightTrustBar({
-  applePayAvailable,
-  expressResolved,
-}: MidnightTrustBarProps) {
-  // Show third signal only when we KNOW which to display:
-  // - Stripe events: wait for expressResolved (data-driven from onReady)
-  // - Non-Stripe events: fallback timeout (express checkout never mounts)
-  const [thirdReady, setThirdReady] = useState(false);
+export function MidnightTrustBar() {
+  // Detect Apple device via UA — instant, no Stripe dependency.
+  // SSR-safe: defaults to false, updates on mount before user can perceive.
+  const [isApple, setIsApple] = useState(false);
   useEffect(() => {
-    if (expressResolved) {
-      setThirdReady(true);
-      return;
+    if (/iPhone|iPad|Macintosh/.test(navigator.userAgent)) {
+      setIsApple(true);
     }
-    const t = setTimeout(() => setThirdReady(true), 2500);
-    return () => clearTimeout(t);
-  }, [expressResolved]);
+  }, []);
 
   const iconCls =
     "w-[11px] h-[11px] max-[480px]:w-[10px] max-[480px]:h-[10px] text-foreground/40 shrink-0";
   const textCls =
     "font-[family-name:var(--font-mono)] text-[10px] max-[480px]:text-[9px] tracking-[0.04em] text-foreground/40";
+  const signalCls =
+    "flex items-center gap-[4px] max-[480px]:gap-[3px] px-2 max-[480px]:px-1";
 
   return (
-    <div className="flex items-center mt-8 max-md:mt-6 max-[480px]:mt-5 max-w-[420px] w-full mx-auto">
-      {/* Three equal-width columns via flex-1. Content centered in each.
-          Dividers stay at fixed positions regardless of content width,
-          so swapping "Secure Checkout" ↔ "Apple Pay" causes zero reflow. */}
-      <div className="flex-1 flex items-center justify-center gap-[4px] max-[480px]:gap-[3px]">
+    <div className="flex items-center justify-center mt-8 max-md:mt-6 max-[480px]:mt-5">
+      <div className={signalCls}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={iconCls}>
           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
           <path d="M7 7h.01" />
@@ -45,25 +31,17 @@ export function MidnightTrustBar({
 
       <div className="w-px h-2.5 bg-foreground/[0.08] shrink-0" />
 
-      <div className="flex-1 flex items-center justify-center gap-[4px] max-[480px]:gap-[3px]">
+      <div className={signalCls}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={iconCls}>
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
         </svg>
         <span className={textCls}>Instant E-Tickets</span>
       </div>
 
-      <div
-        className={`w-px h-2.5 bg-foreground/[0.08] shrink-0 transition-opacity duration-500 ${
-          thirdReady ? "opacity-100" : "opacity-0"
-        }`}
-      />
+      <div className="w-px h-2.5 bg-foreground/[0.08] shrink-0" />
 
-      <div
-        className={`flex-1 flex items-center justify-center gap-[4px] max-[480px]:gap-[3px] transition-opacity duration-500 ${
-          thirdReady ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        {applePayAvailable ? (
+      <div className={signalCls}>
+        {isApple ? (
           <>
             <svg viewBox="0 0 24 24" fill="currentColor" className={iconCls}>
               <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.986 3.935-.986 1.831 0 2.35.986 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />

@@ -18,7 +18,7 @@ interface NavLink {
 }
 
 const BASE_NAV_LINKS: NavLink[] = [
-  { href: "/#events", label: "Events", index: "01" },
+  { href: "/events/", label: "Events", index: "01" },
   { href: "/#about", label: "About", index: "02" },
   { href: "/#contact", label: "Contact", index: "03" },
 ];
@@ -173,7 +173,7 @@ export function Header() {
           ))}
         </ul>
         <Link
-          href="/#events"
+          href="/events/"
           className="nav__cta"
           onClick={closeMenu}
         >

@@ -1,15 +1,4 @@
 /* ============================================
-   Events Section — swipe arrow keyframe
-   (used by Tailwind arbitrary animation)
-   ============================================ */
-
-@keyframes swipeArrow {
-  0%, 100% { transform: translateX(0); opacity: 0.3; }
-  50% { transform: translateX(6px); opacity: 0.8; }
-}
-
-
-/* ============================================
    About Section Animations
    Scoped to midnight theme (post-hero wrapper)
    ============================================ */

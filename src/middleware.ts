@@ -454,6 +454,7 @@ export const config = {
     "/auth/:path*",
     "/rep/:path*",
     "/event/:path*",
+    "/events/:path*",
     "/shop/:path*",
   ],
 };

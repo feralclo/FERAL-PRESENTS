@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { LandingEvent } from "@/types/events";
 
@@ -8,25 +7,10 @@ interface EventsSectionProps {
   events: LandingEvent[];
 }
 
+/** Max events shown on mobile before "See All" link */
+const MOBILE_LIMIT = 3;
+
 export function EventsSection({ events }: EventsSectionProps) {
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [hintVisible, setHintVisible] = useState(true);
-
-  // Hide swipe hint after user scrolls
-  useEffect(() => {
-    const grid = gridRef.current;
-    if (!grid) return;
-
-    function onScroll() {
-      if (grid!.scrollLeft > 100) {
-        setHintVisible(false);
-      }
-    }
-
-    grid.addEventListener("scroll", onScroll, { passive: true });
-    return () => grid.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
     <section id="events" className="py-20 max-md:py-14 bg-background">
       <div className="max-w-[1200px] mx-auto px-6 max-md:px-4">
@@ -40,7 +24,7 @@ export function EventsSection({ events }: EventsSectionProps) {
           </h2>
           <div className="w-[60px] h-0.5 bg-primary" />
           {events.length > 0 && (
-            <span className="lg:hidden font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] text-foreground/40 uppercase mt-3 block">
+            <span className="md:hidden font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] text-foreground/40 uppercase mt-3 block">
               {events.length} Event{events.length !== 1 ? "s" : ""}
             </span>
           )}
@@ -55,30 +39,29 @@ export function EventsSection({ events }: EventsSectionProps) {
           </div>
         )}
 
-        {/* Event grid — 2-col on desktop, horizontal snap scroll on mobile */}
+        {/* Event grid — responsive vertical stack */}
         {events.length > 0 && (
-          <div
-            ref={gridRef}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-lg:flex max-lg:overflow-x-auto max-lg:snap-x max-lg:snap-proximity max-lg:-mx-4 max-lg:px-4 max-lg:gap-4 max-lg:overscroll-x-contain max-lg:scroll-pl-4"
-            style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
-          >
-            {events.map((event) => (
-              <EventCard key={event.id} event={event} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+            {events.map((event, i) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                className={i >= MOBILE_LIMIT ? "hidden md:block" : undefined}
+              />
             ))}
           </div>
         )}
 
-        {/* Swipe hint — mobile only */}
-        {events.length > 1 && (
-          <div
-            className={`lg:hidden flex items-center justify-center gap-2 mt-5 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.25em] text-foreground/30 uppercase transition-opacity duration-500 ${
-              hintVisible ? "opacity-100" : "opacity-0 pointer-events-none"
-            }`}
-          >
-            <span>SWIPE</span>
-            <span className="inline-block animate-[swipeArrow_1.5s_ease-in-out_infinite]">
-              &rarr;
-            </span>
+        {/* "See All Events" link — shown when more events than mobile limit */}
+        {events.length > MOBILE_LIMIT && (
+          <div className="mt-10 text-center md:hidden" data-reveal="">
+            <Link
+              href="/events/"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-foreground/[0.08] bg-foreground/[0.04] font-[family-name:var(--font-mono)] text-[11px] tracking-[0.15em] uppercase text-foreground/60 transition-all duration-300 hover:border-primary/40 hover:text-primary hover:bg-foreground/[0.06]"
+            >
+              See All Events
+              <span className="text-sm">&rarr;</span>
+            </Link>
           </div>
         )}
       </div>
@@ -86,7 +69,7 @@ export function EventsSection({ events }: EventsSectionProps) {
   );
 }
 
-function EventCard({ event }: { event: LandingEvent }) {
+function EventCard({ event, className }: { event: LandingEvent; className?: string }) {
   const d = new Date(event.date_start);
   const day = String(d.getDate()).padStart(2, "0");
   const month = d
@@ -109,8 +92,7 @@ function EventCard({ event }: { event: LandingEvent }) {
     <Link
       href={href}
       {...linkProps}
-      className="group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_8px_40px_color-mix(in_srgb,var(--accent)_10%,transparent),0_0_0_1px_color-mix(in_srgb,var(--accent)_12%,transparent)] max-lg:snap-start max-lg:shrink-0 max-lg:w-[calc(100vw-80px)]"
-      data-reveal=""
+      className={`group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_8px_40px_color-mix(in_srgb,var(--accent)_10%,transparent),0_0_0_1px_color-mix(in_srgb,var(--accent)_12%,transparent)]${className ? ` ${className}` : ""}`}
     >
       {/* Date badge */}
       <div className="absolute top-4 right-4 z-10 flex flex-col items-center bg-background/95 border border-foreground/[0.10] px-3.5 py-2.5 rounded-lg transition-[border-color,box-shadow] duration-300 group-hover:border-primary/30 group-hover:shadow-[0_0_20px_color-mix(in_srgb,var(--accent)_10%,transparent)]">

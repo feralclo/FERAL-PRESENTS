@@ -87,6 +87,19 @@ export interface LandingEvent {
   external_link?: string;
 }
 
+/** Event shape for the /events listing page (richer than LandingEvent) */
+export interface ListingEvent extends LandingEvent {
+  about_text?: string;
+  hero_image?: string;
+  date_end?: string;
+  age_restriction?: string;
+  currency: string;
+  /** Computed server-side: cheapest active ticket price */
+  min_price?: number;
+  /** Computed server-side: "Selling Fast" | "Limited" | "Sold Out" | null */
+  status_label?: string | null;
+}
+
 export interface TicketTypeRow {
   id: string;
   org_id: string;

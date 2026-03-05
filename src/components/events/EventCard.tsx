@@ -6,18 +6,10 @@ interface EventCardProps {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  "Selling Fast": "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  Limited: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-  "Sold Out": "bg-red-500/20 text-red-400 border-red-500/30",
+  "Selling Fast": "bg-amber-500/15 text-amber-400 border-amber-500/25",
+  Limited: "bg-orange-500/15 text-orange-400 border-orange-500/25",
+  "Sold Out": "bg-red-500/15 text-red-400 border-red-500/25",
 };
-
-function formatCurrency(amount: number, currency: string): string {
-  const sym =
-    currency === "GBP" ? "\u00A3" : currency === "EUR" ? "\u20AC" : "$";
-  // Prices stored in smallest unit (pence/cents)
-  const value = amount / 100;
-  return `${sym}${Number.isInteger(value) ? value : value.toFixed(2)}`;
-}
 
 export function EventCard({ event }: EventCardProps) {
   const d = new Date(event.date_start);
@@ -27,6 +19,8 @@ export function EventCard({ event }: EventCardProps) {
     .toUpperCase();
 
   const isExternal = event.payment_method === "external";
+  const isSoldOut = event.status_label === "Sold Out";
+
   const href =
     isExternal && event.external_link
       ? event.external_link
@@ -41,14 +35,11 @@ export function EventCard({ event }: EventCardProps) {
     ? { target: "_blank" as const, rel: "noopener noreferrer" }
     : {};
 
-  // Truncate about text for preview
-  const aboutPreview = event.about_text
-    ? event.about_text.length > 100
-      ? event.about_text.slice(0, 100).trimEnd() + "\u2026"
-      : event.about_text
-    : null;
-
-  const isSoldOut = event.status_label === "Sold Out";
+  const ctaLabel = isExternal
+    ? "BUY TICKETS"
+    : isSoldOut
+      ? "VIEW EVENT"
+      : "GET TICKETS";
 
   return (
     <Link
@@ -68,16 +59,16 @@ export function EventCard({ event }: EventCardProps) {
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 motion-reduce:group-hover:scale-100"
         />
         {/* Bottom gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-dark,#0e0e0e)] via-transparent to-transparent z-[1]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--card-bg,#1a1a1a)] via-transparent to-transparent z-[1]" />
         {/* Top vignette */}
         <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/30 to-transparent z-[1]" />
 
         {/* Date badge */}
-        <div className="absolute top-4 left-4 z-10 flex flex-col items-center bg-[var(--bg-dark,#0e0e0e)]/95 border border-[var(--text-primary,#fff)]/[0.10] px-3.5 py-2.5 rounded-lg transition-[border-color,box-shadow] duration-300 group-hover:border-[var(--accent,#ff0033)]/30 group-hover:shadow-[0_0_20px_color-mix(in_srgb,var(--accent)_10%,transparent)]">
-          <span className="font-[family-name:var(--font-mono)] text-[22px] font-bold leading-none tracking-[0.02em] text-[var(--text-primary,#fff)]">
+        <div className="absolute top-4 left-4 z-10 flex flex-col items-center bg-black/70 backdrop-blur-sm border border-white/[0.08] px-3 py-2 rounded-lg transition-[border-color,box-shadow] duration-300 group-hover:border-[var(--accent,#ff0033)]/30 group-hover:shadow-[0_0_20px_color-mix(in_srgb,var(--accent)_10%,transparent)]">
+          <span className="font-[family-name:var(--font-mono)] text-[20px] font-bold leading-none tracking-[0.02em] text-white">
             {day}
           </span>
-          <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] text-[var(--accent,#ff0033)] mt-0.5">
+          <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.2em] text-[var(--accent,#ff0033)] mt-0.5">
             {month}
           </span>
         </div>
@@ -85,7 +76,7 @@ export function EventCard({ event }: EventCardProps) {
         {/* Status badge */}
         {event.status_label && (
           <div
-            className={`absolute top-4 right-4 z-10 px-3 py-1.5 rounded-md border font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.15em] uppercase ${STATUS_STYLES[event.status_label] || "bg-white/10 text-white/60 border-white/20"}`}
+            className={`absolute top-4 right-4 z-10 px-2.5 py-1 rounded-md border backdrop-blur-sm font-[family-name:var(--font-mono)] text-[9px] font-bold tracking-[0.15em] uppercase ${STATUS_STYLES[event.status_label] || "bg-white/10 text-white/60 border-white/20"}`}
           >
             {event.status_label}
           </div>
@@ -93,69 +84,49 @@ export function EventCard({ event }: EventCardProps) {
       </div>
 
       {/* Content */}
-      <div className="p-6 max-[480px]:p-4">
+      <div className="p-5 max-[480px]:p-4">
         {/* Tag line */}
         {event.tag_line && (
-          <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] text-[var(--accent,#ff0033)] uppercase block mb-3">
+          <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] text-[var(--accent,#ff0033)] uppercase block mb-2.5">
             // {event.tag_line}
           </span>
         )}
 
         {/* Event name */}
-        <h2 className="font-[family-name:var(--font-mono)] text-[clamp(20px,3vw,28px)] font-bold tracking-[0.12em] uppercase mb-3 transition-colors duration-300 group-hover:text-[var(--accent,#ff0033)] text-[var(--text-primary,#fff)]">
+        <h2 className="font-[family-name:var(--font-mono)] text-[clamp(18px,2.5vw,24px)] font-bold tracking-[0.1em] uppercase mb-4 transition-colors duration-300 group-hover:text-[var(--accent,#ff0033)] text-[var(--text-primary,#fff)]">
           {event.name.toUpperCase()}
         </h2>
 
-        {/* Accent line */}
-        <div className="w-8 h-0.5 bg-[var(--accent,#ff0033)]/40 mb-4" />
-
         {/* Meta info */}
-        <div className="flex flex-col gap-1.5 mb-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-5">
           {(event.venue_name || event.city) && (
-            <span className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-[var(--text-primary,#fff)]/50">
-              <span className="text-[var(--text-primary,#fff)]/25 mr-1">LOC:</span>
+            <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] text-[var(--text-primary,#fff)]/45">
               {[event.venue_name, event.city].filter(Boolean).join(", ")}
             </span>
           )}
           {event.doors_time && (
-            <span className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-[var(--text-primary,#fff)]/50">
-              <span className="text-[var(--text-primary,#fff)]/25 mr-1">DOORS:</span>
+            <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] text-[var(--text-primary,#fff)]/35">
               {event.doors_time}
             </span>
           )}
           {event.age_restriction && (
-            <span className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-[var(--text-primary,#fff)]/50">
-              <span className="text-[var(--text-primary,#fff)]/25 mr-1">AGE:</span>
+            <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] text-[var(--text-primary,#fff)]/35">
               {event.age_restriction}
             </span>
           )}
         </div>
 
-        {/* About preview */}
-        {aboutPreview && (
-          <p className="font-[family-name:var(--font-sans)] text-[13px] leading-relaxed text-[var(--text-primary,#fff)]/35 mb-5 line-clamp-2">
-            {aboutPreview}
-          </p>
-        )}
-
-        {/* Action row — glass treatment */}
-        <div className="flex items-center justify-between gap-3 px-4 py-3 -mx-1 rounded-xl bg-[var(--text-primary,#fff)]/[0.03] border border-[var(--text-primary,#fff)]/[0.06] min-h-[48px]">
-          {event.min_price != null && !isSoldOut ? (
-            <span className="font-[family-name:var(--font-mono)] text-[12px] tracking-[0.08em] text-[var(--text-primary,#fff)]/50">
-              From {formatCurrency(event.min_price, event.currency)}
-            </span>
-          ) : isSoldOut ? (
-            <span className="font-[family-name:var(--font-mono)] text-[12px] tracking-[0.08em] text-[var(--text-primary,#fff)]/30">
-              Sold Out
-            </span>
-          ) : (
-            <span />
-          )}
-          <span className="flex items-center gap-2 font-[family-name:var(--font-mono)] text-[11px] font-bold tracking-[0.15em] uppercase transition-colors duration-300 group-hover:text-[var(--accent,#ff0033)] text-[var(--text-primary,#fff)]/80">
-            {isExternal ? "BUY TICKETS" : isSoldOut ? "VIEW EVENT" : "GET TICKETS"}
-            <span className="text-sm transition-transform duration-300 group-hover:translate-x-1.5">
-              {isExternal ? "\u2197" : "\u2192"}
-            </span>
+        {/* CTA button */}
+        <div
+          className={`flex items-center justify-center gap-2 py-3 rounded-lg font-[family-name:var(--font-mono)] text-[11px] font-bold tracking-[0.2em] uppercase transition-all duration-300 ${
+            isSoldOut
+              ? "bg-[var(--text-primary,#fff)]/[0.06] text-[var(--text-primary,#fff)]/30"
+              : "bg-[var(--accent,#ff0033)] text-white group-hover:brightness-110 group-hover:shadow-[0_4px_20px_color-mix(in_srgb,var(--accent)_30%,transparent)]"
+          }`}
+        >
+          {ctaLabel}
+          <span className="text-xs transition-transform duration-300 group-hover:translate-x-1">
+            {isExternal ? "\u2197" : "\u2192"}
           </span>
         </div>
       </div>

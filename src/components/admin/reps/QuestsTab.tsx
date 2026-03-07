@@ -25,19 +25,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
-import {
   Plus,
   Loader2,
   Check,
@@ -46,9 +33,6 @@ import {
   Swords,
   Pencil,
   Trash2,
-  FileText,
-  ImageIcon,
-  Settings2,
   CheckCircle2,
   ExternalLink,
   Music,
@@ -59,6 +43,8 @@ import {
   Upload,
   Video,
   AlertCircle,
+  ArrowLeft,
+  Sparkles,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import * as tus from "tus-js-client";
@@ -86,13 +72,6 @@ const QUEST_TYPE_LABELS: Record<QuestType, string> = {
   custom: "Custom",
 };
 
-const QUEST_TYPE_DESCRIPTIONS: Record<QuestType, string> = {
-  social_post: "Reps recreate a reference post on TikTok or Instagram",
-  story_share: "Upload an image or video — reps download and share it on their story",
-  content_creation: "Reps create original content featuring your event or brand",
-  custom: "Custom quest — write your own instructions",
-};
-
 const QUEST_AUTO_INSTRUCTIONS: Record<QuestType, string> = {
   social_post: "1. Watch the reference post\n2. Create your own version\n3. Post it and submit the link as proof",
   story_share: "1. Download the image or video below\n2. Share it to your Instagram/TikTok story\n3. Add your personal discount code & link to the story",
@@ -115,6 +94,7 @@ export function QuestsTab() {
 
   // Create/Edit
   const [showDialog, setShowDialog] = useState(false);
+  const [dialogStep, setDialogStep] = useState<"type" | "form">("type");
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
@@ -192,6 +172,7 @@ export function QuestsTab() {
     setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
     setReferenceUrl(""); setUsesSound(false); setCurrencyReward("0");
     setVideoError("");
+    setDialogStep("type");
     setShowDialog(true);
   };
 
@@ -207,6 +188,7 @@ export function QuestsTab() {
     setReferenceUrl(q.reference_url || ""); setUsesSound(q.uses_sound ?? false);
     setCurrencyReward(String(q.currency_reward || 0));
     setVideoError("");
+    setDialogStep("form");
     setShowDialog(true);
   };
 
@@ -430,231 +412,323 @@ export function QuestsTab() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+        <DialogContent className={dialogStep === "type" ? "max-w-xl" : "max-w-2xl max-h-[85vh] flex flex-col"}>
           <DialogHeader>
-            <DialogTitle>{editId ? "Edit Quest" : "Create Quest"}</DialogTitle>
-            <DialogDescription>{editId ? "Update this quest." : "Create a new quest for your reps."}</DialogDescription>
+            <DialogTitle>{editId ? "Edit Quest" : dialogStep === "type" ? "New Quest" : "Create Quest"}</DialogTitle>
+            <DialogDescription>
+              {editId ? "Update this quest." : dialogStep === "type" ? "What should your reps do?" : `Set up your ${QUEST_TYPE_LABELS[questType].toLowerCase()} quest.`}
+            </DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="content" className="w-full min-h-0 flex-1 flex flex-col [&>[role=tabpanel]]:flex-1 [&>[role=tabpanel]]:overflow-y-auto">
-            <TabsList className="w-full">
-              <TabsTrigger value="content"><FileText size={14} /> Content</TabsTrigger>
-              <TabsTrigger value="media" className="relative">
-                <ImageIcon size={14} /> Media
-                {questType === "story_share" && !imageUrl && !videoUrl && (
-                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-warning" />
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="settings"><Settings2 size={14} /> Settings</TabsTrigger>
-            </TabsList>
 
-            {/* ── Content Tab ── */}
-            <TabsContent value="content" className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label>Title *</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share on Instagram Stories" autoFocus />
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={2} />
-              </div>
-              <div className="space-y-2">
-                <Label>How to Complete</Label>
-                {questType === "story_share" ? (
-                  <>
-                    <Textarea value={instructions} readOnly className="opacity-60 cursor-not-allowed" rows={3} />
-                    <p className="text-[10px] text-muted-foreground">Auto-generated for story share quests. Instructions are not shown to reps — the UI guides them.</p>
-                  </>
-                ) : (
-                  <Textarea value={instructions} onChange={(e) => { setInstructions(e.target.value); setInstructionsAutoGenerated(false); }} placeholder="Step-by-step instructions shown to reps in the quest detail view" rows={3} />
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Type</Label>
-                  <Select value={questType} onValueChange={(v) => handleQuestTypeChange(v as QuestType)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="social_post">Social Post</SelectItem>
-                      <SelectItem value="story_share">Story Share</SelectItem>
-                      <SelectItem value="content_creation">Content Creation</SelectItem>
-                      <SelectItem value="custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Platform</Label>
-                  <Select value={platform} onValueChange={(v) => setPlatform(v as "tiktok" | "instagram" | "any")}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any Platform</SelectItem>
-                      <SelectItem value="tiktok">TikTok</SelectItem>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground">{QUEST_TYPE_DESCRIPTIONS[questType]}</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>XP Reward <span className="text-[10px] text-muted-foreground font-normal">(set by quest type)</span></Label>
-                  <Input
-                    type="number"
-                    value={String(platformConfig.xp_per_quest_type[questType] ?? platformConfig.xp_per_quest_type.custom)}
-                    readOnly
-                    className="bg-muted/30 cursor-not-allowed"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Currency Reward</Label>
-                  <Input type="number" value={currencyReward} onChange={(e) => setCurrencyReward(e.target.value)} min="0" />
-                </div>
-              </div>
-
-              {/* Reference URL — shown when a specific platform is selected (not for story_share) */}
-              {platform !== "any" && questType !== "story_share" && (
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1.5">
-                    <ExternalLink size={12} />
-                    Reference Post URL
-                  </Label>
-                  <Input
-                    value={referenceUrl}
-                    onChange={(e) => setReferenceUrl(e.target.value)}
-                    placeholder={platform === "tiktok" ? "https://www.tiktok.com/@user/video/..." : "https://www.instagram.com/reel/..."}
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Link to the reference {platform === "tiktok" ? "TikTok" : "Instagram"} post reps should recreate
-                  </p>
-                </div>
-              )}
-
-              {/* Uses Sound — shown for TikTok quests (not for story_share) */}
-              {platform === "tiktok" && questType !== "story_share" && (
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div className="flex items-center gap-2">
-                    <Music size={14} className="text-muted-foreground" />
+          {dialogStep === "type" ? (
+            /* ── Type Selection ── */
+            <div className="space-y-3 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { type: "social_post" as QuestType, icon: Video, label: "Social Post", desc: "Reps recreate a reference TikTok or Instagram Reel" },
+                  { type: "story_share" as QuestType, icon: Camera, label: "Story Share", desc: "Upload content for reps to share on their stories" },
+                ] as const).map(({ type, icon: Icon, label, desc }) => (
+                  <button key={type}
+                    onClick={() => { handleQuestTypeChange(type); setDialogStep("form"); }}
+                    className="group flex flex-col items-start gap-3 rounded-xl border-2 border-border p-5 text-left transition-all hover:border-primary/50 hover:bg-primary/[0.03] active:scale-[0.98]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20 transition-colors group-hover:bg-primary/15">
+                      <Icon size={18} className="text-primary" />
+                    </div>
                     <div>
-                      <p className="text-sm font-medium text-foreground">Uses a Specific Sound</p>
-                      <p className="text-[11px] text-muted-foreground">The reference post has a sound reps should use</p>
+                      <p className="text-sm font-semibold text-foreground">{label}</p>
+                      <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { type: "content_creation" as QuestType, icon: Sparkles, label: "Content Creation", desc: "Reps create original content" },
+                  { type: "custom" as QuestType, icon: Swords, label: "Custom", desc: "Define your own quest" },
+                ] as const).map(({ type, icon: Icon, label, desc }) => (
+                  <button key={type}
+                    onClick={() => { handleQuestTypeChange(type); setDialogStep("form"); }}
+                    className="flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-all hover:border-primary/40 hover:bg-primary/[0.02] active:scale-[0.98]">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                      <Icon size={14} className="text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-foreground">{label}</p>
+                      <p className="text-[11px] text-muted-foreground">{desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* ── Quest Form ── */
+            <>
+              <div className="overflow-y-auto flex-1 space-y-6 pr-1 pb-2">
+                {/* Back to type selection (create only) */}
+                {!editId && (
+                  <button onClick={() => setDialogStep("type")}
+                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors -mb-2">
+                    <ArrowLeft size={12} />
+                    <span>Change type</span>
+                    <Badge variant="secondary" className="text-[10px]">{QUEST_TYPE_LABELS[questType]}</Badge>
+                  </button>
+                )}
+                {editId && (
+                  <div className="flex items-center gap-2 -mb-2">
+                    <Badge variant="secondary" className="text-[10px]">{QUEST_TYPE_LABELS[questType]}</Badge>
+                  </div>
+                )}
+
+                {/* ── Basics ── */}
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Title *</Label>
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share Our Event on Stories" autoFocus />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={2} />
+                  </div>
+                </div>
+
+                {/* ── Platform & Reference (social_post / content_creation) ── */}
+                {(questType === "social_post" || questType === "content_creation") && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Platform</span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { value: "tiktok" as const, label: "TikTok" },
+                        { value: "instagram" as const, label: "Instagram" },
+                        { value: "any" as const, label: "Either" },
+                      ]).map(({ value, label }) => (
+                        <button key={value}
+                          type="button"
+                          onClick={() => setPlatform(value)}
+                          className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                            platform === value
+                              ? "border-primary bg-primary/5 text-primary shadow-sm"
+                              : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                          }`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1.5">
+                        <ExternalLink size={12} />
+                        Reference Post Link
+                      </Label>
+                      <Input
+                        value={referenceUrl}
+                        onChange={(e) => setReferenceUrl(e.target.value)}
+                        placeholder={
+                          platform === "tiktok" ? "https://www.tiktok.com/@user/video/..."
+                            : platform === "instagram" ? "https://www.instagram.com/reel/..."
+                            : "Paste a TikTok or Instagram link"
+                        }
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        {questType === "social_post"
+                          ? "Link to the post reps should recreate — shown as a CTA in the quest"
+                          : "Optional reference for reps to use as inspiration"}
+                      </p>
+                    </div>
+                    {platform === "tiktok" && (
+                      <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                        <div className="flex items-center gap-2">
+                          <Music size={14} className="text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Uses a Specific Sound</p>
+                            <p className="text-[11px] text-muted-foreground">The reference post has a sound reps should use</p>
+                          </div>
+                        </div>
+                        <Switch checked={usesSound} onCheckedChange={setUsesSound} />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Story Content (story_share) ── */}
+                {questType === "story_share" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Story Content</span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Upload the image or video reps will download and share on their story. You can add one or both.</p>
+                    <ImageUpload
+                      label="Story Image"
+                      value={imageUrl}
+                      onChange={setImageUrl}
+                      uploadKey={editId ? `quest_${editId}_image` : undefined}
+                    />
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1.5"><Video size={12} /> Story Video</Label>
+                      {videoUrl ? (
+                        <div className="space-y-2">
+                          {isMuxPlaybackId(videoUrl) ? (
+                            <div className="rounded-lg overflow-hidden border border-border">
+                              <MuxPlayer playbackId={videoUrl} streamType="on-demand" autoPlay={false} muted className="w-full aspect-video" />
+                            </div>
+                          ) : (
+                            <div className="rounded-lg overflow-hidden border border-border">
+                              <video src={videoUrl} controls className="w-full aspect-video" />
+                            </div>
+                          )}
+                          <Button variant="outline" size="sm" onClick={() => setVideoUrl("")}>
+                            <X size={12} /> Remove Video
+                          </Button>
+                        </div>
+                      ) : videoUploading ? (
+                        <div className="rounded-lg border border-border p-4 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Loader2 size={14} className="animate-spin text-primary" />
+                            <span className="text-sm text-muted-foreground">{videoStatus}</span>
+                          </div>
+                          {videoProgress > 0 && (
+                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${videoProgress}%` }} />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/20 py-6 cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30">
+                          <Upload size={18} className="text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground font-medium">Click to upload a video</span>
+                          <span className="text-[10px] text-muted-foreground/60">MP4, MOV, WebM — max 200MB</span>
+                          <input
+                            ref={videoInputRef}
+                            type="file"
+                            accept="video/*"
+                            className="hidden"
+                            onChange={(e) => { const file = e.target.files?.[0]; if (file) handleVideoUpload(file); e.target.value = ""; }}
+                          />
+                        </label>
+                      )}
+                      {videoError && (
+                        <div className="flex items-start gap-1.5 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">
+                          <AlertCircle size={12} className="text-destructive mt-0.5 shrink-0" />
+                          <p className="text-xs text-destructive">{videoError}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <Switch checked={usesSound} onCheckedChange={setUsesSound} />
-                </div>
-              )}
-            </TabsContent>
+                )}
 
-            {/* ── Media Tab ── */}
-            <TabsContent value="media" className="space-y-4 pt-2">
-              {questType === "story_share" ? (
-                <>
-                  <ImageUpload
-                    label="Card Banner"
-                    value={bannerImageUrl}
-                    onChange={setBannerImageUrl}
-                    uploadKey={editId ? `quest_${editId}_banner` : undefined}
-                  />
-                  <p className="text-[10px] text-muted-foreground -mt-2">Decorative image shown on the quest card. Separate from the content reps download.</p>
-                  <div className="h-px bg-border" />
-                  <div>
-                    <p className="text-sm font-medium text-foreground mb-1">Story Content</p>
-                    <p className="text-[11px] text-muted-foreground mb-3">The image or video reps will download and share on their story</p>
+                {/* ── Instructions (not story_share — UI guides those) ── */}
+                {questType !== "story_share" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Instructions</span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>How to Complete</Label>
+                      <Textarea
+                        value={instructions}
+                        onChange={(e) => { setInstructions(e.target.value); setInstructionsAutoGenerated(false); }}
+                        placeholder="Step-by-step instructions shown to reps"
+                        rows={3}
+                      />
+                      {instructionsAutoGenerated && (
+                        <p className="text-[10px] text-muted-foreground">Auto-generated — edit freely</p>
+                      )}
+                    </div>
                   </div>
-                  <ImageUpload
-                    label="Story Image"
-                    value={imageUrl}
-                    onChange={setImageUrl}
-                    uploadKey={editId ? `quest_${editId}_image` : undefined}
-                  />
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1.5"><Video size={12} /> Story Video</Label>
-                    {videoUrl ? (
-                      <div className="space-y-2">
-                        {isMuxPlaybackId(videoUrl) ? (
-                          <div className="rounded-lg overflow-hidden border border-border">
-                            <MuxPlayer playbackId={videoUrl} streamType="on-demand" autoPlay={false} muted className="w-full aspect-video" />
-                          </div>
-                        ) : (
-                          <div className="rounded-lg overflow-hidden border border-border">
-                            <video src={videoUrl} controls className="w-full aspect-video" />
-                          </div>
-                        )}
-                        <Button variant="outline" size="sm" onClick={() => setVideoUrl("")}>
-                          <X size={12} /> Remove Video
-                        </Button>
-                      </div>
-                    ) : videoUploading ? (
-                      <div className="rounded-lg border border-border p-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Loader2 size={14} className="animate-spin text-primary" />
-                          <span className="text-sm text-muted-foreground">{videoStatus}</span>
-                        </div>
-                        {videoProgress > 0 && (
-                          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${videoProgress}%` }} />
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/20 py-6 cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30">
-                        <Upload size={18} className="text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground font-medium">Click to upload a video</span>
-                        <span className="text-[10px] text-muted-foreground/60">MP4, MOV, WebM — max 200MB</span>
-                        <input
-                          ref={videoInputRef}
-                          type="file"
-                          accept="video/*"
-                          className="hidden"
-                          onChange={(e) => { const file = e.target.files?.[0]; if (file) handleVideoUpload(file); e.target.value = ""; }}
-                        />
-                      </label>
-                    )}
-                    {videoError && (
-                      <div className="flex items-start gap-1.5 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">
-                        <AlertCircle size={12} className="text-destructive mt-0.5 shrink-0" />
-                        <p className="text-xs text-destructive">{videoError}</p>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">Upload an image, a video, or both</p>
-                </>
-              ) : (
-                <ImageUpload
-                  label="Quest Image"
-                  value={imageUrl}
-                  onChange={setImageUrl}
-                  uploadKey={editId ? `quest_${editId}_image` : undefined}
-                />
-              )}
-            </TabsContent>
+                )}
 
-            {/* ── Settings Tab ── */}
-            <TabsContent value="settings" className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Max Completions per Rep</Label>
-                  <Input type="number" value={maxCompletions} onChange={(e) => setMaxCompletions(e.target.value)} placeholder="Unlimited" min="1" />
+                {/* ── Appearance ── */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Appearance</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {questType === "story_share" ? (
+                    <>
+                      <ImageUpload
+                        label="Card Banner"
+                        value={bannerImageUrl}
+                        onChange={setBannerImageUrl}
+                        uploadKey={editId ? `quest_${editId}_banner` : undefined}
+                      />
+                      <p className="text-[10px] text-muted-foreground -mt-1">Optional decorative image shown on the quest card</p>
+                    </>
+                  ) : (
+                    <ImageUpload
+                      label="Quest Card Image"
+                      value={imageUrl}
+                      onChange={setImageUrl}
+                      uploadKey={editId ? `quest_${editId}_image` : undefined}
+                    />
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label>Expires At</Label>
-                  <Input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+
+                {/* ── Rewards ── */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Rewards</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>XP Reward <span className="text-[10px] text-muted-foreground font-normal">(set by type)</span></Label>
+                      <Input
+                        type="number"
+                        value={String(platformConfig.xp_per_quest_type[questType] ?? platformConfig.xp_per_quest_type.custom)}
+                        readOnly
+                        className="bg-muted/30 cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Currency Reward</Label>
+                      <Input type="number" value={currencyReward} onChange={(e) => setCurrencyReward(e.target.value)} min="0" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Settings ── */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Settings</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Max Completions per Rep</Label>
+                      <Input type="number" value={maxCompletions} onChange={(e) => setMaxCompletions(e.target.value)} placeholder="Unlimited" min="1" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Expires At</Label>
+                      <Input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Notify Reps</p>
+                      <p className="text-[11px] text-muted-foreground">Send notification when this quest goes live</p>
+                    </div>
+                    <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Notify Reps</p>
-                  <p className="text-[11px] text-muted-foreground">Send email notification to all assigned reps</p>
-                </div>
-                <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
-              </div>
-            </TabsContent>
-          </Tabs>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving || !title.trim()}>
-              {saving && <Loader2 size={14} className="animate-spin" />}
-              {saving ? "Saving..." : editId ? "Save Changes" : "Create Quest"}
-            </Button>
-          </DialogFooter>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
+                <Button onClick={handleSave} disabled={saving || !title.trim()}>
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  {saving ? "Saving..." : editId ? "Save Changes" : "Create Quest"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

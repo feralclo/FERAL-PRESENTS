@@ -148,9 +148,14 @@ export function QuestDetailSheet({
   const hasDualReward = quest.currency_reward > 0;
   const hasVideo = !!quest.video_url;
   const hasDownloadableContent = hasImage || hasVideo;
+  const hasMiddleStepContent = hasRefUrl || hasDownloadableContent || !!quest.instructions;
   const expiry = quest.expires_at ? getExpiryInfo(quest.expires_at) : null;
 
-  const steps = QUEST_STEPS[quest.quest_type] || QUEST_STEPS.custom;
+  // Filter out the middle step if there's nothing to show (social_post / content_creation only)
+  const allSteps = QUEST_STEPS[quest.quest_type] || QUEST_STEPS.custom;
+  const steps = (isSocialPost || isContentCreation) && !hasMiddleStepContent
+    ? allSteps.filter((s) => s.id !== "create")
+    : allSteps;
   const currentStep = steps[step];
   const isSubmitStep = step === steps.length - 1;
 
@@ -349,13 +354,13 @@ export function QuestDetailSheet({
       <div
         className={cn(
           "rep-quest-detail-sheet relative w-full max-w-md rounded-2xl max-h-[85dvh] flex flex-col overflow-hidden",
-          hasBackdrop && step === 0 && "rep-quest-has-backdrop"
+          hasBackdrop && currentStep.id === "overview" && "rep-quest-has-backdrop"
         )}
         role="dialog"
         aria-label={quest.title}
         style={{
           ["--quest-accent" as string]: accent.progressColor,
-          boxShadow: hasBackdrop && step === 0
+          boxShadow: hasBackdrop && currentStep.id === "overview"
             ? `0 0 120px ${accent.progressColor}20, 0 0 40px ${accent.progressColor}08, 0 25px 60px rgba(0,0,0,0.7)`
             : `0 25px 60px rgba(0,0,0,0.5)`,
         }}
@@ -370,7 +375,7 @@ export function QuestDetailSheet({
         />
 
         {/* Backdrop — overview step only */}
-        {hasBackdrop && step === 0 && (
+        {hasBackdrop && currentStep.id === "overview" && (
           <div className="rep-quest-detail-hero-backdrop" aria-hidden="true" onClick={onExpandImage}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={backdropImage!} alt="" />
@@ -386,37 +391,36 @@ export function QuestDetailSheet({
           <X size={16} />
         </button>
 
-        {/* Step indicator */}
+        {/* Step indicator — segmented pill bar */}
         {!submitted && (
-          <div className="shrink-0 pt-5 pb-2 px-5 relative z-[2]">
-            <div className="flex items-center justify-center gap-1.5">
-              {steps.map((s, i) => (
-                <div key={s.id} className="flex items-center gap-1.5">
-                  {i > 0 && (
-                    <div
-                      className="h-px w-5 transition-colors"
-                      style={{ backgroundColor: i <= step ? `${accent.progressColor}60` : "rgba(255,255,255,0.1)" }}
-                    />
-                  )}
+          <div className="shrink-0 pt-4 pb-2 px-5 relative z-[2]">
+            <div className="flex items-center gap-1 rounded-full bg-white/[0.04] border border-white/[0.06] p-1">
+              {steps.map((s, i) => {
+                const isActive = i === step;
+                const isPast = i < step;
+                return (
                   <button
-                    onClick={() => i < step && setStep(i)}
+                    key={s.id}
+                    onClick={() => isPast && setStep(i)}
                     disabled={i > step}
                     className={cn(
-                      "h-2 w-2 rounded-full transition-all",
-                      i === step && "scale-125",
-                      i > step && "bg-white/10"
+                      "flex-1 flex items-center justify-center gap-1.5 rounded-full py-1.5 text-[11px] font-semibold transition-all",
+                      isActive && "text-white shadow-sm",
+                      isPast && "text-white/40 cursor-pointer hover:text-white/60",
+                      i > step && "text-white/15"
                     )}
-                    style={{
-                      backgroundColor: i <= step ? accent.progressColor : undefined,
-                      opacity: i === step ? 1 : i < step ? 0.5 : undefined,
-                    }}
-                  />
-                </div>
-              ))}
+                    style={isActive ? {
+                      background: `linear-gradient(135deg, ${accent.progressColor}30, ${accent.progressColor}15)`,
+                      boxShadow: `inset 0 1px 0 ${accent.progressColor}20, 0 0 12px ${accent.progressColor}10`,
+                      border: `1px solid ${accent.progressColor}25`,
+                    } : undefined}
+                  >
+                    {isPast && <Check size={10} style={{ color: accent.progressColor }} />}
+                    <span>{s.label}</span>
+                  </button>
+                );
+              })}
             </div>
-            <p className="text-[10px] text-center text-muted-foreground/60 uppercase tracking-widest mt-2 font-medium">
-              {currentStep.label}
-            </p>
           </div>
         )}
 
@@ -424,7 +428,7 @@ export function QuestDetailSheet({
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain relative z-[1] rep-quest-detail-scroll">
 
           {/* ═══ STEP: Overview ═══ */}
-          {step === 0 && (
+          {currentStep.id === "overview" && (
             <div className="px-5 pb-4">
               <div className="text-center pt-2 pb-4 rep-quest-reveal-1">
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 mb-3">
@@ -512,7 +516,7 @@ export function QuestDetailSheet({
           )}
 
           {/* ═══ STEP: Create (social_post / content_creation) ═══ */}
-          {step === 1 && (isSocialPost || isContentCreation) && (
+          {currentStep.id === "create" && (
             <div className="px-5 pb-4 space-y-4">
               {/* Reference post */}
               {hasRefUrl && refPlatform && (
@@ -573,7 +577,7 @@ export function QuestDetailSheet({
           )}
 
           {/* ═══ STEP: Share (story_share) ═══ */}
-          {step === 1 && isStoryShare && (
+          {currentStep.id === "share" && (
             <div className="px-5 pb-4 space-y-4">
               {hasDownloadableContent && (
                 <div className="rep-quest-reveal-1">
@@ -607,7 +611,7 @@ export function QuestDetailSheet({
           )}
 
           {/* ═══ STEP: Instructions (custom) ═══ */}
-          {step === 1 && quest.quest_type === "custom" && (
+          {currentStep.id === "instructions" && (
             <div className="px-5 pb-4 space-y-4">
               {quest.instructions ? (
                 <div className="rep-quest-reveal-1">

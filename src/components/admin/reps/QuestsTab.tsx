@@ -79,6 +79,13 @@ const QUEST_AUTO_INSTRUCTIONS: Record<QuestType, string> = {
   custom: "",
 };
 
+const QUEST_FORM_TABS: Record<QuestType, string[]> = {
+  social_post: ["Details", "Platform", "Publish"],
+  story_share: ["Details", "Content", "Publish"],
+  content_creation: ["Details", "Platform", "Publish"],
+  custom: ["Details", "Setup", "Publish"],
+};
+
 const QUEST_STATUS_VARIANT: Record<QuestStatus, "success" | "warning" | "secondary" | "outline"> = {
   active: "success",
   paused: "warning",
@@ -95,6 +102,7 @@ export function QuestsTab() {
   // Create/Edit
   const [showDialog, setShowDialog] = useState(false);
   const [dialogStep, setDialogStep] = useState<"type" | "form">("type");
+  const [formTab, setFormTab] = useState(0);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
@@ -173,6 +181,7 @@ export function QuestsTab() {
     setReferenceUrl(""); setUsesSound(false); setCurrencyReward("0");
     setVideoError("");
     setDialogStep("type");
+    setFormTab(0);
     setShowDialog(true);
   };
 
@@ -189,6 +198,7 @@ export function QuestsTab() {
     setCurrencyReward(String(q.currency_reward || 0));
     setVideoError("");
     setDialogStep("form");
+    setFormTab(0);
     setShowDialog(true);
   };
 
@@ -463,42 +473,52 @@ export function QuestsTab() {
           ) : (
             /* ── Quest Form ── */
             <>
-              <div className="overflow-y-auto flex-1 space-y-6 pr-1 pb-2">
-                {/* Back to type selection (create only) */}
-                {!editId && (
+              {/* Navigation bar */}
+              <div className="space-y-3">
+                {!editId ? (
                   <button onClick={() => setDialogStep("type")}
-                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors -mb-2">
+                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
                     <ArrowLeft size={12} />
                     <span>Change type</span>
                     <Badge variant="secondary" className="text-[10px]">{QUEST_TYPE_LABELS[questType]}</Badge>
                   </button>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px]">{QUEST_TYPE_LABELS[questType]}</Badge>
                 )}
-                {editId && (
-                  <div className="flex items-center gap-2 -mb-2">
-                    <Badge variant="secondary" className="text-[10px]">{QUEST_TYPE_LABELS[questType]}</Badge>
-                  </div>
-                )}
-
-                {/* ── Basics ── */}
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label>Title *</Label>
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share Our Event on Stories" autoFocus />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={2} />
-                  </div>
+                <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
+                  {QUEST_FORM_TABS[questType].map((tab, i) => (
+                    <button key={tab} onClick={() => setFormTab(i)}
+                      className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                        i === formTab
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}>
+                      {tab}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {/* ── Platform & Reference (social_post / content_creation) ── */}
-                {(questType === "social_post" || questType === "content_creation") && (
+              {/* Tab content */}
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+
+                {/* ── Tab: Details (all types) ── */}
+                {formTab === 0 && (
                   <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-px flex-1 bg-border" />
-                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Platform</span>
-                      <div className="h-px flex-1 bg-border" />
+                    <div className="space-y-2">
+                      <Label>Title *</Label>
+                      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share Our Event on Stories" autoFocus />
                     </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={3} />
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Tab: Platform (social_post / content_creation) ── */}
+                {formTab === 1 && (questType === "social_post" || questType === "content_creation") && (
+                  <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-2">
                       {([
                         { value: "tiktok" as const, label: "TikTok" },
@@ -549,17 +569,24 @@ export function QuestsTab() {
                         <Switch checked={usesSound} onCheckedChange={setUsesSound} />
                       </div>
                     )}
+                    <div className="space-y-2">
+                      <Label>How to Complete</Label>
+                      <Textarea
+                        value={instructions}
+                        onChange={(e) => { setInstructions(e.target.value); setInstructionsAutoGenerated(false); }}
+                        placeholder="Step-by-step instructions shown to reps"
+                        rows={3}
+                      />
+                      {instructionsAutoGenerated && (
+                        <p className="text-[10px] text-muted-foreground">Auto-generated — edit freely</p>
+                      )}
+                    </div>
                   </div>
                 )}
 
-                {/* ── Story Content (story_share) ── */}
-                {questType === "story_share" && (
+                {/* ── Tab: Content (story_share) ── */}
+                {formTab === 1 && questType === "story_share" && (
                   <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-px flex-1 bg-border" />
-                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Story Content</span>
-                      <div className="h-px flex-1 bg-border" />
-                    </div>
                     <p className="text-xs text-muted-foreground">Upload the image or video reps will download and share on their story. You can add one or both.</p>
                     <ImageUpload
                       label="Story Image"
@@ -620,112 +647,130 @@ export function QuestsTab() {
                   </div>
                 )}
 
-                {/* ── Instructions (not story_share — UI guides those) ── */}
-                {questType !== "story_share" && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-px flex-1 bg-border" />
-                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Instructions</span>
-                      <div className="h-px flex-1 bg-border" />
+                {/* ── Tab: Setup (custom) ── */}
+                {formTab === 1 && questType === "custom" && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Platform</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {([
+                          { value: "tiktok" as const, label: "TikTok" },
+                          { value: "instagram" as const, label: "Instagram" },
+                          { value: "any" as const, label: "Either" },
+                        ]).map(({ value, label }) => (
+                          <button key={value}
+                            type="button"
+                            onClick={() => setPlatform(value)}
+                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                              platform === value
+                                ? "border-primary bg-primary/5 text-primary shadow-sm"
+                                : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                            }`}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label>How to Complete</Label>
                       <Textarea
                         value={instructions}
                         onChange={(e) => { setInstructions(e.target.value); setInstructionsAutoGenerated(false); }}
-                        placeholder="Step-by-step instructions shown to reps"
-                        rows={3}
+                        placeholder="Write your own instructions for reps"
+                        rows={4}
                       />
-                      {instructionsAutoGenerated && (
-                        <p className="text-[10px] text-muted-foreground">Auto-generated — edit freely</p>
-                      )}
                     </div>
                   </div>
                 )}
 
-                {/* ── Appearance ── */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Appearance</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  {questType === "story_share" ? (
-                    <>
+                {/* ── Tab: Publish (all types) ── */}
+                {formTab === 2 && (
+                  <div className="space-y-4">
+                    {questType === "story_share" ? (
+                      <div className="space-y-2">
+                        <ImageUpload
+                          label="Card Banner"
+                          value={bannerImageUrl}
+                          onChange={setBannerImageUrl}
+                          uploadKey={editId ? `quest_${editId}_banner` : undefined}
+                        />
+                        <p className="text-[10px] text-muted-foreground">Optional decorative image shown on the quest card</p>
+                      </div>
+                    ) : (
                       <ImageUpload
-                        label="Card Banner"
-                        value={bannerImageUrl}
-                        onChange={setBannerImageUrl}
-                        uploadKey={editId ? `quest_${editId}_banner` : undefined}
+                        label="Quest Card Image"
+                        value={imageUrl}
+                        onChange={setImageUrl}
+                        uploadKey={editId ? `quest_${editId}_image` : undefined}
                       />
-                      <p className="text-[10px] text-muted-foreground -mt-1">Optional decorative image shown on the quest card</p>
-                    </>
-                  ) : (
-                    <ImageUpload
-                      label="Quest Card Image"
-                      value={imageUrl}
-                      onChange={setImageUrl}
-                      uploadKey={editId ? `quest_${editId}_image` : undefined}
-                    />
-                  )}
-                </div>
+                    )}
 
-                {/* ── Rewards ── */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Rewards</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>XP Reward <span className="text-[10px] text-muted-foreground font-normal">(set by type)</span></Label>
-                      <Input
-                        type="number"
-                        value={String(platformConfig.xp_per_quest_type[questType] ?? platformConfig.xp_per_quest_type.custom)}
-                        readOnly
-                        className="bg-muted/30 cursor-not-allowed"
-                      />
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Rewards</span>
+                      <div className="h-px flex-1 bg-border" />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Currency Reward</Label>
-                      <Input type="number" value={currencyReward} onChange={(e) => setCurrencyReward(e.target.value)} min="0" />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>XP Reward <span className="text-[10px] text-muted-foreground font-normal">(set by type)</span></Label>
+                        <Input
+                          type="number"
+                          value={String(platformConfig.xp_per_quest_type[questType] ?? platformConfig.xp_per_quest_type.custom)}
+                          readOnly
+                          className="bg-muted/30 cursor-not-allowed"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Currency Reward</Label>
+                        <Input type="number" value={currencyReward} onChange={(e) => setCurrencyReward(e.target.value)} min="0" />
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* ── Settings ── */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Settings</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Max Completions per Rep</Label>
-                      <Input type="number" value={maxCompletions} onChange={(e) => setMaxCompletions(e.target.value)} placeholder="Unlimited" min="1" />
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Settings</span>
+                      <div className="h-px flex-1 bg-border" />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Expires At</Label>
-                      <Input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Max Completions per Rep</Label>
+                        <Input type="number" value={maxCompletions} onChange={(e) => setMaxCompletions(e.target.value)} placeholder="Unlimited" min="1" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Expires At</Label>
+                        <Input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Notify Reps</p>
+                        <p className="text-[11px] text-muted-foreground">Send notification when this quest goes live</p>
+                      </div>
+                      <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
                     </div>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Notify Reps</p>
-                      <p className="text-[11px] text-muted-foreground">Send notification when this quest goes live</p>
-                    </div>
-                    <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
-                  </div>
-                </div>
+                )}
               </div>
+
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
-                <Button onClick={handleSave} disabled={saving || !title.trim()}>
-                  {saving && <Loader2 size={14} className="animate-spin" />}
-                  {saving ? "Saving..." : editId ? "Save Changes" : "Create Quest"}
-                </Button>
+                {formTab > 0 && (
+                  <Button variant="ghost" onClick={() => setFormTab(formTab - 1)} className="mr-auto">
+                    <ArrowLeft size={14} /> Back
+                  </Button>
+                )}
+                {formTab < QUEST_FORM_TABS[questType].length - 1 ? (
+                  <Button onClick={() => setFormTab(formTab + 1)} disabled={formTab === 0 && !title.trim()}>
+                    Next
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
+                    <Button onClick={handleSave} disabled={saving || !title.trim()}>
+                      {saving && <Loader2 size={14} className="animate-spin" />}
+                      {saving ? "Saving..." : editId ? "Save Changes" : "Create Quest"}
+                    </Button>
+                  </>
+                )}
               </DialogFooter>
             </>
           )}

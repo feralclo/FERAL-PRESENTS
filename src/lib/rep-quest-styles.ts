@@ -46,10 +46,10 @@ export function getQuestAccent(points: number): QuestAccent {
     };
   }
   return {
-    color: "text-muted-foreground",
+    color: "text-emerald-400",
     glowClass: "",
-    ctaGradient: "bg-primary hover:brightness-110",
-    titleColor: "text-foreground",
-    progressColor: "#666680",
+    ctaGradient: "bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110",
+    titleColor: "text-emerald-300",
+    progressColor: "#34D399",
   };
 }

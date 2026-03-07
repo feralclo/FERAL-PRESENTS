@@ -46,6 +46,7 @@ interface DashboardData {
   recent_sales: { id: string; order_number: string; total: number; created_at: string; points_earned?: number }[];
   discount_codes: { code: string }[];
   settings?: { points_per_sale: number; currency_per_sale: number };
+  public_url: string | null;
 }
 
 const LEVEL_UP_STORAGE_KEY = "rep_last_level";
@@ -115,12 +116,8 @@ export default function RepDashboardPage() {
   }, [loadKey]);
 
   const getShareUrl = (code: string) => {
-    const event = data?.active_events?.[0];
-    if (event?.slug) {
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      return `${origin}/event/${event.slug}?ref=${code}`;
-    }
-    return null;
+    if (!data?.public_url) return null;
+    return `${data.public_url}?ref=${code}`;
   };
 
   const copyCode = async (code: string) => {

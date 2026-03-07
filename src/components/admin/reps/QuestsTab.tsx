@@ -548,6 +548,24 @@ export function QuestsTab() {
                       <Label>Description</Label>
                       <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={3} />
                     </div>
+                    <div className="space-y-2">
+                      <Label>Linked Event</Label>
+                      <select
+                        value={eventId}
+                        onChange={(e) => setEventId(e.target.value)}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                      >
+                        <option value="">None (global quest)</option>
+                        {events.map((ev) => (
+                          <option key={ev.id} value={ev.id}>{ev.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-muted-foreground">
+                        {questType === "sales_milestone"
+                          ? "Tie sales tracking to a specific event, or leave blank to count all sales"
+                          : "Link to an event so reps get a share URL that takes followers directly to it"}
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -735,22 +753,6 @@ export function QuestsTab() {
                         min="1"
                       />
                       <p className="text-[10px] text-muted-foreground">Number of sales a rep needs to achieve. Progress tracks automatically.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Event (optional)</Label>
-                      <select
-                        value={eventId}
-                        onChange={(e) => setEventId(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                      >
-                        <option value="">All events (global)</option>
-                        {events.map((ev) => (
-                          <option key={ev.id} value={ev.id}>{ev.name}</option>
-                        ))}
-                      </select>
-                      <p className="text-[10px] text-muted-foreground">
-                        Tie to a specific event, or leave blank to count all sales
-                      </p>
                     </div>
                   </div>
                 )}

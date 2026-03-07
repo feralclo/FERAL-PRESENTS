@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRepAuth } from "@/lib/auth";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { TABLES } from "@/lib/constants";
 import { getRepSettings, getPlatformXPConfig } from "@/lib/rep-points";
 import { generateLevelTable } from "@/lib/xp-levels";
 import type { LevelingConfig, TierDefinition } from "@/lib/xp-levels";
@@ -18,9 +20,20 @@ export async function GET() {
     if (auth.error) return auth.error;
     const orgId = auth.rep.org_id;
 
-    const [settings, platformConfig] = await Promise.all([
+    const supabase = await getSupabaseAdmin();
+
+    const [settings, platformConfig, domainResult] = await Promise.all([
       getRepSettings(orgId),
       getPlatformXPConfig(),
+      supabase
+        ? supabase
+            .from(TABLES.DOMAINS)
+            .select("hostname")
+            .eq("org_id", orgId)
+            .eq("is_primary", true)
+            .eq("status", "active")
+            .single()
+        : Promise.resolve({ data: null }),
     ]);
 
     const leveling: LevelingConfig = platformConfig.leveling || DEFAULT_LEVELING;
@@ -45,6 +58,9 @@ export async function GET() {
         tiers,
         level_table: levelTable,
         max_level: leveling.max_level,
+        public_url: domainResult.data?.hostname
+          ? `https://${domainResult.data.hostname}`
+          : null,
         // Backward compat
         level_names: platformConfig.level_names,
         level_thresholds: platformConfig.level_thresholds,

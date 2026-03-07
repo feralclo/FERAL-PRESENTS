@@ -83,7 +83,12 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
   const orgId = await getOrgId();
   let events: LandingEvent[] = [];
   let heroSettings: HomepageSettings = DEFAULT_HERO;
@@ -129,5 +134,20 @@ export default async function HomePage() {
     // Fall through with defaults
   }
 
-  return <LandingPage events={events} heroSettings={heroSettings} orgId={orgId} aboutSection={aboutSection} branding={branding} />;
+  // ?ref=CODE auto-applies a rep's discount code (persists in sessionStorage)
+  const refCode = typeof sp.ref === "string" ? sp.ref : undefined;
+  const refScript = refCode ? (
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `try{sessionStorage.setItem("feral_popup_discount",${JSON.stringify(refCode)})}catch(e){}`,
+      }}
+    />
+  ) : null;
+
+  return (
+    <>
+      {refScript}
+      <LandingPage events={events} heroSettings={heroSettings} orgId={orgId} aboutSection={aboutSection} branding={branding} />
+    </>
+  );
 }

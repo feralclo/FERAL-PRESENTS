@@ -36,7 +36,12 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function EventsPage() {
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
   const orgId = await getOrgId();
   const supabase = await getSupabaseAdmin();
 
@@ -120,5 +125,20 @@ export default async function EventsPage() {
     }
   }
 
-  return <EventsListPage events={events} branding={branding} />;
+  // ?ref=CODE auto-applies a rep's discount code
+  const refCode = typeof sp.ref === "string" ? sp.ref : undefined;
+  const refScript = refCode ? (
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `try{sessionStorage.setItem("feral_popup_discount",${JSON.stringify(refCode)})}catch(e){}`,
+      }}
+    />
+  ) : null;
+
+  return (
+    <>
+      {refScript}
+      <EventsListPage events={events} branding={branding} />
+    </>
+  );
 }

@@ -38,6 +38,7 @@ export async function GET() {
       leaderboardResult,
       recentSalesResult,
       activeEventsResult,
+      domainResult,
     ] = await Promise.all([
       // Full rep row (include name/photo for dashboard display)
       supabase
@@ -84,6 +85,15 @@ export async function GET() {
         .select("id, event_id, sales_count, revenue, assigned_at, event:events(id, name, slug, date_start, status, cover_image)")
         .eq("rep_id", repId)
         .eq("org_id", orgId),
+
+      // Tenant's primary domain for building share URLs
+      supabase
+        .from(TABLES.DOMAINS)
+        .select("hostname")
+        .eq("org_id", orgId)
+        .eq("is_primary", true)
+        .eq("status", "active")
+        .single(),
     ]);
 
     const rep = repResult.data;
@@ -150,6 +160,9 @@ export async function GET() {
         leaderboard_position: leaderboardPosition,
         recent_sales: recentSalesResult.data || [],
         active_events: flatEvents,
+        public_url: domainResult.data?.hostname
+          ? `https://${domainResult.data.hostname}`
+          : null,
       },
     });
   } catch (err) {

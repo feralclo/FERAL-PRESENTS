@@ -53,6 +53,7 @@ export default function RepQuestsPage() {
   const [tab, setTab] = useState<"active" | "completed">("active");
   const [currencyName, setCurrencyName] = useState("FRL");
   const [discountCode, setDiscountCode] = useState<string | undefined>();
+  const [publicUrl, setPublicUrl] = useState<string | null>(null);
 
   // Detail modal
   const [detailQuest, setDetailQuest] = useState<Quest | null>(null);
@@ -99,6 +100,7 @@ export default function RepQuestsPage() {
       if (json.data) setQuests(json.data);
       const settingsJson = settingsRes.ok ? await settingsRes.json() : { data: null };
       if (settingsJson.data?.currency_name) setCurrencyName(settingsJson.data.currency_name);
+      if (settingsJson.data?.public_url) setPublicUrl(settingsJson.data.public_url);
       const discountJson = discountRes.ok ? await discountRes.json() : { data: [] };
       if (discountJson.data?.[0]?.code) setDiscountCode(discountJson.data[0].code);
     } catch {
@@ -276,8 +278,8 @@ export default function RepQuestsPage() {
           currencyName={currencyName}
           discountCode={discountCode}
           shareLink={
-            discountCode && detailQuest.event?.slug
-              ? `${typeof window !== "undefined" ? window.location.origin : ""}/event/${detailQuest.event.slug}?ref=${discountCode}`
+            discountCode && publicUrl && detailQuest.event?.slug
+              ? `${publicUrl}/event/${detailQuest.event.slug}?ref=${discountCode}`
               : undefined
           }
         />,

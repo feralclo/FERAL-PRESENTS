@@ -9,6 +9,7 @@ import * as Sentry from "@sentry/nextjs";
  *
  * Shows quests where event_id is null (global) or event_id is in the rep's
  * assigned events. Includes the rep's submission count per quest.
+ * For sales_milestone quests, computes progress from actual order data.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -110,8 +111,44 @@ export async function GET(request: NextRequest) {
       if (s.status === "rejected") submissionMap[s.quest_id].rejected++;
     }
 
-    // Attach submission counts to quests
-    const questsWithCounts = quests.map((q: { id: string }) => ({
+    // Compute sales progress for sales_milestone quests
+    const salesMilestoneQuests = quests.filter(
+      (q: { quest_type: string }) => q.quest_type === "sales_milestone"
+    ) as Array<{
+      id: string;
+      event_id: string | null;
+      sales_target: number | null;
+      starts_at: string | null;
+      created_at: string;
+    }>;
+
+    const salesProgressMap: Record<string, { current: number; target: number }> = {};
+
+    if (salesMilestoneQuests.length > 0) {
+      // Count orders attributed to this rep, grouped by event, since each quest's start
+      for (const quest of salesMilestoneQuests) {
+        const target = quest.sales_target || 0;
+        const sinceDate = quest.starts_at || quest.created_at;
+
+        let orderQuery = supabase
+          .from(TABLES.ORDERS)
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .contains("metadata", { rep_id: repId })
+          .gte("created_at", sinceDate)
+          .in("status", ["completed", "paid"]);
+
+        if (quest.event_id) {
+          orderQuery = orderQuery.eq("event_id", quest.event_id);
+        }
+
+        const { count } = await orderQuery;
+        salesProgressMap[quest.id] = { current: Math.min(count || 0, target), target };
+      }
+    }
+
+    // Attach submission counts + sales progress to quests
+    const questsWithCounts = quests.map((q: { id: string; quest_type: string }) => ({
       ...q,
       my_submissions: submissionMap[q.id] || {
         total: 0,
@@ -119,6 +156,9 @@ export async function GET(request: NextRequest) {
         pending: 0,
         rejected: 0,
       },
+      ...(q.quest_type === "sales_milestone" && salesProgressMap[q.id]
+        ? { my_progress: salesProgressMap[q.id] }
+        : {}),
     }));
 
     return NextResponse.json({ data: questsWithCounts });

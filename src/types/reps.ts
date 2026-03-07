@@ -120,7 +120,8 @@ export type QuestType =
   | "social_post"
   | "story_share"
   | "content_creation"
-  | "custom";
+  | "custom"
+  | "sales_milestone";
 export type QuestPlatform = "tiktok" | "instagram" | "any";
 export type QuestStatus = "active" | "paused" | "archived" | "draft";
 
@@ -147,6 +148,7 @@ export interface RepQuest {
   notify_reps: boolean;
   reference_url?: string | null;
   uses_sound: boolean;
+  sales_target?: number | null;
   created_at: string;
   updated_at: string;
   // Joined
@@ -311,6 +313,7 @@ export interface PlatformXPConfig {
     story_share: number;
     content_creation: number;
     custom: number;
+    sales_milestone: number;
   };
   position_xp: Record<number, number>;
   level_thresholds: number[];
@@ -324,6 +327,7 @@ export const DEFAULT_PLATFORM_XP_CONFIG: PlatformXPConfig = {
     story_share: 30,
     content_creation: 100,
     custom: 50,
+    sales_milestone: 200,
   },
   position_xp: { 1: 500, 2: 250, 3: 100 },
   level_thresholds: [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000],

@@ -90,6 +90,7 @@ export async function PUT(
       "reference_url",
       "uses_sound",
       "currency_reward",
+      "sales_target",
     ];
 
     const updates: Record<string, unknown> = {};
@@ -107,9 +108,9 @@ export async function PUT(
     }
 
     // Validate enums if provided
-    if (updates.quest_type && !["social_post", "story_share", "content_creation", "custom"].includes(updates.quest_type as string)) {
+    if (updates.quest_type && !["social_post", "story_share", "content_creation", "custom", "sales_milestone"].includes(updates.quest_type as string)) {
       return NextResponse.json(
-        { error: "quest_type must be 'social_post', 'story_share', 'content_creation', or 'custom'" },
+        { error: "quest_type must be 'social_post', 'story_share', 'content_creation', 'custom', or 'sales_milestone'" },
         { status: 400 }
       );
     }

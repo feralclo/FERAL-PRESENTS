@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   X, Check, Clock, Zap, ExternalLink,
-  Camera, Share2, Sparkles, Music, Instagram,
+  Camera, Share2, Sparkles, Music, Instagram, Target,
   Download, Link as LinkIcon, BookOpen,
   ArrowRight, ArrowLeft, Upload, Loader2, AlertCircle,
 } from "lucide-react";
@@ -36,6 +36,9 @@ interface Quest {
   expires_at?: string;
   my_submissions: { total: number; approved: number; pending: number; rejected: number };
   max_completions?: number;
+  sales_target?: number;
+  my_progress?: { current: number; target: number };
+  event?: { id: string; name: string; slug: string } | null;
 }
 
 // ─── Steps ──────────────────────────────────────────────────────────────────
@@ -62,6 +65,9 @@ const QUEST_STEPS: Record<string, Step[]> = {
     { id: "overview", label: "Overview" },
     { id: "instructions", label: "Instructions" },
     { id: "submit", label: "Submit" },
+  ],
+  sales_milestone: [
+    { id: "progress", label: "Progress" },
   ],
 };
 
@@ -108,6 +114,7 @@ const QUEST_TYPE_ICONS: Record<string, typeof Camera> = {
   story_share: Share2,
   content_creation: Sparkles,
   custom: Zap,
+  sales_milestone: Target,
 };
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -143,6 +150,9 @@ export function QuestDetailSheet({
   const isStoryShare = quest.quest_type === "story_share";
   const isSocialPost = quest.quest_type === "social_post";
   const isContentCreation = quest.quest_type === "content_creation";
+  const isSalesMilestone = quest.quest_type === "sales_milestone";
+  const salesProgress = quest.my_progress;
+  const salesCompleted = salesProgress ? salesProgress.current >= salesProgress.target : false;
   const hasRefUrl = !!quest.reference_url;
   const refPlatform = quest.reference_url ? getReferenceUrlPlatform(quest.reference_url) : (quest.platform !== "any" ? quest.platform : null);
   const hasDualReward = quest.currency_reward > 0;
@@ -391,8 +401,8 @@ export function QuestDetailSheet({
           <X size={16} />
         </button>
 
-        {/* Step indicator — segmented pill bar */}
-        {!submitted && (
+        {/* Step indicator — segmented pill bar (hidden for single-step types) */}
+        {!submitted && steps.length > 1 && (
           <div className="shrink-0 pt-4 pb-2 px-5 relative z-[2]">
             <div className="flex items-center gap-1 rounded-full bg-white/[0.04] border border-white/[0.06] p-1">
               {steps.map((s, i) => {
@@ -629,6 +639,123 @@ export function QuestDetailSheet({
             </div>
           )}
 
+          {/* ═══ STEP: Progress (sales_milestone) ═══ */}
+          {currentStep.id === "progress" && isSalesMilestone && salesProgress && (
+            <div className="px-5 pb-4">
+              <div className="text-center pt-2 pb-4 rep-quest-reveal-1">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 mb-3">
+                  <Target size={11} className="text-primary" />
+                  <span className="text-[10px] font-semibold text-primary capitalize tracking-wide">Sales Challenge</span>
+                </div>
+                <h3 className={cn("text-2xl font-extrabold tracking-tight leading-tight", accent.titleColor)}>
+                  {quest.title}
+                </h3>
+                {quest.description && (
+                  <p className="text-[15px] text-muted-foreground/90 leading-relaxed mt-2.5 max-w-[340px] mx-auto">
+                    {quest.description}
+                  </p>
+                )}
+                {quest.event && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {quest.event.name}
+                  </p>
+                )}
+              </div>
+
+              {/* Big progress ring */}
+              <div className="flex flex-col items-center rep-quest-reveal-2">
+                <div className="relative w-40 h-40 mb-4">
+                  {/* Background ring */}
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+                    <circle
+                      cx="60" cy="60" r="52" fill="none"
+                      stroke={accent.progressColor}
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={`${2 * Math.PI * 52}`}
+                      strokeDashoffset={`${2 * Math.PI * 52 * (1 - Math.min(1, salesProgress.current / salesProgress.target))}`}
+                      className="transition-all duration-1000 ease-out"
+                      style={{ filter: `drop-shadow(0 0 8px ${accent.progressColor}40)` }}
+                    />
+                  </svg>
+                  {/* Center text */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    {salesCompleted ? (
+                      <>
+                        <div
+                          className="h-12 w-12 rounded-full flex items-center justify-center mb-1 rep-reward-success-ring"
+                          style={{ backgroundColor: `${accent.progressColor}15` }}
+                        >
+                          <Check size={24} style={{ color: accent.progressColor }} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-3xl font-black tabular-nums text-foreground leading-none">{salesProgress.current}</span>
+                        <span className="text-xs text-muted-foreground mt-0.5">of {salesProgress.target} sales</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Motivational text */}
+                <p className="text-sm font-semibold text-foreground mb-1">
+                  {salesCompleted
+                    ? "Challenge Complete!"
+                    : salesProgress.current === 0
+                      ? "Make your first sale to get started"
+                      : salesProgress.current >= salesProgress.target - 1
+                        ? "Almost there — one more!"
+                        : `${salesProgress.target - salesProgress.current} more sale${salesProgress.target - salesProgress.current !== 1 ? "s" : ""} to go`
+                  }
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {salesCompleted
+                    ? "Your reward has been automatically applied"
+                    : "Progress updates automatically with each sale"
+                  }
+                </p>
+              </div>
+
+              {/* Accent divider */}
+              <div className="px-3 my-4 rep-quest-reveal-3">
+                <div className="h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent.progressColor}25, transparent)` }} />
+              </div>
+
+              {/* Rewards */}
+              <div className="flex items-center justify-center gap-2 rep-quest-reveal-3">
+                <div
+                  className="flex items-center gap-1.5 rounded-full px-4 py-2"
+                  style={{ backgroundColor: `${accent.progressColor}12`, border: `1px solid ${accent.progressColor}25` }}
+                >
+                  <Zap size={14} style={{ color: accent.progressColor }} />
+                  <span className="text-sm font-bold" style={{ color: accent.progressColor }}>
+                    {salesCompleted ? "" : "Earn "}{quest.points_reward > 0 ? `+${quest.points_reward} XP` : ""}
+                  </span>
+                </div>
+                {quest.currency_reward > 0 && (
+                  <div className="flex items-center gap-1.5 rounded-full bg-amber-400/10 border border-amber-400/20 px-4 py-2">
+                    <CurrencyIcon size={14} className="text-amber-400" />
+                    <span className="text-sm font-bold text-amber-400">
+                      {salesCompleted ? "" : "Earn "}{`+${quest.currency_reward} ${currencyName}`}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Expiry */}
+              {expiry && (
+                <div className="flex items-center justify-center gap-1.5 mt-3 rep-quest-reveal-4">
+                  <Clock size={12} className={expiry.urgent ? "text-amber-400" : "text-muted-foreground"} />
+                  <span className={cn("text-xs font-medium", expiry.urgent ? "text-amber-400" : "text-muted-foreground")}>
+                    {expiry.text}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ═══ STEP: Submit ═══ */}
           {isSubmitStep && !submitted && (
             <div className="px-5 pb-4 space-y-4">
@@ -810,7 +937,12 @@ export function QuestDetailSheet({
           <div className="shrink-0 px-5 pb-5 pt-2 relative z-[2]">
             <div className="absolute inset-x-0 -top-6 h-6 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
 
-            {isSubmitStep && isCompleted ? (
+            {/* Sales milestone — single view, just close */}
+            {isSalesMilestone ? (
+              <button onClick={onClose} className="w-full py-3.5 rounded-xl text-sm font-bold text-foreground bg-white/[0.06] border border-white/[0.08] transition-all hover:bg-white/[0.10]">
+                Close
+              </button>
+            ) : isSubmitStep && isCompleted ? (
               <button onClick={onClose} className="w-full py-3.5 rounded-xl text-sm font-bold text-foreground bg-white/[0.06] border border-white/[0.08] transition-all hover:bg-white/[0.10]">
                 Done
               </button>

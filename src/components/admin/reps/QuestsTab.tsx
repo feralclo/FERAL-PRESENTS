@@ -45,6 +45,7 @@ import {
   AlertCircle,
   ArrowLeft,
   Sparkles,
+  Target,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import * as tus from "tus-js-client";
@@ -70,6 +71,7 @@ const QUEST_TYPE_LABELS: Record<QuestType, string> = {
   story_share: "Story Share",
   content_creation: "Content Creation",
   custom: "Custom",
+  sales_milestone: "Sales Challenge",
 };
 
 const QUEST_AUTO_INSTRUCTIONS: Record<QuestType, string> = {
@@ -77,6 +79,7 @@ const QUEST_AUTO_INSTRUCTIONS: Record<QuestType, string> = {
   story_share: "1. Download the image or video below\n2. Share it to your Instagram/TikTok story\n3. Add your personal discount code & link to the story",
   content_creation: "1. Create original content about the event\n2. Post it on TikTok or Instagram\n3. Submit the link as proof",
   custom: "",
+  sales_milestone: "",
 };
 
 const QUEST_FORM_TABS: Record<QuestType, string[]> = {
@@ -84,6 +87,7 @@ const QUEST_FORM_TABS: Record<QuestType, string[]> = {
   story_share: ["Details", "Content", "Publish"],
   content_creation: ["Details", "Platform", "Content", "Publish"],
   custom: ["Details", "Setup", "Publish"],
+  sales_milestone: ["Details", "Target", "Publish"],
 };
 
 const QUEST_STATUS_VARIANT: Record<QuestStatus, "success" | "warning" | "secondary" | "outline"> = {
@@ -121,6 +125,11 @@ export function QuestsTab() {
   const [referenceUrl, setReferenceUrl] = useState("");
   const [usesSound, setUsesSound] = useState(false);
   const [currencyReward, setCurrencyReward] = useState("");
+  const [salesTarget, setSalesTarget] = useState("");
+  const [eventId, setEventId] = useState("");
+
+  // Events list for event picker
+  const [events, setEvents] = useState<Array<{ id: string; name: string }>>([]);
 
   // Video upload state
   const [videoUploading, setVideoUploading] = useState(false);
@@ -154,11 +163,15 @@ export function QuestsTab() {
 
   useEffect(() => { loadQuests(); }, [loadQuests]);
 
-  // Fetch platform XP config on mount
+  // Fetch platform XP config + events on mount
   useEffect(() => {
     fetch("/api/platform/xp-config")
       .then((r) => r.json())
       .then((json) => { if (json.data) setPlatformConfig(json.data); })
+      .catch(() => {});
+    fetch("/api/events")
+      .then((r) => r.json())
+      .then((json) => { if (json.data) setEvents(json.data.map((e: { id: string; name: string }) => ({ id: e.id, name: e.name }))); })
       .catch(() => {});
   }, []);
 
@@ -179,6 +192,7 @@ export function QuestsTab() {
     setPointsReward(String(platformConfig.xp_per_quest_type.social_post));
     setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
     setReferenceUrl(""); setUsesSound(false); setCurrencyReward("0");
+    setSalesTarget(""); setEventId("");
     setVideoError("");
     setDialogStep("type");
     setFormTab(0);
@@ -196,6 +210,8 @@ export function QuestsTab() {
     setExpiresAt(q.expires_at ? q.expires_at.slice(0, 16) : ""); setNotifyReps(q.notify_reps);
     setReferenceUrl(q.reference_url || ""); setUsesSound(q.uses_sound ?? false);
     setCurrencyReward(String(q.currency_reward || 0));
+    setSalesTarget(q.sales_target != null ? String(q.sales_target) : "");
+    setEventId(q.event_id || "");
     setVideoError("");
     setDialogStep("form");
     setFormTab(0);
@@ -216,6 +232,8 @@ export function QuestsTab() {
       max_completions: maxCompletions ? Number(maxCompletions) : null,
       expires_at: expiresAt || null, notify_reps: notifyReps,
       reference_url: referenceUrl.trim() || null, uses_sound: usesSound,
+      sales_target: questType === "sales_milestone" && salesTarget ? Number(salesTarget) : null,
+      event_id: eventId || null,
     };
     try {
       const url = editId ? `/api/reps/quests/${editId}` : "/api/reps/quests";
@@ -451,6 +469,17 @@ export function QuestsTab() {
                   </button>
                 ))}
               </div>
+              <button
+                onClick={() => { handleQuestTypeChange("sales_milestone"); setDialogStep("form"); }}
+                className="w-full flex items-center gap-4 rounded-xl border-2 border-border p-4 text-left transition-all hover:border-primary/50 hover:bg-primary/[0.03] active:scale-[0.98]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/20">
+                  <Target size={18} className="text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Sales Challenge</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">Set a sales target — progress tracks automatically as reps sell tickets</p>
+                </div>
+              </button>
               <div className="grid grid-cols-2 gap-3">
                 {([
                   { type: "content_creation" as QuestType, icon: Sparkles, label: "Content Creation", desc: "Reps create original content" },
@@ -686,6 +715,39 @@ export function QuestsTab() {
                         placeholder="Write your own instructions for reps"
                         rows={4}
                       />
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Tab: Target (sales_milestone) ── */}
+                {currentTabLabel === "Target" && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Sales Target *</Label>
+                      <Input
+                        type="number"
+                        value={salesTarget}
+                        onChange={(e) => setSalesTarget(e.target.value)}
+                        placeholder="e.g. 5"
+                        min="1"
+                      />
+                      <p className="text-[10px] text-muted-foreground">Number of sales a rep needs to achieve. Progress tracks automatically.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Event (optional)</Label>
+                      <select
+                        value={eventId}
+                        onChange={(e) => setEventId(e.target.value)}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                      >
+                        <option value="">All events (global)</option>
+                        {events.map((ev) => (
+                          <option key={ev.id} value={ev.id}>{ev.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-muted-foreground">
+                        Tie to a specific event, or leave blank to count all sales
+                      </p>
                     </div>
                   </div>
                 )}

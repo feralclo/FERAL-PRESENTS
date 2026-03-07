@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   Clock, Check, X, ChevronDown, ChevronUp, Loader2,
-  ExternalLink, AlertCircle, Zap, Camera, Share2, Sparkles,
+  ExternalLink, AlertCircle, Zap, Camera, Share2, Sparkles, Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getQuestAccent } from "@/lib/rep-quest-styles";
@@ -28,6 +28,9 @@ interface Quest {
   expires_at?: string;
   my_submissions: { total: number; approved: number; pending: number; rejected: number };
   max_completions?: number;
+  sales_target?: number;
+  my_progress?: { current: number; target: number };
+  event?: { id: string; name: string; slug: string } | null;
 }
 
 interface Submission {
@@ -47,6 +50,7 @@ const QUEST_TYPE_ICONS: Record<string, typeof Camera> = {
   story_share: Share2,
   content_creation: Sparkles,
   custom: Zap,
+  sales_milestone: Target,
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -97,6 +101,8 @@ export function QuestCard({
   const QuestTypeIcon = QUEST_TYPE_ICONS[quest.quest_type] || Zap;
   const approvedCount = subs?.approved ?? 0;
   const isRepeatable = quest.max_completions && quest.max_completions > 1;
+  const isSalesMilestone = quest.quest_type === "sales_milestone";
+  const salesProgress = quest.my_progress;
 
   return (
     <div
@@ -153,8 +159,34 @@ export function QuestCard({
           <p className="text-[13px] text-muted-foreground/90 leading-relaxed mb-3 line-clamp-2">{quest.description}</p>
         )}
 
+        {/* Progress bar for sales_milestone quests */}
+        {isSalesMilestone && salesProgress && (
+          <div className="mb-2.5 text-left">
+            <div className="flex justify-between mb-1">
+              <span className="text-[10px] text-muted-foreground">
+                {salesProgress.current >= salesProgress.target ? "Completed!" : `${salesProgress.target - salesProgress.current} sale${salesProgress.target - salesProgress.current !== 1 ? "s" : ""} to go`}
+              </span>
+              <span className="text-[10px] font-bold" style={{ color: accent.progressColor }}>
+                {salesProgress.current}/{salesProgress.target}
+              </span>
+            </div>
+            <div className="rep-quest-progress">
+              <div
+                className="rep-quest-progress-fill"
+                style={{
+                  width: `${Math.min(100, (salesProgress.current / salesProgress.target) * 100)}%`,
+                  background: accent.progressColor,
+                }}
+              />
+            </div>
+            {quest.event && (
+              <p className="text-[10px] text-muted-foreground mt-1.5">{quest.event.name}</p>
+            )}
+          </div>
+        )}
+
         {/* Progress bar for repeatable quests */}
-        {isRepeatable && (
+        {!isSalesMilestone && isRepeatable && (
           <div className="mb-2.5 text-left">
             <div className="flex justify-between mb-1">
               <span className="text-[10px] text-muted-foreground">Progress</span>
@@ -202,7 +234,7 @@ export function QuestCard({
 
         {/* View Quest CTA */}
         <div className="mt-3 py-2.5 rounded-xl text-center text-[11px] font-bold uppercase tracking-widest border transition-all duration-200 bg-white/[0.04] border-white/[0.08] text-white/50">
-          View Quest
+          {isSalesMilestone ? "View Progress" : "View Quest"}
         </div>
 
         {/* History toggle */}

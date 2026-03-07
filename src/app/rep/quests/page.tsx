@@ -27,6 +27,8 @@ interface Quest {
   expires_at?: string;
   my_submissions: { total: number; approved: number; pending: number; rejected: number };
   max_completions?: number;
+  sales_target?: number;
+  my_progress?: { current: number; target: number };
   event?: { id: string; name: string; slug: string } | null;
 }
 
@@ -141,12 +143,15 @@ export default function RepQuestsPage() {
 
   const getApprovedCount = (q: Quest): number => q.my_submissions?.approved ?? 0;
 
-  const activeQuests = quests.filter((q) =>
-    !q.max_completions || getApprovedCount(q) < q.max_completions
-  );
-  const completedQuests = quests.filter((q) =>
-    q.max_completions && getApprovedCount(q) >= q.max_completions
-  );
+  const isQuestCompleted = (q: Quest): boolean => {
+    if (q.quest_type === "sales_milestone" && q.my_progress) {
+      return q.my_progress.current >= q.my_progress.target;
+    }
+    return !!(q.max_completions && getApprovedCount(q) >= q.max_completions);
+  };
+
+  const activeQuests = quests.filter((q) => !isQuestCompleted(q));
+  const completedQuests = quests.filter((q) => isQuestCompleted(q));
   const totalAvailableXP = activeQuests.reduce((sum, q) => sum + q.points_reward, 0);
 
   if (loading) {

@@ -119,6 +119,9 @@ export async function attributeSaleToRep(params: {
     // 5. Check milestones (fire-and-forget)
     checkMilestones(repId, orgId, params.eventId).catch(() => {});
 
+    // 5b. Check sales milestone quests (fire-and-forget)
+    checkSalesMilestoneQuests(repId, orgId, params.eventId).catch(() => {});
+
     // 6. Send sale notification email (fire-and-forget)
     sendRepSaleNotification(repId, orgId, params).catch(() => {});
 
@@ -238,6 +241,118 @@ async function checkMilestones(
         `[rep-attribution] Milestone achieved: rep=${repId}, milestone=${milestone.title}`
       );
     }
+  }
+}
+
+/**
+ * Check if any active sales_milestone quests should auto-complete for this rep.
+ * Counts orders attributed to the rep (for the event, since quest start) and
+ * auto-approves if the target is met.
+ */
+async function checkSalesMilestoneQuests(
+  repId: string,
+  orgId: string,
+  eventId: string
+): Promise<void> {
+  const supabase = await getSupabaseAdmin();
+  if (!supabase) return;
+
+  // Get active sales_milestone quests for this org, matching this event or global
+  const { data: quests } = await supabase
+    .from(TABLES.REP_QUESTS)
+    .select("id, sales_target, event_id, starts_at, created_at, points_reward, currency_reward, title")
+    .eq("org_id", orgId)
+    .eq("quest_type", "sales_milestone")
+    .eq("status", "active")
+    .or(`event_id.is.null,event_id.eq.${eventId}`);
+
+  if (!quests || quests.length === 0) return;
+
+  for (const quest of quests) {
+    const target = quest.sales_target || 0;
+    if (target < 1) continue;
+
+    // Check if rep already has an approved submission for this quest
+    const { count: existingCount } = await supabase
+      .from(TABLES.REP_QUEST_SUBMISSIONS)
+      .select("id", { count: "exact", head: true })
+      .eq("quest_id", quest.id)
+      .eq("rep_id", repId)
+      .eq("org_id", orgId)
+      .eq("status", "approved");
+
+    if ((existingCount || 0) > 0) continue; // Already completed
+
+    // Count orders attributed to this rep since quest start
+    const sinceDate = quest.starts_at || quest.created_at;
+    let orderQuery = supabase
+      .from(TABLES.ORDERS)
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .contains("metadata", { rep_id: repId })
+      .gte("created_at", sinceDate)
+      .in("status", ["completed", "paid"]);
+
+    if (quest.event_id) {
+      orderQuery = orderQuery.eq("event_id", quest.event_id);
+    }
+
+    const { count: salesCount } = await orderQuery;
+    if ((salesCount || 0) < target) continue;
+
+    // Target met — auto-complete the quest
+    const { error: insertError } = await supabase
+      .from(TABLES.REP_QUEST_SUBMISSIONS)
+      .insert({
+        org_id: orgId,
+        quest_id: quest.id,
+        rep_id: repId,
+        proof_type: "text",
+        proof_text: `Auto-completed: ${salesCount} sales achieved`,
+        status: "approved",
+        points_awarded: quest.points_reward || 0,
+        reviewed_at: new Date().toISOString(),
+      });
+
+    if (insertError) {
+      // Likely duplicate — skip
+      if (insertError.code === "23505") continue;
+      console.error("[rep-attribution] Failed to auto-complete sales quest:", insertError);
+      continue;
+    }
+
+    // Award points + currency
+    await awardPoints({
+      repId,
+      orgId,
+      points: quest.points_reward || 0,
+      currency: quest.currency_reward || 0,
+      sourceType: "quest",
+      sourceId: quest.id,
+      description: `Quest completed: ${quest.title}`,
+    });
+
+    // Increment quest total_completed
+    await supabase
+      .from(TABLES.REP_QUESTS)
+      .update({ total_completed: (quest as unknown as { total_completed: number }).total_completed + 1 || 1 })
+      .eq("id", quest.id)
+      .eq("org_id", orgId);
+
+    // Notification
+    createNotification({
+      repId,
+      orgId,
+      type: "quest_approved",
+      title: "Quest Complete!",
+      body: `${quest.title} — +${quest.points_reward} XP`,
+      link: "/rep/quests",
+      metadata: { quest_id: quest.id },
+    }).catch(() => {});
+
+    console.log(
+      `[rep-attribution] Sales milestone quest auto-completed: rep=${repId}, quest=${quest.title}, sales=${salesCount}/${target}`
+    );
   }
 }
 

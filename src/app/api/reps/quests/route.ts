@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
       reference_url,
       uses_sound = false,
       currency_reward,
+      sales_target,
     } = body;
 
     if (!title || !quest_type || points_reward == null) {
@@ -103,14 +104,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (
-      !["social_post", "story_share", "content_creation", "custom"].includes(
+      !["social_post", "story_share", "content_creation", "custom", "sales_milestone"].includes(
         quest_type
       )
     ) {
       return NextResponse.json(
         {
           error:
-            "quest_type must be 'social_post', 'story_share', 'content_creation', or 'custom'",
+            "quest_type must be 'social_post', 'story_share', 'content_creation', 'custom', or 'sales_milestone'",
         },
         { status: 400 }
       );
@@ -121,6 +122,16 @@ export async function POST(request: NextRequest) {
         { error: "status must be 'active', 'paused', 'archived', or 'draft'" },
         { status: 400 }
       );
+    }
+
+    // sales_milestone requires a sales_target
+    if (quest_type === "sales_milestone") {
+      if (!sales_target || Number(sales_target) < 1) {
+        return NextResponse.json(
+          { error: "sales_milestone quests require a sales_target of at least 1" },
+          { status: 400 }
+        );
+      }
     }
 
     if (!["tiktok", "instagram", "any"].includes(platform)) {
@@ -166,6 +177,7 @@ export async function POST(request: NextRequest) {
         notify_reps,
         reference_url: reference_url?.trim() || null,
         uses_sound: Boolean(uses_sound),
+        sales_target: quest_type === "sales_milestone" ? Number(sales_target) : null,
       })
       .select()
       .single();

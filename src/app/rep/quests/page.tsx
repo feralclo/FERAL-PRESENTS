@@ -276,7 +276,7 @@ export default function RepQuestsPage() {
           currencyName={currencyName}
           discountCode={discountCode}
           shareLink={
-            detailQuest.quest_type === "story_share" && discountCode && detailQuest.event?.slug
+            discountCode && detailQuest.event?.slug
               ? `${typeof window !== "undefined" ? window.location.origin : ""}/event/${detailQuest.event.slug}?ref=${discountCode}`
               : undefined
           }

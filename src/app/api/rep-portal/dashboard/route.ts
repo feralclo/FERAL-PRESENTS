@@ -114,15 +114,17 @@ export async function GET() {
       leaderboardPosition = idx >= 0 ? idx + 1 : null;
     }
 
-    // Flatten active_events to match frontend interface: { id, name, sales_count, revenue }
+    // Flatten active_events to match frontend interface
     const flatEvents = (activeEventsResult.data || []).map(
       (ae: Record<string, unknown>) => {
         const evt = ae.event as Record<string, unknown> | null;
         return {
           id: ae.event_id || ae.id,
           name: evt?.name || "Unknown Event",
+          slug: evt?.slug || "",
           sales_count: ae.sales_count || 0,
           revenue: ae.revenue || 0,
+          cover_image: evt?.cover_image || undefined,
         };
       }
     );

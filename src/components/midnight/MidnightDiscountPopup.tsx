@@ -109,6 +109,15 @@ export function MidnightDiscountPopup() {
       return;
     }
 
+    // If a discount code is already applied (e.g. via ?ref= rep link),
+    // don't show the popup — the customer already has a discount.
+    try {
+      if (sessionStorage.getItem("feral_popup_discount")) {
+        window.dispatchEvent(new CustomEvent("feral_popup_dismissed"));
+        return;
+      }
+    } catch { /* sessionStorage unavailable */ }
+
     if (isDismissed(config.dismiss_days)) {
       window.dispatchEvent(new CustomEvent("feral_popup_dismissed"));
       return;

@@ -42,7 +42,7 @@ interface DashboardData {
   leaderboard_position: number | null;
   active_quests: number;
   pending_rewards: number;
-  active_events: { id: string; name: string; sales_count: number; revenue: number; cover_image?: string }[];
+  active_events: { id: string; name: string; slug: string; sales_count: number; revenue: number; cover_image?: string }[];
   recent_sales: { id: string; order_number: string; total: number; created_at: string; points_earned?: number }[];
   discount_codes: { code: string }[];
   settings?: { points_per_sale: number; currency_per_sale: number };
@@ -114,9 +114,19 @@ export default function RepDashboardPage() {
     })();
   }, [loadKey]);
 
+  const getShareUrl = (code: string) => {
+    const event = data?.active_events?.[0];
+    if (event?.slug) {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      return `${origin}/event/${event.slug}?ref=${code}`;
+    }
+    return null;
+  };
+
   const copyCode = async (code: string) => {
     try {
-      await navigator.clipboard.writeText(code);
+      const url = getShareUrl(code);
+      await navigator.clipboard.writeText(url || code);
       setCopiedCode(true);
       setCopyFlash(true);
       setTimeout(() => setCopiedCode(false), 2000);
@@ -127,8 +137,12 @@ export default function RepDashboardPage() {
   };
 
   const shareCode = async (code: string) => {
+    const url = getShareUrl(code);
     try {
-      await navigator.share({ text: `Use my code ${code} for a discount!` });
+      await navigator.share({
+        text: `Use my code ${code} for a discount!`,
+        ...(url ? { url } : {}),
+      });
     } catch {
       // Fallback to copy
       copyCode(code);
@@ -311,7 +325,7 @@ export default function RepDashboardPage() {
               {data.discount_codes[0].code}
             </p>
             <p className="text-xs text-muted-foreground mb-4">
-              Share this code — every sale earns you{" "}
+              Share your link — every sale earns you{" "}
               <span className="text-primary font-bold">+{data.settings?.points_per_sale ?? 10} XP</span>{" "}
               <span className="text-amber-400 font-bold">+{data.settings?.currency_per_sale ?? 10} {data.currency_name}</span>
             </p>
@@ -321,7 +335,7 @@ export default function RepDashboardPage() {
                 onClick={() => copyCode(data.discount_codes[0].code)}
               >
                 {copiedCode ? <Check size={12} /> : <Copy size={12} />}
-                {copiedCode ? "Copied" : "Copy"}
+                {copiedCode ? "Copied!" : "Copy Link"}
               </Button>
               {typeof navigator !== "undefined" && "share" in navigator && (
                 <Button

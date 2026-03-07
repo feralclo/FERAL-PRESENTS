@@ -80,9 +80,9 @@ const QUEST_AUTO_INSTRUCTIONS: Record<QuestType, string> = {
 };
 
 const QUEST_FORM_TABS: Record<QuestType, string[]> = {
-  social_post: ["Details", "Platform", "Publish"],
+  social_post: ["Details", "Platform", "Content", "Publish"],
   story_share: ["Details", "Content", "Publish"],
-  content_creation: ["Details", "Platform", "Publish"],
+  content_creation: ["Details", "Platform", "Content", "Publish"],
   custom: ["Details", "Setup", "Publish"],
 };
 
@@ -501,9 +501,12 @@ export function QuestsTab() {
 
               {/* Tab content */}
               <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                {(() => {
+                  const currentTabLabel = QUEST_FORM_TABS[questType][formTab];
+                  return (<>
 
                 {/* ── Tab: Details (all types) ── */}
-                {formTab === 0 && (
+                {currentTabLabel === "Details" && (
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Title *</Label>
@@ -517,7 +520,7 @@ export function QuestsTab() {
                 )}
 
                 {/* ── Tab: Platform (social_post / content_creation) ── */}
-                {formTab === 1 && (questType === "social_post" || questType === "content_creation") && (
+                {currentTabLabel === "Platform" && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-2">
                       {([
@@ -584,18 +587,22 @@ export function QuestsTab() {
                   </div>
                 )}
 
-                {/* ── Tab: Content (story_share) ── */}
-                {formTab === 1 && questType === "story_share" && (
+                {/* ── Tab: Content (story_share + social_post + content_creation) ── */}
+                {currentTabLabel === "Content" && (
                   <div className="space-y-4">
-                    <p className="text-xs text-muted-foreground">Upload the image or video reps will download and share on their story. You can add one or both.</p>
+                    <p className="text-xs text-muted-foreground">
+                      {questType === "story_share"
+                        ? "Upload the image or video reps will download and share on their story. You can add one or both."
+                        : "Optionally upload an image or video for reps to download. Useful when they need specific content to post."}
+                    </p>
                     <ImageUpload
-                      label="Story Image"
+                      label={questType === "story_share" ? "Story Image" : "Downloadable Image"}
                       value={imageUrl}
                       onChange={setImageUrl}
                       uploadKey={editId ? `quest_${editId}_image` : undefined}
                     />
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-1.5"><Video size={12} /> Story Video</Label>
+                      <Label className="flex items-center gap-1.5"><Video size={12} /> {questType === "story_share" ? "Story Video" : "Downloadable Video"}</Label>
                       {videoUrl ? (
                         <div className="space-y-2">
                           {isMuxPlaybackId(videoUrl) ? (
@@ -648,7 +655,7 @@ export function QuestsTab() {
                 )}
 
                 {/* ── Tab: Setup (custom) ── */}
-                {formTab === 1 && questType === "custom" && (
+                {currentTabLabel === "Setup" && (
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Platform</Label>
@@ -684,26 +691,17 @@ export function QuestsTab() {
                 )}
 
                 {/* ── Tab: Publish (all types) ── */}
-                {formTab === 2 && (
+                {currentTabLabel === "Publish" && (
                   <div className="space-y-4">
-                    {questType === "story_share" ? (
-                      <div className="space-y-2">
-                        <ImageUpload
-                          label="Card Banner"
-                          value={bannerImageUrl}
-                          onChange={setBannerImageUrl}
-                          uploadKey={editId ? `quest_${editId}_banner` : undefined}
-                        />
-                        <p className="text-[10px] text-muted-foreground">Optional decorative image shown on the quest card</p>
-                      </div>
-                    ) : (
+                    <div className="space-y-2">
                       <ImageUpload
-                        label="Quest Card Image"
-                        value={imageUrl}
-                        onChange={setImageUrl}
-                        uploadKey={editId ? `quest_${editId}_image` : undefined}
+                        label="Card Banner"
+                        value={bannerImageUrl}
+                        onChange={setBannerImageUrl}
+                        uploadKey={editId ? `quest_${editId}_banner` : undefined}
                       />
-                    )}
+                      <p className="text-[10px] text-muted-foreground">Optional decorative image shown on the quest card background</p>
+                    </div>
 
                     <div className="flex items-center gap-3">
                       <div className="h-px flex-1 bg-border" />
@@ -750,6 +748,8 @@ export function QuestsTab() {
                     </div>
                   </div>
                 )}
+                  </>);
+                })()}
               </div>
 
               <DialogFooter>

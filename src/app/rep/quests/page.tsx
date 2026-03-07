@@ -4,10 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Compass, Zap } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { EmptyState, RepPageError } from "@/components/rep";
+import { RepPageError } from "@/components/rep";
 import { QuestCard } from "@/components/rep/QuestCard";
 import { QuestDetailSheet } from "@/components/rep/QuestDetailSheet";
-import { QuestSubmitSheet } from "@/components/rep/QuestSubmitSheet";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -53,9 +52,8 @@ export default function RepQuestsPage() {
   const [currencyName, setCurrencyName] = useState("FRL");
   const [discountCode, setDiscountCode] = useState<string | undefined>();
 
-  // Detail + submit modals
+  // Detail modal
   const [detailQuest, setDetailQuest] = useState<Quest | null>(null);
-  const [submitQuest, setSubmitQuest] = useState<Quest | null>(null);
 
   // Fullscreen image
   const [mediaFullscreen, setMediaFullscreen] = useState(false);
@@ -67,11 +65,10 @@ export default function RepQuestsPage() {
 
   // Modal stack: Escape key + body scroll lock
   useEffect(() => {
-    if (!detailQuest && !mediaFullscreen && !submitQuest) return;
+    if (!detailQuest && !mediaFullscreen) return;
     document.body.style.overflow = "hidden";
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        if (submitQuest) { setSubmitQuest(null); return; }
         if (mediaFullscreen) { setMediaFullscreen(false); return; }
         if (detailQuest) { setDetailQuest(null); }
       }
@@ -81,7 +78,7 @@ export default function RepQuestsPage() {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", onKey);
     };
-  }, [detailQuest, mediaFullscreen, submitQuest]);
+  }, [detailQuest, mediaFullscreen]);
 
   const loadQuests = useCallback(async () => {
     try {
@@ -134,8 +131,7 @@ export default function RepQuestsPage() {
   };
 
   const handleSubmitComplete = () => {
-    const questId = submitQuest?.id;
-    setSubmitQuest(null);
+    const questId = detailQuest?.id;
     setDetailQuest(null);
     loadQuests();
     if (questId && expandedQuestId === questId) {
@@ -183,8 +179,6 @@ export default function RepQuestsPage() {
       </div>
     );
   }
-
-  const displayQuests = tab === "active" ? activeQuests : completedQuests;
 
   return (
     <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
@@ -272,7 +266,7 @@ export default function RepQuestsPage() {
         <QuestDetailSheet
           quest={detailQuest}
           onClose={() => { setDetailQuest(null); }}
-          onSubmit={(q) => setSubmitQuest(q)}
+          onSubmitted={handleSubmitComplete}
           onExpandImage={() => setMediaFullscreen(true)}
           currencyName={currencyName}
           discountCode={discountCode}
@@ -310,16 +304,6 @@ export default function RepQuestsPage() {
         document.getElementById("rep-portal-root") || document.body
       )}
 
-      {/* Submit Proof Modal — portalled, stacks on top of detail modal */}
-      {submitQuest && typeof document !== "undefined" && createPortal(
-        <QuestSubmitSheet
-          quest={submitQuest}
-          onClose={() => setSubmitQuest(null)}
-          onSubmitted={handleSubmitComplete}
-          currencyName={currencyName}
-        />,
-        document.getElementById("rep-portal-root") || document.body
-      )}
     </div>
   );
 }

@@ -457,12 +457,9 @@ export function QuestDetailSheet({
 
               {/* Rewards — compact pills */}
               <div className="flex items-center justify-center gap-2 mb-4 rep-quest-reveal-2">
-                <div
-                  className="flex items-center gap-1.5 rounded-full px-4 py-2"
-                  style={{ backgroundColor: `${accent.progressColor}12`, border: `1px solid ${accent.progressColor}25` }}
-                >
-                  <Zap size={14} style={{ color: accent.progressColor }} />
-                  <span className="text-sm font-bold" style={{ color: accent.progressColor }}>+{quest.points_reward} XP</span>
+                <div className="flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-4 py-2">
+                  <Zap size={14} className="text-primary" />
+                  <span className="text-sm font-bold text-primary">+{quest.points_reward} XP</span>
                 </div>
                 {hasDualReward && (
                   <div className="flex items-center gap-1.5 rounded-full bg-amber-400/10 border border-amber-400/20 px-4 py-2">
@@ -725,12 +722,9 @@ export function QuestDetailSheet({
 
               {/* Rewards */}
               <div className="flex items-center justify-center gap-2 rep-quest-reveal-3">
-                <div
-                  className="flex items-center gap-1.5 rounded-full px-4 py-2"
-                  style={{ backgroundColor: `${accent.progressColor}12`, border: `1px solid ${accent.progressColor}25` }}
-                >
-                  <Zap size={14} style={{ color: accent.progressColor }} />
-                  <span className="text-sm font-bold" style={{ color: accent.progressColor }}>
+                <div className="flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-4 py-2">
+                  <Zap size={14} className="text-primary" />
+                  <span className="text-sm font-bold text-primary">
                     {salesCompleted ? "" : "Earn "}{quest.points_reward > 0 ? `+${quest.points_reward} XP` : ""}
                   </span>
                 </div>
@@ -757,7 +751,7 @@ export function QuestDetailSheet({
           )}
 
           {/* ═══ STEP: Submit ═══ */}
-          {isSubmitStep && !submitted && (
+          {isSubmitStep && !submitted && !isSalesMilestone && (
             <div className="px-5 pb-4 space-y-4">
               {isCompleted ? (
                 <div className="text-center py-8 rep-quest-reveal-1">
@@ -914,12 +908,9 @@ export function QuestDetailSheet({
               <p className="text-lg font-extrabold text-foreground mb-1">Quest Submitted!</p>
               <p className="text-sm text-muted-foreground mb-5">Your proof is being reviewed</p>
               <div className="flex items-center justify-center gap-2.5">
-                <div
-                  className="inline-flex items-center gap-1.5 rounded-full px-4 py-2"
-                  style={{ backgroundColor: `${accent.progressColor}10`, border: `1px solid ${accent.progressColor}25` }}
-                >
-                  <Zap size={14} style={{ color: accent.progressColor }} />
-                  <span className="text-sm font-bold" style={{ color: accent.progressColor }}>+{quest.points_reward} XP</span>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-4 py-2">
+                  <Zap size={14} className="text-primary" />
+                  <span className="text-sm font-bold text-primary">+{quest.points_reward} XP</span>
                 </div>
                 {hasDualReward && (
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 border border-amber-400/20 px-4 py-2">

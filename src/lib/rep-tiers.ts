@@ -1,7 +1,13 @@
 /**
- * Rep tier system — maps level ranges to tier metadata.
+ * Rep tier system — maps levels to tier metadata using platform config.
  * Used by Dashboard, Profile, Layout, and anywhere tier visuals appear.
+ *
+ * Tiers are configured in the platform XP config. This file provides
+ * the visual mapping (CSS classes, colors) for each tier.
  */
+
+import { getTierForLevel, DEFAULT_TIERS } from "@/lib/xp-levels";
+import type { TierDefinition } from "@/lib/xp-levels";
 
 export interface RepTier {
   name: string;
@@ -12,43 +18,36 @@ export interface RepTier {
   bgColor: string;
 }
 
-export function getTierFromLevel(level: number): RepTier {
-  if (level >= 9) {
-    return {
-      name: "Mythic",
-      ring: "rep-avatar-ring-mythic",
-      profileRing: "rep-profile-ring rep-profile-ring-mythic",
-      color: "#F59E0B",
-      textColor: "text-warning",
-      bgColor: "bg-warning/10",
-    };
-  }
-  if (level >= 7) {
-    return {
-      name: "Elite",
-      ring: "rep-avatar-ring-elite",
-      profileRing: "rep-profile-ring rep-profile-ring-elite",
-      color: "#8B5CF6",
-      textColor: "text-primary",
-      bgColor: "bg-primary/10",
-    };
-  }
-  if (level >= 4) {
-    return {
-      name: "Pro",
-      ring: "rep-avatar-ring-pro",
-      profileRing: "rep-profile-ring rep-profile-ring-pro",
-      color: "#38BDF8",
-      textColor: "text-info",
-      bgColor: "bg-info/10",
-    };
-  }
+/**
+ * CSS class map for avatar rings.
+ * Keys are tier names (lowercase). Falls back to "rookie" styling.
+ */
+const TIER_RING_MAP: Record<string, { ring: string; profileRing: string }> = {
+  rookie:  { ring: "rep-avatar-ring-rookie",  profileRing: "rep-profile-ring rep-profile-ring-rookie" },
+  rising:  { ring: "rep-avatar-ring-rising",  profileRing: "rep-profile-ring rep-profile-ring-rising" },
+  pro:     { ring: "rep-avatar-ring-pro",     profileRing: "rep-profile-ring rep-profile-ring-pro" },
+  veteran: { ring: "rep-avatar-ring-veteran", profileRing: "rep-profile-ring rep-profile-ring-veteran" },
+  elite:   { ring: "rep-avatar-ring-elite",   profileRing: "rep-profile-ring rep-profile-ring-elite" },
+  legend:  { ring: "rep-avatar-ring-legend",  profileRing: "rep-profile-ring rep-profile-ring-legend" },
+  mythic:  { ring: "rep-avatar-ring-mythic",  profileRing: "rep-profile-ring rep-profile-ring-mythic" },
+  // Backward compat for old tier names
+  starter: { ring: "rep-avatar-ring-rookie",  profileRing: "rep-profile-ring rep-profile-ring-rookie" },
+};
+
+/**
+ * Get the full RepTier for a level, including CSS classes and colors.
+ */
+export function getTierFromLevel(level: number, tiers?: TierDefinition[]): RepTier {
+  const tier = getTierForLevel(level, tiers || DEFAULT_TIERS);
+  const key = tier.name.toLowerCase();
+  const ringClasses = TIER_RING_MAP[key] || TIER_RING_MAP.rookie;
+
   return {
-    name: "Starter",
-    ring: "rep-avatar-ring-starter",
-    profileRing: "rep-profile-ring rep-profile-ring-starter",
-    color: "#94A3B8",
-    textColor: "text-muted-foreground",
-    bgColor: "bg-muted-foreground/10",
+    name: tier.name,
+    ring: ringClasses.ring,
+    profileRing: ringClasses.profileRing,
+    color: tier.color,
+    textColor: `text-[${tier.color}]`,
+    bgColor: `bg-[${tier.color}]/10`,
   };
 }

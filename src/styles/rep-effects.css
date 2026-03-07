@@ -40,21 +40,41 @@ body:has([data-rep]) > .noise {
   border-style: solid;
   transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
+/* Tier 1: Rookie (Levels 1-4) */
+.rep-avatar-ring-rookie,
 .rep-avatar-ring-starter {
   border-color: rgba(148, 163, 184, 0.5);
   box-shadow: 0 0 16px rgba(148, 163, 184, 0.15);
 }
-.rep-avatar-ring-pro {
+/* Tier 2: Rising (Levels 5-9) */
+.rep-avatar-ring-rising {
   border-color: rgba(56, 189, 248, 0.5);
   box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
 }
-.rep-avatar-ring-elite {
+/* Tier 3: Pro (Levels 10-14) */
+.rep-avatar-ring-pro {
+  border-color: rgba(52, 211, 153, 0.5);
+  box-shadow: 0 0 18px rgba(52, 211, 153, 0.2);
+}
+/* Tier 4: Veteran (Levels 15-19) */
+.rep-avatar-ring-veteran {
   border-color: rgba(139, 92, 246, 0.5);
   box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
 }
-.rep-avatar-ring-mythic {
+/* Tier 5: Elite (Levels 20-29) */
+.rep-avatar-ring-elite {
   border-color: rgba(245, 158, 11, 0.5);
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.12);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+}
+/* Tier 6: Legend (Levels 30-39) */
+.rep-avatar-ring-legend {
+  border-color: rgba(244, 63, 94, 0.5);
+  box-shadow: 0 0 22px rgba(244, 63, 94, 0.2);
+}
+/* Tier 7: Mythic (Levels 40-50) */
+.rep-avatar-ring-mythic {
+  border-color: rgba(255, 215, 0, 0.6);
+  box-shadow: 0 0 24px rgba(255, 215, 0, 0.15);
 }
 
 /* ══════════════════════════════════════════════════════════════════════

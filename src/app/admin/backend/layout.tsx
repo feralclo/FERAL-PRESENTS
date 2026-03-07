@@ -31,6 +31,7 @@ interface BackendNavItem {
 const BACKEND_NAV: BackendNavItem[] = [
   { href: "/admin/backend/", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/backend/tenants/", label: "Tenants", icon: Users },
+  { href: "/admin/backend/xp/", label: "XP Economy", icon: Zap },
   { href: "/admin/backend/health/", label: "Platform Health", icon: HeartPulse },
   { href: "/admin/backend/payment-health/", label: "Payment Health", icon: Activity },
   { href: "/admin/backend/connect/", label: "Connect", icon: Zap },

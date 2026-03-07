@@ -2,30 +2,58 @@ import { TABLES, ORG_ID, repsKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { PointsSourceType, RepProgramSettings, PlatformXPConfig } from "@/types/reps";
 import { DEFAULT_REP_PROGRAM_SETTINGS, DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
+import { levelFromXp, DEFAULT_LEVELING, getTierName, DEFAULT_TIERS, generateThresholds, generateLevelNames } from "@/lib/xp-levels";
+import type { LevelingConfig, TierDefinition } from "@/lib/xp-levels";
 
 const PLATFORM_XP_KEY = "entry_platform_xp";
 
 /**
  * Fetch the platform XP config (shared across all orgs).
+ * Hydrates backward-compat fields (level_thresholds, level_names) from formula.
  */
 export async function getPlatformXPConfig(): Promise<PlatformXPConfig> {
+  let config = DEFAULT_PLATFORM_XP_CONFIG;
   try {
     const supabase = await getSupabaseAdmin();
-    if (!supabase) return DEFAULT_PLATFORM_XP_CONFIG;
+    if (supabase) {
+      const { data } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", PLATFORM_XP_KEY)
+        .single();
 
-    const { data } = await supabase
-      .from(TABLES.SITE_SETTINGS)
-      .select("data")
-      .eq("key", PLATFORM_XP_KEY)
-      .single();
-
-    if (data?.data && typeof data.data === "object") {
-      return { ...DEFAULT_PLATFORM_XP_CONFIG, ...(data.data as Partial<PlatformXPConfig>) };
+      if (data?.data && typeof data.data === "object") {
+        const saved = data.data as Partial<PlatformXPConfig>;
+        config = {
+          ...DEFAULT_PLATFORM_XP_CONFIG,
+          ...saved,
+          xp_per_quest_type: {
+            ...DEFAULT_PLATFORM_XP_CONFIG.xp_per_quest_type,
+            ...(saved.xp_per_quest_type || {}),
+          },
+          position_xp: {
+            ...DEFAULT_PLATFORM_XP_CONFIG.position_xp,
+            ...(saved.position_xp || {}),
+          },
+          leveling: {
+            ...DEFAULT_PLATFORM_XP_CONFIG.leveling,
+            ...(saved.leveling || {}),
+          },
+          tiers: saved.tiers || DEFAULT_PLATFORM_XP_CONFIG.tiers,
+        };
+      }
     }
   } catch {
     // Not found — use defaults
   }
-  return DEFAULT_PLATFORM_XP_CONFIG;
+
+  // Hydrate backward-compat fields from formula
+  const leveling: LevelingConfig = config.leveling || DEFAULT_LEVELING;
+  const tiers: TierDefinition[] = config.tiers || DEFAULT_TIERS;
+  config.level_thresholds = generateThresholds(leveling);
+  config.level_names = generateLevelNames(leveling, tiers);
+
+  return config;
 }
 
 /**
@@ -60,22 +88,16 @@ export async function getRepSettings(
 }
 
 /**
- * Calculate level from total points earned (lifetime, not current balance).
- * Uses the thresholds from program settings.
+ * Calculate level from total XP using the formula-based leveling curve.
+ * The `thresholds` parameter is ignored — kept for call-site compat.
+ * Uses the platform leveling config directly.
  */
 export function calculateLevel(
   pointsBalance: number,
-  thresholds: number[] = DEFAULT_REP_PROGRAM_SETTINGS.level_thresholds
+  _thresholds?: number[],
+  leveling?: LevelingConfig,
 ): number {
-  let level = 1;
-  for (const threshold of thresholds) {
-    if (pointsBalance >= threshold) {
-      level++;
-    } else {
-      break;
-    }
-  }
-  return Math.min(level, thresholds.length + 1);
+  return levelFromXp(pointsBalance, leveling || DEFAULT_LEVELING);
 }
 
 /**
@@ -143,7 +165,7 @@ export async function awardPoints(params: {
       .single();
     const oldLevel = repFull?.level || 1;
 
-    const newLevel = calculateLevel(newBalance, platformConfig.level_thresholds);
+    const newLevel = calculateLevel(newBalance, undefined, platformConfig.leveling);
 
     await supabase
       .from(TABLES.REPS)
@@ -158,8 +180,9 @@ export async function awardPoints(params: {
 
     // Detect level-up and fire notification + email (fire-and-forget)
     if (newLevel > oldLevel && params.points > 0) {
-      const oldLevelName = platformConfig.level_names[oldLevel - 1] || `Level ${oldLevel}`;
-      const newLevelName = platformConfig.level_names[newLevel - 1] || `Level ${newLevel}`;
+      const configTiers = (platformConfig.tiers || DEFAULT_TIERS) as TierDefinition[];
+      const oldLevelName = getTierName(oldLevel, configTiers);
+      const newLevelName = getTierName(newLevel, configTiers);
 
       import("@/lib/rep-notifications").then(({ createNotification }) => {
         createNotification({

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requirePlatformOwner } from "@/lib/auth";
 import { getPlatformXPConfig } from "@/lib/rep-points";
 import type { PlatformXPConfig } from "@/types/reps";
 import * as Sentry from "@sentry/nextjs";
@@ -9,7 +9,7 @@ import * as Sentry from "@sentry/nextjs";
 const PLATFORM_XP_KEY = "entry_platform_xp";
 
 /**
- * GET /api/platform/xp-config — Get platform XP config (admin auth required)
+ * GET /api/platform/xp-config — Get platform XP config (any authenticated admin)
  */
 export async function GET() {
   try {
@@ -25,11 +25,11 @@ export async function GET() {
 }
 
 /**
- * POST /api/platform/xp-config — Save platform XP config (admin auth required)
+ * POST /api/platform/xp-config — Save platform XP config (platform owner only)
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth();
+    const auth = await requirePlatformOwner();
     if (auth.error) return auth.error;
 
     const body = await request.json();
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate fields
+    // Validate XP fields
     if (config.xp_per_sale !== undefined && (typeof config.xp_per_sale !== "number" || config.xp_per_sale < 0)) {
       return NextResponse.json({ error: "xp_per_sale must be a non-negative number" }, { status: 400 });
     }
@@ -52,11 +52,34 @@ export async function POST(request: NextRequest) {
     if (config.position_xp !== undefined && typeof config.position_xp !== "object") {
       return NextResponse.json({ error: "position_xp must be an object" }, { status: 400 });
     }
-    if (config.level_thresholds !== undefined && (!Array.isArray(config.level_thresholds) || config.level_thresholds.some((t: unknown) => typeof t !== "number" || (t as number) < 0))) {
-      return NextResponse.json({ error: "level_thresholds must be an array of non-negative numbers" }, { status: 400 });
+
+    // Validate leveling
+    if (config.leveling !== undefined) {
+      if (typeof config.leveling !== "object") {
+        return NextResponse.json({ error: "leveling must be an object" }, { status: 400 });
+      }
+      const { base_xp, exponent, max_level } = config.leveling;
+      if (base_xp !== undefined && (typeof base_xp !== "number" || base_xp < 1)) {
+        return NextResponse.json({ error: "leveling.base_xp must be >= 1" }, { status: 400 });
+      }
+      if (exponent !== undefined && (typeof exponent !== "number" || exponent < 1 || exponent > 3)) {
+        return NextResponse.json({ error: "leveling.exponent must be between 1 and 3" }, { status: 400 });
+      }
+      if (max_level !== undefined && (typeof max_level !== "number" || max_level < 5 || max_level > 100)) {
+        return NextResponse.json({ error: "leveling.max_level must be between 5 and 100" }, { status: 400 });
+      }
     }
-    if (config.level_names !== undefined && (!Array.isArray(config.level_names) || config.level_names.some((n: unknown) => typeof n !== "string"))) {
-      return NextResponse.json({ error: "level_names must be an array of strings" }, { status: 400 });
+
+    // Validate tiers
+    if (config.tiers !== undefined) {
+      if (!Array.isArray(config.tiers) || config.tiers.length < 1) {
+        return NextResponse.json({ error: "tiers must be a non-empty array" }, { status: 400 });
+      }
+      for (const t of config.tiers) {
+        if (!t.name || typeof t.min_level !== "number" || !t.color) {
+          return NextResponse.json({ error: "Each tier needs name, min_level, and color" }, { status: 400 });
+        }
+      }
     }
 
     const supabase = await getSupabaseAdmin();
@@ -77,6 +100,14 @@ export async function POST(request: NextRequest) {
         ...currentConfig.position_xp,
         ...(config.position_xp || {}),
       },
+      leveling: {
+        ...currentConfig.leveling,
+        ...(config.leveling || {}),
+      },
+      tiers: config.tiers || currentConfig.tiers,
+      // Don't persist deprecated fields — they're generated at runtime
+      level_thresholds: [],
+      level_names: [],
     };
 
     const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert(

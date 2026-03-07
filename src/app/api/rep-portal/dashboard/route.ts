@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 import { getRepSettings, getPlatformXPConfig } from "@/lib/rep-points";
+import { getLevelProgress, getTierName, DEFAULT_LEVELING, DEFAULT_TIERS } from "@/lib/xp-levels";
+import type { LevelingConfig, TierDefinition } from "@/lib/xp-levels";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -94,17 +96,14 @@ export async function GET() {
 
     const settings = settingsResult;
 
-    // Use platform config for level names/thresholds
+    // Use formula-based leveling from platform config
     const platformConfig = await getPlatformXPConfig();
-    const levelIndex = rep.level - 1;
-    const levelName =
-      platformConfig.level_names[levelIndex] || `Level ${rep.level}`;
-    const currentLevelPoints =
-      levelIndex > 0 ? platformConfig.level_thresholds[levelIndex - 1] : 0;
-    const nextLevelPoints =
-      levelIndex < platformConfig.level_thresholds.length
-        ? platformConfig.level_thresholds[levelIndex]
-        : null;
+    const leveling: LevelingConfig = platformConfig.leveling || DEFAULT_LEVELING;
+    const tiers: TierDefinition[] = (platformConfig.tiers || DEFAULT_TIERS) as TierDefinition[];
+    const progress = getLevelProgress(rep.points_balance, leveling);
+    const levelName = getTierName(progress.level, tiers);
+    const currentLevelPoints = progress.currentLevelXp;
+    const nextLevelPoints = progress.nextLevelXp;
 
     // Calculate leaderboard position
     let leaderboardPosition: number | null = null;

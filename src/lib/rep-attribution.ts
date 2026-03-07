@@ -439,7 +439,7 @@ export async function reverseRepAttribution(params: {
 
     // Recalculate level from new balance (RPC can't do this — thresholds are in site_settings)
     const platformConfig2 = await getPlatformXPConfig();
-    const newLevel = calculateLevel(newBalance, platformConfig2.level_thresholds);
+    const newLevel = calculateLevel(newBalance, undefined, platformConfig2.leveling);
 
     await supabase
       .from(TABLES.REPS)

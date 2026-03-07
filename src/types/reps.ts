@@ -307,7 +307,9 @@ export interface RepEventPositionReward {
 
 // ─── Platform XP Config ────────────────────────────────────────────────────
 export interface PlatformXPConfig {
+  /** XP awarded per ticket sold */
   xp_per_sale: number;
+  /** XP awarded per quest type completion */
   xp_per_quest_type: {
     social_post: number;
     story_share: number;
@@ -315,34 +317,53 @@ export interface PlatformXPConfig {
     custom: number;
     sales_milestone: number;
   };
+  /** XP awarded by leaderboard position (key = position number) */
   position_xp: Record<number, number>;
+  /** Leveling curve parameters */
+  leveling: {
+    base_xp: number;
+    exponent: number;
+    max_level: number;
+  };
+  /** Tier definitions — visual groupings of levels */
+  tiers: {
+    name: string;
+    min_level: number;
+    color: string;
+  }[];
+  /** @deprecated — generated from leveling formula for backward compat */
   level_thresholds: number[];
+  /** @deprecated — generated from tiers for backward compat */
   level_names: string[];
 }
 
 export const DEFAULT_PLATFORM_XP_CONFIG: PlatformXPConfig = {
-  xp_per_sale: 10,
+  xp_per_sale: 25,
   xp_per_quest_type: {
-    social_post: 50,
-    story_share: 30,
-    content_creation: 100,
-    custom: 50,
+    social_post: 100,
+    story_share: 50,
+    content_creation: 150,
+    custom: 75,
     sales_milestone: 200,
   },
-  position_xp: { 1: 500, 2: 250, 3: 100 },
-  level_thresholds: [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000],
-  level_names: [
-    "Rookie",
-    "Starter",
-    "Rising",
-    "Proven",
-    "Veteran",
-    "Elite",
-    "Champion",
-    "Legend",
-    "Icon",
-    "Mythic",
+  position_xp: { 1: 500, 2: 300, 3: 150 },
+  leveling: {
+    base_xp: 100,
+    exponent: 1.5,
+    max_level: 50,
+  },
+  tiers: [
+    { name: "Rookie", min_level: 1, color: "#94A3B8" },
+    { name: "Rising", min_level: 5, color: "#38BDF8" },
+    { name: "Pro", min_level: 10, color: "#34D399" },
+    { name: "Veteran", min_level: 15, color: "#8B5CF6" },
+    { name: "Elite", min_level: 20, color: "#F59E0B" },
+    { name: "Legend", min_level: 30, color: "#F43F5E" },
+    { name: "Mythic", min_level: 40, color: "#FFD700" },
   ],
+  // Backward compat — these are generated from the formula at runtime
+  level_thresholds: [],
+  level_names: [],
 };
 
 // ─── Notifications ──────────────────────────────────────────────────────────

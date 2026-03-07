@@ -1,206 +1,243 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Loader2, Save, RotateCcw, Plus, Trash2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Loader2,
+  Zap,
+  TrendingUp,
+  Compass,
+  Trophy,
+  Info,
+} from "lucide-react";
 import type { PlatformXPConfig } from "@/types/reps";
 import { DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
+import {
+  generateLevelTable,
+  DEFAULT_LEVELING,
+  DEFAULT_TIERS,
+} from "@/lib/xp-levels";
+import type { LevelingConfig, TierDefinition } from "@/lib/xp-levels";
+
+const QUEST_LABELS: Record<string, string> = {
+  social_post: "Social Post",
+  story_share: "Story Share",
+  content_creation: "Content Creation",
+  sales_milestone: "Sales Milestone",
+  custom: "Custom Quest",
+};
 
 export function PlatformXPTab() {
-  const [config, setConfig] = useState<PlatformXPConfig>(DEFAULT_PLATFORM_XP_CONFIG);
+  const [config, setConfig] = useState<PlatformXPConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
-  const loadConfig = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/platform/xp-config");
+      if (!res.ok) {
+        setError("Could not load XP config");
+        setLoading(false);
+        return;
+      }
       const json = await res.json();
-      if (json.data) setConfig({ ...DEFAULT_PLATFORM_XP_CONFIG, ...json.data });
-    } catch { /* network */ }
+      if (json.data) {
+        setConfig({ ...DEFAULT_PLATFORM_XP_CONFIG, ...json.data });
+      }
+    } catch {
+      setError("Failed to load — check your connection");
+    }
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadConfig(); }, [loadConfig]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch("/api/platform/xp-config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
-      });
-      if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000); }
-    } catch { /* network */ }
-    setSaving(false);
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-16"><Loader2 size={20} className="animate-spin text-primary/60" /></div>;
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 size={20} className="animate-spin text-primary/60" />
+      </div>
+    );
   }
+
+  if (error || !config) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-sm text-muted-foreground">{error || "No data"}</p>
+      </div>
+    );
+  }
+
+  const leveling: LevelingConfig = config.leveling || DEFAULT_LEVELING;
+  const tiers: TierDefinition[] =
+    (config.tiers as TierDefinition[]) || DEFAULT_TIERS;
+  const levelTable = generateLevelTable(leveling, tiers).slice(0, 20);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={() => setConfig(DEFAULT_PLATFORM_XP_CONFIG)}>
-          <RotateCcw size={14} /> Reset Defaults
-        </Button>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <Save size={14} className="text-success" /> : <Save size={14} />}
-          {saving ? "Saving..." : saved ? "Saved!" : "Save Config"}
-        </Button>
+      {/* Info banner */}
+      <div className="flex items-start gap-3 rounded-xl border border-info/20 bg-info/5 p-4">
+        <Info size={16} className="text-info shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            XP is platform-wide
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            XP values and the leveling curve are set by Entry and apply to all
+            reps across the platform. Quest XP is automatically assigned based on
+            the quest type. You can focus on creating quests and managing rewards
+            — the XP economy is handled for you.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Sales XP */}
+        {/* XP Earning Rates */}
         <Card>
-          <CardHeader><CardTitle className="text-sm">Sales XP</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>XP per Ticket Sold</Label>
-              <div className="flex items-center gap-3">
-                <Slider
-                  value={[config.xp_per_sale]}
-                  onValueChange={([v]) => setConfig((c) => ({ ...c, xp_per_sale: v }))}
-                  min={1}
-                  max={100}
-                  step={1}
-                  className="flex-1"
-                />
-                <span className="font-mono text-sm font-bold text-primary w-10 text-right tabular-nums">{config.xp_per_sale}</span>
+          <CardContent className="p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Zap size={14} className="text-primary" />
+              XP Awards
+            </h3>
+
+            <div className="space-y-3">
+              {config.xp_per_sale > 0 && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp size={13} className="text-success" />
+                    <span className="text-sm text-foreground">Per Sale</span>
+                  </div>
+                  <span className="font-mono text-sm font-bold text-primary tabular-nums">
+                    +{config.xp_per_sale} XP
+                  </span>
+                </div>
+              )}
+
+              {Object.entries(config.xp_per_quest_type).map(([type, xp]) => (
+                <div key={type} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Compass size={13} className="text-primary/70" />
+                    <span className="text-sm text-foreground">
+                      {QUEST_LABELS[type] || type.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  <span className="font-mono text-sm font-bold text-primary tabular-nums">
+                    +{xp} XP
+                  </span>
+                </div>
+              ))}
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Trophy size={13} className="text-warning" />
+                  <span className="text-sm text-foreground">
+                    Leaderboard Top 3
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">Bonus XP</span>
               </div>
-              <p className="text-[11px] text-muted-foreground">XP awarded to the rep for each ticket sold via their link</p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Quest XP */}
+        {/* Tier System */}
         <Card>
-          <CardHeader><CardTitle className="text-sm">Quest XP</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {(["social_post", "story_share", "content_creation", "custom"] as const).map((type) => (
-              <div key={type} className="flex items-center justify-between gap-4">
-                <Label className="text-xs capitalize whitespace-nowrap">{type.replace(/_/g, " ")}</Label>
-                <Input
-                  type="number"
-                  value={String(config.xp_per_quest_type[type])}
-                  onChange={(e) =>
-                    setConfig((c) => ({
-                      ...c,
-                      xp_per_quest_type: { ...c.xp_per_quest_type, [type]: Number(e.target.value) || 0 },
-                    }))
-                  }
-                  min="0"
-                  className="w-24 text-right font-mono"
-                />
-              </div>
-            ))}
-            <p className="text-[11px] text-muted-foreground">XP auto-assigned to quests based on their type</p>
-          </CardContent>
-        </Card>
+          <CardContent className="p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">
+              Tier System
+            </h3>
 
-        {/* Position XP */}
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Position XP (Leaderboard)</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {[1, 2, 3].map((pos) => (
-              <div key={pos} className="flex items-center justify-between gap-4">
-                <Label className="text-xs whitespace-nowrap">
-                  {pos === 1 ? "1st Place" : pos === 2 ? "2nd Place" : "3rd Place"}
-                </Label>
-                <Input
-                  type="number"
-                  value={String(config.position_xp[pos] ?? 0)}
-                  onChange={(e) =>
-                    setConfig((c) => ({
-                      ...c,
-                      position_xp: { ...c.position_xp, [pos]: Number(e.target.value) || 0 },
-                    }))
-                  }
-                  min="0"
-                  className="w-24 text-right font-mono"
-                />
-              </div>
-            ))}
-            <p className="text-[11px] text-muted-foreground">Default XP pre-filled when setting up event position rewards</p>
-          </CardContent>
-        </Card>
-
-        {/* Levels */}
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Levels</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              {config.level_names.map((name, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-[11px] text-muted-foreground font-mono w-5 text-right shrink-0">{i + 1}</span>
-                  <Input
-                    value={name}
-                    onChange={(e) => {
-                      const names = [...config.level_names];
-                      names[i] = e.target.value;
-                      setConfig((c) => ({ ...c, level_names: names }));
-                    }}
-                    placeholder={`Level ${i + 1}`}
-                    className="flex-1 text-sm"
-                  />
-                  {i > 0 ? (
-                    <Input
-                      type="number"
-                      value={String(config.level_thresholds[i - 1] ?? 0)}
-                      onChange={(e) => {
-                        const thresholds = [...config.level_thresholds];
-                        thresholds[i - 1] = Number(e.target.value) || 0;
-                        setConfig((c) => ({ ...c, level_thresholds: thresholds }));
-                      }}
-                      min="0"
-                      placeholder="XP"
-                      className="w-24 text-right font-mono"
+            <div className="space-y-2">
+              {tiers.map((tier) => (
+                <div
+                  key={tier.name}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: tier.color }}
                     />
-                  ) : (
-                    <span className="w-24 text-right text-[11px] text-muted-foreground font-mono">0 XP</span>
-                  )}
-                  {i >= 2 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => {
-                        const names = config.level_names.filter((_, j) => j !== i);
-                        const thresholds = config.level_thresholds.filter((_, j) => j !== i - 1);
-                        setConfig((c) => ({ ...c, level_names: names, level_thresholds: thresholds }));
-                      }}
+                    <span
+                      className="text-sm font-medium"
+                      style={{ color: tier.color }}
                     >
-                      <Trash2 size={12} />
-                    </Button>
-                  )}
+                      {tier.name}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground font-mono tabular-nums">
+                    Level {tier.min_level}+
+                  </span>
                 </div>
               ))}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const lastThreshold = config.level_thresholds[config.level_thresholds.length - 1] ?? 0;
-                setConfig((c) => ({
-                  ...c,
-                  level_names: [...c.level_names, `Level ${c.level_names.length + 1}`],
-                  level_thresholds: [...c.level_thresholds, lastThreshold + 2000],
-                }));
-              }}
-            >
-              <Plus size={14} /> Add Level
-            </Button>
-            <p className="text-[11px] text-muted-foreground">Thresholds are cumulative XP required to reach each level. Level 1 starts at 0.</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Level Preview Table */}
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground">
+              Level Preview
+            </h3>
+            <span className="text-[11px] text-muted-foreground font-mono tabular-nums">
+              {leveling.max_level} levels
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground/50">
+                  <th className="pb-2 text-left font-semibold w-12">Lvl</th>
+                  <th className="pb-2 text-left font-semibold">Tier</th>
+                  <th className="pb-2 text-right font-semibold">Total XP</th>
+                  <th className="pb-2 text-right font-semibold">To Next</th>
+                </tr>
+              </thead>
+              <tbody>
+                {levelTable.map((row) => (
+                  <tr key={row.level} className="border-b border-border/20">
+                    <td
+                      className="py-1.5 font-mono font-bold tabular-nums"
+                      style={{ color: row.tierColor }}
+                    >
+                      {row.level}
+                    </td>
+                    <td className="py-1.5">
+                      <span
+                        className="text-xs font-medium"
+                        style={{ color: row.tierColor }}
+                      >
+                        {row.tierName}
+                      </span>
+                    </td>
+                    <td className="py-1.5 text-right font-mono text-xs text-muted-foreground tabular-nums">
+                      {row.totalXp.toLocaleString()}
+                    </td>
+                    <td className="py-1.5 text-right font-mono text-xs text-foreground/70 tabular-nums">
+                      {row.xpToNext > 0
+                        ? `+${row.xpToNext.toLocaleString()}`
+                        : "MAX"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground">
+            Showing first 20 levels. XP requirements increase progressively. The
+            full table has {leveling.max_level} levels.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -13,9 +13,8 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RadialGauge, EmptyState, RepPageError } from "@/components/rep";
+import { RadialGauge, EmptyState, RepPageError, CurrencyIcon, LevelGuide } from "@/components/rep";
 import { formatRelativeTime } from "@/lib/rep-utils";
-import { CurrencyIcon } from "@/components/rep";
 import { cn } from "@/lib/utils";
 
 interface PointsEntry {
@@ -80,7 +79,15 @@ export default function RepPointsPage() {
   const [error, setError] = useState("");
   const [loadKey, setLoadKey] = useState(0);
   const [myPoints, setMyPoints] = useState(0);
+  const [myLevel, setMyLevel] = useState(1);
   const [currencyName, setCurrencyName] = useState("FRL");
+  const [levelGuideData, setLevelGuideData] = useState<{
+    tiers: { name: string; min_level: number; color: string }[];
+    level_table: { level: number; totalXp: number; xpToNext: number; tier: string; color: string }[];
+    max_level: number;
+    xp_per_quest_type?: Record<string, number>;
+    points_per_sale?: number;
+  } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -101,8 +108,22 @@ export default function RepPointsPage() {
         const settingsJson = settingsRes.ok ? await settingsRes.json() : { data: null };
 
         if (pointsJson.data) setEntries(pointsJson.data);
-        if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
-        if (settingsJson.data?.currency_name) setCurrencyName(settingsJson.data.currency_name);
+        if (meJson.data) {
+          setMyPoints(meJson.data.points_balance || 0);
+          setMyLevel(meJson.data.level || 1);
+        }
+        if (settingsJson.data) {
+          if (settingsJson.data.currency_name) setCurrencyName(settingsJson.data.currency_name);
+          if (settingsJson.data.tiers && settingsJson.data.level_table) {
+            setLevelGuideData({
+              tiers: settingsJson.data.tiers,
+              level_table: settingsJson.data.level_table,
+              max_level: settingsJson.data.max_level,
+              xp_per_quest_type: settingsJson.data.xp_per_quest_type,
+              points_per_sale: settingsJson.data.points_per_sale,
+            });
+          }
+        }
       } catch { setError("Failed to load points — check your connection"); }
       setLoading(false);
     })();
@@ -272,6 +293,19 @@ export default function RepPointsPage() {
             })}
           </div>
         </div>
+      )}
+
+      {/* Level Guide */}
+      {levelGuideData && (
+        <LevelGuide
+          tiers={levelGuideData.tiers}
+          levelTable={levelGuideData.level_table}
+          maxLevel={levelGuideData.max_level}
+          xpPerQuestType={levelGuideData.xp_per_quest_type}
+          pointsPerSale={levelGuideData.points_per_sale}
+          currentLevel={myLevel}
+          currentXp={myPoints}
+        />
       )}
     </div>
   );

@@ -2,25 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import { fulfillRewardClaim } from "@/lib/rep-reward-fulfillment";
 import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/rep-portal/rewards/[id]/claim — Claim a points_shop reward (protected)
  *
- * Uses the `claim_reward_atomic` RPC to deduct points + create claim + increment
- * total_claimed in a single database transaction. This prevents race conditions
- * where points are deducted but the claim row fails to insert.
+ * Uses the `claim_reward_atomic` RPC to deduct currency + create claim + increment
+ * total_claimed in a single database transaction. Then dispatches fulfillment
+ * for automated reward types (free_ticket, vip_upgrade, merch).
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireRepAuth();
     if (auth.error) return auth.error;
 
-    const repId = auth.rep.id;
-    const orgId = auth.rep.org_id;
+    const rep = auth.rep;
+    const repId = rep.id;
+    const orgId = rep.org_id;
     const { id: rewardId } = await params;
 
     const supabase = await getSupabaseAdmin();
@@ -31,10 +33,18 @@ export async function POST(
       );
     }
 
-    // Fetch the reward for validation before calling RPC
+    // Parse optional body (merch_size for merch rewards)
+    let body: { merch_size?: string } = {};
+    try {
+      body = await request.json();
+    } catch {
+      // No body or invalid JSON — fine for non-merch claims
+    }
+
+    // Fetch the full reward for validation + fulfillment
     const { data: reward, error: rewardError } = await supabase
       .from(TABLES.REP_REWARDS)
-      .select("reward_type, points_cost")
+      .select("id, name, reward_type, points_cost, product_id, metadata")
       .eq("id", rewardId)
       .eq("org_id", orgId)
       .single();
@@ -112,10 +122,48 @@ export async function POST(
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
+    // ── Fulfillment phase ──
+    const fulfillmentType = reward.metadata?.fulfillment_type || "manual";
+    let claimMetadata = {};
+
+    if (fulfillmentType !== "manual" && result.claim_id) {
+      // Fetch full rep data for fulfillment (requireRepAuth only returns minimal fields)
+      const { data: fullRep } = await supabase
+        .from(TABLES.REPS)
+        .select("id, email, first_name, last_name, org_id")
+        .eq("id", repId)
+        .eq("org_id", orgId)
+        .single();
+
+      if (!fullRep) {
+        return NextResponse.json({ error: "Rep data not found" }, { status: 500 });
+      }
+
+      const fulfillResult = await fulfillRewardClaim({
+        supabase,
+        orgId,
+        rep: fullRep,
+        reward,
+        claimId: result.claim_id,
+        body,
+      });
+
+      if ("error" in fulfillResult) {
+        return NextResponse.json(
+          { error: fulfillResult.error },
+          { status: 400 }
+        );
+      }
+
+      claimMetadata = fulfillResult.metadata;
+    }
+
     return NextResponse.json({
       data: {
         claim_id: result.claim_id,
         new_balance: result.new_balance,
+        fulfillment_type: fulfillmentType,
+        ...claimMetadata,
       },
     });
   } catch (err) {

@@ -30,6 +30,7 @@ export interface Rep {
   email_verification_token?: string | null;
   bio?: string | null;
   created_at: string;
+  customer_id?: string | null;
   updated_at: string;
 }
 
@@ -51,6 +52,24 @@ export interface RepEvent {
 // ─── Rewards ─────────────────────────────────────────────────────────────────
 export type RewardType = "milestone" | "points_shop" | "manual";
 export type RewardStatus = "active" | "archived";
+export type FulfillmentType = "manual" | "free_ticket" | "extra_tickets" | "vip_upgrade" | "merch";
+
+export interface RewardMetadata {
+  fulfillment_type?: FulfillmentType;
+  event_id?: string;
+  ticket_type_id?: string;
+  upgrade_to_ticket_type_id?: string;
+  max_claims_per_rep?: number | null; // null = unlimited
+}
+
+export interface ClaimMetadata {
+  order_id?: string;
+  order_number?: string;
+  ticket_codes?: string[];
+  merch_size?: string;
+  event_id?: string;
+  original_ticket_type_id?: string;
+}
 
 export interface RepReward {
   id: string;
@@ -65,10 +84,11 @@ export interface RepReward {
   total_available?: number | null;
   total_claimed: number;
   status: RewardStatus;
+  metadata?: RewardMetadata;
   created_at: string;
   updated_at: string;
   // Joined
-  product?: { name: string; images?: string[] } | null;
+  product?: { name: string; images?: string[]; sizes?: string[] } | null;
   milestones?: RepMilestone[];
 }
 
@@ -191,6 +211,7 @@ export interface RepRewardClaim {
   milestone_id?: string | null;
   points_spent: number;
   status: ClaimStatus;
+  metadata?: ClaimMetadata;
   fulfilled_at?: string | null;
   fulfilled_by?: string | null;
   notes?: string | null;

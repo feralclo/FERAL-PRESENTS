@@ -81,6 +81,7 @@ export async function PUT(
       "custom_value",
       "total_available",
       "status",
+      "metadata",
     ];
 
     const updates: Record<string, unknown> = {};

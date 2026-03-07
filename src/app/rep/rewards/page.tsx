@@ -9,13 +9,14 @@ import {
   Loader2,
   ShoppingCart,
   Target,
-  Zap,
   Clock,
   CheckCircle2,
   XCircle,
   Sparkles,
   X,
-  ChevronRight,
+  Ticket,
+  ArrowUpCircle,
+  Package,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState, RepPageError, CurrencyIcon } from "@/components/rep";
 import { playSuccessSound } from "@/lib/rep-utils";
 import { cn } from "@/lib/utils";
+import type { FulfillmentType, ClaimMetadata } from "@/types/reps";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -39,6 +41,15 @@ interface Reward {
   custom_value?: string;
   total_available?: number;
   total_claimed: number;
+  product_id?: string;
+  metadata?: {
+    fulfillment_type?: FulfillmentType;
+    event_id?: string;
+    ticket_type_id?: string;
+    upgrade_to_ticket_type_id?: string;
+    max_claims_per_rep?: number | null;
+  };
+  product?: { name?: string; images?: string[]; sizes?: string[] } | null;
   milestones?: {
     id: string;
     title: string;
@@ -49,7 +60,12 @@ interface Reward {
     claimed: boolean;
     progress_percent: number;
   }[];
-  my_claims?: { id: string; status: string }[];
+  my_claims?: { id: string; status: string; metadata?: ClaimMetadata }[];
+  claims_count?: number;
+  max_claims?: number | null;
+  event_name?: string | null;
+  ticket_type_name?: string | null;
+  upgrade_ticket_type_name?: string | null;
   can_purchase?: boolean;
 }
 
@@ -59,6 +75,7 @@ interface Claim {
   points_spent: number;
   status: "claimed" | "fulfilled" | "cancelled";
   notes?: string;
+  metadata?: ClaimMetadata;
   created_at: string;
   fulfilled_at?: string;
   reward?: {
@@ -102,6 +119,20 @@ const CLAIM_STATUS_CONFIG: Record<string, { label: string; variant: "default" | 
   cancelled: { label: "Cancelled", variant: "destructive", icon: XCircle },
 };
 
+function getFulfillmentIcon(ft?: FulfillmentType) {
+  switch (ft) {
+    case "free_ticket":
+    case "extra_tickets":
+      return Ticket;
+    case "vip_upgrade":
+      return ArrowUpCircle;
+    case "merch":
+      return Package;
+    default:
+      return null;
+  }
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function RepRewardsPage() {
@@ -116,7 +147,11 @@ export default function RepRewardsPage() {
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [confirmReward, setConfirmReward] = useState<Reward | null>(null);
   const [successReward, setSuccessReward] = useState<Reward | null>(null);
+  const [successData, setSuccessData] = useState<Record<string, unknown> | null>(null);
   const [loadKey, setLoadKey] = useState(0);
+
+  // Merch size picker
+  const [selectedMerchSize, setSelectedMerchSize] = useState<string>("");
 
   const fetchData = useCallback(async () => {
     try {
@@ -156,15 +191,24 @@ export default function RepRewardsPage() {
     setClaimingId(reward.id);
     setConfirmReward(null);
     try {
+      const body: Record<string, unknown> = {};
+      if (reward.metadata?.fulfillment_type === "merch" && selectedMerchSize) {
+        body.merch_size = selectedMerchSize;
+      }
+
       const res = await fetch(`/api/rep-portal/rewards/${reward.id}/claim`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         setError("");
+        const resJson = await res.json();
         setSuccessReward(reward);
+        setSuccessData(resJson.data || null);
         incrementClaimCount();
         playSuccessSound();
+        setSelectedMerchSize("");
         // Refresh data
         const [rewardsRes, meRes, claimsRes] = await Promise.all([
           fetch("/api/rep-portal/rewards"),
@@ -183,8 +227,8 @@ export default function RepRewardsPage() {
           const claimsJson = await claimsRes.json();
           if (claimsJson.data) setClaims(claimsJson.data);
         }
-        // Auto-dismiss success after 3s
-        setTimeout(() => setSuccessReward(null), 3000);
+        // Auto-dismiss success after 4s
+        setTimeout(() => { setSuccessReward(null); setSuccessData(null); }, 4000);
       } else {
         const errJson = await res.json().catch(() => ({}));
         setError(errJson.error || "Failed to claim reward");
@@ -195,14 +239,14 @@ export default function RepRewardsPage() {
     setClaimingId(null);
   };
 
-  const hasClaimed = (r: Reward) =>
-    (r.my_claims?.length ?? 0) > 0 &&
-    r.my_claims!.some((c) => c.status !== "cancelled");
+  const canClaimMore = (r: Reward) => r.can_purchase === true;
+
+  const activeClaimCount = (r: Reward) => r.claims_count ?? (r.my_claims?.filter((c) => c.status !== "cancelled").length ?? 0);
 
   const milestoneRewards = rewards.filter((r) => r.reward_type === "milestone");
   const shopRewards = rewards.filter((r) => r.reward_type === "points_shop");
 
-  // Auto-select tab based on content (first load only — don't snap user back after claim)
+  // Auto-select tab based on content (first load only)
   useEffect(() => {
     if (!loading && !hasAutoSelectedTab.current) {
       hasAutoSelectedTab.current = true;
@@ -247,6 +291,52 @@ export default function RepRewardsPage() {
       </div>
     );
   }
+
+  // Confirmation text based on fulfillment type
+  const getConfirmText = (reward: Reward) => {
+    const ft = reward.metadata?.fulfillment_type;
+    switch (ft) {
+      case "free_ticket":
+      case "extra_tickets":
+        return `A ticket${reward.event_name ? ` for ${reward.event_name}` : ""} will be emailed to you.`;
+      case "vip_upgrade":
+        return `Your existing${reward.event_name ? ` ${reward.event_name}` : ""} ticket will be upgraded${reward.upgrade_ticket_type_name ? ` to ${reward.upgrade_ticket_type_name}` : ""}.`;
+      case "merch":
+        return "Collect at your next event. You'll receive a QR code via email.";
+      default:
+        return "Admin will fulfil your reward.";
+    }
+  };
+
+  // Success message based on fulfillment type
+  const getSuccessMessage = (reward: Reward, data: Record<string, unknown> | null) => {
+    const ft = reward.metadata?.fulfillment_type || (data?.fulfillment_type as string);
+    switch (ft) {
+      case "free_ticket":
+      case "extra_tickets":
+        return {
+          title: "Ticket Created!",
+          subtitle: `Check your email for the QR code${data?.order_number ? ` — Order ${data.order_number}` : ""}`,
+        };
+      case "vip_upgrade":
+        return {
+          title: "Ticket Upgraded!",
+          subtitle: reward.upgrade_ticket_type_name
+            ? `Your ticket has been upgraded to ${reward.upgrade_ticket_type_name}`
+            : "Your ticket has been upgraded",
+        };
+      case "merch":
+        return {
+          title: "Merch Claimed!",
+          subtitle: `Show your QR code at the event to collect${data?.merch_size ? ` (Size ${data.merch_size})` : ""}`,
+        };
+      default:
+        return {
+          title: "Reward Claimed!",
+          subtitle: reward.name,
+        };
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
@@ -296,7 +386,7 @@ export default function RepRewardsPage() {
             <EmptyState icon={Target} title="No milestones yet" subtitle="Milestones will appear as the team sets them up" />
           ) : (
             milestoneRewards.map((reward) => {
-              const claimed = hasClaimed(reward);
+              const claimed = activeClaimCount(reward) > 0;
               return (
                 <Card
                   key={reward.id}
@@ -388,28 +478,34 @@ export default function RepRewardsPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {shopRewards.map((reward) => {
-                const claimed = hasClaimed(reward);
+                const claimedCount = activeClaimCount(reward);
+                const hasClaimed = claimedCount > 0;
+                const maxClaims = reward.max_claims ?? 1;
+                const isMultiClaim = maxClaims === null || maxClaims === 0 || maxClaims > 1;
+                const allClaimed = !canClaimMore(reward) && hasClaimed;
                 const canAfford = myBalance >= (reward.points_cost || 0);
                 const soldOut = reward.total_available != null && reward.total_claimed >= reward.total_available;
                 const remaining = reward.total_available != null ? reward.total_available - reward.total_claimed : null;
+                const ft = reward.metadata?.fulfillment_type;
+                const FtIcon = getFulfillmentIcon(ft);
 
                 // Tier glow based on cost
                 const cost = reward.points_cost || 0;
-                const glowClass = claimed ? "" : cost >= 500 ? "rep-reward-glow-legendary" : cost >= 200 ? "rep-reward-glow-high" : cost >= 50 ? "rep-reward-glow-mid" : "rep-reward-glow-low";
+                const glowClass = (hasClaimed && !isMultiClaim) ? "" : cost >= 500 ? "rep-reward-glow-legendary" : cost >= 200 ? "rep-reward-glow-high" : cost >= 50 ? "rep-reward-glow-mid" : "rep-reward-glow-low";
 
                 return (
                   <Card
                     key={reward.id}
                     className={cn(
                       "py-0 gap-0 overflow-hidden rep-shop-hover",
-                      claimed ? "border-success/30" : "border-border/40",
+                      (hasClaimed && !isMultiClaim) ? "border-success/30" : "border-border/40",
                       glowClass
                     )}
                   >
                     {reward.image_url && (
                       <div className="relative h-32 bg-muted/20 flex items-center justify-center">
                         <img src={reward.image_url} alt="" className="max-h-full max-w-full object-contain p-3" />
-                        {remaining !== null && remaining > 0 && remaining <= 5 && !claimed && (
+                        {remaining !== null && remaining > 0 && remaining <= 5 && !allClaimed && (
                           <span className="absolute top-2 right-2 text-[10px] font-bold text-warning bg-warning/15 border border-warning/20 px-2 py-0.5 rounded-full animate-pulse">
                             {remaining} left
                           </span>
@@ -418,7 +514,18 @@ export default function RepRewardsPage() {
                     )}
                     <CardContent className="p-3">
                       <h3 className="text-xs font-medium text-foreground mb-1 line-clamp-2">{reward.name}</h3>
-                      {reward.description && (
+                      {/* Event badge */}
+                      {reward.event_name && (
+                        <div className="flex items-center gap-1 mb-1">
+                          {FtIcon && <FtIcon size={10} className="text-primary/70" />}
+                          <span className="text-[10px] text-primary/70 font-medium truncate">{reward.event_name}</span>
+                        </div>
+                      )}
+                      {/* Ticket type name */}
+                      {reward.ticket_type_name && (
+                        <p className="text-[10px] text-muted-foreground mb-1 truncate">{reward.ticket_type_name}</p>
+                      )}
+                      {reward.description && !reward.event_name && (
                         <p className="text-[10px] text-muted-foreground mb-2 line-clamp-2">{reward.description}</p>
                       )}
                       <div className="flex items-baseline gap-1 mb-3">
@@ -429,25 +536,36 @@ export default function RepRewardsPage() {
                         <span className="text-[10px] text-muted-foreground">{currencyName}</span>
                       </div>
 
-                      {claimed ? (
+                      {/* Multi-claim counter */}
+                      {isMultiClaim && hasClaimed && (
+                        <p className="text-[10px] text-muted-foreground mb-2 font-mono tabular-nums">
+                          {claimedCount}/{maxClaims === null || maxClaims === 0 ? "∞" : maxClaims} claimed
+                        </p>
+                      )}
+
+                      {allClaimed && !isMultiClaim ? (
                         <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-success/10 text-xs text-success font-medium">
                           <Check size={12} style={{ filter: "drop-shadow(0 0 4px rgba(52, 211, 153, 0.4))" }} /> Claimed
                         </div>
                       ) : soldOut ? (
                         <div className="text-xs text-muted-foreground font-medium text-center py-2">Sold out</div>
+                      ) : allClaimed ? (
+                        <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-success/10 text-xs text-success font-medium">
+                          <Check size={12} /> Max claimed
+                        </div>
                       ) : (
                         <Button
                           size="sm"
                           className="w-full text-xs"
                           disabled={!canAfford || claimingId === reward.id}
-                          onClick={() => setConfirmReward(reward)}
+                          onClick={() => { setConfirmReward(reward); setSelectedMerchSize(""); }}
                         >
                           {claimingId === reward.id ? (
                             <Loader2 size={12} className="animate-spin" />
                           ) : canAfford ? (
                             <>
                               <ShoppingCart size={12} />
-                              Buy with {reward.points_cost} {currencyName}
+                              {hasClaimed && isMultiClaim ? "Buy Another" : `Buy with ${reward.points_cost} ${currencyName}`}
                             </>
                           ) : (
                             `Need ${(reward.points_cost || 0) - myBalance} more`
@@ -475,6 +593,7 @@ export default function RepRewardsPage() {
               const reward = claim.reward;
               const productImg = reward?.product?.images?.[0];
               const imgUrl = reward?.image_url || productImg;
+              const claimMeta = claim.metadata;
 
               return (
                 <Card key={claim.id} className="py-0 gap-0 border-border/40">
@@ -530,6 +649,12 @@ export default function RepRewardsPage() {
                                 </span>
                               )}
                             </p>
+                            {claimMeta?.order_number && (
+                              <p className="text-xs text-foreground/80 mt-1 font-mono">Order: {claimMeta.order_number}</p>
+                            )}
+                            {claimMeta?.merch_size && (
+                              <p className="text-xs text-foreground/80 mt-1">Size: {claimMeta.merch_size}</p>
+                            )}
                             {reward?.custom_value && (
                               <p className="text-xs text-foreground/80 mt-1">{reward.custom_value}</p>
                             )}
@@ -564,7 +689,7 @@ export default function RepRewardsPage() {
           <div className="w-full max-w-sm mx-4 mb-4 md:mb-0 rounded-2xl border border-border bg-background p-6 rep-slide-up">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold text-foreground">Confirm Purchase</h3>
-              <button onClick={() => setConfirmReward(null)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => { setConfirmReward(null); setSelectedMerchSize(""); }} className="text-muted-foreground hover:text-foreground">
                 <X size={16} />
               </button>
             </div>
@@ -581,11 +706,32 @@ export default function RepRewardsPage() {
               )}
               <div>
                 <p className="text-sm font-medium text-foreground">{confirmReward.name}</p>
-                {confirmReward.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">{confirmReward.description}</p>
-                )}
+                <p className="text-xs text-muted-foreground mt-0.5">{getConfirmText(confirmReward)}</p>
               </div>
             </div>
+
+            {/* Merch size picker */}
+            {confirmReward.metadata?.fulfillment_type === "merch" && confirmReward.product?.sizes && confirmReward.product.sizes.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs font-medium text-foreground mb-2">Select Size</p>
+                <div className="flex flex-wrap gap-2">
+                  {confirmReward.product.sizes.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedMerchSize(size)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                        selectedMerchSize === size
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-muted/30 text-muted-foreground hover:border-border hover:text-foreground"
+                      )}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="rounded-xl bg-muted/30 border border-border px-4 py-3 mb-5">
               <div className="flex items-center justify-between">
@@ -612,13 +758,16 @@ export default function RepRewardsPage() {
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => setConfirmReward(null)}
+                onClick={() => { setConfirmReward(null); setSelectedMerchSize(""); }}
               >
                 Cancel
               </Button>
               <Button
                 className="flex-1"
-                disabled={claimingId === confirmReward.id}
+                disabled={
+                  claimingId === confirmReward.id ||
+                  (confirmReward.metadata?.fulfillment_type === "merch" && !selectedMerchSize)
+                }
                 onClick={() => handleClaim(confirmReward)}
               >
                 {claimingId === confirmReward.id ? (
@@ -684,13 +833,20 @@ export default function RepRewardsPage() {
                 ))}
               </div>
             </div>
-            <h3 className="text-lg font-bold text-foreground mb-1 rep-title-reveal">
-              Reward Claimed!
-            </h3>
-            <p className="text-sm text-muted-foreground mb-1">{successReward.name}</p>
+            {(() => {
+              const msg = getSuccessMessage(successReward, successData);
+              return (
+                <>
+                  <h3 className="text-lg font-bold text-foreground mb-1 rep-title-reveal">
+                    {msg.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-1">{msg.subtitle}</p>
+                </>
+              );
+            })()}
             <p className="text-xs text-amber-400 font-mono">-{successReward.points_cost} {currencyName}</p>
             <button
-              onClick={() => setSuccessReward(null)}
+              onClick={() => { setSuccessReward(null); setSuccessData(null); }}
               className="mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               Dismiss
@@ -702,4 +858,3 @@ export default function RepRewardsPage() {
     </div>
   );
 }
-

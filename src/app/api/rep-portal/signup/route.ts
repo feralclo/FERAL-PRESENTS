@@ -231,6 +231,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Upsert customer and link to rep (fire-and-forget)
+    import("@/lib/rep-utils").then(({ ensureRepCustomer }) => {
+      ensureRepCustomer({
+        supabase,
+        repId: rep.id,
+        orgId,
+        email: finalEmail,
+        firstName: first_name.trim(),
+        lastName: last_name.trim(),
+      }).catch(() => {});
+    }).catch(() => {});
+
     // Send verification email (welcome email sent after verification)
     sendRepEmail({
       type: "email_verification",

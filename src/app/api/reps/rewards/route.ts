@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
       custom_value,
       total_available,
       status = "active",
+      metadata,
     } = body;
 
     if (!name) {
@@ -116,6 +117,7 @@ export async function POST(request: NextRequest) {
         total_available: total_available != null ? Number(total_available) : null,
         total_claimed: 0,
         status,
+        ...(metadata && typeof metadata === "object" ? { metadata } : {}),
       })
       .select()
       .single();

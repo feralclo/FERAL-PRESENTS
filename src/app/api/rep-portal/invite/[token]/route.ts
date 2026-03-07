@@ -368,6 +368,18 @@ export async function POST(
       }
     }
 
+    // Upsert customer and link to rep (fire-and-forget)
+    import("@/lib/rep-utils").then(({ ensureRepCustomer }) => {
+      ensureRepCustomer({
+        supabase,
+        repId: rep.id,
+        orgId,
+        email: finalEmail,
+        firstName: (first_name || rep.first_name || "").trim(),
+        lastName: (last_name || rep.last_name || "").trim(),
+      }).catch(() => {});
+    }).catch(() => {});
+
     // Send welcome email (fire-and-forget)
     sendRepEmail({
       type: "welcome",

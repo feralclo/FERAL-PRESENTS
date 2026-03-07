@@ -3,6 +3,74 @@
  * Extracted from sales, points, quests, rewards, and layout pages.
  */
 
+import { TABLES } from "@/lib/constants";
+
+/**
+ * Ensure a rep has a linked customer record. Looks up by (org_id, email),
+ * creates one if needed, and sets reps.customer_id. Returns the customerId.
+ */
+export async function ensureRepCustomer(params: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
+  repId: string;
+  orgId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}): Promise<string> {
+  const { supabase, repId, orgId, email, firstName, lastName } = params;
+  const lowerEmail = email.toLowerCase().trim();
+
+  // Check if rep already has a customer_id
+  const { data: rep } = await supabase
+    .from(TABLES.REPS)
+    .select("customer_id")
+    .eq("id", repId)
+    .eq("org_id", orgId)
+    .single();
+
+  if (rep?.customer_id) return rep.customer_id;
+
+  // Look up existing customer by email
+  const { data: existing } = await supabase
+    .from(TABLES.CUSTOMERS)
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("email", lowerEmail)
+    .single();
+
+  let customerId: string;
+
+  if (existing) {
+    customerId = existing.id;
+  } else {
+    const { data: created, error } = await supabase
+      .from(TABLES.CUSTOMERS)
+      .insert({
+        org_id: orgId,
+        email: lowerEmail,
+        first_name: firstName,
+        last_name: lastName,
+      })
+      .select("id")
+      .single();
+
+    if (error || !created) {
+      throw new Error(`Failed to create customer for rep ${repId}: ${error?.message}`);
+    }
+    customerId = created.id;
+  }
+
+  // Link rep → customer
+  await supabase
+    .from(TABLES.REPS)
+    .update({ customer_id: customerId, updated_at: new Date().toISOString() })
+    .eq("id", repId)
+    .eq("org_id", orgId);
+
+  return customerId;
+}
+
 /**
  * Relative time formatting — "Just now", "5m ago", "3h ago", "2d ago", or a date.
  * Used by sales timeline, points timeline, and notification center.

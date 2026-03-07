@@ -474,6 +474,50 @@ export function QuestDetailSheet({
                 <div className="h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent.progressColor}25, transparent)` }} />
               </div>
 
+              {/* Share link — shown when quest has an event + rep has a discount code */}
+              {shareLink && quest.event && (
+                <div className="mb-4 rep-quest-reveal-2">
+                  <button
+                    onClick={() => copyToClipboard(shareLink)}
+                    className="w-full rounded-xl bg-primary/5 border border-primary/15 p-3.5 transition-colors hover:bg-primary/10 active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15">
+                        <LinkIcon size={15} className="text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="text-xs font-semibold text-foreground truncate">
+                          {quest.event.name}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground truncate font-mono">
+                          {shareLink.replace(/^https?:\/\//, "")}
+                        </p>
+                      </div>
+                      <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0">
+                        {copiedLink ? <><Check size={10} /> Copied!</> : <><LinkIcon size={10} /> Copy</>}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/70 mt-2 text-left">
+                      Share this link — discount auto-applies for your followers
+                    </p>
+                  </button>
+                  {typeof navigator !== "undefined" && "share" in navigator && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.share({
+                          text: `Use my code ${discountCode} for a discount!`,
+                          url: shareLink,
+                        }).catch(() => {});
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 mt-2 py-2 text-[11px] font-semibold text-primary/70 hover:text-primary transition-colors"
+                    >
+                      <Share2 size={12} /> Share to Story / DM
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Expiry */}
               {expiry && (
                 <div className="flex items-center justify-center gap-1.5 mb-3 rep-quest-reveal-3">
@@ -592,27 +636,71 @@ export function QuestDetailSheet({
                 </div>
               )}
 
-              {/* Discount code */}
+              {/* Share link + discount code */}
               {discountCode && (
-                <div className="rep-quest-reveal-2">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Your Code</p>
-                  <button
-                    onClick={() => copyToClipboard(shareLink || discountCode)}
-                    className="w-full flex items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.08] p-3 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
-                  >
-                    <div className="flex flex-col min-w-0 text-left">
-                      <span className="text-base font-black font-mono tracking-[3px] text-foreground">{discountCode}</span>
-                      <span className="text-[10px] text-muted-foreground">Add this to your story</span>
-                    </div>
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-auto">
-                      {copiedLink ? <><Check size={10} /> Copied</> : <><LinkIcon size={10} /> Copy link</>}
-                    </span>
-                  </button>
+                <div className="rep-quest-reveal-2 space-y-2">
+                  {shareLink && (
+                    <>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Your Link</p>
+                      <button
+                        onClick={() => copyToClipboard(shareLink)}
+                        className="w-full flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/15 p-3 transition-colors hover:bg-primary/10 active:scale-[0.98]"
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15">
+                          <LinkIcon size={15} className="text-primary" />
+                        </div>
+                        <div className="flex flex-col min-w-0 text-left">
+                          <span className="text-xs font-semibold text-foreground truncate">
+                            {quest.event?.name || "Event Link"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground truncate font-mono">
+                            {shareLink.replace(/^https?:\/\//, "")}
+                          </span>
+                        </div>
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-auto">
+                          {copiedLink ? <><Check size={10} /> Copied!</> : <><LinkIcon size={10} /> Copy</>}
+                        </span>
+                      </button>
+                    </>
+                  )}
+                  {!shareLink && (
+                    <>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Your Code</p>
+                      <button
+                        onClick={() => copyToClipboard(discountCode)}
+                        className="w-full flex items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.08] p-3 transition-colors hover:bg-white/[0.08] active:scale-[0.98]"
+                      >
+                        <div className="flex flex-col min-w-0 text-left">
+                          <span className="text-base font-black font-mono tracking-[3px] text-foreground">{discountCode}</span>
+                          <span className="text-[10px] text-muted-foreground">Add this to your story</span>
+                        </div>
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-primary shrink-0 ml-auto">
+                          {copiedLink ? <><Check size={10} /> Copied!</> : <><LinkIcon size={10} /> Copy</>}
+                        </span>
+                      </button>
+                    </>
+                  )}
+                  {typeof navigator !== "undefined" && "share" in navigator && shareLink && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.share({
+                          text: `Use my code ${discountCode} for a discount!`,
+                          url: shareLink,
+                        }).catch(() => {});
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 text-[11px] font-semibold text-primary/70 hover:text-primary transition-colors"
+                    >
+                      <Share2 size={12} /> Share to Story / DM
+                    </button>
+                  )}
                 </div>
               )}
 
               <p className="text-center text-sm text-muted-foreground rep-quest-reveal-3">
-                Share to your story with your discount code, then submit proof
+                {shareLink
+                  ? "Share your link — discount auto-applies when they tap it"
+                  : "Share to your story with your discount code, then submit proof"}
               </p>
             </div>
           )}

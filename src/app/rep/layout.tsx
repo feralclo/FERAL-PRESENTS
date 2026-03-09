@@ -170,7 +170,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   }, [isPublicPage, pathname, router]);
 
   // PWA: register service worker, handle install prompt
-  const { shouldShowInstall, platform, promptInstall, dismissInstall, requestPush, isStandalone } = useRepPWA();
+  const { shouldShowInstall, platform, iosBrowser, promptInstall, dismissInstall, requestPush, isStandalone } = useRepPWA();
   const [showInstallModal, setShowInstallModal] = useState(false);
 
   // Show install prompt after 3rd visit (not on first — let them explore first)
@@ -191,11 +191,14 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   // Add manifest link to head
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const existing = document.querySelector('link[rel="manifest"][href="/rep-manifest.json"]');
+    // Remove old static manifest if present
+    const oldManifest = document.querySelector('link[rel="manifest"][href="/rep-manifest.json"]');
+    if (oldManifest) oldManifest.remove();
+    const existing = document.querySelector('link[rel="manifest"][href="/api/rep-portal/manifest"]');
     if (existing) return;
     const link = document.createElement("link");
     link.rel = "manifest";
-    link.href = "/rep-manifest.json";
+    link.href = "/api/rep-portal/manifest";
     document.head.appendChild(link);
 
     // Theme color meta
@@ -392,6 +395,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       {showInstallModal && (
         <InstallPrompt
           platform={platform}
+          iosBrowser={iosBrowser}
           onInstall={promptInstall}
           onDismiss={() => {
             setShowInstallModal(false);

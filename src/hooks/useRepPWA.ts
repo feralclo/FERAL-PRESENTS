@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Platform = "ios" | "android" | "desktop" | "unknown";
+type IOSBrowser = "safari" | "chrome" | "other" | null;
 
 interface PWAState {
   /** Whether the browser supports service workers */
@@ -23,6 +24,8 @@ interface PWAState {
   isStandalone: boolean;
   /** Detected platform */
   platform: Platform;
+  /** On iOS, which browser (Safari is required for PWA install) */
+  iosBrowser: IOSBrowser;
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -48,6 +51,24 @@ function detectPlatform(): Platform {
   if (/Android/.test(ua)) return "android";
 
   return "desktop";
+}
+
+/**
+ * On iOS, detect if the user is in Safari (required for PWA install)
+ * or a different browser (Chrome, Firefox, etc.)
+ *
+ * All iOS browsers use WebKit under the hood, but only Safari supports
+ * "Add to Home Screen". Chrome/Firefox on iOS can be detected by their
+ * unique UA tokens: CriOS (Chrome), FxiOS (Firefox), EdgiOS (Edge).
+ * If none of those match and it's iOS, it's Safari.
+ */
+function detectIOSBrowser(platform: Platform): IOSBrowser {
+  if (platform !== "ios") return null;
+  if (typeof navigator === "undefined") return null;
+  const ua = navigator.userAgent;
+  if (/CriOS/.test(ua)) return "chrome";
+  if (/FxiOS|EdgiOS|OPiOS/.test(ua)) return "other";
+  return "safari";
 }
 
 function detectStandalone(): boolean {
@@ -101,6 +122,7 @@ export function useRepPWA() {
     installable: false,
     isStandalone: false,
     platform: "unknown",
+    iosBrowser: null,
   });
 
   // Register service worker + check push state
@@ -108,6 +130,7 @@ export function useRepPWA() {
     if (typeof window === "undefined") return;
 
     const platform = detectPlatform();
+    const iosBrowser = detectIOSBrowser(platform);
     const isStandalone = detectStandalone();
     const swSupported = "serviceWorker" in navigator;
     const pushSup = swSupported && "PushManager" in window;
@@ -121,6 +144,7 @@ export function useRepPWA() {
       pushPermission: perm,
       isStandalone,
       platform,
+      iosBrowser,
     }));
 
     if (!swSupported) return;

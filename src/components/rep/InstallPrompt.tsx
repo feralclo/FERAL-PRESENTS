@@ -12,12 +12,16 @@ import {
   X,
   Smartphone,
   ChevronRight,
+  Copy,
+  Check,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface InstallPromptProps {
   platform: "ios" | "android" | "desktop" | "unknown";
+  iosBrowser?: "safari" | "chrome" | "other" | null;
   onInstall: () => Promise<boolean>;
   onDismiss: () => void;
   onEnableNotifications?: () => Promise<unknown>;
@@ -29,13 +33,20 @@ const BENEFITS = [
   { icon: Wifi, label: "Works offline — check stats anywhere", color: "#34D399" },
 ];
 
-export function InstallPrompt({ platform, onInstall, onDismiss, onEnableNotifications }: InstallPromptProps) {
-  const [step, setStep] = useState<"benefits" | "ios-guide" | "done">("benefits");
+export function InstallPrompt({ platform, iosBrowser, onInstall, onDismiss, onEnableNotifications }: InstallPromptProps) {
+  const [step, setStep] = useState<"benefits" | "ios-guide" | "open-safari" | "done">("benefits");
   const [installing, setInstalling] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const isIOSNonSafari = platform === "ios" && iosBrowser && iosBrowser !== "safari";
 
   const handleInstall = async () => {
     if (platform === "ios") {
-      setStep("ios-guide");
+      if (isIOSNonSafari) {
+        setStep("open-safari");
+      } else {
+        setStep("ios-guide");
+      }
       return;
     }
 
@@ -47,6 +58,14 @@ export function InstallPrompt({ platform, onInstall, onDismiss, onEnableNotifica
       setStep("done");
       setTimeout(onDismiss, 2000);
     }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.origin + "/rep");
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch { /* clipboard not available */ }
   };
 
   const content = (
@@ -198,6 +217,89 @@ export function InstallPrompt({ platform, onInstall, onDismiss, onEnableNotifica
                 <div className="flex h-10 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3">
                   <Plus size={14} className="text-primary" />
                   <span className="text-xs font-medium text-primary">Add to Home Screen</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={onDismiss}
+              className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
+            >
+              Got it
+            </button>
+          </div>
+        )}
+
+        {/* ── iOS non-Safari: prompt to open in Safari ── */}
+        {step === "open-safari" && (
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-bold text-foreground">Open in Safari</h3>
+              <button
+                onClick={onDismiss}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-amber-500/[0.06] border border-amber-500/15 p-4 mb-5">
+              <p className="text-sm text-foreground/90 leading-relaxed">
+                To install the app, you need to open this page in <strong className="text-foreground">Safari</strong>.
+                {iosBrowser === "chrome" ? " Chrome on iPhone" : " This browser"} doesn&apos;t support app installs.
+              </p>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              {/* Step 1 */}
+              <div className="flex items-start gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                  1
+                </div>
+                <div className="flex-1 pt-0.5">
+                  <p className="text-sm text-foreground font-medium">
+                    Copy the link below
+                  </p>
+                </div>
+              </div>
+
+              {/* Copy link button */}
+              <div className="ml-10">
+                <Button
+                  variant="outline"
+                  className="w-full justify-between font-mono text-xs h-11"
+                  onClick={handleCopyLink}
+                >
+                  <span className="truncate">{typeof window !== "undefined" ? window.location.origin : ""}/rep</span>
+                  {copiedLink ? (
+                    <Check size={14} className="text-success shrink-0 ml-2" />
+                  ) : (
+                    <Copy size={14} className="shrink-0 ml-2" />
+                  )}
+                </Button>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex items-start gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                  2
+                </div>
+                <div className="flex-1 pt-0.5">
+                  <p className="text-sm text-foreground font-medium">
+                    Open <Globe size={13} className="inline text-primary mx-0.5" /> <strong>Safari</strong> and paste the link
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex items-start gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success/15 text-xs font-bold text-success">
+                  3
+                </div>
+                <div className="flex-1 pt-0.5">
+                  <p className="text-sm text-foreground font-medium">
+                    Then tap <Share size={13} className="inline text-primary mx-0.5" /> and <span className="text-primary">Add to Home Screen</span>
+                  </p>
                 </div>
               </div>
             </div>

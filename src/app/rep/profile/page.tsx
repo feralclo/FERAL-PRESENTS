@@ -103,7 +103,7 @@ export default function RepProfilePage() {
   const [copiedCode, setCopiedCode] = useState(false);
 
   // PWA
-  const { shouldShowInstall, platform, promptInstall, dismissInstall, requestPush, isStandalone, pushPermission, pushSupported } = useRepPWA();
+  const { shouldShowInstall, platform, iosBrowser, promptInstall, dismissInstall, requestPush, isStandalone, pushPermission, pushSupported } = useRepPWA();
   const [showInstallModal, setShowInstallModal] = useState(false);
 
   useEffect(() => {
@@ -632,6 +632,7 @@ export default function RepProfilePage() {
       {showInstallModal && (
         <InstallPrompt
           platform={platform}
+          iosBrowser={iosBrowser}
           onInstall={promptInstall}
           onDismiss={() => {
             setShowInstallModal(false);

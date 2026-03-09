@@ -89,7 +89,7 @@ export async function GET() {
     // Fetch event and ticket type names in parallel
     const [eventsLookup, ticketTypesLookup] = await Promise.all([
       eventIds.size > 0
-        ? supabase.from(TABLES.EVENTS).select("id, name").in("id", [...eventIds]).eq("org_id", orgId)
+        ? supabase.from(TABLES.EVENTS).select("id, name, cover_image, hero_image").in("id", [...eventIds]).eq("org_id", orgId)
         : { data: [] },
       ticketTypeIds.size > 0
         ? supabase.from(TABLES.TICKET_TYPES).select("id, name").in("id", [...ticketTypeIds]).eq("org_id", orgId)
@@ -97,8 +97,11 @@ export async function GET() {
     ]);
 
     const eventNameMap = new Map<string, string>();
-    for (const e of (eventsLookup.data || []) as { id: string; name: string }[]) {
+    const eventImageMap = new Map<string, string>();
+    for (const e of (eventsLookup.data || []) as { id: string; name: string; cover_image?: string; hero_image?: string }[]) {
       eventNameMap.set(e.id, e.name);
+      const eventImg = e.cover_image || e.hero_image;
+      if (eventImg) eventImageMap.set(e.id, eventImg);
     }
     const ticketTypeNameMap = new Map<string, string>();
     for (const tt of (ticketTypesLookup.data || []) as { id: string; name: string }[]) {
@@ -177,10 +180,11 @@ export async function GET() {
         }
       );
 
-      // Use product image as fallback if reward has no direct image
+      // Image fallback chain: reward image → event cover image → product image
       const product = reward.product as Record<string, unknown> | null;
       const productImages = (product?.images ?? []) as string[];
-      const imageUrl = (reward.image_url as string) || productImages[0] || null;
+      const eventImage = meta?.event_id ? eventImageMap.get(meta.event_id as string) || null : null;
+      const imageUrl = (reward.image_url as string) || eventImage || productImages[0] || null;
 
       // Resolve event and ticket type names from metadata
       const eventName = meta?.event_id ? eventNameMap.get(meta.event_id as string) || null : null;

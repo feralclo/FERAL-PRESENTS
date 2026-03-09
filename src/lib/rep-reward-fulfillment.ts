@@ -86,7 +86,7 @@ async function fulfillTicket(params: Omit<FulfillmentParams, "body">): Promise<F
       first_name: rep.first_name,
       last_name: rep.last_name,
     },
-    payment: { method: "reward", ref: `REWARD-${claimId}` },
+    payment: { method: "reward", ref: `REWARD-${claimId}`, totalCharged: 0 },
     sendEmail: true,
   });
 
@@ -227,7 +227,7 @@ async function fulfillMerch(params: Omit<FulfillmentParams, "body"> & { merchSiz
       first_name: rep.first_name,
       last_name: rep.last_name,
     },
-    payment: { method: "reward", ref: `REWARD-${claimId}` },
+    payment: { method: "reward", ref: `REWARD-${claimId}`, totalCharged: 0 },
     sendEmail: true,
   });
 

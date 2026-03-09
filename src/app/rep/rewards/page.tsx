@@ -503,8 +503,8 @@ export default function RepRewardsPage() {
                     )}
                   >
                     {reward.image_url && (
-                      <div className="relative h-32 bg-muted/20 flex items-center justify-center">
-                        <img src={reward.image_url} alt="" className="max-h-full max-w-full object-contain p-3" />
+                      <div className="relative h-32 bg-muted/20 overflow-hidden">
+                        <img src={reward.image_url} alt="" className="h-full w-full object-cover" />
                         {remaining !== null && remaining > 0 && remaining <= 5 && !allClaimed && (
                           <span className="absolute top-2 right-2 text-[10px] font-bold text-warning bg-warning/15 border border-warning/20 px-2 py-0.5 rounded-full animate-pulse">
                             {remaining} left

@@ -407,7 +407,7 @@ export default function RepRewardsPage() {
       case "merch":
         return {
           title: "Merch Claimed!",
-          subtitle: `Size ${data?.merch_size || "selected"} — collect at the event.`,
+          subtitle: `Size ${data?.merch_size || "selected"} — check your email for the collection QR.`,
         };
       default:
         return {

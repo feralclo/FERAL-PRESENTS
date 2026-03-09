@@ -1,5 +1,6 @@
 import { TABLES } from "@/lib/constants";
 import { createOrder } from "@/lib/orders";
+import { createMerchOrder, ensureMerchPassTicketType } from "@/lib/merch-orders";
 import { awardPoints } from "@/lib/rep-points";
 import { ensureRepCustomer } from "@/lib/rep-utils";
 import type { ClaimMetadata, RewardMetadata, FulfillmentType } from "@/types/reps";
@@ -163,9 +164,12 @@ async function fulfillVipUpgrade(params: Omit<FulfillmentParams, "body">): Promi
 }
 
 // ─── Merch ──────────────────────────────────────────────────────────────────
-// Creates a merch collection order (like merch pre-orders) with a dedicated
-// "Reward: [Product]" ticket type. This generates a QR code the rep shows at
-// the merch booth. Does NOT create an event entry ticket.
+// Uses the existing merch pre-order system (createMerchOrder) so the entire
+// downstream chain — email, PDF, scanner — uses merch-specific language:
+//   PDF: "MERCH PRE-ORDER" / "NOT VALID FOR EVENT ENTRY"
+//   Email: "Merch pre-order confirmed" / "Present QR at the merch stand"
+//   Scanner: rejects entry scan with "merch_only" status
+// Does NOT create an event entry ticket.
 
 async function fulfillMerch(params: Omit<FulfillmentParams, "body"> & { merchSize?: string }): Promise<FulfillmentResult> {
   const { supabase, orgId, rep, reward, claimId, merchSize } = params;
@@ -197,55 +201,44 @@ async function fulfillMerch(params: Omit<FulfillmentParams, "body"> & { merchSiz
 
   if (eventErr || !event) throw new Error("Collection event not found");
 
-  // Find or create a dedicated merch collection ticket type for this product.
-  // We use a "Reward:" prefix to avoid picking up VIP bundles or real ticket types.
-  const rewardTtName = `Reward: ${reward.name}`;
-  let ticketTypeId: string;
+  // Use the shared "Merch Pre-order" ticket type — this is how the scanner
+  // knows to reject entry ("This is a merch collection QR code, not an entry ticket").
+  const merchPassTicketTypeId = await ensureMerchPassTicketType(supabase, orgId, event.id);
 
-  const { data: existingTt } = await supabase
-    .from(TABLES.TICKET_TYPES)
-    .select("id")
-    .eq("event_id", event.id)
-    .eq("org_id", orgId)
-    .eq("name", rewardTtName)
-    .limit(1)
-    .single();
-
-  if (existingTt) {
-    ticketTypeId = existingTt.id;
-  } else {
-    // Auto-create a hidden merch collection ticket type (price=0, not shown in shop)
-    const { data: newTt, error: ttErr } = await supabase
-      .from(TABLES.TICKET_TYPES)
-      .insert({
-        org_id: orgId,
-        event_id: event.id,
-        name: rewardTtName,
-        price: 0,
-        capacity: null,
-        sold: 0,
-        includes_merch: true,
-        product_id: reward.product_id || null,
-        status: "hidden",
-      })
-      .select("id")
+  // Look up product name for the email / PDF
+  let productName = reward.name;
+  if (reward.product_id) {
+    const { data: product } = await supabase
+      .from(TABLES.PRODUCTS)
+      .select("name")
+      .eq("id", reward.product_id)
       .single();
-
-    if (ttErr || !newTt) throw new Error("Failed to create merch collection type");
-    ticketTypeId = newTt.id;
+    if (product?.name) productName = product.name;
   }
 
-  const result = await createOrder({
+  // createMerchOrder sets order_type: "merch_preorder" in metadata, which
+  // triggers merch-specific copy in emails and PDFs (no entry language).
+  const result = await createMerchOrder({
     supabase,
     orgId,
     event,
-    items: [{ ticket_type_id: ticketTypeId, qty: 1, merch_size: merchSize }],
+    collectionId: reward.id,
+    collectionTitle: `Reward: ${reward.name}`,
+    items: [{
+      collection_item_id: reward.id,
+      product_id: reward.product_id || reward.id,
+      product_name: productName,
+      qty: 1,
+      unit_price: 0,
+      merch_size: merchSize,
+    }],
     customer: {
       email: rep.email,
       first_name: rep.first_name,
       last_name: rep.last_name,
     },
     payment: { method: "reward", ref: `REWARD-${claimId}`, totalCharged: 0 },
+    merchPassTicketTypeId,
     sendEmail: true,
   });
 

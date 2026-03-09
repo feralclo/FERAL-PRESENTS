@@ -201,7 +201,23 @@ interface Claim {
     reward_type: string;
     points_cost?: number;
     custom_value?: string;
+    metadata?: { fulfillment_type?: FulfillmentType; event_id?: string };
     product?: { name: string; images?: string[] } | null;
+  };
+  event?: {
+    id: string;
+    name: string;
+    date_start: string | null;
+    venue_name: string | null;
+    cover_image: string | null;
+  } | null;
+  ticket_status?: {
+    scanned: boolean;
+    any_scanned: boolean;
+    scanned_at: string | null;
+    merch_collected: boolean;
+    any_merch_collected: boolean;
+    merch_collected_at: string | null;
   };
 }
 
@@ -714,119 +730,197 @@ export default function RepRewardsPage() {
 
       {/* ── My Rewards Tab ── */}
       <TabsContent value="history">
-        <div className="space-y-2 rep-slide-up">
+        <div className="space-y-3 rep-slide-up">
           {claims.length === 0 ? (
             <EmptyState icon={Gift} title="No rewards yet" subtitle="Claimed rewards and tickets will show up here" />
           ) : (
             claims.map((claim) => {
-              const config = CLAIM_STATUS_CONFIG[claim.status] || CLAIM_STATUS_CONFIG.claimed;
-              const StatusIcon = config.icon;
               const reward = claim.reward;
               const productImg = reward?.product?.images?.[0];
-              const imgUrl = reward?.image_url || productImg;
+              const imgUrl = reward?.image_url || productImg || claim.event?.cover_image;
               const claimMeta = claim.metadata;
               const hasTickets = claimMeta?.ticket_codes && claimMeta.ticket_codes.length > 0;
+              const ft = reward?.metadata?.fulfillment_type;
+              const isMerch = ft === "merch" || !!claimMeta?.merch_size;
+              const isTicket = ft === "free_ticket" || ft === "extra_tickets";
+              const isUpgrade = ft === "vip_upgrade";
+              const ts = claim.ticket_status;
+              const eventDate = claim.event?.date_start ? new Date(claim.event.date_start) : null;
+              const eventPassed = eventDate ? eventDate < new Date() : false;
+
+              // Determine the real state for the user
+              let stateLabel = "";
+              let stateColor = "";
+              let StateIcon = Clock;
+
+              if (claim.status === "cancelled") {
+                stateLabel = "Cancelled";
+                stateColor = "text-destructive";
+                StateIcon = XCircle;
+              } else if (isMerch && ts?.merch_collected) {
+                stateLabel = "Collected";
+                stateColor = "text-success";
+                StateIcon = CheckCircle2;
+              } else if (isTicket && ts?.scanned) {
+                stateLabel = "Used";
+                stateColor = "text-success";
+                StateIcon = CheckCircle2;
+              } else if (isUpgrade && claim.status === "fulfilled") {
+                stateLabel = "Upgraded";
+                stateColor = "text-success";
+                StateIcon = CheckCircle2;
+              } else if (isMerch && claim.status === "fulfilled" && !ts?.merch_collected) {
+                stateLabel = "Ready to collect";
+                stateColor = "text-amber-400";
+                StateIcon = Package;
+              } else if (isTicket && claim.status === "fulfilled" && !ts?.scanned) {
+                stateLabel = eventPassed ? "Unused" : "Ready";
+                stateColor = eventPassed ? "text-muted-foreground" : "text-primary";
+                StateIcon = Ticket;
+              } else if (claim.status === "claimed") {
+                stateLabel = "Processing";
+                stateColor = "text-muted-foreground";
+                StateIcon = Clock;
+              } else if (claim.status === "fulfilled") {
+                stateLabel = "Completed";
+                stateColor = "text-success";
+                StateIcon = CheckCircle2;
+              }
 
               return (
-                <Card key={claim.id} className="py-0 gap-0 border-border/40">
+                <Card key={claim.id} className={cn(
+                  "py-0 gap-0 overflow-hidden",
+                  claim.status === "cancelled" ? "border-border/20 opacity-60" : "border-border/40"
+                )}>
+                  {/* Hero image for visual impact */}
+                  {imgUrl && (
+                    <div className="relative h-28 bg-muted/20 flex items-center justify-center overflow-hidden">
+                      <img src={imgUrl} alt="" className="max-h-full max-w-full object-contain p-3" />
+                      {imgUrl && <ImageLightbox src={imgUrl} alt={reward?.name || "Reward"} />}
+                    </div>
+                  )}
+
                   <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      {imgUrl ? (
-                        <div className="h-11 w-11 shrink-0 rounded-lg overflow-hidden bg-muted/30">
-                          <img src={imgUrl} alt="" className="h-full w-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/30">
-                          <Gift size={16} className="text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium text-foreground line-clamp-1">
-                              {reward?.name || "Reward"}
-                            </p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <Badge variant={config.variant} className="text-[10px] px-1.5 py-0 gap-1">
-                                <StatusIcon size={9} />
-                                {config.label}
-                              </Badge>
-                              <span className="text-[10px] text-muted-foreground capitalize">
-                                {claim.claim_type === "points_shop" ? "Points" : claim.claim_type}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            {claim.points_spent > 0 && (
-                              <p className="text-xs font-mono text-muted-foreground tabular-nums">
-                                -{claim.points_spent} {currencyName}
-                              </p>
-                            )}
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              {new Date(claim.created_at).toLocaleDateString("en-GB", {
-                                day: "numeric",
-                                month: "short",
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                        {/* Fulfilled — show ticket/QR details */}
-                        {claim.status === "fulfilled" && (
-                          <div className="mt-2 rounded-lg bg-success/5 border border-success/10 px-3 py-2">
-                            <p className="text-[10px] text-success font-medium flex items-center gap-1">
-                              <CheckCircle2 size={10} /> Fulfilled
-                              {claim.fulfilled_at && (
-                                <span className="text-muted-foreground font-normal ml-1">
-                                  {new Date(claim.fulfilled_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                                </span>
-                              )}
-                            </p>
-                            {claimMeta?.order_number && (
-                              <p className="text-xs text-foreground/80 mt-1 font-mono">Order: {claimMeta.order_number}</p>
-                            )}
-                            {claimMeta?.merch_size && (
-                              <p className="text-xs text-foreground/80 mt-1">Size: {claimMeta.merch_size}</p>
-                            )}
-                            {reward?.custom_value && (
-                              <p className="text-xs text-foreground/80 mt-1">{reward.custom_value}</p>
-                            )}
-                            {reward?.product?.name && (
-                              <p className="text-xs text-foreground/80 mt-1">Product: {reward.product.name}</p>
-                            )}
-                            {claim.notes && (
-                              <p className="text-[10px] text-muted-foreground mt-1 italic">&ldquo;{claim.notes}&rdquo;</p>
-                            )}
-                            {/* Show ticket codes with QR button */}
-                            {hasTickets && (
-                              <div className="mt-2 space-y-1.5">
-                                {claimMeta!.ticket_codes!.map((code) => {
-                                  const isMerchQR = !!claimMeta?.merch_size;
-                                  return (
-                                    <TicketQRButton
-                                      key={code}
-                                      ticketCode={code}
-                                      label={isMerchQR ? "Present at the merch stand to collect" : "Show this at the door"}
-                                    />
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {/* Pending — show what to expect */}
-                        {claim.status === "claimed" && (
-                          <div className="mt-2 rounded-lg bg-muted/30 border border-border px-3 py-2">
-                            <p className="text-[10px] text-muted-foreground">
-                              {claimMeta?.merch_size
-                                ? `Size ${claimMeta.merch_size} — collect at the event.`
-                                : "Awaiting fulfilment from your team."}
-                            </p>
-                          </div>
-                        )}
-                        {claim.status === "cancelled" && claim.notes && (
-                          <p className="text-[10px] text-muted-foreground mt-1 italic">{claim.notes}</p>
+                    {/* Title + state */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground line-clamp-1">
+                          {reward?.name || "Reward"}
+                        </p>
+                        {reward?.product?.name && reward.product.name !== reward.name && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{reward.product.name}</p>
                         )}
                       </div>
+                      <Badge
+                        variant="secondary"
+                        className={cn("text-[10px] px-2 py-0.5 gap-1 shrink-0", stateColor)}
+                      >
+                        <StateIcon size={10} />
+                        {stateLabel}
+                      </Badge>
+                    </div>
+
+                    {/* Event info */}
+                    {claim.event && (
+                      <div className="flex items-center gap-2 rounded-lg bg-muted/30 border border-border/50 px-3 py-2 mb-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-foreground truncate">{claim.event.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {claim.event.venue_name && (
+                              <span className="text-[10px] text-muted-foreground truncate">{claim.event.venue_name}</span>
+                            )}
+                            {eventDate && (
+                              <span className="text-[10px] text-muted-foreground shrink-0">
+                                {eventDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Merch details */}
+                    {isMerch && claimMeta?.merch_size && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Package size={12} className="text-muted-foreground shrink-0" />
+                        <span className="text-xs text-foreground">Size {claimMeta.merch_size}</span>
+                        {ts?.merch_collected ? (
+                          <span className="text-[10px] text-success font-medium ml-auto">
+                            Collected{ts.merch_collected_at ? ` ${new Date(ts.merch_collected_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
+                          </span>
+                        ) : claim.status === "fulfilled" ? (
+                          <span className="text-[10px] text-amber-400 font-medium ml-auto">
+                            {eventDate ? (eventPassed ? "Event has passed" : `Collect at event`) : "Waiting to collect"}
+                          </span>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {/* Ticket status */}
+                    {isTicket && claim.status === "fulfilled" && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Ticket size={12} className="text-muted-foreground shrink-0" />
+                        {ts?.scanned ? (
+                          <span className="text-xs text-success font-medium">
+                            Scanned{ts.scanned_at ? ` ${new Date(ts.scanned_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-foreground">
+                            {eventPassed ? "Ticket unused" : "Check your email for the QR"}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* VIP upgrade info */}
+                    {isUpgrade && claim.status === "fulfilled" && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <ArrowUpCircle size={12} className="text-success shrink-0" />
+                        <span className="text-xs text-foreground">Your ticket has been upgraded</span>
+                      </div>
+                    )}
+
+                    {/* Pending manual fulfilment */}
+                    {claim.status === "claimed" && !isMerch && !isTicket && !isUpgrade && (
+                      <div className="rounded-lg bg-muted/30 border border-border px-3 py-2 mb-3">
+                        <p className="text-[10px] text-muted-foreground">Awaiting fulfilment from your team.</p>
+                      </div>
+                    )}
+
+                    {/* Cancelled reason */}
+                    {claim.status === "cancelled" && claim.notes && (
+                      <p className="text-[10px] text-muted-foreground mb-3 italic">{claim.notes}</p>
+                    )}
+
+                    {/* QR codes */}
+                    {hasTickets && claim.status !== "cancelled" && (
+                      <div className="space-y-1.5">
+                        {claimMeta!.ticket_codes!.map((code) => (
+                          <TicketQRButton
+                            key={code}
+                            ticketCode={code}
+                            label={isMerch ? "Present at the merch stand to collect" : "Show this at the door"}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Footer: cost + date */}
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
+                      {claim.points_spent > 0 ? (
+                        <p className="text-[10px] font-mono text-muted-foreground tabular-nums">
+                          -{claim.points_spent} {currencyName}
+                        </p>
+                      ) : (
+                        <span />
+                      )}
+                      <p className="text-[10px] text-muted-foreground">
+                        {new Date(claim.created_at).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>

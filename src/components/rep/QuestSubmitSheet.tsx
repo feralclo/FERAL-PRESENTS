@@ -86,21 +86,20 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted, currencyName = "
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      const res = await fetch("/api/upload", {
+      const res = await fetch("/api/rep-portal/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64, key: `quest-proof-${Date.now()}` }),
+        body: JSON.stringify({ imageData: base64, key: `quest-proof-${Date.now()}` }),
       });
       if (res.ok) {
         const json = await res.json();
-        if (!json.key) {
-          setError("Upload succeeded but no media key returned");
+        if (!json.url) {
+          setError("Upload succeeded but no media URL returned");
           setUploading(false);
           return;
         }
-        const mediaUrl = `/api/media/${json.key}`;
-        setUploadedUrl(mediaUrl);
-        setProofText(mediaUrl);
+        setUploadedUrl(json.url);
+        setProofText(json.url);
       } else {
         setError("Failed to upload image");
       }

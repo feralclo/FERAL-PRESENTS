@@ -183,7 +183,6 @@ export async function GET(request: NextRequest) {
       last_name: lastName,
       display_name: `${firstName} ${lastName.charAt(0) || ""}`.trim() + (lastName.charAt(0) ? "." : ""),
       photo_url: user.user_metadata?.avatar_url || null,
-      email_verified: true, // Google email is pre-verified
       points_balance: 0,
       currency_balance: 0,
       total_sales: 0,

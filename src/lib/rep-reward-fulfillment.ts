@@ -163,94 +163,25 @@ async function fulfillVipUpgrade(params: Omit<FulfillmentParams, "body">): Promi
 }
 
 // ─── Merch ──────────────────────────────────────────────────────────────────
+// Merch rewards NEVER create orders or tickets. The claim itself is the record.
+// If an event_id is set in the reward metadata, it's for collection at that event.
+// Admin marks the claim fulfilled when the rep collects.
 
 async function fulfillMerch(params: Omit<FulfillmentParams, "body"> & { merchSize?: string }): Promise<FulfillmentResult> {
-  const { supabase, orgId, rep, reward, claimId, merchSize } = params;
+  const { supabase, orgId, claimId, merchSize, reward } = params;
 
   if (!merchSize) {
     throw new Error("Merch size is required");
   }
 
-  // If no product linked, fall back to manual fulfillment (admin handles it)
-  if (!reward.product_id) {
-    const claimMetadata: ClaimMetadata = { merch_size: merchSize };
-    await updateClaimMetadata(supabase, orgId, claimId, claimMetadata);
-    return { metadata: claimMetadata };
-  }
-
-  await ensureRepCustomer({
-    supabase, repId: rep.id, orgId, email: rep.email,
-    firstName: rep.first_name, lastName: rep.last_name,
-  });
-
-  // Find the rep's next assigned event
-  const { data: nextEvent } = await supabase
-    .from(TABLES.REP_EVENTS)
-    .select("event_id, event:events(id, name, slug, currency, venue_name, date_start, doors_time)")
-    .eq("rep_id", rep.id)
-    .eq("org_id", orgId)
-    .order("event(date_start)", { ascending: true })
-    .limit(10);
-
-  // Find the first future event
-  const now = new Date().toISOString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const futureAssignment = (nextEvent || []).find((re: any) => {
-    const evt = re.event;
-    return evt && (!evt.date_start || evt.date_start > now);
-  });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const event = (futureAssignment as any)?.event;
-
-  // No upcoming event or no ticket type linked → fall back to manual
-  // Claim stays as "claimed" for admin to fulfill (e.g. ship it or hand at any event)
-  if (!event) {
-    const claimMetadata: ClaimMetadata = { merch_size: merchSize };
-    await updateClaimMetadata(supabase, orgId, claimId, claimMetadata);
-    return { metadata: claimMetadata };
-  }
-
-  // Find the ticket type linked to this product at the event
-  const { data: ticketType } = await supabase
-    .from(TABLES.TICKET_TYPES)
-    .select("id")
-    .eq("product_id", reward.product_id)
-    .eq("event_id", event.id)
-    .eq("org_id", orgId)
-    .limit(1)
-    .single();
-
-  if (!ticketType) {
-    // Product exists but no ticket type at this event — manual fallback
-    const claimMetadata: ClaimMetadata = { merch_size: merchSize, event_id: event.id };
-    await updateClaimMetadata(supabase, orgId, claimId, claimMetadata);
-    return { metadata: claimMetadata };
-  }
-
-  const result = await createOrder({
-    supabase,
-    orgId,
-    event,
-    items: [{ ticket_type_id: ticketType.id, qty: 1, merch_size: merchSize }],
-    customer: {
-      email: rep.email,
-      first_name: rep.first_name,
-      last_name: rep.last_name,
-    },
-    payment: { method: "reward", ref: `REWARD-${claimId}`, totalCharged: 0 },
-    sendEmail: true,
-  });
-
+  const meta = reward.metadata;
   const claimMetadata: ClaimMetadata = {
-    order_id: result.order.id,
-    order_number: result.order.order_number,
-    ticket_codes: result.tickets.map((t) => t.ticket_code),
     merch_size: merchSize,
-    event_id: event.id,
+    event_id: meta?.event_id,
   };
 
-  await markClaimFulfilled(supabase, orgId, claimId, claimMetadata);
+  // Store size + collection event on the claim. Leave as "claimed" for admin to fulfil.
+  await updateClaimMetadata(supabase, orgId, claimId, claimMetadata);
 
   return { metadata: claimMetadata };
 }

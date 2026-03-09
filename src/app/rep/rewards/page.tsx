@@ -351,9 +351,9 @@ export default function RepRewardsPage() {
       case "vip_upgrade":
         return `Your existing${reward.event_name ? ` ${reward.event_name}` : ""} ticket will be upgraded${reward.upgrade_ticket_type_name ? ` to ${reward.upgrade_ticket_type_name}` : ""}.`;
       case "merch":
-        return reward.product_id
-          ? "Pick up at your next event. You'll receive a collection QR via email."
-          : "Select your size. Your team will arrange collection.";
+        return reward.event_name
+          ? `Pick your size. Collect at ${reward.event_name}.`
+          : "Pick your size. Collect at the event.";
       default:
         return "Admin will fulfil your reward.";
     }
@@ -379,9 +379,7 @@ export default function RepRewardsPage() {
       case "merch":
         return {
           title: "Merch Claimed!",
-          subtitle: data?.order_number
-            ? `Check your email for the collection QR${data?.merch_size ? ` — Size ${data.merch_size}` : ""}`
-            : `Size ${data?.merch_size || "selected"} — your team will be in touch about collection.`,
+          subtitle: `Size ${data?.merch_size || "selected"} — collect at the event.`,
         };
       default:
         return {
@@ -733,7 +731,7 @@ export default function RepRewardsPage() {
                           <div className="mt-2 rounded-lg bg-muted/30 border border-border px-3 py-2">
                             <p className="text-[10px] text-muted-foreground">
                               {claimMeta?.merch_size
-                                ? `Size ${claimMeta.merch_size} — your team will be in touch about collection.`
+                                ? `Size ${claimMeta.merch_size} — collect at the event.`
                                 : "Awaiting fulfilment from your team."}
                             </p>
                           </div>

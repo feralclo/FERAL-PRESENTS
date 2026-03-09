@@ -163,25 +163,101 @@ async function fulfillVipUpgrade(params: Omit<FulfillmentParams, "body">): Promi
 }
 
 // ─── Merch ──────────────────────────────────────────────────────────────────
-// Merch rewards NEVER create orders or tickets. The claim itself is the record.
-// If an event_id is set in the reward metadata, it's for collection at that event.
-// Admin marks the claim fulfilled when the rep collects.
+// Creates a merch collection order (like merch pre-orders) with a dedicated
+// "Reward: [Product]" ticket type. This generates a QR code the rep shows at
+// the merch booth. Does NOT create an event entry ticket.
 
 async function fulfillMerch(params: Omit<FulfillmentParams, "body"> & { merchSize?: string }): Promise<FulfillmentResult> {
-  const { supabase, orgId, claimId, merchSize, reward } = params;
+  const { supabase, orgId, rep, reward, claimId, merchSize } = params;
 
   if (!merchSize) {
     throw new Error("Merch size is required");
   }
 
   const meta = reward.metadata;
+  if (!meta?.event_id) {
+    // No event → manual fulfillment (store size, admin handles it)
+    const claimMetadata: ClaimMetadata = { merch_size: merchSize };
+    await updateClaimMetadata(supabase, orgId, claimId, claimMetadata);
+    return { metadata: claimMetadata };
+  }
+
+  await ensureRepCustomer({
+    supabase, repId: rep.id, orgId, email: rep.email,
+    firstName: rep.first_name, lastName: rep.last_name,
+  });
+
+  // Fetch event
+  const { data: event, error: eventErr } = await supabase
+    .from(TABLES.EVENTS)
+    .select("id, name, slug, currency, venue_name, date_start, doors_time")
+    .eq("id", meta.event_id)
+    .eq("org_id", orgId)
+    .single();
+
+  if (eventErr || !event) throw new Error("Collection event not found");
+
+  // Find or create a dedicated merch collection ticket type for this product.
+  // We use a "Reward:" prefix to avoid picking up VIP bundles or real ticket types.
+  const rewardTtName = `Reward: ${reward.name}`;
+  let ticketTypeId: string;
+
+  const { data: existingTt } = await supabase
+    .from(TABLES.TICKET_TYPES)
+    .select("id")
+    .eq("event_id", event.id)
+    .eq("org_id", orgId)
+    .eq("name", rewardTtName)
+    .limit(1)
+    .single();
+
+  if (existingTt) {
+    ticketTypeId = existingTt.id;
+  } else {
+    // Auto-create a hidden merch collection ticket type (price=0, not shown in shop)
+    const { data: newTt, error: ttErr } = await supabase
+      .from(TABLES.TICKET_TYPES)
+      .insert({
+        org_id: orgId,
+        event_id: event.id,
+        name: rewardTtName,
+        price: 0,
+        capacity: null,
+        sold: 0,
+        includes_merch: true,
+        product_id: reward.product_id || null,
+        status: "hidden",
+      })
+      .select("id")
+      .single();
+
+    if (ttErr || !newTt) throw new Error("Failed to create merch collection type");
+    ticketTypeId = newTt.id;
+  }
+
+  const result = await createOrder({
+    supabase,
+    orgId,
+    event,
+    items: [{ ticket_type_id: ticketTypeId, qty: 1, merch_size: merchSize }],
+    customer: {
+      email: rep.email,
+      first_name: rep.first_name,
+      last_name: rep.last_name,
+    },
+    payment: { method: "reward", ref: `REWARD-${claimId}`, totalCharged: 0 },
+    sendEmail: true,
+  });
+
   const claimMetadata: ClaimMetadata = {
+    order_id: result.order.id,
+    order_number: result.order.order_number,
+    ticket_codes: result.tickets.map((t) => t.ticket_code),
     merch_size: merchSize,
-    event_id: meta?.event_id,
+    event_id: event.id,
   };
 
-  // Store size + collection event on the claim. Leave as "claimed" for admin to fulfil.
-  await updateClaimMetadata(supabase, orgId, claimId, claimMetadata);
+  await markClaimFulfilled(supabase, orgId, claimId, claimMetadata);
 
   return { metadata: claimMetadata };
 }

@@ -30,50 +30,78 @@ import { cn } from "@/lib/utils";
 import QRCode from "qrcode";
 import type { FulfillmentType, ClaimMetadata } from "@/types/reps";
 
-// ─── Ticket QR Card (inline expandable) ─────────────────────────────────────
+// ─── Ticket QR Button + Fullscreen Modal ─────────────────────────────────────
 
-function TicketQRCard({ ticketCode }: { ticketCode: string }) {
-  const [expanded, setExpanded] = useState(false);
+function TicketQRButton({ ticketCode, label }: { ticketCode: string; label?: string }) {
+  const [showModal, setShowModal] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (expanded && !qrDataUrl) {
+    if (showModal && !qrDataUrl) {
       QRCode.toDataURL(ticketCode, {
         errorCorrectionLevel: "H",
         margin: 2,
-        width: 240,
+        width: 320,
         color: { dark: "#000000", light: "#ffffff" },
       }).then(setQrDataUrl).catch(() => {});
     }
-  }, [expanded, qrDataUrl, ticketCode]);
+  }, [showModal, qrDataUrl, ticketCode]);
 
   return (
-    <div className="rounded-lg border border-border bg-background">
+    <>
       <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-3 py-2 text-left"
+        onClick={() => setShowModal(true)}
+        className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-background hover:border-primary/30 transition-colors"
       >
         <div className="flex items-center gap-2 min-w-0">
           <Ticket size={12} className="text-primary shrink-0" />
           <span className="text-xs font-mono text-foreground truncate">{ticketCode}</span>
         </div>
         <span className="text-[10px] text-primary font-medium shrink-0 ml-2">
-          {expanded ? "Hide" : "Show QR"}
+          Show QR
         </span>
       </button>
-      {expanded && (
-        <div className="px-3 pb-3 flex flex-col items-center">
-          {qrDataUrl ? (
-            <div className="bg-white rounded-lg p-2">
-              <img src={qrDataUrl} alt={`QR code for ${ticketCode}`} className="w-48 h-48" />
+
+      {showModal && typeof document !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md rep-fade-in"
+          onClick={() => setShowModal(false)}
+        >
+          <div
+            className="flex flex-col items-center w-full max-w-xs mx-4 rep-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowModal(false)}
+              className="self-end mb-3 text-white/60 hover:text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+
+            {/* QR Card */}
+            <div className="w-full rounded-2xl bg-white p-6 flex flex-col items-center">
+              {qrDataUrl ? (
+                <img src={qrDataUrl} alt={`QR code for ${ticketCode}`} className="w-64 h-64" />
+              ) : (
+                <div className="w-64 h-64 flex items-center justify-center">
+                  <Loader2 size={24} className="animate-spin text-gray-400" />
+                </div>
+              )}
+              <p className="mt-4 text-sm font-mono text-gray-900 tracking-wide select-all text-center">
+                {ticketCode}
+              </p>
+              {label && (
+                <p className="mt-1 text-xs text-gray-500 text-center">{label}</p>
+              )}
             </div>
-          ) : (
-            <Loader2 size={20} className="animate-spin text-muted-foreground my-4" />
-          )}
-          <p className="text-[10px] text-muted-foreground mt-2">Show this at the door</p>
-        </div>
+
+            <p className="mt-4 text-xs text-white/50">Tap outside to close</p>
+          </div>
+        </div>,
+        document.getElementById("rep-portal-root") || document.body
       )}
-    </div>
+    </>
   );
 }
 
@@ -720,7 +748,7 @@ export default function RepRewardsPage() {
                             {hasTickets && (
                               <div className="mt-2 space-y-1.5">
                                 {claimMeta!.ticket_codes!.map((code) => (
-                                  <TicketQRCard key={code} ticketCode={code} />
+                                  <TicketQRButton key={code} ticketCode={code} label="Show this at the door" />
                                 ))}
                               </div>
                             )}

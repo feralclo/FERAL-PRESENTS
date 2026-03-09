@@ -192,6 +192,9 @@ export function RewardsTab() {
   const [deleteTarget, setDeleteTarget] = useState<RepReward | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Archive visibility
+  const [showArchived, setShowArchived] = useState(false);
+
   // ─── Data Loading ───────────────────────────────────────────────────────
 
   const loadRewards = useCallback(async () => {
@@ -487,9 +490,24 @@ export function RewardsTab() {
             <Button size="sm" className="mt-4" onClick={openCreate}><Plus size={14} /> Create Reward</Button>
           </CardContent>
         </Card>
-      ) : (
+      ) : (() => {
+        const activeRewards = rewards.filter((r) => r.status !== "archived");
+        const archivedRewards = rewards.filter((r) => r.status === "archived");
+        const visibleRewards = showArchived ? rewards : activeRewards;
+        return (
+        <>
+        {archivedRewards.length > 0 && (
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => setShowArchived(!showArchived)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showArchived ? "Hide" : "Show"} archived ({archivedRewards.length})
+            </button>
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rewards.map((reward) => {
+          {visibleRewards.map((reward) => {
             const Icon = REWARD_TYPE_ICONS[reward.reward_type];
             return (
               <Card key={reward.id} className="py-0 gap-0 overflow-hidden">
@@ -534,7 +552,9 @@ export function RewardsTab() {
             );
           })}
         </div>
-      )}
+        </>
+        );
+      })()}
 
       {/* ── Create/Edit Dialog ── */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

@@ -90,7 +90,7 @@ const FULFILLMENT_CARD_CONFIG: {
     type: "free_ticket",
     icon: Ticket,
     label: "Free Ticket",
-    description: "Give a free ticket to a specific event",
+    description: "Give a free ticket to an event (can include merch)",
     color: "text-primary",
   },
   {
@@ -104,7 +104,7 @@ const FULFILLMENT_CARD_CONFIG: {
     type: "merch",
     icon: Package,
     label: "Free Merch",
-    description: "Give merch to collect at their next event",
+    description: "Standalone merch — no ticket, just collection",
     color: "text-emerald-400",
   },
   {
@@ -138,6 +138,9 @@ interface TicketTypeOption {
   id: string;
   name: string;
   price: number;
+  includes_merch?: boolean;
+  product_id?: string | null;
+  product?: { name?: string } | null;
 }
 
 type DialogStep = "choose-type" | "configure";
@@ -445,7 +448,7 @@ export function RewardsTab() {
       case "free_ticket": return "Rep spends points and automatically gets a ticket emailed to them.";
       case "extra_tickets": return "Rep can buy multiple tickets with points. Great for bringing friends.";
       case "vip_upgrade": return "Rep spends points to upgrade their existing ticket to a higher tier.";
-      case "merch": return "Rep spends points and collects merch at their next assigned event.";
+      case "merch": return "Rep spends points on merch. Automatically generates a collection QR if linked to an event, otherwise you fulfil manually.";
       default: return "Rep spends points, you fulfil the reward manually.";
     }
   };
@@ -633,17 +636,33 @@ export function RewardsTab() {
                       <div className="space-y-2">
                         <Label>Ticket Type *</Label>
                         {ticketTypes.length > 0 ? (
-                          <Select value={ticketTypeId || "none"} onValueChange={(v) => setTicketTypeId(v === "none" ? "" : v)}>
-                            <SelectTrigger><SelectValue placeholder="Select ticket type" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Select a ticket type</SelectItem>
-                              {ticketTypes.map((tt) => (
-                                <SelectItem key={tt.id} value={tt.id}>
-                                  {tt.name} {tt.price > 0 ? `(£${tt.price})` : "(Free)"}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <>
+                            <Select value={ticketTypeId || "none"} onValueChange={(v) => setTicketTypeId(v === "none" ? "" : v)}>
+                              <SelectTrigger><SelectValue placeholder="Select ticket type" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Select a ticket type</SelectItem>
+                                {ticketTypes.map((tt) => (
+                                  <SelectItem key={tt.id} value={tt.id}>
+                                    {tt.name} {tt.price > 0 ? `(£${tt.price})` : "(Free)"}
+                                    {(tt.includes_merch || tt.product_id) ? " + Merch" : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {ticketTypeId && (() => {
+                              const selected = ticketTypes.find((tt) => tt.id === ticketTypeId);
+                              if (!selected?.includes_merch && !selected?.product_id) return null;
+                              const merchName = selected.product?.name || "merch item";
+                              return (
+                                <div className="flex items-start gap-2 rounded-lg bg-info/5 border border-info/10 px-3 py-2">
+                                  <Package size={12} className="text-info shrink-0 mt-0.5" />
+                                  <p className="text-[11px] text-muted-foreground leading-snug">
+                                    This ticket includes <span className="font-medium text-foreground">{merchName}</span>. The rep will receive a ticket <em>and</em> a merch collection QR.
+                                  </p>
+                                </div>
+                              );
+                            })()}
+                          </>
                         ) : (
                           <p className="text-xs text-muted-foreground py-2">No ticket types found for this event</p>
                         )}
@@ -699,28 +718,28 @@ export function RewardsTab() {
                 {/* ── Merch: Product picker ── */}
                 {fulfillmentType === "merch" && (
                   <div className="space-y-2">
-                    <Label>Merch Product *</Label>
+                    <Label>Merch Product</Label>
                     {products.length > 0 ? (
                       <Select value={productId || "none"} onValueChange={handleProductSelect}>
                         <SelectTrigger><SelectValue placeholder="Select a product" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Select a product</SelectItem>
+                          <SelectItem value="none">No product (manual fulfillment)</SelectItem>
                           {products.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            <SelectItem key={p.id} value={p.id}>{p.name}{p.sizes?.length ? ` (${p.sizes.join(", ")})` : ""}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     ) : (
-                      <p className="text-xs text-muted-foreground py-2">No products in your merch catalog. Add one first in Commerce &gt; Merch.</p>
+                      <p className="text-xs text-muted-foreground py-2">No products in your merch catalog. You can still create the reward — you&apos;ll fulfil it manually.</p>
                     )}
-                    {productId && (
-                      <div className="flex items-start gap-2 rounded-lg bg-info/5 border border-info/10 px-3 py-2">
-                        <Info size={12} className="text-info shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-muted-foreground leading-snug">
-                          Rep picks their size when claiming. They collect at their next assigned event by showing the QR code.
-                        </p>
-                      </div>
-                    )}
+                    <div className="flex items-start gap-2 rounded-lg bg-info/5 border border-info/10 px-3 py-2">
+                      <Info size={12} className="text-info shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        {productId
+                          ? "Rep picks their size when claiming. If they have an upcoming event with this product linked, they'll get an automatic collection QR. Otherwise, you fulfil it manually."
+                          : "Rep claims the reward and you fulfil it manually (e.g. hand it to them at an event or ship it)."}
+                      </p>
+                    </div>
                   </div>
                 )}
 

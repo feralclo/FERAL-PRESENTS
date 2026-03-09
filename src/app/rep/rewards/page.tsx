@@ -556,8 +556,8 @@ export default function RepRewardsPage() {
                     )}
                   >
                     {reward.image_url && (
-                      <div className="relative h-32 bg-muted/20 overflow-hidden">
-                        <img src={reward.image_url} alt="" className="h-full w-full object-cover" />
+                      <div className="relative h-32 bg-muted/20 flex items-center justify-center overflow-hidden">
+                        <img src={reward.image_url} alt="" className="max-h-full max-w-full object-contain p-2" />
                         {remaining !== null && remaining > 0 && remaining <= 5 && !allClaimed && (
                           <span className="absolute top-2 right-2 text-[10px] font-bold text-warning bg-warning/15 border border-warning/20 px-2 py-0.5 rounded-full animate-pulse">
                             {remaining} left
@@ -757,8 +757,8 @@ export default function RepRewardsPage() {
 
       {/* ── Confirmation Modal (portalled) ── */}
       {confirmReward && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm rep-fade-in">
-          <div className="w-full max-w-sm mx-4 mb-4 md:mb-0 rounded-2xl border border-border bg-background p-6 rep-slide-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm rep-fade-in px-4 pb-20">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-background p-6 rep-slide-up">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold text-foreground">Confirm Purchase</h3>
               <button onClick={() => { setConfirmReward(null); setSelectedMerchSize(""); }} className="text-muted-foreground hover:text-foreground">

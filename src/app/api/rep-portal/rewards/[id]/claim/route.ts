@@ -149,8 +149,16 @@ export async function POST(
       });
 
       if ("error" in fulfillResult) {
+        // Map technical errors to user-friendly messages
+        const friendlyErrors: Record<string, string> = {
+          "Merch size is required": "Please select a size before claiming.",
+          "Event not found for reward": "This reward's event is no longer available.",
+          "No existing ticket found for this event. Purchase a ticket first, then upgrade.":
+            "You need a ticket for this event first before you can upgrade.",
+        };
+        const msg = friendlyErrors[fulfillResult.error] || fulfillResult.error;
         return NextResponse.json(
-          { error: fulfillResult.error },
+          { error: msg },
           { status: 400 }
         );
       }

@@ -322,7 +322,7 @@ export function RewardsTab() {
         if (eventId) metadata.event_id = eventId;
         if (upgradeTicketTypeId) metadata.upgrade_to_ticket_type_id = upgradeTicketTypeId;
       }
-      metadata.max_claims_per_rep = unlimitedClaims ? null : (maxClaimsPerRep ? Number(maxClaimsPerRep) : 1);
+      metadata.max_claims_per_rep = unlimitedClaims ? 0 : (maxClaimsPerRep ? Number(maxClaimsPerRep) : 1);
     }
 
     const body = {

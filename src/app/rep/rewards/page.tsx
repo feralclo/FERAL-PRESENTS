@@ -27,7 +27,55 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState, RepPageError, CurrencyIcon } from "@/components/rep";
 import { playSuccessSound } from "@/lib/rep-utils";
 import { cn } from "@/lib/utils";
+import QRCode from "qrcode";
 import type { FulfillmentType, ClaimMetadata } from "@/types/reps";
+
+// ─── Ticket QR Card (inline expandable) ─────────────────────────────────────
+
+function TicketQRCard({ ticketCode }: { ticketCode: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (expanded && !qrDataUrl) {
+      QRCode.toDataURL(ticketCode, {
+        errorCorrectionLevel: "H",
+        margin: 2,
+        width: 240,
+        color: { dark: "#000000", light: "#ffffff" },
+      }).then(setQrDataUrl).catch(() => {});
+    }
+  }, [expanded, qrDataUrl, ticketCode]);
+
+  return (
+    <div className="rounded-lg border border-border bg-background">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-3 py-2 text-left"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Ticket size={12} className="text-primary shrink-0" />
+          <span className="text-xs font-mono text-foreground truncate">{ticketCode}</span>
+        </div>
+        <span className="text-[10px] text-primary font-medium shrink-0 ml-2">
+          {expanded ? "Hide" : "Show QR"}
+        </span>
+      </button>
+      {expanded && (
+        <div className="px-3 pb-3 flex flex-col items-center">
+          {qrDataUrl ? (
+            <div className="bg-white rounded-lg p-2">
+              <img src={qrDataUrl} alt={`QR code for ${ticketCode}`} className="w-48 h-48" />
+            </div>
+          ) : (
+            <Loader2 size={20} className="animate-spin text-muted-foreground my-4" />
+          )}
+          <p className="text-[10px] text-muted-foreground mt-2">Show this at the door</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -148,6 +196,7 @@ export default function RepRewardsPage() {
   const [confirmReward, setConfirmReward] = useState<Reward | null>(null);
   const [successReward, setSuccessReward] = useState<Reward | null>(null);
   const [successData, setSuccessData] = useState<Record<string, unknown> | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
   const [loadKey, setLoadKey] = useState(0);
 
   // Merch size picker
@@ -231,10 +280,10 @@ export default function RepRewardsPage() {
         setTimeout(() => { setSuccessReward(null); setSuccessData(null); }, 4000);
       } else {
         const errJson = await res.json().catch(() => ({}));
-        setError(errJson.error || "Failed to claim reward");
+        setClaimError(errJson.error || "Failed to claim reward");
       }
     } catch {
-      setError("Failed to claim reward — check your connection");
+      setClaimError("Failed to claim reward — check your connection");
     }
     setClaimingId(null);
   };
@@ -302,7 +351,9 @@ export default function RepRewardsPage() {
       case "vip_upgrade":
         return `Your existing${reward.event_name ? ` ${reward.event_name}` : ""} ticket will be upgraded${reward.upgrade_ticket_type_name ? ` to ${reward.upgrade_ticket_type_name}` : ""}.`;
       case "merch":
-        return "Collect at your next event. You'll receive a QR code via email.";
+        return reward.product_id
+          ? "Pick up at your next event. You'll receive a collection QR via email."
+          : "Select your size. Your team will arrange collection.";
       default:
         return "Admin will fulfil your reward.";
     }
@@ -328,7 +379,9 @@ export default function RepRewardsPage() {
       case "merch":
         return {
           title: "Merch Claimed!",
-          subtitle: `Show your QR code at the event to collect${data?.merch_size ? ` (Size ${data.merch_size})` : ""}`,
+          subtitle: data?.order_number
+            ? `Check your email for the collection QR${data?.merch_size ? ` — Size ${data.merch_size}` : ""}`
+            : `Size ${data?.merch_size || "selected"} — your team will be in touch about collection.`,
         };
       default:
         return {
@@ -374,7 +427,7 @@ export default function RepRewardsPage() {
             {shopRewards.length > 0 && <span className="ml-1.5 text-[10px] text-muted-foreground data-[state=active]:text-white/70">{shopRewards.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="history" className="flex-1 rounded-[10px] text-[13px] font-semibold data-[state=active]:bg-white/[0.10] data-[state=active]:text-white data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-            History
+            My Rewards
             {claims.length > 0 && <span className="ml-1.5 text-[10px] text-muted-foreground data-[state=active]:text-white/70">{claims.length}</span>}
           </TabsTrigger>
         </TabsList>
@@ -480,8 +533,8 @@ export default function RepRewardsPage() {
               {shopRewards.map((reward) => {
                 const claimedCount = activeClaimCount(reward);
                 const hasClaimed = claimedCount > 0;
-                const maxClaims = reward.max_claims ?? 1;
-                const isMultiClaim = maxClaims === null || maxClaims === 0 || maxClaims > 1;
+                const maxClaims = reward.max_claims ?? 1; // 0 = unlimited
+                const isMultiClaim = maxClaims === 0 || maxClaims > 1;
                 const allClaimed = !canClaimMore(reward) && hasClaimed;
                 const canAfford = myBalance >= (reward.points_cost || 0);
                 const soldOut = reward.total_available != null && reward.total_claimed >= reward.total_available;
@@ -581,11 +634,11 @@ export default function RepRewardsPage() {
         </div>
       </TabsContent>
 
-      {/* ── History Tab ── */}
+      {/* ── My Rewards Tab ── */}
       <TabsContent value="history">
         <div className="space-y-2 rep-slide-up">
           {claims.length === 0 ? (
-            <EmptyState icon={Clock} title="No claim history" subtitle="Your reward claims will show up here" />
+            <EmptyState icon={Gift} title="No rewards yet" subtitle="Claimed rewards and tickets will show up here" />
           ) : (
             claims.map((claim) => {
               const config = CLAIM_STATUS_CONFIG[claim.status] || CLAIM_STATUS_CONFIG.claimed;
@@ -594,6 +647,7 @@ export default function RepRewardsPage() {
               const productImg = reward?.product?.images?.[0];
               const imgUrl = reward?.image_url || productImg;
               const claimMeta = claim.metadata;
+              const hasTickets = claimMeta?.ticket_codes && claimMeta.ticket_codes.length > 0;
 
               return (
                 <Card key={claim.id} className="py-0 gap-0 border-border/40">
@@ -601,7 +655,7 @@ export default function RepRewardsPage() {
                     <div className="flex items-start gap-3">
                       {imgUrl ? (
                         <div className="h-11 w-11 shrink-0 rounded-lg overflow-hidden bg-muted/30">
-                          <img src={imgUrl} alt="" className="h-full w-full object-contain" />
+                          <img src={imgUrl} alt="" className="h-full w-full object-cover" />
                         </div>
                       ) : (
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/30">
@@ -638,7 +692,7 @@ export default function RepRewardsPage() {
                             </p>
                           </div>
                         </div>
-                        {/* Show fulfilment details */}
+                        {/* Fulfilled — show ticket/QR details */}
                         {claim.status === "fulfilled" && (
                           <div className="mt-2 rounded-lg bg-success/5 border border-success/10 px-3 py-2">
                             <p className="text-[10px] text-success font-medium flex items-center gap-1">
@@ -664,6 +718,24 @@ export default function RepRewardsPage() {
                             {claim.notes && (
                               <p className="text-[10px] text-muted-foreground mt-1 italic">&ldquo;{claim.notes}&rdquo;</p>
                             )}
+                            {/* Show ticket codes with QR button */}
+                            {hasTickets && (
+                              <div className="mt-2 space-y-1.5">
+                                {claimMeta!.ticket_codes!.map((code) => (
+                                  <TicketQRCard key={code} ticketCode={code} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {/* Pending — show what to expect */}
+                        {claim.status === "claimed" && (
+                          <div className="mt-2 rounded-lg bg-muted/30 border border-border px-3 py-2">
+                            <p className="text-[10px] text-muted-foreground">
+                              {claimMeta?.merch_size
+                                ? `Size ${claimMeta.merch_size} — your team will be in touch about collection.`
+                                : "Awaiting fulfilment from your team."}
+                            </p>
                           </div>
                         )}
                         {claim.status === "cancelled" && claim.notes && (
@@ -851,6 +923,25 @@ export default function RepRewardsPage() {
             >
               Dismiss
             </button>
+          </div>
+        </div>,
+        document.getElementById("rep-portal-root") || document.body
+      )}
+
+      {/* ── Claim Error Modal (portalled) ── */}
+      {claimError && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm rep-fade-in">
+          <div className="w-full max-w-sm mx-4 mb-4 md:mb-0 rounded-2xl border border-destructive/20 bg-background p-6 rep-slide-up">
+            <div className="flex flex-col items-center text-center">
+              <div className="h-14 w-14 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center justify-center mb-4">
+                <XCircle size={24} className="text-destructive" />
+              </div>
+              <h3 className="text-base font-semibold text-foreground mb-2">Couldn&apos;t Claim</h3>
+              <p className="text-sm text-muted-foreground mb-5">{claimError}</p>
+              <Button onClick={() => setClaimError(null)} className="w-full">
+                OK
+              </Button>
+            </div>
           </div>
         </div>,
         document.getElementById("rep-portal-root") || document.body

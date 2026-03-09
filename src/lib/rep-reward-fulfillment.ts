@@ -167,12 +167,15 @@ async function fulfillVipUpgrade(params: Omit<FulfillmentParams, "body">): Promi
 async function fulfillMerch(params: Omit<FulfillmentParams, "body"> & { merchSize?: string }): Promise<FulfillmentResult> {
   const { supabase, orgId, rep, reward, claimId, merchSize } = params;
 
-  if (!reward.product_id) {
-    throw new Error("Merch reward has no linked product");
-  }
-
   if (!merchSize) {
     throw new Error("Merch size is required");
+  }
+
+  // If no product linked, fall back to manual fulfillment (admin handles it)
+  if (!reward.product_id) {
+    const claimMetadata: ClaimMetadata = { merch_size: merchSize };
+    await updateClaimMetadata(supabase, orgId, claimId, claimMetadata);
+    return { metadata: claimMetadata };
   }
 
   await ensureRepCustomer({
@@ -199,11 +202,16 @@ async function fulfillMerch(params: Omit<FulfillmentParams, "body"> & { merchSiz
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const event = (futureAssignment as any)?.event;
+
+  // No upcoming event or no ticket type linked → fall back to manual
+  // Claim stays as "claimed" for admin to fulfill (e.g. ship it or hand at any event)
   if (!event) {
-    throw new Error("No upcoming assigned event found for merch collection");
+    const claimMetadata: ClaimMetadata = { merch_size: merchSize };
+    await updateClaimMetadata(supabase, orgId, claimId, claimMetadata);
+    return { metadata: claimMetadata };
   }
 
-  // Find the ticket type linked to this product
+  // Find the ticket type linked to this product at the event
   const { data: ticketType } = await supabase
     .from(TABLES.TICKET_TYPES)
     .select("id")
@@ -214,7 +222,10 @@ async function fulfillMerch(params: Omit<FulfillmentParams, "body"> & { merchSiz
     .single();
 
   if (!ticketType) {
-    throw new Error("No ticket type linked to this merch product for the upcoming event");
+    // Product exists but no ticket type at this event — manual fallback
+    const claimMetadata: ClaimMetadata = { merch_size: merchSize, event_id: event.id };
+    await updateClaimMetadata(supabase, orgId, claimId, claimMetadata);
+    return { metadata: claimMetadata };
   }
 
   const result = await createOrder({
@@ -255,6 +266,16 @@ async function markClaimFulfilled(supabase: any, orgId: string, claimId: string,
       fulfilled_at: new Date().toISOString(),
       metadata,
     })
+    .eq("id", claimId)
+    .eq("org_id", orgId);
+}
+
+/** Store metadata on a claim without marking it as fulfilled (manual fallback). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateClaimMetadata(supabase: any, orgId: string, claimId: string, metadata: ClaimMetadata) {
+  await supabase
+    .from(TABLES.REP_REWARD_CLAIMS)
+    .update({ metadata })
     .eq("id", claimId)
     .eq("org_id", orgId);
 }

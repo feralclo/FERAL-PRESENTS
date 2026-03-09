@@ -59,7 +59,7 @@ export interface RewardMetadata {
   event_id?: string;
   ticket_type_id?: string;
   upgrade_to_ticket_type_id?: string;
-  max_claims_per_rep?: number | null; // null = unlimited
+  max_claims_per_rep?: number | null; // 0 = unlimited, default 1
 }
 
 export interface ClaimMetadata {

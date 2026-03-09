@@ -47,6 +47,9 @@ import {
   Sparkles,
   Target,
   ZoomIn,
+  Inbox,
+  Clock,
+  Filter,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import * as tus from "tus-js-client";
@@ -142,10 +145,12 @@ export function QuestsTab() {
   // Platform XP config
   const [platformConfig, setPlatformConfig] = useState<PlatformXPConfig>(DEFAULT_PLATFORM_XP_CONFIG);
 
-  // Submissions review
-  const [showSubmissions, setShowSubmissions] = useState<string | null>(null);
-  const [submissions, setSubmissions] = useState<RepQuestSubmission[]>([]);
-  const [loadingSubs, setLoadingSubs] = useState(false);
+  // Submissions review — global view
+  const [view, setView] = useState<"quests" | "submissions">("quests");
+  const [allSubmissions, setAllSubmissions] = useState<RepQuestSubmission[]>([]);
+  const [loadingAllSubs, setLoadingAllSubs] = useState(false);
+  const [subFilter, setSubFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [questFilter, setQuestFilter] = useState<string | null>(null);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -177,15 +182,20 @@ export function QuestsTab() {
       .catch(() => {});
   }, []);
 
-  const loadSubmissions = useCallback(async (questId: string) => {
-    setLoadingSubs(true);
+  const loadAllSubmissions = useCallback(async () => {
+    setLoadingAllSubs(true);
     try {
-      const res = await fetch(`/api/reps/quests/${questId}/submissions`);
+      const res = await fetch("/api/reps/submissions");
       const json = await res.json();
-      if (json.data) setSubmissions(json.data);
+      if (json.data) setAllSubmissions(json.data);
     } catch { /* network */ }
-    setLoadingSubs(false);
+    setLoadingAllSubs(false);
   }, []);
+
+  // Auto-load submissions when switching to submissions view
+  useEffect(() => {
+    if (view === "submissions") loadAllSubmissions();
+  }, [view, loadAllSubmissions]);
 
   const openCreate = () => {
     setEditId(null); setTitle(""); setDescription(""); setInstructions("");
@@ -250,14 +260,21 @@ export function QuestsTab() {
     try { await fetch(`/api/reps/quests/${id}`, { method: "DELETE" }); loadQuests(); } catch { /* network */ }
   };
 
-  const handleReview = async (submissionId: string, status: "approved" | "rejected", reason?: string) => {
+  const handleReview = async (submissionId: string, newStatus: "approved" | "rejected", reason?: string) => {
     setReviewingId(submissionId);
     try {
-      await fetch(`/api/reps/quests/submissions/${submissionId}`, {
+      const res = await fetch(`/api/reps/quests/submissions/${submissionId}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, rejection_reason: reason }),
+        body: JSON.stringify({ status: newStatus, rejection_reason: reason }),
       });
-      if (showSubmissions) loadSubmissions(showSubmissions);
+      if (res.ok) {
+        // Optimistic local update — keeps the card visible with new status
+        setAllSubmissions(prev => prev.map(s =>
+          s.id === submissionId ? { ...s, status: newStatus, rejection_reason: reason || s.rejection_reason } as RepQuestSubmission : s
+        ));
+        // Refresh quest pending counts
+        loadQuests();
+      }
     } catch { /* network */ }
     setReviewingId(null);
   };
@@ -365,23 +382,80 @@ export function QuestsTab() {
   };
   const totalPending = quests.reduce((sum, q) => sum + (q.pending_count || 0), 0);
 
+  // Submissions view: filtered list
+  const filteredSubs = allSubmissions.filter(s => {
+    if (subFilter !== "all" && s.status !== subFilter) return false;
+    if (questFilter && s.quest_id !== questFilter) return false;
+    return true;
+  });
+  const subCounts = {
+    all: allSubmissions.filter(s => !questFilter || s.quest_id === questFilter).length,
+    pending: allSubmissions.filter(s => s.status === "pending" && (!questFilter || s.quest_id === questFilter)).length,
+    approved: allSubmissions.filter(s => s.status === "approved" && (!questFilter || s.quest_id === questFilter)).length,
+    rejected: allSubmissions.filter(s => s.status === "rejected" && (!questFilter || s.quest_id === questFilter)).length,
+  };
+
+  const timeAgo = (date: string): string => {
+    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return "yesterday";
+    if (days < 7) return `${days}d ago`;
+    return new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit">
-          {(["active", "paused", "archived", "all"] as const).map((t) => (
-            <button key={t} onClick={() => setFilter(t)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${filter === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-              <span className="ml-1.5 text-[10px] tabular-nums text-muted-foreground/60">{counts[t]}</span>
+        <div className="flex items-center gap-3">
+          {/* View toggle */}
+          <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+            <button onClick={() => { setView("quests"); setQuestFilter(null); }}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${view === "quests" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+              Quests
             </button>
-          ))}
+            <button onClick={() => setView("submissions")}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${view === "submissions" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+              Submissions
+              {totalPending > 0 && (
+                <span className="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white tabular-nums">{totalPending}</span>
+              )}
+            </button>
+          </div>
+
+          {/* Context-specific filters */}
+          {view === "quests" && (
+            <div className="hidden sm:flex items-center gap-1 rounded-lg bg-muted/50 p-1">
+              {(["active", "paused", "archived", "all"] as const).map((t) => (
+                <button key={t} onClick={() => setFilter(t)}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${filter === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                  <span className="ml-1 text-[10px] tabular-nums text-muted-foreground/60">{counts[t]}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {view === "submissions" && (
+            <div className="hidden sm:flex items-center gap-1 rounded-lg bg-muted/50 p-1">
+              {(["pending", "approved", "rejected", "all"] as const).map((t) => (
+                <button key={t} onClick={() => setSubFilter(t)}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${subFilter === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                  <span className="ml-1 text-[10px] tabular-nums text-muted-foreground/60">{subCounts[t]}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <Button size="sm" onClick={openCreate}><Plus size={14} /> Create Quest</Button>
+        {view === "quests" && <Button size="sm" onClick={openCreate}><Plus size={14} /> Create Quest</Button>}
       </div>
 
-      {/* Pending submissions banner */}
-      {totalPending > 0 && !loading && (
+      {/* Pending submissions banner — only on quests view */}
+      {view === "quests" && totalPending > 0 && !loading && (
         <div className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/5 px-5 py-3.5">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
@@ -393,15 +467,16 @@ export function QuestsTab() {
             </div>
           </div>
           <Button size="sm" variant="outline" className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10" onClick={() => {
-            const questWithPending = quests.find((q) => (q.pending_count || 0) > 0);
-            if (questWithPending) { setShowSubmissions(questWithPending.id); loadSubmissions(questWithPending.id); }
+            setView("submissions");
+            setSubFilter("pending");
+            setQuestFilter(null);
           }}>
             <Eye size={14} /> Review
           </Button>
         </div>
       )}
 
-      {loading ? (
+      {view === "quests" && (loading ? (
         <Card className="py-0 gap-0">
           <CardContent className="flex items-center justify-center py-16">
             <Loader2 size={20} className="animate-spin text-primary/60" />
@@ -459,11 +534,11 @@ export function QuestsTab() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {(quest.pending_count || 0) > 0 ? (
-                        <Button size="sm" variant="outline" className="h-7 text-[11px] border-amber-500/30 text-amber-500 hover:bg-amber-500/10" onClick={() => { setShowSubmissions(quest.id); loadSubmissions(quest.id); }}>
+                        <Button size="sm" variant="outline" className="h-7 text-[11px] border-amber-500/30 text-amber-500 hover:bg-amber-500/10" onClick={() => { setView("submissions"); setSubFilter("pending"); setQuestFilter(quest.id); }}>
                           <Eye size={12} /> Review {quest.pending_count}
                         </Button>
                       ) : (
-                        <Button variant="ghost" size="icon-xs" onClick={() => { setShowSubmissions(quest.id); loadSubmissions(quest.id); }} title="View submissions"><Eye size={13} /></Button>
+                        <Button variant="ghost" size="icon-xs" onClick={() => { setView("submissions"); setSubFilter("all"); setQuestFilter(quest.id); }} title="View submissions"><Eye size={13} /></Button>
                       )}
                       <Button variant="ghost" size="icon-xs" onClick={() => openEdit(quest)} title="Edit"><Pencil size={13} /></Button>
                       <Button variant="ghost" size="icon-xs" onClick={() => handleDelete(quest.id)} className="text-muted-foreground hover:text-destructive" title="Archive"><Trash2 size={13} /></Button>
@@ -474,6 +549,221 @@ export function QuestsTab() {
             </TableBody>
           </Table>
         </Card>
+      ))}
+
+      {/* ── Global Submissions Feed ── */}
+      {view === "submissions" && (
+        <>
+          {/* Quest filter chip */}
+          {questFilter && (() => {
+            const fq = quests.find(q => q.id === questFilter);
+            return (
+              <div className="flex items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5">
+                  <Filter size={12} className="text-muted-foreground" />
+                  <span className="text-xs text-foreground font-medium">{fq?.title || "Quest"}</span>
+                  <button onClick={() => setQuestFilter(null)} className="ml-1 rounded-full p-0.5 hover:bg-muted transition-colors">
+                    <X size={12} className="text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Batch approve bar */}
+          {subCounts.pending >= 2 && subFilter === "pending" && (
+            <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-5 py-3">
+              <span className="text-sm text-muted-foreground">{subCounts.pending} submission{subCounts.pending !== 1 ? "s" : ""} awaiting review</span>
+              <Button
+                size="sm"
+                disabled={reviewingId !== null}
+                onClick={async () => {
+                  const pending = filteredSubs.filter(s => s.status === "pending");
+                  for (const sub of pending) { await handleReview(sub.id, "approved"); }
+                }}
+              >
+                <CheckCircle2 size={14} /> Approve All
+              </Button>
+            </div>
+          )}
+
+          {/* Mobile status filter */}
+          <div className="flex sm:hidden items-center gap-1 rounded-lg bg-muted p-1">
+            {(["pending", "approved", "rejected", "all"] as const).map((t) => (
+              <button key={t} onClick={() => setSubFilter(t)}
+                className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors ${subFilter === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                {t.charAt(0).toUpperCase() + t.slice(1)}
+                {subCounts[t] > 0 && <span className="ml-1 text-[10px] tabular-nums text-muted-foreground/60">{subCounts[t]}</span>}
+              </button>
+            ))}
+          </div>
+
+          {loadingAllSubs ? (
+            <Card className="py-0 gap-0">
+              <CardContent className="flex items-center justify-center py-16">
+                <Loader2 size={20} className="animate-spin text-primary/60" />
+                <span className="ml-3 text-sm text-muted-foreground">Loading submissions...</span>
+              </CardContent>
+            </Card>
+          ) : filteredSubs.length === 0 ? (
+            <Card className="py-0 gap-0">
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
+                  <Inbox size={20} className="text-primary/60" />
+                </div>
+                <p className="mt-4 text-sm font-medium text-foreground">
+                  {subFilter === "pending" ? "No pending submissions" : "No submissions found"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {subFilter === "pending" ? "You're all caught up!" : "Try a different filter"}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {filteredSubs.map((sub) => {
+                const proofUrl = sub.proof_url || sub.proof_text || "";
+                const isTikTok = sub.proof_type === "tiktok_link";
+                const isInstagram = sub.proof_type === "instagram_link";
+                const isPlatformLink = isTikTok || isInstagram;
+                const proofLabel = isTikTok ? "TikTok" : isInstagram ? "Instagram" : sub.proof_type === "screenshot" ? "Screenshot" : sub.proof_type === "url" ? "URL" : "Text";
+                const isPending = sub.status === "pending";
+                const questTitle = (sub.quest as RepQuest | undefined)?.title || "Unknown Quest";
+                const questType = (sub.quest as RepQuest | undefined)?.quest_type;
+                const eventName = (sub.quest as RepQuest & { event?: { name: string } | null } | undefined)?.event?.name;
+
+                return (
+                  <Card key={sub.id} className={`overflow-hidden transition-all ${isPending ? "ring-1 ring-amber-500/20 hover:ring-amber-500/30" : "opacity-80 hover:opacity-100"}`}>
+                    <CardContent className="p-0">
+                      <div className="flex flex-col sm:flex-row">
+                        {/* Proof column */}
+                        <div className="sm:w-56 shrink-0 bg-muted/10 border-b sm:border-b-0 sm:border-r border-border">
+                          {sub.proof_type === "screenshot" && sub.proof_url ? (
+                            <button
+                              type="button"
+                              className="relative w-full group cursor-zoom-in"
+                              onClick={() => setLightboxUrl(sub.proof_url!)}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={sub.proof_url} alt="Proof" className="w-full sm:h-48 object-contain bg-black/10" />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/10 backdrop-blur-sm rounded-full p-2.5 border border-white/20">
+                                  <ZoomIn size={16} className="text-white" />
+                                </div>
+                              </div>
+                            </button>
+                          ) : (isPlatformLink || sub.proof_type === "url") && proofUrl ? (
+                            <div className="p-5 flex flex-col items-center justify-center h-full min-h-[80px]">
+                              {isTikTok ? <Music size={24} className="text-[#25F4EE] mb-2" /> : isInstagram ? <Camera size={24} className="text-[#E1306C] mb-2" /> : <LinkIcon size={24} className="text-primary mb-2" />}
+                              <a href={proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline break-all text-center">
+                                <ExternalLink size={11} className="shrink-0" /> Open {proofLabel}
+                              </a>
+                            </div>
+                          ) : sub.proof_type === "text" && sub.proof_text ? (
+                            <div className="p-5 flex items-center justify-center h-full min-h-[80px]">
+                              <p className="text-sm text-foreground/80 italic text-center line-clamp-3">&ldquo;{sub.proof_text}&rdquo;</p>
+                            </div>
+                          ) : (
+                            <div className="p-5 flex items-center justify-center h-full min-h-[80px] text-muted-foreground/20">
+                              <ImageLucide size={28} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Details column */}
+                        <div className="flex-1 p-4 flex flex-col gap-3">
+                          {/* Top row: quest info + time */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="secondary" className="text-[10px] font-medium">
+                                {questTitle}
+                              </Badge>
+                              {questType && (
+                                <span className="text-[10px] text-muted-foreground">{QUEST_TYPE_LABELS[questType]}</span>
+                              )}
+                              {eventName && (
+                                <span className="text-[10px] text-muted-foreground/60">{eventName}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Clock size={11} className="text-muted-foreground/50" />
+                              <span className="text-[11px] text-muted-foreground tabular-nums">{timeAgo(sub.created_at)}</span>
+                            </div>
+                          </div>
+
+                          {/* Rep info row */}
+                          <div className="flex items-center gap-3">
+                            {sub.rep?.photo_url ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img src={sub.rep.photo_url} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-border" />
+                            ) : (
+                              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary ring-2 ring-border">
+                                {sub.rep?.first_name?.charAt(0) || "?"}
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-sm font-semibold text-foreground leading-tight">
+                                {sub.rep?.display_name || `${sub.rep?.first_name || ""} ${sub.rep?.last_name || ""}`.trim() || "Unknown"}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <Badge variant="outline" className="text-[9px] font-normal px-1.5 py-0">{proofLabel}</Badge>
+                                <Badge variant={sub.status === "approved" ? "success" : sub.status === "rejected" ? "destructive" : "warning"} className="text-[9px] px-1.5 py-0">
+                                  {sub.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          {isPending && (
+                            <div className="mt-auto pt-1">
+                              {rejectingId === sub.id ? (
+                                <div className="space-y-2">
+                                  <Textarea
+                                    value={rejectReason}
+                                    onChange={(e) => setRejectReason(e.target.value)}
+                                    placeholder="Reason for rejection..."
+                                    className="text-sm min-h-[50px]"
+                                    autoFocus
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <Button size="sm" variant="destructive" disabled={!rejectReason.trim() || reviewingId === sub.id}
+                                      onClick={() => { handleReview(sub.id, "rejected", rejectReason.trim()); setRejectingId(null); setRejectReason(""); }}>
+                                      {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Reject
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancel</Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <Button size="sm" onClick={() => handleReview(sub.id, "approved")} disabled={reviewingId === sub.id}>
+                                    {reviewingId === sub.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Approve
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => setRejectingId(sub.id)} disabled={reviewingId === sub.id}>
+                                    <X size={14} /> Reject
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {sub.status === "approved" && (
+                            <p className="text-xs text-success flex items-center gap-1.5"><CheckCircle2 size={12} /> Approved</p>
+                          )}
+                          {sub.status === "rejected" && (
+                            <div>
+                              <p className="text-xs text-destructive flex items-center gap-1.5"><X size={12} /> Rejected</p>
+                              {sub.rejection_reason && <p className="text-[11px] text-muted-foreground mt-0.5">{sub.rejection_reason}</p>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Create/Edit Dialog */}
@@ -893,197 +1183,6 @@ export function QuestsTab() {
         </div>
       )}
 
-      {/* ── Submissions Review Panel (replaces quest list when active) ── */}
-      {showSubmissions && (() => {
-        const reviewQuest = quests.find((q) => q.id === showSubmissions);
-        const pendingCount = submissions.filter((s) => s.status === "pending").length;
-        const sorted = [...submissions].sort((a, b) => {
-          const order = { pending: 0, approved: 1, rejected: 2 };
-          return (order[a.status] ?? 3) - (order[b.status] ?? 3);
-        });
-
-        return (
-          <div className="fixed inset-0 z-[80] bg-background/95 backdrop-blur-sm overflow-y-auto">
-            <div className="max-w-3xl mx-auto px-6 py-8">
-              {/* Header */}
-              <div className="flex items-center gap-4 mb-8">
-                <Button variant="ghost" size="sm" onClick={() => setShowSubmissions(null)} className="shrink-0">
-                  <ArrowLeft size={16} /> Back to Quests
-                </Button>
-              </div>
-
-              <div className="mb-8">
-                <div className="flex items-center gap-3 mb-1">
-                  <h2 className="text-xl font-bold text-foreground">Submissions</h2>
-                  {pendingCount > 0 && <Badge variant="warning" className="tabular-nums">{pendingCount} pending</Badge>}
-                </div>
-                {reviewQuest && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {reviewQuest.title}
-                  </p>
-                )}
-              </div>
-
-              {/* Batch approve */}
-              {pendingCount >= 2 && (
-                <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-5 py-3.5 mb-6">
-                  <span className="text-sm text-muted-foreground">{pendingCount} submissions awaiting review</span>
-                  <Button
-                    size="sm"
-                    disabled={reviewingId !== null}
-                    onClick={async () => {
-                      const pending = submissions.filter((s) => s.status === "pending");
-                      for (const sub of pending) { await handleReview(sub.id, "approved"); }
-                    }}
-                  >
-                    <CheckCircle2 size={14} /> Approve All
-                  </Button>
-                </div>
-              )}
-
-              {loadingSubs ? (
-                <div className="flex items-center justify-center py-20"><Loader2 size={20} className="animate-spin text-primary/60" /></div>
-              ) : submissions.length === 0 ? (
-                <div className="text-center py-20">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 mx-auto mb-4">
-                    <Eye size={22} className="text-muted-foreground/50" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground">No submissions yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Submissions will appear here when reps complete this quest</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {sorted.map((sub) => {
-                    const proofUrl = sub.proof_url || sub.proof_text || "";
-                    const isTikTok = sub.proof_type === "tiktok_link";
-                    const isInstagram = sub.proof_type === "instagram_link";
-                    const isPlatformLink = isTikTok || isInstagram;
-                    const proofLabel = isTikTok ? "TikTok" : isInstagram ? "Instagram" : sub.proof_type === "screenshot" ? "Screenshot" : sub.proof_type === "url" ? "URL" : "Text";
-                    const isPending = sub.status === "pending";
-
-                    return (
-                      <Card key={sub.id} className={`overflow-hidden ${isPending ? "ring-1 ring-amber-500/20" : ""}`}>
-                        <CardContent className="p-0">
-                          <div className="flex flex-col sm:flex-row">
-                            {/* Image / Proof column */}
-                            <div className="sm:w-64 shrink-0 bg-muted/20">
-                              {sub.proof_type === "screenshot" && sub.proof_url ? (
-                                <button
-                                  type="button"
-                                  className="relative w-full group cursor-zoom-in"
-                                  onClick={() => setLightboxUrl(sub.proof_url!)}
-                                >
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={sub.proof_url} alt="Proof" className="w-full sm:h-56 object-contain bg-black/20" />
-                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/10 backdrop-blur-sm rounded-full p-2.5 border border-white/20">
-                                      <ZoomIn size={18} className="text-white" />
-                                    </div>
-                                  </div>
-                                </button>
-                              ) : (isPlatformLink || sub.proof_type === "url") && proofUrl ? (
-                                <div className="p-5 flex flex-col items-center justify-center h-full min-h-[100px]">
-                                  {isTikTok ? <Music size={28} className="text-[#25F4EE] mb-2" /> : isInstagram ? <Camera size={28} className="text-[#E1306C] mb-2" /> : <LinkIcon size={28} className="text-primary mb-2" />}
-                                  <a href={proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline break-all text-center">
-                                    <ExternalLink size={11} className="shrink-0" /> Open {proofLabel}
-                                  </a>
-                                </div>
-                              ) : sub.proof_type === "text" && sub.proof_text ? (
-                                <div className="p-5 flex items-center justify-center h-full min-h-[100px]">
-                                  <p className="text-sm text-foreground/80 italic text-center">&ldquo;{sub.proof_text}&rdquo;</p>
-                                </div>
-                              ) : (
-                                <div className="p-5 flex items-center justify-center h-full min-h-[100px] text-muted-foreground/30">
-                                  <ImageLucide size={32} />
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Details column */}
-                            <div className="flex-1 p-5 flex flex-col">
-                              <div className="flex items-start justify-between gap-3 mb-3">
-                                <div className="flex items-center gap-3">
-                                  {sub.rep?.photo_url ? (
-                                    /* eslint-disable-next-line @next/next/no-img-element */
-                                    <img src={sub.rep.photo_url} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-border" />
-                                  ) : (
-                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary ring-2 ring-border">
-                                      {sub.rep?.first_name?.charAt(0) || "?"}
-                                    </div>
-                                  )}
-                                  <div>
-                                    <p className="text-sm font-semibold text-foreground">
-                                      {sub.rep?.display_name || `${sub.rep?.first_name || ""} ${sub.rep?.last_name || ""}`.trim() || "Unknown"}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground">
-                                      {new Date(sub.created_at).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                                    </p>
-                                  </div>
-                                </div>
-                                <Badge variant={sub.status === "approved" ? "success" : sub.status === "rejected" ? "destructive" : "warning"} className="shrink-0">
-                                  {sub.status}
-                                </Badge>
-                              </div>
-
-                              <div className="flex items-center gap-1.5 mb-4">
-                                <Badge variant="outline" className="text-[10px] font-normal">{proofLabel}</Badge>
-                              </div>
-
-                              {/* Actions */}
-                              <div className="mt-auto">
-                                {isPending && (
-                                  <>
-                                    {rejectingId === sub.id ? (
-                                      <div className="space-y-2.5">
-                                        <Textarea
-                                          value={rejectReason}
-                                          onChange={(e) => setRejectReason(e.target.value)}
-                                          placeholder="Reason for rejection..."
-                                          className="text-sm min-h-[60px]"
-                                          autoFocus
-                                        />
-                                        <div className="flex items-center gap-2">
-                                          <Button size="sm" variant="destructive" disabled={!rejectReason.trim() || reviewingId === sub.id}
-                                            onClick={() => { handleReview(sub.id, "rejected", rejectReason.trim()); setRejectingId(null); setRejectReason(""); }}>
-                                            {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Reject
-                                          </Button>
-                                          <Button size="sm" variant="ghost" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancel</Button>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center gap-2.5">
-                                        <Button size="sm" onClick={() => handleReview(sub.id, "approved")} disabled={reviewingId === sub.id} className="flex-1 sm:flex-none">
-                                          {reviewingId === sub.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Approve
-                                        </Button>
-                                        <Button size="sm" variant="outline" onClick={() => setRejectingId(sub.id)} disabled={reviewingId === sub.id}>
-                                          <X size={14} /> Reject
-                                        </Button>
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                                {sub.status === "approved" && (
-                                  <p className="text-xs text-success flex items-center gap-1.5"><CheckCircle2 size={12} /> Approved</p>
-                                )}
-                                {sub.status === "rejected" && (
-                                  <div>
-                                    <p className="text-xs text-destructive flex items-center gap-1.5"><X size={12} /> Rejected</p>
-                                    {sub.rejection_reason && <p className="text-[11px] text-muted-foreground mt-1">{sub.rejection_reason}</p>}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }

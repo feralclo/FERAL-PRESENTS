@@ -174,9 +174,10 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
-  // Show install prompt after 3rd visit (not on first — let them explore first)
+  // Show install prompt after 3rd visit (only for active reps — not pending/blocked)
   useEffect(() => {
     if (!shouldShowInstall || isStandalone) return;
+    if (authState.status !== "active") return;
     try {
       const visits = parseInt(localStorage.getItem("rep_visit_count") || "0", 10) + 1;
       localStorage.setItem("rep_visit_count", String(visits));
@@ -187,7 +188,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       }
     } catch { /* storage unavailable */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldShowInstall, isStandalone]);
+  }, [shouldShowInstall, isStandalone, authState.status]);
 
   // Show notification prompt for standalone users who haven't enabled push
   useEffect(() => {

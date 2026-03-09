@@ -163,21 +163,21 @@ export async function sendRepInviteEmail(params: {
 
     const subject = `You've been selected as a ${orgName} Rep`;
     const html = wrapEmail(accentColor, orgName, `
-      <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+      <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
         You've been selected.
       </h1>
-      <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
-        Hey ${escapeHtml(params.firstName)}, the team at <strong style="color:#fff">${escapeHtml(orgName)}</strong> wants you on board as an official rep.
+      <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
+        Hey ${escapeHtml(params.firstName)}, the team at <strong style="color: #1a1a1a;">${escapeHtml(orgName)}</strong> wants you on board as an official rep.
       </p>
-      <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+      <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
         <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: ${accentColor}; margin: 0 0 8px 0; font-weight: 600;">
           Your Discount Code
         </p>
-        <p style="font-size: 20px; font-weight: 700; font-family: monospace; color: #ffffff; margin: 0; letter-spacing: 3px;">
+        <p style="font-size: 20px; font-weight: 700; font-family: monospace; color: #1a1a1a; margin: 0; letter-spacing: 3px;">
           ${escapeHtml(params.discountCode || "Awaiting activation")}
         </p>
       </div>
-      <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
+      <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
         Share your code with your network. Every ticket sold earns you points, unlocks rewards, and climbs you up the leaderboard.
       </p>
       <a href="${inviteUrl}" style="display: inline-block; background: ${accentColor}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none; letter-spacing: 0.5px;">
@@ -216,16 +216,16 @@ function buildEmail(
       return {
         subject: `Verify your email — ${orgName} Reps`,
         html: wrapEmail(accent, orgName, `
-          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Verify your email
           </h1>
-          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
+          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
             Hey ${firstName}, tap the button below to confirm your email and activate your rep account.
           </p>
           <a href="${verifyUrl}" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none; letter-spacing: 0.5px;">
             Verify Email
           </a>
-          <p style="font-size: 12px; color: #71717a; margin: 24px 0 0 0; line-height: 1.6;">
+          <p style="font-size: 12px; color: #9ca3af; margin: 24px 0 0 0; line-height: 1.6;">
             If you didn\u2019t sign up for ${orgName} Reps, you can ignore this email.
           </p>
         `),
@@ -236,18 +236,18 @@ function buildEmail(
       return {
         subject: `Welcome to the team, ${firstName}!`,
         html: wrapEmail(accent, orgName, `
-          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Welcome aboard, ${firstName}.
           </h1>
-          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
-            You're now an official <strong style="color:#fff">${orgName}</strong> rep. Your dashboard is live and your journey starts now.
+          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
+            You're now an official <strong style="color: #1a1a1a;">${orgName}</strong> rep. Your dashboard is live and your journey starts now.
           </p>
           ${rep.invite_token ? `
-          <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
             <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: ${accent}; margin: 0 0 4px 0; font-weight: 600;">
               Getting Started
             </p>
-            <p style="font-size: 14px; color: #d0d0d8; margin: 0; line-height: 1.6;">
+            <p style="font-size: 14px; color: #374151; margin: 0; line-height: 1.6;">
               Share your personal discount code, complete quests, and earn points to unlock rewards.
             </p>
           </div>
@@ -262,21 +262,21 @@ function buildEmail(
       return {
         subject: `New Quest: ${escapeHtml(String(ctx.quest_title || "Complete it for points!"))}`,
         html: wrapEmail(accent, orgName, `
-          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             New Quest Available
           </h1>
-          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 16px 0; line-height: 1.6;">
+          <p style="font-size: 14px; color: #4b5563; margin: 0 0 16px 0; line-height: 1.6;">
             Hey ${firstName}, there's a new quest waiting for you.
           </p>
-          <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <p style="font-size: 18px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+          <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <p style="font-size: 18px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
               ${escapeHtml(String(ctx.quest_title || "New Quest"))}
             </p>
-            ${ctx.quest_description ? `<p style="font-size: 14px; color: #a0a0b0; margin: 0 0 12px 0;">${escapeHtml(String(ctx.quest_description))}</p>` : ""}
+            ${ctx.quest_description ? `<p style="font-size: 14px; color: #4b5563; margin: 0 0 12px 0;">${escapeHtml(String(ctx.quest_description))}</p>` : ""}
             <div style="display: inline-block; background: ${accent}; color: #fff; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 6px;">
               +${ctx.points_reward || 0} PTS
             </div>
-            ${ctx.expires_at ? `<p style="font-size: 12px; color: #71717a; margin: 8px 0 0 0;">Expires: ${ctx.expires_at}</p>` : ""}
+            ${ctx.expires_at ? `<p style="font-size: 12px; color: #9ca3af; margin: 8px 0 0 0;">Expires: ${ctx.expires_at}</p>` : ""}
           </div>
           <a href="${siteUrl}/rep/quests" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
             View Quest
@@ -288,17 +288,17 @@ function buildEmail(
       return {
         subject: "You've unlocked a reward!",
         html: wrapEmail(accent, orgName, `
-          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Reward Unlocked!
           </h1>
-          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
+          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
             ${firstName}, you've hit a milestone and unlocked a reward.
           </p>
-          <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
-            <p style="font-size: 20px; font-weight: 700; color: #ffffff; margin: 0 0 4px 0;">
+          <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+            <p style="font-size: 20px; font-weight: 700; color: #1a1a1a; margin: 0 0 4px 0;">
               ${escapeHtml(String(ctx.reward_name || "Reward"))}
             </p>
-            <p style="font-size: 14px; color: #a0a0b0; margin: 0;">
+            <p style="font-size: 14px; color: #4b5563; margin: 0;">
               ${escapeHtml(String(ctx.milestone_title || "Milestone achieved"))}
             </p>
           </div>
@@ -316,19 +316,19 @@ function buildEmail(
       return {
         subject: `Your reward is ready — ${rewardName}`,
         html: wrapEmail(accent, orgName, `
-          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Reward Fulfilled!
           </h1>
-          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
+          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
             ${firstName}, your reward has been processed and is ready for you.
           </p>
-          <div style="background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
-            <p style="font-size: 20px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+          <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+            <p style="font-size: 20px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
               ${rewardName}
             </p>
-            ${productDetails ? `<p style="font-size: 14px; color: #34D399; margin: 0 0 4px 0;">Product: ${productDetails}</p>` : ""}
-            ${customValue ? `<p style="font-size: 14px; color: #a0a0b0; margin: 0 0 4px 0;">${customValue}</p>` : ""}
-            ${fulfilmentNotes ? `<p style="font-size: 13px; color: #a0a0b0; margin: 8px 0 0 0; font-style: italic;">"${fulfilmentNotes}"</p>` : ""}
+            ${productDetails ? `<p style="font-size: 14px; color: #059669; margin: 0 0 4px 0;">Product: ${productDetails}</p>` : ""}
+            ${customValue ? `<p style="font-size: 14px; color: #4b5563; margin: 0 0 4px 0;">${customValue}</p>` : ""}
+            ${fulfilmentNotes ? `<p style="font-size: 13px; color: #6b7280; margin: 8px 0 0 0; font-style: italic;">&ldquo;${fulfilmentNotes}&rdquo;</p>` : ""}
           </div>
           <a href="${siteUrl}/rep/rewards" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
             View Rewards
@@ -345,18 +345,18 @@ function buildEmail(
       return {
         subject: `You leveled up — ${newLevelName}!`,
         html: wrapEmail(accent, orgName, `
-          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Level Up!
           </h1>
-          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
+          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
             ${firstName}, you've been promoted.
           </p>
-          <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
-            <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-decoration: line-through;">
-              Level ${oldLevel} — ${oldLevelName}
+          <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
+            <p style="font-size: 13px; color: #9ca3af; margin: 0 0 4px 0; text-decoration: line-through;">
+              Level ${oldLevel} &mdash; ${oldLevelName}
             </p>
-            <p style="font-size: 28px; font-weight: 800; margin: 8px 0 0 0; background: linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-              Level ${newLevel} — ${newLevelName}
+            <p style="font-size: 28px; font-weight: 800; margin: 8px 0 0 0; color: ${accent};">
+              Level ${newLevel} &mdash; ${newLevelName}
             </p>
           </div>
           <a href="${siteUrl}/rep" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
@@ -370,16 +370,16 @@ function buildEmail(
       return {
         subject: `Update on your ${orgName} application`,
         html: wrapEmail(accent, orgName, `
-          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Application Update
           </h1>
-          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 16px 0; line-height: 1.6;">
+          <p style="font-size: 14px; color: #4b5563; margin: 0 0 16px 0; line-height: 1.6;">
             Hey ${firstName}, thanks for your interest in joining the ${orgName} rep team.
           </p>
-          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 16px 0; line-height: 1.6;">
-            After careful review, we're unable to bring you on board at this time. This doesn't mean the door is closed — we run new campaigns regularly and encourage you to apply again in the future.
+          <p style="font-size: 14px; color: #4b5563; margin: 0 0 16px 0; line-height: 1.6;">
+            After careful review, we&rsquo;re unable to bring you on board at this time. This doesn&rsquo;t mean the door is closed &mdash; we run new campaigns regularly and encourage you to apply again in the future.
           </p>
-          <p style="font-size: 14px; color: #a0a0b0; margin: 0; line-height: 1.6;">
+          <p style="font-size: 14px; color: #4b5563; margin: 0; line-height: 1.6;">
             Keep pushing. Keep creating.
           </p>
         `),
@@ -389,21 +389,21 @@ function buildEmail(
       return {
         subject: "Someone used your code!",
         html: wrapEmail(accent, orgName, `
-          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Sale incoming!
           </h1>
-          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
+          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
             ${firstName}, someone just used your discount code to buy tickets.
           </p>
-          <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
             <div style="display: flex; gap: 24px;">
               <div>
                 <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: ${accent}; margin: 0 0 4px 0; font-weight: 600;">Tickets</p>
-                <p style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0;">${ctx.ticket_count || 0}</p>
+                <p style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0;">${ctx.ticket_count || 0}</p>
               </div>
               <div>
                 <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: ${accent}; margin: 0 0 4px 0; font-weight: 600;">Revenue</p>
-                <p style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0;">£${Number(ctx.order_total || 0).toFixed(2)}</p>
+                <p style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0;">&pound;${Number(ctx.order_total || 0).toFixed(2)}</p>
               </div>
             </div>
           </div>
@@ -424,16 +424,16 @@ function buildEmail(
 function wrapEmail(accent: string, orgName: string, body: string): string {
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin: 0; padding: 0; background: #08080c; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head>
+<body style="margin: 0; padding: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a;">
   <div style="max-width: 560px; margin: 0 auto; padding: 40px 24px;">
     <!-- Header -->
     <div style="margin-bottom: 32px;">
-      <span style="font-family: monospace; font-size: 13px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; background: linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+      <span style="font-family: monospace; font-size: 13px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: ${accent};">
         ENTRY REPS
       </span>
-      <span style="font-size: 11px; color: #71717a; margin-left: 8px;">
-        × ${orgName}
+      <span style="font-size: 11px; color: #6b7280; margin-left: 8px;">
+        &times; ${orgName}
       </span>
     </div>
 
@@ -441,9 +441,9 @@ function wrapEmail(accent: string, orgName: string, body: string): string {
     ${body}
 
     <!-- Footer -->
-    <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #1e1e2a;">
-      <p style="font-size: 11px; color: #52525b; margin: 0; line-height: 1.6;">
-        Powered by <span style="color: ${accent}; font-weight: 600;">Entry</span> — The events platform.
+    <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
+      <p style="font-size: 11px; color: #9ca3af; margin: 0; line-height: 1.6;">
+        Powered by <span style="color: ${accent}; font-weight: 600;">Entry</span> &mdash; The events platform.
       </p>
     </div>
   </div>

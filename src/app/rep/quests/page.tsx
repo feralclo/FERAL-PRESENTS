@@ -149,7 +149,9 @@ export default function RepQuestsPage() {
     if (q.quest_type === "sales_milestone" && q.my_progress) {
       return q.my_progress.current >= q.my_progress.target;
     }
-    return !!(q.max_completions && getApprovedCount(q) >= q.max_completions);
+    // Default max_completions to 1 — quests without an explicit limit are one-time
+    const maxComp = q.max_completions ?? 1;
+    return getApprovedCount(q) >= maxComp;
   };
 
   const activeQuests = quests.filter((q) => !isQuestCompleted(q));

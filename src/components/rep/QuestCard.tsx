@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import {
-  Clock, Check, X, ChevronDown, ChevronUp, Loader2,
+  Clock, Check, ChevronDown, ChevronUp, Loader2,
   ExternalLink, AlertCircle, Zap, Camera, Share2, Sparkles, Target,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getQuestAccent } from "@/lib/rep-quest-styles";
@@ -52,6 +52,23 @@ const QUEST_TYPE_ICONS: Record<string, typeof Camera> = {
   custom: Zap,
   sales_milestone: Target,
 };
+
+// ─── Quest State ───────────────────────────────────────────────────────────
+
+export type QuestState = "available" | "pending" | "completed" | "rejected";
+
+export function getQuestState(quest: Quest): QuestState {
+  const subs = quest.my_submissions;
+  if (quest.quest_type === "sales_milestone") {
+    const p = quest.my_progress;
+    return p && p.current >= p.target ? "completed" : "available";
+  }
+  const maxComp = quest.max_completions ?? 1;
+  if (subs.approved >= maxComp) return "completed";
+  if (subs.pending > 0) return "pending";
+  if (subs.total > 0 && subs.approved === 0 && subs.pending === 0) return "rejected";
+  return "available";
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -103,12 +120,13 @@ export function QuestCard({
   const isRepeatable = quest.max_completions && quest.max_completions > 1;
   const isSalesMilestone = quest.quest_type === "sales_milestone";
   const salesProgress = quest.my_progress;
+  const questState = getQuestState(quest);
 
   return (
     <div
       className={cn(
         "rep-quest-card cursor-pointer",
-        accent.glowClass,
+        questState === "completed" ? "rep-quest-glow-emerald" : accent.glowClass,
         (quest.banner_image_url || quest.image_url) && "rep-quest-has-image"
       )}
       style={{ animationDelay: `${index * 40}ms` }}
@@ -119,7 +137,7 @@ export function QuestCard({
     >
       {/* Image backdrop — prefer banner, fall back to content image */}
       {(quest.banner_image_url || quest.image_url) && (
-        <div className="rep-quest-ambient">
+        <div className={cn("rep-quest-ambient", questState === "completed" && "opacity-50")}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={quest.banner_image_url || quest.image_url!} alt="" />
         </div>
@@ -127,24 +145,41 @@ export function QuestCard({
 
       {/* Card content */}
       <div className="rep-quest-glass">
-        {/* Reward badges — XP + currency (with backdrop pills for readability over images) */}
+        {/* Top row — rewards or earned indicator */}
         <div className="flex justify-end items-center gap-1.5">
-          <span className="flex items-center gap-1 text-xs font-extrabold rounded-lg px-2 py-1 bg-black/40 backdrop-blur-sm text-primary">
-            <Zap size={12} />
-            +{quest.points_reward} XP
-          </span>
-          {quest.currency_reward > 0 && (
-            <span className="flex items-center gap-1 text-xs font-extrabold text-amber-400 rounded-lg px-2 py-1 bg-black/40 backdrop-blur-sm">
-              <CurrencyIcon size={12} />
-              +{quest.currency_reward} {currencyName}
-            </span>
+          {questState === "completed" ? (
+            <>
+              <span className="flex items-center gap-1 text-xs font-extrabold rounded-lg px-2 py-1 bg-emerald-500/20 backdrop-blur-sm text-emerald-400">
+                <Check size={12} />
+                {quest.points_reward} XP earned
+              </span>
+              {quest.currency_reward > 0 && (
+                <span className="flex items-center gap-1 text-xs font-extrabold text-amber-400 rounded-lg px-2 py-1 bg-amber-500/20 backdrop-blur-sm">
+                  <CurrencyIcon size={12} />
+                  {quest.currency_reward} {currencyName}
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="flex items-center gap-1 text-xs font-extrabold rounded-lg px-2 py-1 bg-black/40 backdrop-blur-sm text-primary">
+                <Zap size={12} />
+                +{quest.points_reward} XP
+              </span>
+              {quest.currency_reward > 0 && (
+                <span className="flex items-center gap-1 text-xs font-extrabold text-amber-400 rounded-lg px-2 py-1 bg-black/40 backdrop-blur-sm">
+                  <CurrencyIcon size={12} />
+                  +{quest.currency_reward} {currencyName}
+                </span>
+              )}
+            </>
           )}
         </div>
 
         <div className="rep-quest-spacer" />
 
         {/* Info zone */}
-        {expiry?.urgent && (
+        {expiry?.urgent && questState === "available" && (
           <div className="inline-flex items-center gap-1.5 mx-auto mb-2 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <Clock size={11} className="text-amber-400" />
             <span className="text-xs font-medium text-amber-400">{expiry.text}</span>
@@ -155,7 +190,7 @@ export function QuestCard({
           <QuestTypeIcon size={14} className="opacity-50" />
           <h3 className="text-lg font-extrabold text-foreground tracking-tight leading-tight">{quest.title}</h3>
         </div>
-        {quest.description && (
+        {quest.description && questState !== "completed" && (
           <p className="text-[13px] text-muted-foreground/90 leading-relaxed mb-3 line-clamp-2">{quest.description}</p>
         )}
 
@@ -206,36 +241,32 @@ export function QuestCard({
           </div>
         )}
 
-        {/* Status badges */}
-        {hasSubs && (
-          <div className="flex flex-wrap justify-center gap-1.5 mb-2.5">
-            {subs.pending > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
-                <Clock size={10} /> {subs.pending} pending
-              </span>
-            )}
-            {subs.approved > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                <Check size={10} /> {subs.approved} approved
-              </span>
-            )}
-            {subs.rejected > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400">
-                <X size={10} /> {subs.rejected} rejected
-              </span>
-            )}
+        {/* ── State-aware CTA ── */}
+        {questState === "pending" ? (
+          <div className="mt-3 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest border transition-all duration-200 bg-amber-400/[0.06] border-amber-400/20 text-amber-400 flex items-center justify-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+            Awaiting Review
+          </div>
+        ) : questState === "completed" ? (
+          <div className="mt-3 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest border transition-all duration-200 bg-emerald-400/[0.06] border-emerald-400/20 text-emerald-400 flex items-center justify-center gap-2">
+            <Check size={12} />
+            Quest Complete
+          </div>
+        ) : questState === "rejected" ? (
+          <div className="mt-3 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest border transition-all duration-200 bg-white/[0.04] border-white/[0.08] text-white/50 flex items-center justify-center gap-2">
+            <RotateCcw size={11} />
+            Try Again
+          </div>
+        ) : (
+          <div className="mt-3 py-2.5 rounded-xl text-center text-[11px] font-bold uppercase tracking-widest border transition-all duration-200 bg-white/[0.04] border-white/[0.08] text-white/50">
+            {isSalesMilestone ? "View Progress" : "View Quest"}
           </div>
         )}
 
         {/* Non-urgent expiry */}
-        {expiry && !expiry.urgent && (
+        {expiry && !expiry.urgent && questState === "available" && (
           <p className="text-[10px] text-muted-foreground mt-2">{expiry.text}</p>
         )}
-
-        {/* View Quest CTA */}
-        <div className="mt-3 py-2.5 rounded-xl text-center text-[11px] font-bold uppercase tracking-widest border transition-all duration-200 bg-white/[0.04] border-white/[0.08] text-white/50">
-          {isSalesMilestone ? "View Progress" : "View Quest"}
-        </div>
 
         {/* History toggle */}
         {hasSubs && (

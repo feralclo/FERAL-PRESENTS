@@ -140,10 +140,17 @@ export function QuestDetailSheet({
   const subs = quest.my_submissions;
   const hasSubs = subs.total > 0;
   const approvedCount = subs?.approved ?? 0;
-  const isCompleted = quest.max_completions ? approvedCount >= quest.max_completions : false;
+  const maxComp = quest.max_completions ?? 1;
+  const isCompleted = quest.quest_type === "sales_milestone"
+    ? !!(quest.my_progress && quest.my_progress.current >= quest.my_progress.target)
+    : approvedCount >= maxComp;
   const isRepeatable = quest.max_completions && quest.max_completions > 1;
   const hasPending = subs.pending > 0;
+  const isRejected = subs.total > 0 && subs.approved === 0 && subs.pending === 0;
   const canSubmit = !isCompleted && (!hasPending || !!isRepeatable);
+  // State determines which view to render
+  const questState: "available" | "pending" | "completed" | "rejected" =
+    isCompleted ? "completed" : hasPending ? "pending" : isRejected ? "rejected" : "available";
   const backdropImage = quest.banner_image_url || quest.image_url;
   const hasBackdrop = !!backdropImage;
   const hasImage = !!quest.image_url;
@@ -295,7 +302,6 @@ export function QuestDetailSheet({
         setSubmitted(true);
         setError("");
         playSuccessSound();
-        setTimeout(() => onSubmitted(), 1500);
       } else {
         const errJson = await res.json().catch(() => ({}));
         setError(errJson.error || "Failed to submit quest proof");
@@ -364,13 +370,13 @@ export function QuestDetailSheet({
       <div
         className={cn(
           "rep-quest-detail-sheet relative w-full max-w-md rounded-2xl max-h-[85dvh] flex flex-col overflow-hidden",
-          hasBackdrop && currentStep.id === "overview" && "rep-quest-has-backdrop"
+          hasBackdrop && currentStep.id === "overview" && (questState === "available" || questState === "rejected") && "rep-quest-has-backdrop"
         )}
         role="dialog"
         aria-label={quest.title}
         style={{
           ["--quest-accent" as string]: accent.progressColor,
-          boxShadow: hasBackdrop && currentStep.id === "overview"
+          boxShadow: hasBackdrop && currentStep.id === "overview" && (questState === "available" || questState === "rejected")
             ? `0 0 120px ${accent.progressColor}20, 0 0 40px ${accent.progressColor}08, 0 25px 60px rgba(0,0,0,0.7)`
             : `0 25px 60px rgba(0,0,0,0.5)`,
         }}
@@ -384,8 +390,8 @@ export function QuestDetailSheet({
           }}
         />
 
-        {/* Backdrop — overview step only */}
-        {hasBackdrop && currentStep.id === "overview" && (
+        {/* Backdrop — overview step only, for available/rejected states */}
+        {hasBackdrop && currentStep.id === "overview" && (questState === "available" || questState === "rejected") && (
           <div className="rep-quest-detail-hero-backdrop" aria-hidden="true" onClick={onExpandImage}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={backdropImage!} alt="" />
@@ -401,8 +407,8 @@ export function QuestDetailSheet({
           <X size={16} />
         </button>
 
-        {/* Step indicator — segmented pill bar (hidden for single-step types) */}
-        {!submitted && steps.length > 1 && (
+        {/* Step indicator — segmented pill bar (hidden for single-step types and non-available states) */}
+        {!submitted && steps.length > 1 && (questState === "available" || questState === "rejected") && (
           <div className="shrink-0 pt-4 pb-2 px-5 relative z-[2]">
             <div className="flex items-center gap-1 rounded-full bg-white/[0.04] border border-white/[0.06] p-1">
               {steps.map((s, i) => {
@@ -437,8 +443,100 @@ export function QuestDetailSheet({
         {/* ── Scrollable content ── */}
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain relative z-[1] rep-quest-detail-scroll">
 
+          {/* ═══ PENDING VIEW — Quest is awaiting review ═══ */}
+          {!submitted && questState === "pending" && (
+            <div className="px-5 pb-4">
+              <div className="text-center pt-2 pb-4 rep-quest-reveal-1">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 border border-amber-400/20 px-3 py-1 mb-3">
+                  <Clock size={11} className="text-amber-400" />
+                  <span className="text-[10px] font-semibold text-amber-400 tracking-wide">Under Review</span>
+                </div>
+                <h3 className="text-2xl font-extrabold tracking-tight leading-tight text-foreground">
+                  {quest.title}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Your submission is being reviewed by the team
+                </p>
+              </div>
+
+              {/* Big pending indicator */}
+              <div className="flex justify-center mb-5 rep-quest-reveal-2">
+                <div className="relative h-20 w-20 rounded-full bg-amber-400/[0.08] flex items-center justify-center">
+                  <Clock size={32} className="text-amber-400" />
+                  <div className="absolute inset-[-4px] rounded-full border-2 border-amber-400/20 animate-pulse" />
+                </div>
+              </div>
+
+              {/* Rewards you'll earn */}
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4 rep-quest-reveal-3">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2.5 text-center">Rewards when approved</p>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/15 px-3.5 py-1.5">
+                    <Zap size={13} className="text-primary" />
+                    <span className="text-xs font-bold text-primary">+{quest.points_reward} XP</span>
+                  </div>
+                  {hasDualReward && (
+                    <div className="flex items-center gap-1.5 rounded-full bg-amber-400/10 border border-amber-400/15 px-3.5 py-1.5">
+                      <CurrencyIcon size={13} className="text-amber-400" />
+                      <span className="text-xs font-bold text-amber-400">+{quest.currency_reward} {currencyName}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Pulsing status */}
+              <div className="flex items-center justify-center gap-2 rep-quest-reveal-4">
+                <span className="rep-pending-dot h-2 w-2 rounded-full bg-amber-400" />
+                <span className="text-xs text-muted-foreground">Awaiting admin review</span>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ COMPLETED VIEW — Quest is done ═══ */}
+          {!submitted && questState === "completed" && !isSalesMilestone && (
+            <div className="px-5 pb-4">
+              <div className="text-center pt-4 pb-4 rep-quest-reveal-1">
+                {/* Victory checkmark */}
+                <div className="relative inline-flex items-center justify-center mb-5">
+                  <div
+                    className="h-20 w-20 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: `${accent.progressColor}12`, boxShadow: `0 0 40px ${accent.progressColor}15` }}
+                  >
+                    <Check size={36} style={{ color: accent.progressColor }} />
+                  </div>
+                </div>
+
+                <h3 className="text-2xl font-black tracking-tight text-foreground mb-1">Quest Complete!</h3>
+                <p className="text-[15px] text-muted-foreground/80 leading-relaxed mt-1 mb-5">{quest.title}</p>
+
+                {/* Earned rewards */}
+                <div className="flex items-center justify-center gap-2.5 mb-5">
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-2xl px-5 py-2.5"
+                    style={{ backgroundColor: `${accent.progressColor}10`, border: `1px solid ${accent.progressColor}20` }}
+                  >
+                    <Zap size={16} style={{ color: accent.progressColor }} />
+                    <span className="text-sm font-black" style={{ color: accent.progressColor }}>+{quest.points_reward} XP earned</span>
+                  </div>
+                  {hasDualReward && (
+                    <div className="inline-flex items-center gap-1.5 rounded-2xl bg-amber-400/[0.08] border border-amber-400/15 px-5 py-2.5">
+                      <CurrencyIcon size={16} className="text-amber-400" />
+                      <span className="text-sm font-black text-amber-400">+{quest.currency_reward} {currencyName}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Completion badge */}
+                <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20 px-4 py-2.5 rep-quest-reveal-2">
+                  <Check size={14} className="text-emerald-400" />
+                  <span className="text-xs font-bold text-emerald-400">Submission approved</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ═══ STEP: Overview ═══ */}
-          {currentStep.id === "overview" && (
+          {(questState === "available" || questState === "rejected") && currentStep.id === "overview" && (
             <div className="px-5 pb-4">
               <div className="text-center pt-2 pb-4 rep-quest-reveal-1">
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 mb-3">
@@ -807,7 +905,7 @@ export function QuestDetailSheet({
           )}
 
           {/* ═══ STEP: Submit ═══ */}
-          {isSubmitStep && !submitted && !isSalesMilestone && (
+          {(questState === "available" || questState === "rejected") && isSubmitStep && !submitted && !isSalesMilestone && (
             <div className="px-5 pb-4 space-y-4">
               {isCompleted ? (
                 <div className="text-center py-8 rep-quest-reveal-1">
@@ -947,34 +1045,67 @@ export function QuestDetailSheet({
             </div>
           )}
 
-          {/* ═══ Success state ═══ */}
+          {/* ═══ Success celebration ═══ */}
           {submitted && (
-            <div className="text-center py-12 px-6 rep-quest-reveal-1">
-              <div
-                className="inline-flex h-20 w-20 items-center justify-center rounded-full mb-5 relative rep-reward-success-ring"
-                style={{ backgroundColor: `${accent.progressColor}10` }}
-              >
-                <Check size={36} style={{ color: accent.progressColor }} />
-                <div className="rep-success-particles">
-                  <div className="rep-success-particle" />
-                  <div className="rep-success-particle" />
-                  <div className="rep-success-particle" />
+            <div className="relative text-center py-10 px-6 overflow-hidden">
+              {/* Confetti burst */}
+              <div className="rep-confetti-burst pointer-events-none absolute inset-0 flex items-start justify-center" style={{ top: "80px" }}>
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div key={i} className="rep-confetti-piece" />
+                ))}
+              </div>
+
+              {/* Animated checkmark with victory ring */}
+              <div className="relative inline-flex items-center justify-center mb-6">
+                <div
+                  className="rep-victory-ring h-20 w-20 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${accent.progressColor}15`, color: accent.progressColor }}
+                >
+                  <svg className="rep-check-draw" width="36" height="36" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 13l4 4L19 7" stroke={accent.progressColor} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </div>
-              <p className="text-lg font-extrabold text-foreground mb-1">Quest Submitted!</p>
-              <p className="text-sm text-muted-foreground mb-5">Your proof is being reviewed</p>
-              <div className="flex items-center justify-center gap-2.5">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-4 py-2">
-                  <Zap size={14} className="text-primary" />
-                  <span className="text-sm font-bold text-primary">+{quest.points_reward} XP</span>
+
+              <p className="rep-victory-title text-xl font-black text-foreground tracking-tight mb-1">Quest Submitted!</p>
+              <p className="rep-victory-title text-sm text-muted-foreground mb-6" style={{ animationDelay: "0.4s" }}>Your proof is being reviewed</p>
+
+              {/* Reward badges with staggered reveal */}
+              <div className="flex items-center justify-center gap-3 mb-6">
+                <div
+                  className="rep-reward-reveal-1 rep-reward-shimmer inline-flex items-center gap-2 rounded-2xl px-5 py-3"
+                  style={{ backgroundColor: `${accent.progressColor}12`, border: `1px solid ${accent.progressColor}30`, boxShadow: `0 4px 24px ${accent.progressColor}15` }}
+                >
+                  <Zap size={18} style={{ color: accent.progressColor }} />
+                  <span className="rep-xp-counter text-lg font-black" style={{ color: accent.progressColor }}>+{quest.points_reward} XP</span>
                 </div>
                 {hasDualReward && (
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 border border-amber-400/20 px-4 py-2">
-                    <CurrencyIcon size={14} className="text-amber-400" />
-                    <span className="text-sm font-bold text-amber-400">+{quest.currency_reward} {currencyName}</span>
+                  <div
+                    className="rep-reward-reveal-2 rep-reward-shimmer inline-flex items-center gap-2 rounded-2xl px-5 py-3"
+                    style={{ backgroundColor: "rgba(251, 191, 36, 0.08)", border: "1px solid rgba(251, 191, 36, 0.2)", boxShadow: "0 4px 24px rgba(251, 191, 36, 0.1)" }}
+                  >
+                    <CurrencyIcon size={18} className="text-amber-400" />
+                    <span className="rep-xp-counter text-lg font-black text-amber-400">+{quest.currency_reward} {currencyName}</span>
                   </div>
                 )}
               </div>
+
+              {/* Pending status card */}
+              <div className="rep-status-card-reveal mx-auto max-w-[260px] rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 mb-6">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="rep-pending-dot h-2 w-2 rounded-full bg-amber-400" />
+                  <span className="text-xs font-semibold text-muted-foreground">Awaiting admin review</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground/60 mt-1">Rewards are granted once approved</p>
+              </div>
+
+              {/* Dismiss CTA */}
+              <button
+                onClick={onSubmitted}
+                className="rep-victory-cta w-full max-w-[260px] mx-auto rounded-xl border border-white/[0.10] bg-white/[0.05] px-4 py-3 text-sm font-bold text-foreground transition-all hover:bg-white/[0.08] active:scale-[0.97]"
+              >
+                Done
+              </button>
             </div>
           )}
         </div>
@@ -984,8 +1115,16 @@ export function QuestDetailSheet({
           <div className="shrink-0 px-5 pb-5 pt-2 relative z-[2]">
             <div className="absolute inset-x-0 -top-6 h-6 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
 
-            {/* Sales milestone — single view, just close */}
-            {isSalesMilestone ? (
+            {/* Pending / Completed — simple close */}
+            {questState === "pending" ? (
+              <button onClick={onClose} className="w-full py-3.5 rounded-xl text-sm font-bold text-foreground bg-white/[0.06] border border-white/[0.08] transition-all hover:bg-white/[0.10]">
+                Close
+              </button>
+            ) : questState === "completed" && !isSalesMilestone ? (
+              <button onClick={onClose} className="w-full py-3.5 rounded-xl text-sm font-bold text-foreground bg-white/[0.06] border border-white/[0.08] transition-all hover:bg-white/[0.10]">
+                Done
+              </button>
+            ) : isSalesMilestone ? (
               <button onClick={onClose} className="w-full py-3.5 rounded-xl text-sm font-bold text-foreground bg-white/[0.06] border border-white/[0.08] transition-all hover:bg-white/[0.10]">
                 Close
               </button>

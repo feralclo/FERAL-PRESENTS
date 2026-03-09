@@ -336,6 +336,15 @@ body:has([data-rep]) > .noise {
   border-color: rgba(56, 189, 248, 0.25);
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.06);
 }
+/* Completed quests — emerald success glow */
+.rep-quest-glow-emerald {
+  border-color: rgba(52, 211, 153, 0.18);
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.05);
+}
+.rep-quest-glow-emerald:hover {
+  border-color: rgba(52, 211, 153, 0.28);
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.08);
+}
 
 /* ── Quest image ambient layer (unified — no per-tier variants) ── */
 .rep-quest-ambient {

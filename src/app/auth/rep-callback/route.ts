@@ -216,13 +216,15 @@ export async function GET(request: NextRequest) {
     lastName,
   }).catch(() => {});
 
-  // Send welcome email for new reps (fire-and-forget)
-  sendRepEmail({
-    type: "welcome",
-    repId: newRep.id,
-    orgId,
-    data: {},
-  }).catch(() => {});
+  // Send welcome email only for auto-approved reps (pending reps get it when approved)
+  if (newRep.status === "active") {
+    sendRepEmail({
+      type: "welcome",
+      repId: newRep.id,
+      orgId,
+      data: {},
+    }).catch(() => {});
+  }
 
   return response;
 }

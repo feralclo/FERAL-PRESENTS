@@ -31,7 +31,10 @@ export async function GET(
 }
 
 /**
- * POST /api/reps/[id]/points — Manual award/revoke points
+ * POST /api/reps/[id]/points — Manual award/revoke currency (FRL)
+ *
+ * Tenants award currency (spendable in the reward shop), not XP.
+ * XP is earned organically through sales, quests, etc.
  */
 export async function POST(
   request: NextRequest,
@@ -60,26 +63,28 @@ export async function POST(
       );
     }
 
-    const newBalance = await awardPoints({
+    // Award currency (FRL), not XP — tenants can't grant XP directly
+    const result = await awardPoints({
       repId: id,
       orgId,
-      points,
+      points: 0,
+      currency: points,
       sourceType: "manual",
       description: description.trim(),
       createdBy: auth.user!.id,
     });
 
-    if (newBalance === null) {
+    if (result === null) {
       return NextResponse.json(
-        { error: "Failed to award points — rep may not exist" },
+        { error: "Failed to award currency — rep may not exist" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       data: {
-        points_awarded: points,
-        new_balance: newBalance,
+        currency_awarded: points,
+        new_currency_balance: result.newCurrencyBalance,
       },
     });
   } catch (err) {

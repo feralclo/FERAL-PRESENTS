@@ -392,7 +392,7 @@ export default function RepDetailPage() {
               variant="outline"
               onClick={() => setShowAwardPoints(true)}
             >
-              <Coins size={14} /> Award Points
+              <Coins size={14} /> Award Currency
             </Button>
             <Button
               size="sm"
@@ -955,19 +955,19 @@ export default function RepDetailPage() {
         </TabsContent>
       </Tabs>
 
-      {/* ── Award Points Dialog ─────────────────────────────────────── */}
+      {/* ── Award Currency Dialog ────────────────────────────────────── */}
       <Dialog open={showAwardPoints} onOpenChange={setShowAwardPoints}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Award Points</DialogTitle>
+            <DialogTitle>Award Currency</DialogTitle>
             <DialogDescription>
-              Manually award or revoke points for {displayName}. Use negative
-              values to deduct.
+              Manually award or deduct spendable currency for {displayName}.
+              Use negative values to deduct.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Points *</Label>
+              <Label>Amount *</Label>
               <Input
                 type="number"
                 value={awardAmount}
@@ -976,7 +976,7 @@ export default function RepDetailPage() {
                 autoFocus
               />
               <p className="text-[11px] text-muted-foreground">
-                Current balance: {rep.points_balance} pts
+                Current balance: {rep.currency_balance ?? 0} currency
               </p>
             </div>
             <div className="space-y-2">
@@ -984,7 +984,7 @@ export default function RepDetailPage() {
               <Textarea
                 value={awardDescription}
                 onChange={(e) => setAwardDescription(e.target.value)}
-                placeholder="Why are you awarding/revoking these points?"
+                placeholder="Why are you awarding/deducting currency?"
                 rows={2}
               />
             </div>
@@ -1005,7 +1005,7 @@ export default function RepDetailPage() {
               {awarding && (
                 <Loader2 size={14} className="animate-spin" />
               )}
-              {Number(awardAmount) >= 0 ? "Award Points" : "Deduct Points"}
+              {Number(awardAmount) >= 0 ? "Award Currency" : "Deduct Currency"}
             </Button>
           </DialogFooter>
         </DialogContent>

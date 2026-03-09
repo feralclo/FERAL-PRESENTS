@@ -101,7 +101,8 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted, currencyName = "
         setUploadedUrl(json.url);
         setProofText(json.url);
       } else {
-        setError("Failed to upload image");
+        const errJson = await res.json().catch(() => ({}));
+        setError(errJson.error || `Upload failed (${res.status})`);
       }
     } catch {
       setError("Failed to upload image — check your connection");

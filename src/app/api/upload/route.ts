@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireRepAuth } from "@/lib/auth";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -11,15 +11,28 @@ import * as Sentry from "@sentry/nextjs";
  * large data (proven by Liverpool's minimalBgImage). The events table then
  * stores only a short URL string pointing to /api/media/{key}.
  *
+ * Accepts admin auth (primary) or rep auth (fallback — for quest proof uploads).
+ *
  * Body: { imageData: string (base64 data URI), key: string (unique identifier) }
  * Returns: { url: string }
  */
 export async function POST(request: NextRequest) {
   try {
+    // Try admin auth first, fall back to rep auth (quest proof uploads)
+    let orgId: string;
     const auth = await requireAuth();
-    if (auth.error) return auth.error;
+    if (auth.error) {
+      const repAuth = await requireRepAuth();
+      if (repAuth.error) return repAuth.error;
+      orgId = repAuth.rep.org_id;
+    } else {
+      orgId = auth.orgId;
+    }
 
-    const { imageData, key } = await request.json();
+    const body = await request.json();
+    // Accept both "imageData" (current) and "image" (legacy) param names
+    const imageData: string | undefined = body.imageData || body.image;
+    const key: string | undefined = body.key;
 
     if (!imageData || !key) {
       return NextResponse.json(
@@ -67,7 +80,7 @@ export async function POST(request: NextRequest) {
     const contentType = imageData.match(/^data:(image\/\w+);/)?.[1] || "image/jpeg";
 
     // Store in site_settings with org-namespaced media_ prefix
-    const storageKey = `media_${auth.orgId}_${key}`;
+    const storageKey = `media_${orgId}_${key}`;
     const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert(
       {
         key: storageKey,
@@ -83,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return the serving URL (cache-bust so browser fetches new version on replace)
-    const url = `/api/media/${auth.orgId}_${key}?v=${Date.now()}`;
+    const url = `/api/media/${orgId}_${key}?v=${Date.now()}`;
     console.log(`[upload] Stored image: key=${storageKey}, size=${Math.round(imageData.length / 1024)}KB, url=${url}`);
 
     return NextResponse.json({ url });

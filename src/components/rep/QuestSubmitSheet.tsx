@@ -38,6 +38,33 @@ const PROOF_TYPE_CONFIG: Record<ProofType, { placeholder: string }> = {
   text: { placeholder: "Describe what you did..." },
 };
 
+// ─── Image compression ──────────────────────────────────────────────────────
+// Resize + compress images client-side before upload.
+// Mobile screenshots (especially iPhone 3x Retina) can be 3-7MB as base64,
+// exceeding Vercel's 4.5MB body limit. This keeps uploads under 500KB.
+
+function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 interface QuestSubmitSheetProps {
@@ -79,27 +106,39 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted, currencyName = "
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
+    setError("");
     try {
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const res = await fetch("/api/rep-portal/upload", {
+      // Compress before upload — mobile screenshots can be 3-7MB raw
+      const base64 = await compressImage(file);
+
+      const body = JSON.stringify({ imageData: base64, key: `quest-proof-${Date.now()}` });
+
+      // Try the rep endpoint first, fall back to /api/upload (which now also accepts rep auth)
+      let res = await fetch("/api/rep-portal/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageData: base64, key: `quest-proof-${Date.now()}` }),
+        body,
       });
+
+      // If rep endpoint 404s (old deployment), fall back to main upload endpoint
+      if (res.status === 404) {
+        res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        });
+      }
+
       if (res.ok) {
         const json = await res.json();
-        if (!json.url) {
-          setError("Upload succeeded but no media URL returned");
+        const url = json.url || json.key;
+        if (!url) {
+          setError("Upload succeeded but no URL returned");
           setUploading(false);
           return;
         }
-        setUploadedUrl(json.url);
-        setProofText(json.url);
+        setUploadedUrl(url);
+        setProofText(url);
       } else {
         const errJson = await res.json().catch(() => ({}));
         setError(errJson.error || `Upload failed (${res.status})`);

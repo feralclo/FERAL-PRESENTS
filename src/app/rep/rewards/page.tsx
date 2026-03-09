@@ -17,6 +17,7 @@ import {
   Ticket,
   ArrowUpCircle,
   Package,
+  ZoomIn,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -98,6 +99,44 @@ function TicketQRButton({ ticketCode, label }: { ticketCode: string; label?: str
 
             <p className="mt-4 text-xs text-white/50">Tap outside to close</p>
           </div>
+        </div>,
+        document.getElementById("rep-portal-root") || document.body
+      )}
+    </>
+  );
+}
+
+// ─── Image Lightbox ──────────────────────────────────────────────────────────
+
+function ImageLightbox({ src, alt }: { src: string; alt: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white transition-colors z-10"
+        title="View full image"
+      >
+        <ZoomIn size={14} />
+      </button>
+      {open && typeof document !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md rep-fade-in p-6"
+          onClick={() => setOpen(false)}
+        >
+          <button
+            onClick={() => setOpen(false)}
+            className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors z-10"
+          >
+            <X size={24} />
+          </button>
+          <img
+            src={src}
+            alt={alt}
+            className="max-w-full max-h-full object-contain rep-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>,
         document.getElementById("rep-portal-root") || document.body
       )}
@@ -576,22 +615,32 @@ export default function RepRewardsPage() {
                   <Card
                     key={reward.id}
                     className={cn(
-                      "py-0 gap-0 overflow-hidden rep-shop-hover",
+                      "py-0 gap-0 overflow-hidden rep-shop-hover flex flex-col",
                       (hasClaimed && !isMultiClaim) ? "border-success/30" : "border-border/40",
                       glowClass
                     )}
                   >
-                    {reward.image_url && (
-                      <div className="relative h-32 bg-muted/20 flex items-center justify-center overflow-hidden">
-                        <img src={reward.image_url} alt="" className="max-h-full max-w-full object-contain p-2" />
-                        {remaining !== null && remaining > 0 && remaining <= 5 && !allClaimed && (
-                          <span className="absolute top-2 right-2 text-[10px] font-bold text-warning bg-warning/15 border border-warning/20 px-2 py-0.5 rounded-full animate-pulse">
-                            {remaining} left
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    <CardContent className="p-3">
+                    {/* Fixed-height image area — always rendered for consistency */}
+                    <div className="relative h-32 bg-muted/20 flex items-center justify-center overflow-hidden shrink-0">
+                      {reward.image_url ? (
+                        <>
+                          <img src={reward.image_url} alt="" className="max-h-full max-w-full object-contain p-2" />
+                          <ImageLightbox src={reward.image_url} alt={reward.name} />
+                        </>
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          {FtIcon ? <FtIcon size={28} className="text-muted-foreground/30" /> : <Gift size={28} className="text-muted-foreground/30" />}
+                        </div>
+                      )}
+                      {remaining !== null && remaining > 0 && remaining <= 5 && !allClaimed && (
+                        <span className="absolute top-2 left-2 text-[10px] font-bold text-warning bg-warning/15 border border-warning/20 px-2 py-0.5 rounded-full animate-pulse">
+                          {remaining} left
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Content — flex-1 to fill remaining space, mt-auto on action */}
+                    <CardContent className="p-3 flex flex-col flex-1">
                       <h3 className="text-xs font-medium text-foreground mb-1 line-clamp-2">{reward.name}</h3>
                       {/* Event badge */}
                       {reward.event_name && (
@@ -605,9 +654,11 @@ export default function RepRewardsPage() {
                         <p className="text-[10px] text-muted-foreground mb-1 truncate">{reward.ticket_type_name}</p>
                       )}
                       {reward.description && !reward.event_name && (
-                        <p className="text-[10px] text-muted-foreground mb-2 line-clamp-2">{reward.description}</p>
+                        <p className="text-[10px] text-muted-foreground mb-1 line-clamp-2">{reward.description}</p>
                       )}
-                      <div className="flex items-baseline gap-1 mb-3">
+
+                      {/* Price — always same position */}
+                      <div className="flex items-baseline gap-1 mb-2">
                         <CurrencyIcon size={10} className="text-amber-400" />
                         <span className="text-lg font-bold font-mono text-amber-400 tabular-nums">
                           {reward.points_cost}
@@ -615,42 +666,43 @@ export default function RepRewardsPage() {
                         <span className="text-[10px] text-muted-foreground">{currencyName}</span>
                       </div>
 
-                      {/* Multi-claim counter */}
-                      {isMultiClaim && hasClaimed && (
-                        <p className="text-[10px] text-muted-foreground mb-2 font-mono tabular-nums">
-                          {claimedCount}/{maxClaims === null || maxClaims === 0 ? "∞" : maxClaims} claimed
-                        </p>
-                      )}
+                      {/* Spacer pushes action to bottom */}
+                      <div className="mt-auto">
+                        {/* Multi-claim counter */}
+                        {isMultiClaim && hasClaimed && (
+                          <p className="text-[10px] text-muted-foreground mb-2 font-mono tabular-nums">
+                            {claimedCount}/{maxClaims === null || maxClaims === 0 ? "\u221E" : maxClaims} claimed
+                          </p>
+                        )}
 
-                      {allClaimed && !isMultiClaim ? (
-                        <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-success/10 text-xs text-success font-medium">
-                          <Check size={12} style={{ filter: "drop-shadow(0 0 4px rgba(52, 211, 153, 0.4))" }} /> Claimed
-                        </div>
-                      ) : soldOut ? (
-                        <div className="text-xs text-muted-foreground font-medium text-center py-2">Sold out</div>
-                      ) : allClaimed ? (
-                        <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-success/10 text-xs text-success font-medium">
-                          <Check size={12} /> Max claimed
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className="w-full text-xs"
-                          disabled={!canAfford || claimingId === reward.id}
-                          onClick={() => { setConfirmReward(reward); setSelectedMerchSize(""); }}
-                        >
-                          {claimingId === reward.id ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : canAfford ? (
-                            <>
-                              <ShoppingCart size={12} />
-                              {hasClaimed && isMultiClaim ? "Buy Another" : `Buy with ${reward.points_cost} ${currencyName}`}
-                            </>
-                          ) : (
-                            `Need ${(reward.points_cost || 0) - myBalance} more`
-                          )}
-                        </Button>
-                      )}
+                        {/* Action — consistent height across all states */}
+                        {allClaimed ? (
+                          <div className="flex items-center justify-center gap-1.5 h-8 rounded-lg bg-success/10 text-xs text-success font-medium">
+                            <Check size={12} style={{ filter: "drop-shadow(0 0 4px rgba(52, 211, 153, 0.4))" }} />
+                            {isMultiClaim ? "Max claimed" : "Claimed"}
+                          </div>
+                        ) : soldOut ? (
+                          <div className="flex items-center justify-center h-8 text-xs text-muted-foreground font-medium">Sold out</div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="w-full text-xs h-8"
+                            disabled={!canAfford || claimingId === reward.id}
+                            onClick={() => { setConfirmReward(reward); setSelectedMerchSize(""); }}
+                          >
+                            {claimingId === reward.id ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : canAfford ? (
+                              <>
+                                <ShoppingCart size={12} />
+                                {hasClaimed && isMultiClaim ? "Buy Another" : `Buy with ${reward.points_cost} ${currencyName}`}
+                              </>
+                            ) : (
+                              `Need ${(reward.points_cost || 0) - myBalance} more`
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -747,9 +799,16 @@ export default function RepRewardsPage() {
                             {/* Show ticket codes with QR button */}
                             {hasTickets && (
                               <div className="mt-2 space-y-1.5">
-                                {claimMeta!.ticket_codes!.map((code) => (
-                                  <TicketQRButton key={code} ticketCode={code} label="Show this at the door" />
-                                ))}
+                                {claimMeta!.ticket_codes!.map((code) => {
+                                  const isMerchQR = !!claimMeta?.merch_size;
+                                  return (
+                                    <TicketQRButton
+                                      key={code}
+                                      ticketCode={code}
+                                      label={isMerchQR ? "Present at the merch stand to collect" : "Show this at the door"}
+                                    />
+                                  );
+                                })}
                               </div>
                             )}
                           </div>

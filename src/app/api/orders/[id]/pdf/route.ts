@@ -62,6 +62,12 @@ export async function GET(
         })
       : "TBC";
 
+    // Detect merch pre-order from order metadata
+    const orderMeta = (order.metadata || {}) as Record<string, unknown>;
+    const orderType = orderMeta.order_type as string | undefined;
+    const isMerchPreorder = orderType === "merch_preorder";
+    const merchItems = (orderMeta.merch_items || []) as { product_name?: string }[];
+
     // Build PDF data
     const ticketData: TicketPDFData[] = order.tickets.map(
       (ticket: {
@@ -81,6 +87,8 @@ export async function GET(
           .join(" "),
         orderNumber: order.order_number,
         merchSize: ticket.merch_size,
+        merchName: isMerchPreorder ? (merchItems[0]?.product_name || undefined) : undefined,
+        orderType,
       })
     );
 
@@ -120,7 +128,7 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${order.order_number}-tickets.pdf"`,
+        "Content-Disposition": `attachment; filename="${order.order_number}-${isMerchPreorder ? "merch-collection" : "tickets"}.pdf"`,
         "Content-Length": String(pdfBuffer.length),
       },
     });

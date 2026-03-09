@@ -187,33 +187,43 @@ export async function generateTicketsPDF(
     doc.text(t.venueName, centerX, venueY, { align: "center" });
     doc.text(t.eventDate, centerX, dateY, { align: "center" });
 
-    // Ticket type
-    doc.setFontSize(11);
-    doc.setTextColor(acR, acG, acB);
-    doc.text(t.ticketType.toUpperCase(), centerX, typeY, { align: "center" });
+    // Ticket type / merch heading
+    const isMerchOnly = t.orderType === "merch_preorder";
+
+    if (isMerchOnly) {
+      // Merch-only: show "MERCH COLLECTION" as the main heading, not the ticket type
+      doc.setFontSize(11);
+      doc.setTextColor(acR, acG, acB);
+      doc.text("MERCH COLLECTION", centerX, typeY, { align: "center" });
+    } else {
+      doc.setFontSize(11);
+      doc.setTextColor(acR, acG, acB);
+      doc.text(t.ticketType.toUpperCase(), centerX, typeY, { align: "center" });
+    }
 
     // Merch info (above QR — customer reads this before scanning)
     if (t.merchSize) {
-      const isMerchOnly = t.orderType === "merch_preorder";
-      // Label: "MERCH PRE-ORDER" for shop orders, "INCLUDES MERCH" for bundles
-      doc.setFontSize(7);
-      doc.setTextColor(acR, acG, acB);
-      doc.text(isMerchOnly ? "MERCH PRE-ORDER" : "INCLUDES MERCH", centerX, typeY + 7, { align: "center" });
+      if (!isMerchOnly) {
+        // Bundle: show "INCLUDES MERCH" label below the ticket type
+        doc.setFontSize(7);
+        doc.setTextColor(acR, acG, acB);
+        doc.text("INCLUDES MERCH", centerX, typeY + 7, { align: "center" });
+      }
       // Merch item name + size
       const merchDetail = t.merchName
         ? `${t.merchName} · Size ${t.merchSize}`
         : `Size ${t.merchSize}`;
       doc.setFontSize(8);
       doc.setTextColor(secR, secG, secB);
-      doc.text(merchDetail, centerX, typeY + 12, { align: "center" });
+      doc.text(merchDetail, centerX, typeY + (isMerchOnly ? 7 : 12), { align: "center" });
       // Instruction — merch-only = collection only, bundle = entry + collection
       doc.setFontSize(6);
       doc.text(
         isMerchOnly
-          ? "Present QR at the merch stand to collect"
+          ? "Present this QR at the merch stand to collect"
           : "Present QR for entry & merch collection",
         centerX,
-        typeY + 17,
+        typeY + (isMerchOnly ? 12 : 17),
         { align: "center" }
       );
     }

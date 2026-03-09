@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     const url = `/api/media/${orgId}_${key}?v=${Date.now()}`;
     console.log(`[upload] Stored image: key=${storageKey}, size=${Math.round(imageData.length / 1024)}KB, url=${url}`);
 
-    return NextResponse.json({ url });
+    return NextResponse.json({ url, key: url });
   } catch (e) {
     Sentry.captureException(e);
     console.error("[upload] Error:", e);

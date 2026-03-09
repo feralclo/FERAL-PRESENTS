@@ -361,6 +361,7 @@ export function QuestsTab() {
     paused: quests.filter((q) => q.status === "paused").length,
     archived: quests.filter((q) => q.status === "archived").length,
   };
+  const totalPending = quests.reduce((sum, q) => sum + (q.pending_count || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -376,6 +377,27 @@ export function QuestsTab() {
         </div>
         <Button size="sm" onClick={openCreate}><Plus size={14} /> Create Quest</Button>
       </div>
+
+      {/* Pending submissions banner */}
+      {totalPending > 0 && !loading && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/5 px-5 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
+              <AlertCircle size={18} className="text-amber-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{totalPending} submission{totalPending !== 1 ? "s" : ""} pending review</p>
+              <p className="text-[11px] text-muted-foreground">Reps are waiting for approval on their quest proof</p>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10" onClick={() => {
+            const questWithPending = quests.find((q) => (q.pending_count || 0) > 0);
+            if (questWithPending) { setShowSubmissions(questWithPending.id); loadSubmissions(questWithPending.id); }
+          }}>
+            <Eye size={14} /> Review
+          </Button>
+        </div>
+      )}
 
       {loading ? (
         <Card className="py-0 gap-0">
@@ -413,9 +435,14 @@ export function QuestsTab() {
               {filtered.map((quest) => (
                 <TableRow key={quest.id}>
                   <TableCell>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{quest.title}</p>
-                      {quest.description && <p className="mt-0.5 text-[11px] text-muted-foreground truncate max-w-[250px]">{quest.description}</p>}
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{quest.title}</p>
+                        {quest.description && <p className="mt-0.5 text-[11px] text-muted-foreground truncate max-w-[250px]">{quest.description}</p>}
+                      </div>
+                      {(quest.pending_count || 0) > 0 && (
+                        <Badge variant="warning" className="text-[10px] tabular-nums shrink-0">{quest.pending_count} pending</Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell><Badge variant="secondary" className="text-[10px]">{QUEST_TYPE_LABELS[quest.quest_type]}</Badge></TableCell>
@@ -429,7 +456,13 @@ export function QuestsTab() {
                   <TableCell><Badge variant={QUEST_STATUS_VARIANT[quest.status]}>{quest.status}</Badge></TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon-xs" onClick={() => { setShowSubmissions(quest.id); loadSubmissions(quest.id); }} title="View submissions"><Eye size={13} /></Button>
+                      {(quest.pending_count || 0) > 0 ? (
+                        <Button size="sm" variant="outline" className="h-7 text-[11px] border-amber-500/30 text-amber-500 hover:bg-amber-500/10" onClick={() => { setShowSubmissions(quest.id); loadSubmissions(quest.id); }}>
+                          <Eye size={12} /> Review {quest.pending_count}
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="icon-xs" onClick={() => { setShowSubmissions(quest.id); loadSubmissions(quest.id); }} title="View submissions"><Eye size={13} /></Button>
+                      )}
                       <Button variant="ghost" size="icon-xs" onClick={() => openEdit(quest)} title="Edit"><Pencil size={13} /></Button>
                       <Button variant="ghost" size="icon-xs" onClick={() => handleDelete(quest.id)} className="text-muted-foreground hover:text-destructive" title="Archive"><Trash2 size={13} /></Button>
                     </div>

@@ -171,8 +171,9 @@ export interface RepQuest {
   sales_target?: number | null;
   created_at: string;
   updated_at: string;
-  // Joined
+  // Joined / enriched
   event?: { name: string; slug?: string } | null;
+  pending_count?: number;
 }
 
 // ─── Quest Submissions ───────────────────────────────────────────────────────

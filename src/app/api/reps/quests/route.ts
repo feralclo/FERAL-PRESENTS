@@ -52,7 +52,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data: data || [] });
+    // Enrich with pending submission counts per quest
+    const quests = data || [];
+    if (quests.length > 0) {
+      const questIds = quests.map((q: { id: string }) => q.id);
+      const { data: counts } = await supabase
+        .from(TABLES.REP_QUEST_SUBMISSIONS)
+        .select("quest_id, status")
+        .eq("org_id", orgId)
+        .in("quest_id", questIds)
+        .eq("status", "pending");
+
+      const pendingMap = new Map<string, number>();
+      for (const row of counts || []) {
+        const c = pendingMap.get(row.quest_id) || 0;
+        pendingMap.set(row.quest_id, c + 1);
+      }
+      for (const quest of quests) {
+        (quest as Record<string, unknown>).pending_count = pendingMap.get(quest.id) || 0;
+      }
+    }
+
+    return NextResponse.json({ data: quests });
   } catch (err) {
     Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

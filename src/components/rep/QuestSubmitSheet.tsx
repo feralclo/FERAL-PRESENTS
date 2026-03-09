@@ -169,9 +169,6 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted, currencyName = "
         setSubmitted(true);
         setError("");
         playSuccessSound();
-        setTimeout(() => {
-          onSubmitted();
-        }, 1500);
       } else {
         const errJson = await res.json().catch(() => ({}));
         setError(errJson.error || "Failed to submit quest proof");
@@ -202,41 +199,101 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted, currencyName = "
         <div className="rep-quest-detail-scroll overflow-y-auto overscroll-contain max-h-[85dvh]">
 
           {submitted ? (
-            /* ── Success state ── */
-            <div className="text-center py-12 px-6 rep-quest-reveal-1">
-              <div className="inline-flex h-20 w-20 items-center justify-center rounded-full mb-5 relative rep-reward-success-ring"
-                style={{ backgroundColor: `${accent.progressColor}10` }}
-              >
-                <Check size={36} style={{ color: accent.progressColor }} />
-                <div className="rep-success-particles">
-                  <div className="rep-success-particle" />
-                  <div className="rep-success-particle" />
-                  <div className="rep-success-particle" />
+            /* ── Victory celebration ── */
+            <div className="relative text-center py-10 px-6 overflow-hidden">
+
+              {/* Confetti burst — 12 particles from center */}
+              <div className="rep-confetti-burst pointer-events-none absolute inset-0 flex items-start justify-center" style={{ top: "80px" }}>
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+                <div className="rep-confetti-piece" />
+              </div>
+
+              {/* Animated checkmark with expanding victory ring */}
+              <div className="relative inline-flex items-center justify-center mb-6">
+                <div
+                  className="rep-victory-ring h-20 w-20 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${accent.progressColor}15`, color: accent.progressColor }}
+                >
+                  <svg className="rep-check-draw" width="36" height="36" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M5 13l4 4L19 7"
+                      stroke={accent.progressColor}
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </div>
               </div>
 
-              <p className="text-lg font-extrabold text-foreground mb-1">Quest Submitted!</p>
-              <p className="text-sm text-muted-foreground mb-5">Your proof is being reviewed</p>
+              {/* Victory title */}
+              <p className="rep-victory-title text-xl font-black text-foreground tracking-tight mb-1">
+                Quest Submitted!
+              </p>
+              <p className="rep-victory-title text-sm text-muted-foreground mb-6" style={{ animationDelay: "0.4s" }}>
+                Your proof is being reviewed
+              </p>
 
-              {/* Reward badges */}
-              <div className="flex items-center justify-center gap-2.5">
+              {/* Reward badges with staggered reveal + shimmer */}
+              <div className="flex items-center justify-center gap-3 mb-6">
                 <div
-                  className="inline-flex items-center gap-1.5 rounded-full px-4 py-2"
+                  className="rep-reward-reveal-1 rep-reward-shimmer inline-flex items-center gap-2 rounded-2xl px-5 py-3"
                   style={{
-                    backgroundColor: `${accent.progressColor}10`,
-                    border: `1px solid ${accent.progressColor}25`,
+                    backgroundColor: `${accent.progressColor}12`,
+                    border: `1px solid ${accent.progressColor}30`,
+                    boxShadow: `0 4px 24px ${accent.progressColor}15`,
                   }}
                 >
-                  <Zap size={14} style={{ color: accent.progressColor }} />
-                  <span className="text-sm font-bold" style={{ color: accent.progressColor }}>+{quest.points_reward} XP</span>
+                  <Zap size={18} style={{ color: accent.progressColor }} />
+                  <span className="rep-xp-counter text-lg font-black" style={{ color: accent.progressColor }}>
+                    +{quest.points_reward} XP
+                  </span>
                 </div>
                 {hasDualReward && (
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 border border-amber-400/20 px-4 py-2">
-                    <CurrencyIcon size={14} className="text-amber-400" />
-                    <span className="text-sm font-bold text-amber-400">+{quest.currency_reward} {currencyName}</span>
+                  <div
+                    className="rep-reward-reveal-2 rep-reward-shimmer inline-flex items-center gap-2 rounded-2xl px-5 py-3"
+                    style={{
+                      backgroundColor: "rgba(251, 191, 36, 0.08)",
+                      border: "1px solid rgba(251, 191, 36, 0.2)",
+                      boxShadow: "0 4px 24px rgba(251, 191, 36, 0.1)",
+                    }}
+                  >
+                    <CurrencyIcon size={18} className="text-amber-400" />
+                    <span className="rep-xp-counter text-lg font-black text-amber-400">
+                      +{quest.currency_reward} {currencyName}
+                    </span>
                   </div>
                 )}
               </div>
+
+              {/* Pending review status card */}
+              <div className="rep-status-card-reveal mx-auto max-w-[260px] rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 mb-6">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="rep-pending-dot h-2 w-2 rounded-full bg-amber-400" />
+                  <span className="text-xs font-semibold text-muted-foreground">Awaiting admin review</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground/60 mt-1">
+                  Rewards are granted once approved
+                </p>
+              </div>
+
+              {/* Dismiss CTA */}
+              <button
+                onClick={onSubmitted}
+                className="rep-victory-cta w-full max-w-[260px] mx-auto rounded-xl border border-white/[0.10] bg-white/[0.05] px-4 py-3 text-sm font-bold text-foreground transition-all hover:bg-white/[0.08] active:scale-[0.97]"
+              >
+                Done
+              </button>
             </div>
           ) : (
             <>

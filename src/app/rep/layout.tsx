@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { getTierFromLevel } from "@/lib/rep-tiers";
 import { formatRelativeTimeCompact } from "@/lib/rep-utils";
 import { useRepPWA } from "@/hooks/useRepPWA";
-import { InstallPrompt, CurrencyIcon } from "@/components/rep";
+import { InstallPrompt, NotificationPrompt, CurrencyIcon } from "@/components/rep";
 
 const NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
@@ -170,8 +170,9 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   }, [isPublicPage, pathname, router]);
 
   // PWA: register service worker, handle install prompt
-  const { shouldShowInstall, platform, iosBrowser, promptInstall, dismissInstall, requestPush, isStandalone } = useRepPWA();
+  const { shouldShowInstall, platform, iosBrowser, promptInstall, dismissInstall, requestPush, isStandalone, pushSupported, pushPermission } = useRepPWA();
   const [showInstallModal, setShowInstallModal] = useState(false);
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
   // Show install prompt after 3rd visit (not on first — let them explore first)
   useEffect(() => {
@@ -187,6 +188,25 @@ export default function RepLayout({ children }: { children: ReactNode }) {
     } catch { /* storage unavailable */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldShowInstall, isStandalone]);
+
+  // Show notification prompt for standalone users who haven't enabled push
+  useEffect(() => {
+    if (!isStandalone || !pushSupported) return;
+    if (pushPermission === "granted") return;
+    if (showInstallModal) return; // Don't overlap with install modal
+    if (authState.status !== "active") return; // Only for active reps
+    try {
+      const dismissed = localStorage.getItem("rep_notif_prompt_dismissed");
+      if (dismissed) {
+        const daysSince = (Date.now() - parseInt(dismissed, 10)) / (1000 * 60 * 60 * 24);
+        if (daysSince < 7) return;
+      }
+      // Delay to let the page settle
+      const timer = setTimeout(() => setShowNotificationPrompt(true), 3000);
+      return () => clearTimeout(timer);
+    } catch { /* storage unavailable */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStandalone, pushSupported, pushPermission, showInstallModal, authState.status]);
 
   // Add manifest link to head
   useEffect(() => {
@@ -402,6 +422,17 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             dismissInstall();
           }}
           onEnableNotifications={requestPush}
+        />
+      )}
+
+      {/* Notification Permission Prompt — shown in standalone mode */}
+      {showNotificationPrompt && (
+        <NotificationPrompt
+          onEnable={requestPush}
+          onDismiss={() => {
+            setShowNotificationPrompt(false);
+            try { localStorage.setItem("rep_notif_prompt_dismissed", String(Date.now())); } catch {}
+          }}
         />
       )}
 

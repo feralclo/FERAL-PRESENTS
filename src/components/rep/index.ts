@@ -7,5 +7,6 @@ export { LevelUpOverlay } from "./LevelUpOverlay";
 export { TikTokIcon } from "./TikTokIcon";
 export { WelcomeOverlay, hasCompletedOnboarding } from "./WelcomeOverlay";
 export { InstallPrompt } from "./InstallPrompt";
+export { NotificationPrompt } from "./NotificationPrompt";
 export { CurrencyIcon } from "./CurrencyIcon";
 export { LevelGuide } from "./LevelGuide";

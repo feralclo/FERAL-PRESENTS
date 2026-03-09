@@ -83,7 +83,7 @@ export function getSequentialGroupTickets(
   return ticketTypes
     .filter((tt) => {
       const ttGroup = map[tt.id] || UNGROUPED_KEY;
-      return ttGroup === key && tt.status !== "archived";
+      return ttGroup === key && (tt.status === "active" || tt.status === "sold_out");
     })
     .sort((a, b) => a.sort_order - b.sort_order);
 }

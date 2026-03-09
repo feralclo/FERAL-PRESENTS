@@ -196,7 +196,7 @@ export function MidnightTicketWidget({
           (tt) =>
             (tt.tier || "standard") === "standard" &&
             !groupMap[tt.id] &&
-            tt.status !== "archived"
+            (tt.status === "active" || tt.status === "sold_out")
         )
         .sort((a, b) => a.sort_order - b.sort_order),
     [ticketTypes, groupMap]

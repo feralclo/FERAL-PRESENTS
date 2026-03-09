@@ -83,14 +83,29 @@ export async function POST(
       );
     }
 
-    // Build a full absolute URL for the invite link
-    const host = request.headers.get("host") || "";
-    const proto = request.headers.get("x-forwarded-proto") || "https";
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
-      ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")
-      : host
-        ? `${proto}://${host}`
-        : "";
+    // Build a full absolute URL for the invite link using tenant domain
+    let siteUrl = "";
+    // Prefer the org's primary domain for tenant-facing links
+    const { data: primaryDomain } = await supabase
+      .from(TABLES.DOMAINS)
+      .select("hostname")
+      .eq("org_id", orgId)
+      .eq("is_primary", true)
+      .eq("status", "active")
+      .single();
+
+    if (primaryDomain?.hostname) {
+      siteUrl = `https://${primaryDomain.hostname}`;
+    } else {
+      // Fallback to NEXT_PUBLIC_SITE_URL or request host
+      const host = request.headers.get("host") || "";
+      const proto = request.headers.get("x-forwarded-proto") || "https";
+      siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+        ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")
+        : host
+          ? `${proto}://${host}`
+          : "";
+    }
     const invite_url = `${siteUrl}/rep/invite/${invite_token}`;
 
     // Send invite email (fire-and-forget — don't block the response)

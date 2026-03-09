@@ -63,8 +63,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Enrich customers with rep status (lookup by customer_id in reps table)
+    let enriched = data || [];
+    if (enriched.length > 0) {
+      const customerIds = enriched.map((c: { id: string }) => c.id);
+      const { data: reps } = await supabase
+        .from(TABLES.REPS)
+        .select("id, customer_id, status, display_name, level")
+        .eq("org_id", orgId)
+        .in("customer_id", customerIds);
+
+      if (reps && reps.length > 0) {
+        const repMap = new Map(
+          reps.map((r: { customer_id: string; id: string; status: string; display_name: string; level: number }) => [
+            r.customer_id,
+            { rep_id: r.id, rep_status: r.status, rep_display_name: r.display_name, rep_level: r.level },
+          ])
+        );
+        enriched = enriched.map((c: { id: string }) => ({
+          ...c,
+          ...(repMap.get(c.id) || {}),
+        }));
+      }
+    }
+
     return NextResponse.json({
-      data: data || [],
+      data: enriched,
       total: count || 0,
       page,
       limit,

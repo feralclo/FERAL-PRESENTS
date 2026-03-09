@@ -28,6 +28,7 @@ import {
   ArrowUpDown,
   Mail,
   MailX,
+  Zap,
 } from "lucide-react";
 import { generateNickname } from "@/lib/nicknames";
 import { fmtMoney } from "@/lib/format";
@@ -313,6 +314,17 @@ export default function CustomersPage() {
                           >
                             {displayName}
                           </Link>
+                          {cust.rep_id && (
+                            <Link
+                              href={`/admin/reps/${cust.rep_id}`}
+                              className="inline-flex items-center gap-1 rounded-md bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary hover:bg-primary/20 transition-colors shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Rep — Lv.${cust.rep_level || 1} (${cust.rep_status})`}
+                            >
+                              <Zap size={9} />
+                              Rep
+                            </Link>
+                          )}
                           {cust.marketing_consent === true && (
                             <Mail size={11} className="text-emerald-500/60 shrink-0" />
                           )}

@@ -83,6 +83,7 @@ export function TeamTab() {
 
   // Signup link copy
   const [copiedSignup, setCopiedSignup] = useState(false);
+  const [tenantDomain, setTenantDomain] = useState<string | null>(null);
 
   // Current admin user (for self-deletion guard + platform owner check)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -99,6 +100,21 @@ export function TeamTab() {
         }
       }
     });
+  }, []);
+
+  // Fetch tenant's primary domain for the signup link
+  useEffect(() => {
+    fetch("/api/domains")
+      .then((r) => r.json())
+      .then((json) => {
+        const domains = json.data || [];
+        const primary = domains.find(
+          (d: { is_primary: boolean; status: string; hostname: string }) =>
+            d.is_primary && d.status === "active"
+        );
+        if (primary?.hostname) setTenantDomain(primary.hostname);
+      })
+      .catch(() => {});
   }, []);
 
   const loadReps = useCallback(async () => {
@@ -235,7 +251,9 @@ export function TeamTab() {
     } catch { /* clipboard not available */ }
   };
 
-  const signupUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/rep/join`;
+  const signupUrl = tenantDomain
+    ? `https://${tenantDomain}/rep/join`
+    : `${typeof window !== "undefined" ? window.location.origin : ""}/rep/join`;
   const copySignupLink = async () => {
     try {
       await navigator.clipboard.writeText(signupUrl);

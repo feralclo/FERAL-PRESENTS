@@ -24,6 +24,27 @@ function getResendClient(): Resend | null {
   return new Resend(apiKey);
 }
 
+/**
+ * Resolve the tenant-facing base URL for an org.
+ * Prefers the org's active primary domain, falls back to NEXT_PUBLIC_SITE_URL.
+ */
+async function resolveTenantUrl(orgId: string, supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>): Promise<string> {
+  if (supabase) {
+    const { data: domain } = await supabase
+      .from(TABLES.DOMAINS)
+      .select("hostname")
+      .eq("org_id", orgId)
+      .eq("is_primary", true)
+      .eq("status", "active")
+      .single();
+
+    if (domain?.hostname) {
+      return `https://${domain.hostname}`;
+    }
+  }
+  return (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+}
+
 type RepEmailType =
   | "welcome"
   | "invite"
@@ -79,10 +100,10 @@ export async function sendRepEmail(params: RepEmailParams): Promise<void> {
 
     // Get program settings for sender info
     const settings = await getRepSettings(params.orgId);
-    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    const siteUrl = await resolveTenantUrl(params.orgId, supabase);
 
     if (!siteUrl) {
-      console.warn("[rep-email] NEXT_PUBLIC_SITE_URL is not set — email links will be broken");
+      console.warn("[rep-email] No tenant domain or NEXT_PUBLIC_SITE_URL — email links will be broken");
     }
 
     const { subject, html } = buildEmail(params.type, {
@@ -133,9 +154,9 @@ export async function sendRepInviteEmail(params: {
     const branding = (brandingRow?.data as Record<string, string>) || {};
     const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
     const accentColor = branding.accent_color || "#8B5CF6";
-    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    const siteUrl = await resolveTenantUrl(params.orgId, supabase);
     if (!siteUrl) {
-      console.warn("[rep-email] NEXT_PUBLIC_SITE_URL is not set — invite link will be broken");
+      console.warn("[rep-email] No tenant domain or NEXT_PUBLIC_SITE_URL — invite link will be broken");
     }
     const settings = await getRepSettings(params.orgId);
     const inviteUrl = `${siteUrl}/rep/invite/${encodeURIComponent(params.inviteToken)}`;

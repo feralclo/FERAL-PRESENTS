@@ -110,6 +110,11 @@ export interface Customer {
   marketing_consent_source?: string;
   created_at: string;
   updated_at: string;
+  // Enriched from reps table (optional — only present if customer is a rep)
+  rep_id?: string;
+  rep_status?: string;
+  rep_display_name?: string;
+  rep_level?: number;
 }
 
 export interface GuestListEntry {

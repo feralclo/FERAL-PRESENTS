@@ -1596,6 +1596,163 @@ body:has([data-rep]) > .noise {
   z-index: 1;
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   PODIUM V2 (Leaderboard redesign)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-podium-v2 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 4px 0;
+}
+.rep-podium-v2-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  max-width: 140px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+}
+.rep-podium-v2-col:hover .rep-podium-v2-avatar {
+  transform: scale(1.05);
+}
+.rep-podium-v2-medal {
+  font-size: 22px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+  margin-bottom: 4px;
+}
+.rep-podium-v2-first .rep-podium-v2-medal {
+  font-size: 30px;
+}
+.rep-podium-v2-avatar {
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid;
+  transition: transform 0.2s ease;
+}
+.rep-podium-v2-avatar-lg {
+  width: 72px;
+  height: 72px;
+}
+.rep-podium-v2-avatar-sm {
+  width: 56px;
+  height: 56px;
+}
+.rep-podium-v2-bar {
+  width: 100%;
+  border-radius: 10px 10px 0 0;
+  margin-top: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.rep-podium-v2-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 50%);
+  pointer-events: none;
+}
+.rep-podium-v2-bar-gold {
+  height: 48px;
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.20) 0%, rgba(245, 158, 11, 0.04) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-bottom: none;
+  box-shadow: 0 -4px 24px rgba(245, 158, 11, 0.10);
+}
+.rep-podium-v2-bar-silver {
+  height: 32px;
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.15) 0%, rgba(148, 163, 184, 0.03) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-bottom: none;
+}
+.rep-podium-v2-bar-bronze {
+  height: 20px;
+  background: linear-gradient(180deg, rgba(180, 83, 9, 0.15) 0%, rgba(180, 83, 9, 0.03) 100%);
+  border: 1px solid rgba(180, 83, 9, 0.18);
+  border-bottom: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   YOUR POSITION BANNER (Leaderboard redesign)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-your-position-banner {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), rgba(139, 92, 246, 0.02));
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+.rep-your-position-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   EVENT CARD V2 (Leaderboard redesign)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-event-card-v2 {
+  position: relative;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+.rep-event-card-v2:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.rep-event-card-v2:active {
+  transform: scale(0.98);
+}
+.rep-event-card-v2-live {
+  border-color: rgba(52, 211, 153, 0.25);
+  box-shadow: 0 0 24px rgba(52, 211, 153, 0.06);
+}
+.rep-event-card-v2-locked {
+  border-color: rgba(245, 158, 11, 0.15);
+  opacity: 0.85;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   COUNTDOWN BLOCKS (Leaderboard redesign)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-countdown-block {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 36px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 4px 6px 2px;
+}
+.rep-countdown-num {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-foreground);
+  line-height: 1.2;
+}
+.rep-countdown-label {
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted-foreground);
+  line-height: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* Kill remaining animations (shimmer, xp, celebrations) */
   .rep-badge-shimmer::after,

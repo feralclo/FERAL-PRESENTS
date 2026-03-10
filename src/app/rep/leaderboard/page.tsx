@@ -13,7 +13,8 @@ import {
   Flame,
   ArrowUp,
   ArrowDown,
-  RefreshCw,
+  Users,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -71,11 +72,6 @@ interface EventLeaderboardData {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const MEDAL_COLORS = ["#FBBF24", "#94A3B8", "#CD7F32"];
-const PODIUM_BG = [
-  "rep-podium-gold border-2",
-  "rep-podium-silver border",
-  "rep-podium-bronze border",
-];
 const REWARD_PILL_STYLES = [
   "rep-reward-pill-gold",
   "rep-reward-pill-silver",
@@ -117,27 +113,29 @@ function getPositionChange(entryId: string, currentPosition: number, prefix: str
 
 export default function RepLeaderboardPage() {
   return (
-    <div className="max-w-2xl mx-auto px-5 py-6 md:py-8">
+    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
       {/* Header */}
-      <div className="text-center mb-5 rep-slide-up">
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-warning/10 mb-3">
-          <Trophy size={24} className="text-warning" />
-        </div>
-        <h1 className="text-xl font-bold rep-gradient-text-gold">Leaderboard</h1>
+      <div className="text-center mb-6 rep-slide-up">
+        <h1 className="text-2xl font-black tracking-tight rep-gradient-text-gold">
+          Leaderboard
+        </h1>
+        <p className="text-xs text-muted-foreground mt-1">Compete. Climb. Conquer.</p>
       </div>
 
       {/* Tab Bar */}
       <Tabs defaultValue="events" className="gap-4">
-        <TabsList className="w-full bg-secondary rounded-xl border border-border mb-1">
-          <TabsTrigger value="all-time" className="flex-1 rounded-[10px] text-[13px] font-semibold data-[state=active]:bg-white/[0.10] data-[state=active]:text-white data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-            All Time
-          </TabsTrigger>
+        <TabsList className="w-full bg-secondary rounded-xl border border-border mb-2">
           <TabsTrigger value="events" className="flex-1 rounded-[10px] text-[13px] font-semibold data-[state=active]:bg-white/[0.10] data-[state=active]:text-white data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <Zap size={13} className="mr-1.5" />
             Events
           </TabsTrigger>
+          <TabsTrigger value="all-time" className="flex-1 rounded-[10px] text-[13px] font-semibold data-[state=active]:bg-white/[0.10] data-[state=active]:text-white data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <Trophy size={13} className="mr-1.5" />
+            All Time
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="all-time"><AllTimeLeaderboard /></TabsContent>
         <TabsContent value="events"><EventsLeaderboard /></TabsContent>
+        <TabsContent value="all-time"><AllTimeLeaderboard /></TabsContent>
       </Tabs>
     </div>
   );
@@ -145,18 +143,20 @@ export default function RepLeaderboardPage() {
 
 // ─── Position Change Indicator ───────────────────────────────────────────────
 
-function PositionIndicator({ change }: { change: number }) {
+function PositionIndicator({ change, size = "sm" }: { change: number; size?: "sm" | "md" }) {
   if (change === 0) return null;
 
   const isUp = change > 0;
+  const iconSize = size === "md" ? 12 : 10;
   return (
     <span className={cn(
-      "rep-position-indicator inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+      "rep-position-indicator inline-flex items-center gap-0.5 rounded-full font-bold",
+      size === "md" ? "px-2 py-1 text-xs" : "px-1.5 py-0.5 text-[10px]",
       isUp
         ? "text-success bg-success/10"
         : "text-destructive bg-destructive/10"
     )}>
-      {isUp ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+      {isUp ? <ArrowUp size={iconSize} /> : <ArrowDown size={iconSize} />}
       {Math.abs(change)}
     </span>
   );
@@ -193,14 +193,11 @@ function AllTimeLeaderboard() {
           setMyPosition(json.data.current_position);
           setMyRepId(json.data.current_rep_id || null);
 
-          // Calculate position changes before storing new ones
           const changes: Record<string, number> = {};
           for (const entry of leaderboard) {
             changes[entry.id] = getPositionChange(entry.id, entry.position, "all");
           }
           setPositionChanges(changes);
-
-          // Store new positions for next visit
           storePositions(leaderboard, "all");
         }
       } catch {
@@ -223,108 +220,149 @@ function AllTimeLeaderboard() {
 
   const top3 = entries.slice(0, 3);
   const rest = entries.slice(3);
-
-  // Your position change
   const myChange = myRepId ? (positionChanges[myRepId] || 0) : 0;
 
   return (
     <div className="rep-fade-in">
-      {/* Your Position Card — animated gradient border */}
+      {/* Your Position Banner */}
       {myPosition && (
-        <div className="mb-5 rounded-2xl p-5 text-center rep-card-reveal rep-surface-2 border-primary/12">
-          <p className="text-[10px] uppercase tracking-[2px] text-muted-foreground font-semibold mb-1.5">Your Position</p>
+        <div className="mb-6 rounded-2xl p-5 text-center rep-card-reveal rep-your-position-banner">
+          <p className="text-[10px] uppercase tracking-[3px] text-muted-foreground font-bold mb-2">Your Rank</p>
           <div className="flex items-center justify-center gap-3">
-            <p className="text-4xl font-bold font-mono text-foreground">
+            <p className="text-5xl font-black font-mono rep-gradient-text">
               #{myPosition}
             </p>
-            {myChange !== 0 && <PositionIndicator change={myChange} />}
+            {myChange !== 0 && <PositionIndicator change={myChange} size="md" />}
           </div>
         </div>
       )}
 
-      {/* Podium — Top 3 Visual */}
+      {/* ── Podium — Top 3 ── */}
       {top3.length > 0 && (
-        <div className="mb-5">
-          <div className="rep-podium">
+        <div className="mb-6">
+          <div className="rep-podium-v2">
             {/* Render in podium order: 2nd, 1st, 3rd */}
             {[1, 0, 2].map((idx) => {
               const entry = top3[idx];
-              if (!entry) return <div key={idx} className="rep-podium-col" />;
-              const barClass = `rep-podium-bar rep-podium-bar-${idx + 1}`;
+              if (!entry) return <div key={idx} className="rep-podium-v2-col" />;
+              const isFirst = idx === 0;
               const isMe = entry.id === myRepId;
+              const name = entry.display_name || entry.first_name || "?";
 
               return (
-                <div key={entry.id} className="rep-podium-col rep-slide-up" style={{ animationDelay: `${idx * 80}ms` }}>
-                  {/* Avatar above podium */}
-                  <button
-                    type="button"
-                    onClick={() => handleEntryClick(entry)}
-                    className={cn("rep-podium-avatar", `rep-podium-avatar-${idx + 1}`, isMe && "ring-2 ring-primary")}
+                <button
+                  key={entry.id}
+                  type="button"
+                  onClick={() => handleEntryClick(entry)}
+                  className={cn(
+                    "rep-podium-v2-col rep-slide-up",
+                    isFirst && "rep-podium-v2-first"
+                  )}
+                  style={{ animationDelay: `${idx * 100}ms` }}
+                >
+                  {/* Medal */}
+                  <div className={cn(
+                    "rep-podium-v2-medal",
+                    isFirst && "text-3xl"
+                  )}>
+                    {MEDAL_EMOJI[idx]}
+                  </div>
+
+                  {/* Avatar */}
+                  <div
+                    className={cn(
+                      "rep-podium-v2-avatar",
+                      isFirst ? "rep-podium-v2-avatar-lg" : "rep-podium-v2-avatar-sm",
+                      isMe && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                    )}
+                    style={{
+                      borderColor: MEDAL_COLORS[idx],
+                      boxShadow: isFirst ? `0 0 24px ${MEDAL_COLORS[idx]}30` : undefined,
+                    }}
                   >
                     {entry.photo_url ? (
-                      <img src={entry.photo_url} alt="" />
+                      <img src={entry.photo_url} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="rep-podium-avatar-placeholder">
-                        {(entry.display_name || entry.first_name || "?").charAt(0)}
+                      <div className="h-full w-full flex items-center justify-center bg-primary/10 font-bold text-primary"
+                        style={{ fontSize: isFirst ? 20 : 16 }}
+                      >
+                        {name.charAt(0)}
                       </div>
                     )}
-                  </button>
+                  </div>
+
+                  {/* Name */}
+                  <p className={cn(
+                    "font-bold truncate max-w-full mt-2",
+                    isFirst ? "text-sm" : "text-xs",
+                    isMe ? "text-primary" : "text-foreground"
+                  )}>
+                    {name}
+                    {isMe && <span className="text-[9px] opacity-50 ml-1">(You)</span>}
+                  </p>
+
+                  {/* Stats */}
+                  <p className={cn(
+                    "font-mono tabular-nums font-bold mt-1",
+                    isFirst ? "text-lg" : "text-sm",
+                    "text-foreground"
+                  )}>
+                    {entry.total_sales} sales
+                  </p>
+                  <p className={cn(
+                    "font-mono tabular-nums mt-0.5",
+                    isFirst ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"
+                  )}>
+                    £{Number(entry.total_revenue).toFixed(0)}
+                  </p>
+
+                  {/* Position change */}
+                  <div className="mt-1.5">
+                    <PositionIndicator change={positionChanges[entry.id] || 0} />
+                  </div>
 
                   {/* Podium bar */}
-                  <button
-                    type="button"
-                    onClick={() => handleEntryClick(entry)}
-                    className={cn(barClass, "cursor-pointer")}
-                  >
-                    <div className="rep-podium-medal">{MEDAL_EMOJI[idx]}</div>
-                    <div className={cn("rep-podium-name", isMe && "text-primary")}>
-                      {entry.display_name || entry.first_name}
-                      {isMe && <span className="text-[9px] opacity-60 ml-0.5">(You)</span>}
-                    </div>
-                    <div className="rep-podium-stat">
-                      Lv.{entry.level} · {entry.total_sales} sales
-                    </div>
-                    <div className="rep-podium-revenue">
-                      £{Number(entry.total_revenue).toFixed(0)}
-                    </div>
-                    <PositionIndicator change={positionChanges[entry.id] || 0} />
-                  </button>
-                  <div className="rep-podium-base" />
-                </div>
+                  <div className={cn(
+                    "rep-podium-v2-bar",
+                    idx === 0 && "rep-podium-v2-bar-gold",
+                    idx === 1 && "rep-podium-v2-bar-silver",
+                    idx === 2 && "rep-podium-v2-bar-bronze"
+                  )} />
+                </button>
               );
             })}
           </div>
         </div>
       )}
 
-      {/* Rest of leaderboard (4th onwards) */}
+      {/* ── Remaining entries (4th onwards) ── */}
       {rest.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {rest.map((entry) => (
             <button
               key={entry.id}
               type="button"
               onClick={() => handleEntryClick(entry)}
               className={cn(
-                "rep-leaderboard-item rep-lb-hover w-full text-left flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-colors duration-200",
+                "rep-leaderboard-item rep-lb-hover w-full text-left flex items-center gap-3 rounded-xl px-4 py-3.5 cursor-pointer transition-colors duration-200",
                 entry.id === myRepId
                   ? "border-2 border-primary/30 bg-primary/5"
                   : "border border-border bg-card"
               )}
             >
               {/* Rank */}
-              <div className="w-7 text-center">
-                <span className="text-xs font-mono text-muted-foreground">
+              <div className="w-8 text-center shrink-0">
+                <span className="text-sm font-bold font-mono text-muted-foreground">
                   {entry.position}
                 </span>
               </div>
 
               {/* Avatar */}
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full overflow-hidden">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden border border-border">
                 {entry.photo_url ? (
                   <img src={entry.photo_url} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-primary/10 text-[10px] font-bold text-primary">
+                  <div className="h-full w-full flex items-center justify-center bg-primary/10 text-xs font-bold text-primary">
                     {(entry.display_name || entry.first_name || "?").charAt(0)}
                   </div>
                 )}
@@ -332,23 +370,27 @@ function AllTimeLeaderboard() {
 
               {/* Name + Level */}
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium truncate ${
+                <p className={cn(
+                  "text-sm font-semibold truncate",
                   entry.id === myRepId ? "text-primary" : "text-foreground"
-                }`}>
+                )}>
                   {entry.display_name || entry.first_name}
                   {entry.id === myRepId && (
                     <span className="ml-1.5 text-[10px] text-primary/60">(YOU)</span>
                   )}
                 </p>
-                <div className="flex items-center gap-2">
-                  <p className="text-[10px] text-muted-foreground">
-                    Lv.{entry.level} · {entry.total_sales} sales
-                  </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                    Lv.{entry.level}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {entry.total_sales} sales
+                  </span>
                   <PositionIndicator change={positionChanges[entry.id] || 0} />
                 </div>
               </div>
 
-              {/* Earned */}
+              {/* Revenue */}
               <p className="text-sm font-bold font-mono tabular-nums text-foreground">
                 £{Number(entry.total_revenue).toFixed(0)}
               </p>
@@ -430,14 +472,24 @@ function EventsLeaderboard() {
     );
   }
 
+  // Sort: live first, then upcoming, then ended
+  const sortedEvents = [...events].sort((a, b) => {
+    const aLive = !a.locked && isEventUpcoming(a.event_date);
+    const bLive = !b.locked && isEventUpcoming(b.event_date);
+    if (aLive && !bLive) return -1;
+    if (!aLive && bLive) return 1;
+    return 0;
+  });
+
   return (
     <div className="space-y-3 rep-fade-in">
-      {events.map((event) => (
+      {sortedEvents.map((event, i) => (
         <EventCard
           key={event.event_id}
           event={event}
           currencyName={currencyName}
           onClick={() => setSelectedEvent(event.event_id)}
+          index={i}
         />
       ))}
     </div>
@@ -446,7 +498,7 @@ function EventsLeaderboard() {
 
 // ─── Event Card ──────────────────────────────────────────────────────────────
 
-function EventCard({ event, currencyName, onClick }: { event: EventSummary; currencyName: string; onClick: () => void }) {
+function EventCard({ event, currencyName, onClick, index }: { event: EventSummary; currencyName: string; onClick: () => void; index: number }) {
   const isLive = !event.locked && isEventUpcoming(event.event_date);
   const isPast = !isEventUpcoming(event.event_date);
 
@@ -454,9 +506,12 @@ function EventCard({ event, currencyName, onClick }: { event: EventSummary; curr
     <button
       type="button"
       onClick={onClick}
-      className={`rep-event-card w-full text-left ${
-        isLive ? "rep-event-live" : event.locked ? "rep-event-locked" : ""
-      }`}
+      className={cn(
+        "rep-leaderboard-item rep-event-card-v2 w-full text-left",
+        isLive && "rep-event-card-v2-live",
+        event.locked && "rep-event-card-v2-locked"
+      )}
+      style={{ animationDelay: `${index * 80}ms` }}
     >
       {/* Ambient cover image */}
       {event.cover_image && (
@@ -464,64 +519,71 @@ function EventCard({ event, currencyName, onClick }: { event: EventSummary; curr
           <img src={event.cover_image} alt="" />
         </div>
       )}
-      <div className="p-4 relative z-[1]">
-        {/* Event header */}
-        <div className="flex items-start justify-between gap-3 mb-3">
+
+      <div className="relative z-[1] p-5">
+        {/* Status + Event name */}
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              {isLive && <span className="rep-live-dot" />}
+            <div className="flex items-center gap-2 mb-1.5">
               {isLive && (
-                <span className="text-[10px] font-bold text-success uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 border border-success/20 px-2.5 py-0.5 text-[10px] font-bold text-success uppercase tracking-wider">
+                  <span className="rep-live-dot" />
                   Live
                 </span>
               )}
               {event.locked && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-warning uppercase tracking-wider">
-                  <Lock size={10} /> Locked
+                <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 border border-warning/20 px-2.5 py-0.5 text-[10px] font-bold text-warning uppercase tracking-wider">
+                  <Lock size={9} /> Locked
                 </span>
               )}
               {isPast && !event.locked && (
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted/30 border border-border px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Ended
                 </span>
               )}
             </div>
-            <h3 className="text-sm font-semibold text-foreground truncate">{event.event_name}</h3>
+            <h3 className="text-base font-bold text-foreground truncate">{event.event_name}</h3>
             {event.event_date && (
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                <Calendar size={11} />
                 {formatEventDate(event.event_date)}
               </p>
             )}
           </div>
-          <ChevronRight size={16} className="text-muted-foreground shrink-0 mt-1" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] border border-white/[0.06]">
+            <ChevronRight size={16} className="text-muted-foreground" />
+          </div>
         </div>
 
         {/* Countdown (if upcoming) */}
         {isLive && event.event_date && (
-          <CountdownTimer targetDate={event.event_date} />
+          <div className="mb-4">
+            <CountdownTimer targetDate={event.event_date} />
+          </div>
         )}
 
-        {/* Stats row */}
-        <div className="flex items-center gap-4 mt-3">
-          <div>
-            <p className="text-[10px] text-muted-foreground">Your Rank</p>
-            <p className="text-sm font-bold font-mono text-primary">
+        {/* Stats grid */}
+        <div className="grid grid-cols-4 gap-3">
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-3 text-center">
+            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Rank</p>
+            <p className="text-lg font-black font-mono text-primary">
               {event.your_position ? `#${event.your_position}` : "\u2014"}
             </p>
           </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground">Sales</p>
-            <p className="text-sm font-bold font-mono text-foreground">{event.your_sales}</p>
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-3 text-center">
+            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Sales</p>
+            <p className="text-lg font-black font-mono text-foreground">{event.your_sales}</p>
           </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground">Earned</p>
-            <p className="text-sm font-bold font-mono text-foreground">
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-3 text-center">
+            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Earned</p>
+            <p className="text-lg font-black font-mono text-foreground">
               £{Number(event.your_revenue).toFixed(0)}
             </p>
           </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground">Reps</p>
-            <p className="text-sm font-bold font-mono text-muted-foreground">
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-3 text-center">
+            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Reps</p>
+            <p className="text-lg font-black font-mono text-muted-foreground flex items-center justify-center gap-1">
+              <Users size={12} />
               {event.reps_count}
             </p>
           </div>
@@ -529,16 +591,14 @@ function EventCard({ event, currencyName, onClick }: { event: EventSummary; curr
 
         {/* Position rewards preview */}
         {event.position_rewards.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
+          <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-white/[0.06]">
+            <Gift size={12} className="text-warning/70 mt-0.5" />
             {event.position_rewards.map((pr, i) => (
               <span
                 key={pr.position}
                 className={`rep-reward-pill ${REWARD_PILL_STYLES[i] || "rep-reward-pill-bronze"}`}
-                style={i === 0 ? { boxShadow: "0 0 8px rgba(245, 158, 11, 0.15)" } : undefined}
               >
-                <Gift size={10} />
-                {ordinal(pr.position)}:{" "}
-                {formatRewardPill(pr, currencyName)}
+                {ordinal(pr.position)}: {formatRewardPill(pr, currencyName)}
               </span>
             ))}
           </div>
@@ -584,7 +644,6 @@ function EventLeaderboardView({
         setData(d);
 
         if (d) {
-          // Calculate position changes
           const changes: Record<string, number> = {};
           for (const entry of d.leaderboard) {
             changes[entry.id] = getPositionChange(entry.id, entry.position, `evt_${eventId}`);
@@ -607,30 +666,37 @@ function EventLeaderboardView({
   const rewardMap = new Map(data.position_rewards.map((pr) => [pr.position, pr]));
   const myChange = data.current_rep_id ? (positionChanges[data.current_rep_id] || 0) : 0;
 
+  const handleEntryClick = (entry: LeaderboardEntry) => {
+    if (entry.id === data.current_rep_id) router.push("/rep/profile");
+    else router.push(`/rep/profile/${entry.id}`);
+  };
+
   return (
     <div className="rep-fade-in">
-      {/* Back button + Event header */}
+      {/* Back button */}
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-5"
       >
-        <ArrowLeft size={12} /> Back to Events
+        <ArrowLeft size={14} /> Back to Events
       </button>
 
-      <div className="text-center mb-5">
-        <h2 className="text-lg font-bold text-foreground">{data.event?.name || "Event"}</h2>
+      {/* Event header */}
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-black text-foreground">{data.event?.name || "Event"}</h2>
         {data.event?.date_start && (
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1.5 flex items-center justify-center gap-1.5">
+            <Calendar size={11} />
             {formatEventDate(data.event.date_start)}
           </p>
         )}
 
         {/* Status badges */}
-        <div className="flex items-center justify-center gap-2 mt-2">
+        <div className="flex items-center justify-center gap-2 mt-3">
           {isLive && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 border border-success/20 px-3 py-1 text-[10px] font-bold text-success uppercase tracking-wider">
-              <span className="rep-live-dot" />
+              <Flame size={10} />
               Positions Contested
             </span>
           )}
@@ -650,15 +716,38 @@ function EventLeaderboardView({
         )}
       </div>
 
-      {/* Your position — animated gradient border */}
+      {/* Your position */}
       {data.current_position && (
-        <div className="mb-4 rounded-2xl p-4 text-center rep-card-reveal rep-position-card rep-position-dramatic">
-          <p className="text-[10px] uppercase tracking-[2px] text-muted-foreground font-semibold mb-1">Your Position</p>
-          <div className="flex items-center justify-center gap-2">
-            <p className="text-3xl font-bold font-mono rep-gradient-text drop-shadow-[0_0_20px_rgba(139,92,246,0.2)]">
+        <div className="mb-5 rounded-2xl p-5 text-center rep-card-reveal rep-your-position-banner">
+          <p className="text-[10px] uppercase tracking-[3px] text-muted-foreground font-bold mb-2">Your Position</p>
+          <div className="flex items-center justify-center gap-3">
+            <p className="text-5xl font-black font-mono rep-gradient-text drop-shadow-[0_0_20px_rgba(139,92,246,0.2)]">
               #{data.current_position}
             </p>
-            {myChange !== 0 && <PositionIndicator change={myChange} />}
+            {myChange !== 0 && <PositionIndicator change={myChange} size="md" />}
+          </div>
+        </div>
+      )}
+
+      {/* Prize pool */}
+      {data.position_rewards.length > 0 && (
+        <div className="mb-5 rounded-2xl border border-warning/15 bg-warning/[0.03] p-4">
+          <p className="text-[10px] uppercase tracking-[2px] text-warning/70 font-bold mb-3 flex items-center gap-1.5">
+            <Gift size={11} />
+            Prize Pool
+          </p>
+          <div className="space-y-2">
+            {data.position_rewards.map((pr, i) => (
+              <div key={pr.position} className="flex items-center gap-3">
+                <span className="text-base">{i < 3 ? MEDAL_EMOJI[i] : `${ordinal(pr.position)}`}</span>
+                <span className={`flex-1 rep-reward-pill ${REWARD_PILL_STYLES[i] || "rep-reward-pill-bronze"}`}>
+                  {formatRewardPill(pr, currencyName)}
+                  {pr.awarded_rep_id && (
+                    <span className="ml-1 opacity-70">Awarded</span>
+                  )}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -675,30 +764,29 @@ function EventLeaderboardView({
             <button
               key={entry.id}
               type="button"
-              onClick={() => {
-                if (isMe) router.push("/rep/profile");
-                else router.push(`/rep/profile/${entry.id}`);
-              }}
-              className={`rep-leaderboard-item w-full text-left rounded-2xl p-4 cursor-pointer active:scale-[0.98] ${
+              onClick={() => handleEntryClick(entry)}
+              className={cn(
+                "rep-leaderboard-item w-full text-left rounded-2xl p-4 cursor-pointer active:scale-[0.98] transition-transform",
                 isPodium
-                  ? `${PODIUM_BG[i]} rep-lb-podium-hover ${isLive && !data.locked ? "rep-contested-border" : ""}`
+                  ? cn(
+                      i === 0 && "rep-podium-gold border-2",
+                      i === 1 && "rep-podium-silver border",
+                      i === 2 && "rep-podium-bronze border",
+                      isLive && !data.locked && "rep-contested-border"
+                    )
                   : isMe
-                    ? "border-2 border-primary/30 bg-primary/5 rep-lb-hover"
-                    : "border border-border bg-card rep-lb-hover"
-              } ${isMe ? "ring-1 ring-primary/30" : ""}`}
+                    ? "border-2 border-primary/30 bg-primary/5"
+                    : "border border-border bg-card rep-lb-hover",
+                isMe && "ring-1 ring-primary/20"
+              )}
             >
               <div className="flex items-center gap-3">
                 {/* Position */}
                 <div className="w-8 text-center shrink-0">
                   {isPodium ? (
-                    <span
-                      className="rep-medal text-lg"
-                      style={{ color: MEDAL_COLORS[i] }}
-                    >
-                      {MEDAL_EMOJI[i]}
-                    </span>
+                    <span className="text-xl">{MEDAL_EMOJI[i]}</span>
                   ) : (
-                    <span className="text-xs font-mono text-muted-foreground">
+                    <span className="text-sm font-bold font-mono text-muted-foreground">
                       {i + 1}
                     </span>
                   )}
@@ -706,9 +794,10 @@ function EventLeaderboardView({
 
                 {/* Avatar */}
                 <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden ${
-                    isPodium ? "ring-2" : ""
-                  }`}
+                  className={cn(
+                    "flex shrink-0 items-center justify-center rounded-full overflow-hidden",
+                    isPodium ? "h-11 w-11 ring-2" : "h-10 w-10 border border-border"
+                  )}
                   style={
                     isPodium
                       ? ({ "--tw-ring-color": MEDAL_COLORS[i] } as React.CSSProperties)
@@ -716,11 +805,7 @@ function EventLeaderboardView({
                   }
                 >
                   {entry.photo_url ? (
-                    <img
-                      src={entry.photo_url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
+                    <img src={entry.photo_url} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center bg-primary/10 text-xs font-bold text-primary">
                       {(entry.display_name || entry.first_name || "?").charAt(0)}
@@ -730,58 +815,38 @@ function EventLeaderboardView({
 
                 {/* Name + meta */}
                 <div className="flex-1 min-w-0">
-                  <p
-                    className={`text-sm font-medium truncate ${
-                      isMe ? "text-primary" : "text-foreground"
-                    }`}
-                  >
+                  <p className={cn(
+                    "text-sm font-semibold truncate",
+                    isMe ? "text-primary" : "text-foreground"
+                  )}>
                     {entry.display_name || entry.first_name}
                     {isMe && (
-                      <span className="ml-1.5 text-[10px] text-primary/60">
-                        (YOU)
-                      </span>
+                      <span className="ml-1.5 text-[10px] text-primary/60">(YOU)</span>
                     )}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
                       Lv.{entry.level}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-[11px] text-muted-foreground">
                       {entry.total_sales} sales
                     </span>
                     {isLive && isPodium && !data.locked && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success">
-                        <Flame size={10} /> Contested
+                        <Flame size={10} />
                       </span>
                     )}
                     <PositionIndicator change={change} />
                   </div>
                 </div>
 
-                {/* Earned */}
+                {/* Revenue */}
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold font-mono tabular-nums text-foreground">
                     £{Number(entry.total_revenue).toFixed(0)}
                   </p>
                 </div>
               </div>
-
-              {/* Reward pill for podium positions */}
-              {reward && (reward.reward_name || reward.xp_reward || reward.currency_reward) && (
-                <div className="mt-2 ml-11">
-                  <span
-                    className={`rep-reward-pill ${
-                      REWARD_PILL_STYLES[i] || "rep-reward-pill-bronze"
-                    }`}
-                  >
-                    <Gift size={10} />
-                    {ordinal(i + 1)} Prize: {formatRewardPill(reward, currencyName)}
-                    {reward.awarded_rep_id && entry.id === reward.awarded_rep_id && (
-                      <span className="ml-1 opacity-70">✓ Awarded</span>
-                    )}
-                  </span>
-                </div>
-              )}
             </button>
           );
         })}
@@ -817,37 +882,29 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
   }
 
   return (
-    <div className="flex items-center justify-center gap-1 rep-countdown">
-      <Clock size={12} className="text-muted-foreground mr-1" />
+    <div className="flex items-center justify-center gap-2 rep-countdown">
+      <Clock size={12} className="text-muted-foreground" />
       {timeLeft.days > 0 && (
-        <>
-          <span className="rep-countdown-segment">
-            <span className="text-sm font-bold font-mono text-foreground">{timeLeft.days}</span>
-            <span className="text-[9px] text-muted-foreground">d</span>
-          </span>
-          <span className="text-muted-foreground text-xs">:</span>
-        </>
+        <div className="rep-countdown-block">
+          <span className="rep-countdown-num">{timeLeft.days}</span>
+          <span className="rep-countdown-label">d</span>
+        </div>
       )}
-      <span className="rep-countdown-segment">
-        <span className="text-sm font-bold font-mono text-foreground">
-          {String(timeLeft.hours).padStart(2, "0")}
-        </span>
-        <span className="text-[9px] text-muted-foreground">h</span>
-      </span>
-      <span className="text-muted-foreground text-xs">:</span>
-      <span className="rep-countdown-segment">
-        <span className="text-sm font-bold font-mono text-foreground">
-          {String(timeLeft.minutes).padStart(2, "0")}
-        </span>
-        <span className="text-[9px] text-muted-foreground">m</span>
-      </span>
-      <span className="text-muted-foreground text-xs">:</span>
-      <span className="rep-countdown-segment">
-        <span className="text-sm font-bold font-mono text-foreground">
-          {String(timeLeft.seconds).padStart(2, "0")}
-        </span>
-        <span className="text-[9px] text-muted-foreground">s</span>
-      </span>
+      <span className="text-muted-foreground/50 text-xs font-mono">:</span>
+      <div className="rep-countdown-block">
+        <span className="rep-countdown-num">{String(timeLeft.hours).padStart(2, "0")}</span>
+        <span className="rep-countdown-label">h</span>
+      </div>
+      <span className="text-muted-foreground/50 text-xs font-mono">:</span>
+      <div className="rep-countdown-block">
+        <span className="rep-countdown-num">{String(timeLeft.minutes).padStart(2, "0")}</span>
+        <span className="rep-countdown-label">m</span>
+      </div>
+      <span className="text-muted-foreground/50 text-xs font-mono">:</span>
+      <div className="rep-countdown-block">
+        <span className="rep-countdown-num">{String(timeLeft.seconds).padStart(2, "0")}</span>
+        <span className="rep-countdown-label">s</span>
+      </div>
     </div>
   );
 }
@@ -859,12 +916,11 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
 function LeaderboardSkeleton() {
   return (
     <div className="space-y-3 py-2">
-      <Skeleton className="h-[72px] rounded-2xl" />
-      <Skeleton className="h-[72px] rounded-2xl" />
-      <Skeleton className="h-[72px] rounded-2xl" />
-      <Skeleton className="h-[60px] rounded-xl" />
-      <Skeleton className="h-[60px] rounded-xl" />
-      <Skeleton className="h-[60px] rounded-xl" />
+      <Skeleton className="h-24 rounded-2xl" />
+      <Skeleton className="h-48 rounded-2xl" />
+      <Skeleton className="h-16 rounded-xl" />
+      <Skeleton className="h-16 rounded-xl" />
+      <Skeleton className="h-16 rounded-xl" />
     </div>
   );
 }
@@ -918,5 +974,5 @@ function formatRewardPill(pr: PositionReward, currencyName: string): string {
   if (pr.xp_reward) parts.push(`+${pr.xp_reward} XP`);
   if (pr.currency_reward) parts.push(`+${pr.currency_reward} ${currencyName}`);
   if (pr.reward_name) parts.push(pr.reward_name);
-  return parts.length > 0 ? parts.join(" ") : "—";
+  return parts.length > 0 ? parts.join(" ") : "\u2014";
 }

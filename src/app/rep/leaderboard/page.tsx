@@ -881,23 +881,49 @@ function EventLeaderboardView({
 
       {/* Prize pool */}
       {data.position_rewards.length > 0 && (
-        <div className="mb-5 rounded-2xl border border-warning/15 bg-warning/[0.03] p-4">
-          <p className="text-[10px] uppercase tracking-[2px] text-warning/70 font-bold mb-3 flex items-center gap-1.5">
-            <Gift size={11} />
-            Prize Pool
+        <div className="mb-5 rounded-2xl border border-warning/15 bg-gradient-to-b from-warning/[0.06] to-transparent p-4">
+          <p className="text-[10px] uppercase tracking-[3px] text-warning/80 font-bold mb-3 flex items-center justify-center gap-2">
+            <Trophy size={12} />
+            Prizes Up For Grabs
           </p>
-          <div className="space-y-2">
-            {data.position_rewards.map((pr, i) => (
-              <div key={pr.position} className="flex items-center gap-3">
-                <span className="text-base">{i < 3 ? MEDAL_EMOJI[i] : `${ordinal(pr.position)}`}</span>
-                <span className={`flex-1 rep-reward-pill ${REWARD_PILL_STYLES[i] || "rep-reward-pill-bronze"}`}>
-                  {formatRewardPill(pr, currencyName)}
-                  {pr.awarded_rep_id && (
-                    <span className="ml-1 opacity-70">Awarded</span>
+          <div className="space-y-2.5">
+            {data.position_rewards.map((pr, i) => {
+              const medalBg = i === 0 ? "bg-yellow-500/10 border-yellow-500/20" :
+                              i === 1 ? "bg-slate-400/10 border-slate-400/15" :
+                              i === 2 ? "bg-orange-500/10 border-orange-500/15" :
+                              "bg-white/[0.03] border-white/[0.06]";
+              return (
+                <div key={pr.position} className={`flex items-center gap-3 rounded-xl border p-3 ${medalBg}`}>
+                  <div className="text-center w-8 shrink-0">
+                    <span className="text-lg">{i < 3 ? MEDAL_EMOJI[i] : ""}</span>
+                    {i >= 3 && <span className="text-xs font-bold font-mono text-muted-foreground">{ordinal(pr.position)}</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {pr.xp_reward ? (
+                        <span className="inline-flex items-center gap-0.5 rounded-md bg-primary/12 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                          +{pr.xp_reward} XP
+                        </span>
+                      ) : null}
+                      {pr.currency_reward ? (
+                        <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+                          +{pr.currency_reward} {currencyName}
+                        </span>
+                      ) : null}
+                    </div>
+                    {pr.reward_name && (
+                      <p className="text-[11px] text-foreground/80 mt-1 font-medium">{pr.reward_name}</p>
+                    )}
+                    {pr.awarded_rep_id && (
+                      <p className="text-[10px] text-success/70 mt-0.5">Awarded</p>
+                    )}
+                  </div>
+                  {pr.reward_name && (
+                    <Gift size={14} className={i === 0 ? "text-yellow-500/50" : i === 1 ? "text-slate-400/50" : "text-orange-500/50"} />
                   )}
-                </span>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

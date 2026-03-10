@@ -533,100 +533,103 @@ export default function EventBoardsPage() {
               Assign XP, {currencyName}, and rewards for podium positions. These are shown on the rep leaderboard.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            {editRewards.map((reward, idx) => (
-              <div key={reward.position} className="rounded-lg border border-border p-3 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Crown size={14} className={idx === 0 ? "text-yellow-500" : idx === 1 ? "text-slate-400" : "text-orange-500"} />
-                  <span className="text-sm font-bold text-foreground">{ordinal(reward.position)} Place</span>
-                  {editRewards.length > 3 && (
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => setEditRewards(editRewards.filter((_, i) => i !== idx))}
-                      className="ml-auto shrink-0"
-                    >
-                      <Trash2 size={12} />
-                    </Button>
-                  )}
+          <div className="space-y-3 py-2">
+            {editRewards.map((reward, idx) => {
+              const linkedReward = reward.reward_id ? rewards.find((r) => r.id === reward.reward_id) : null;
+              return (
+                <div
+                  key={reward.position}
+                  className="rounded-xl border border-border overflow-hidden"
+                >
+                  {/* Position header */}
+                  <div className={`flex items-center gap-2 px-4 py-2.5 ${
+                    idx === 0 ? "bg-yellow-500/8 border-b border-yellow-500/10" :
+                    idx === 1 ? "bg-slate-400/8 border-b border-slate-400/10" :
+                    idx === 2 ? "bg-orange-500/8 border-b border-orange-500/10" :
+                    "bg-muted/30 border-b border-border"
+                  }`}>
+                    <Crown size={14} className={idx === 0 ? "text-yellow-500" : idx === 1 ? "text-slate-400" : "text-orange-500"} />
+                    <span className="text-sm font-bold text-foreground flex-1">{ordinal(reward.position)} Place</span>
+                    <Badge variant="secondary" className="text-[10px] font-mono">+{reward.xp_reward} XP</Badge>
+                    {editRewards.length > 3 && (
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => setEditRewards(editRewards.filter((_, i) => i !== idx))}
+                        className="shrink-0 -mr-1"
+                      >
+                        <Trash2 size={12} />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="p-4 space-y-3">
+                    {/* Currency + Physical reward — the two things tenants configure */}
+                    <div className="flex items-end gap-3">
+                      <div className="space-y-1.5 w-32 shrink-0">
+                        <Label className="text-[11px] text-amber-400 font-semibold">{currencyName} Bonus</Label>
+                        <Input
+                          type="number"
+                          value={String(reward.currency_reward)}
+                          onChange={(e) => {
+                            const updated = [...editRewards];
+                            updated[idx] = { ...updated[idx], currency_reward: Number(e.target.value) || 0 };
+                            setEditRewards(updated);
+                          }}
+                          min="0"
+                          className="h-9 text-sm font-mono"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="space-y-1.5 flex-1">
+                        <Label className="text-[11px] font-semibold">Physical Reward</Label>
+                        <Select
+                          value={reward.reward_id || "none"}
+                          onValueChange={(v) => {
+                            const updated = [...editRewards];
+                            const rid = v === "none" ? null : v;
+                            updated[idx] = { ...updated[idx], reward_id: rid };
+                            if (rid) {
+                              const r = rewards.find((rw) => rw.id === rid);
+                              if (r) updated[idx].reward_name = r.name;
+                            } else {
+                              updated[idx].reward_name = "";
+                            }
+                            setEditRewards(updated);
+                          }}
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder="None — add merch, VIP pass, etc." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {rewards.map((r) => (
+                              <SelectItem key={r.id} value={r.id}>
+                                {r.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Linked reward preview */}
+                    {linkedReward && (
+                      <div className="flex items-center gap-3 rounded-lg bg-primary/5 border border-primary/10 px-3 py-2">
+                        {linkedReward.image_url && (
+                          <img src={linkedReward.image_url} alt="" className="h-10 w-10 rounded-lg object-contain bg-muted/20" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{linkedReward.name}</p>
+                          <p className="text-[10px] text-muted-foreground">Linked from reward catalog</p>
+                        </div>
+                        <Check size={14} className="text-success shrink-0" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-primary">XP Reward</Label>
-                    <Input
-                      type="number"
-                      value={String(reward.xp_reward)}
-                      onChange={(e) => {
-                        const updated = [...editRewards];
-                        updated[idx] = { ...updated[idx], xp_reward: Number(e.target.value) || 0 };
-                        setEditRewards(updated);
-                      }}
-                      min="0"
-                      className="h-8 text-xs font-mono"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-amber-400">{currencyName} Reward</Label>
-                    <Input
-                      type="number"
-                      value={String(reward.currency_reward)}
-                      onChange={(e) => {
-                        const updated = [...editRewards];
-                        updated[idx] = { ...updated[idx], currency_reward: Number(e.target.value) || 0 };
-                        setEditRewards(updated);
-                      }}
-                      min="0"
-                      className="h-8 text-xs font-mono"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px]">Catalog Reward Name</Label>
-                    <Input
-                      value={reward.reward_name}
-                      onChange={(e) => {
-                        const updated = [...editRewards];
-                        updated[idx] = { ...updated[idx], reward_name: e.target.value };
-                        setEditRewards(updated);
-                      }}
-                      placeholder="e.g. VIP Pass"
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px]">Link Reward</Label>
-                    <Select
-                      value={reward.reward_id || "none"}
-                      onValueChange={(v) => {
-                        const updated = [...editRewards];
-                        const rid = v === "none" ? null : v;
-                        updated[idx] = { ...updated[idx], reward_id: rid };
-                        if (rid) {
-                          const r = rewards.find((rw) => rw.id === rid);
-                          if (r && !updated[idx].reward_name) {
-                            updated[idx].reward_name = r.name;
-                          }
-                        }
-                        setEditRewards(updated);
-                      }}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Optional" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {rewards.map((r) => (
-                          <SelectItem key={r.id} value={r.id}>
-                            {r.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {editRewards.length < 10 && (
               <Button
                 variant="ghost"

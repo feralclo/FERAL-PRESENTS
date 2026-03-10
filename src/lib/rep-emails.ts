@@ -45,6 +45,107 @@ async function resolveTenantUrl(orgId: string, supabase: Awaited<ReturnType<type
   return (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 }
 
+// ─── CID Logo Embedding ────────────────────────────────────────────────────
+
+interface CidAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+  contentId: string;
+}
+
+/**
+ * Fetch logo base64 from site_settings for CID inline embedding.
+ *
+ * Handles both org-prefixed keys (e.g., media_feral_logo) and legacy keys
+ * (e.g., media_email-logo) that predate the multi-tenant prefix convention.
+ */
+async function fetchLogoBase64(
+  logoUrl: string | null,
+  orgId: string,
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseAdmin>>>
+): Promise<string | null> {
+  if (!logoUrl) return null;
+
+  const m = logoUrl.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+  if (!m) return null;
+
+  const mediaKey = m[1];
+
+  // Try exact key first (handles both org-prefixed and legacy keys)
+  try {
+    const { data: row } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", `media_${mediaKey}`)
+      .single();
+    const d = row?.data as { image?: string } | null;
+    if (d?.image) return d.image;
+  } catch { /* not found */ }
+
+  // If key doesn't have org prefix, try with it
+  if (!mediaKey.startsWith(`${orgId}_`)) {
+    try {
+      const { data: row } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", `media_${orgId}_${mediaKey}`)
+        .single();
+      const d = row?.data as { image?: string } | null;
+      if (d?.image) return d.image;
+    } catch { /* not found */ }
+  }
+
+  return null;
+}
+
+/**
+ * Parse a data-URL base64 string into a Resend CID attachment.
+ */
+function buildCidAttachment(base64: string): CidAttachment | null {
+  const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  return {
+    filename: "logo.png",
+    content: Buffer.from(match[2], "base64"),
+    contentType: match[1],
+    contentId: "brand-logo",
+  };
+}
+
+/**
+ * Fetch the best available logo for email CID embedding.
+ * Tries branding logo first, then falls back to email settings logo.
+ */
+async function resolveLogoCid(
+  brandingLogoUrl: string | null,
+  orgId: string,
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseAdmin>>>
+): Promise<CidAttachment | null> {
+  // Try branding logo first
+  let base64 = await fetchLogoBase64(brandingLogoUrl, orgId, supabase);
+
+  // Fallback: try email settings logo (used by order confirmation emails)
+  if (!base64) {
+    try {
+      const { data: emailRow } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", `${orgId}_email`)
+        .single();
+      const emailSettings = (emailRow?.data as Record<string, string>) || {};
+      if (emailSettings.logo_url && emailSettings.logo_url !== brandingLogoUrl) {
+        base64 = await fetchLogoBase64(emailSettings.logo_url, orgId, supabase);
+      }
+    } catch { /* no email settings */ }
+  }
+
+  if (!base64) return null;
+  return buildCidAttachment(base64);
+}
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
 type RepEmailType =
   | "welcome"
   | "invite"
@@ -62,6 +163,8 @@ interface RepEmailParams {
   orgId: string;
   data?: Record<string, unknown>;
 }
+
+// ─── Senders ────────────────────────────────────────────────────────────────
 
 /**
  * Send a rep-related email. Fire-and-forget — never throws.
@@ -99,7 +202,7 @@ export async function sendRepEmail(params: RepEmailParams): Promise<void> {
     const accentColor = branding.accent_color || "#8B5CF6";
     const logoUrl = branding.logo_url || null;
 
-    // Get program settings for sender info
+    // Get program settings for sender email address
     const settings = await getRepSettings(params.orgId);
     const siteUrl = await resolveTenantUrl(params.orgId, supabase);
 
@@ -107,21 +210,25 @@ export async function sendRepEmail(params: RepEmailParams): Promise<void> {
       console.warn("[rep-email] No tenant domain or NEXT_PUBLIC_SITE_URL — email links will be broken");
     }
 
+    // Resolve logo for CID inline embedding
+    const logoCid = await resolveLogoCid(logoUrl, params.orgId, supabase);
+
     const { subject, html } = buildEmail(params.type, {
       rep,
       orgName,
       accentColor,
-      logoUrl,
+      hasLogo: !!logoCid,
       siteUrl,
       settings,
       ...params.data,
     });
 
     await resend.emails.send({
-      from: `${settings.email_from_name} <${settings.email_from_address}>`,
+      from: `${orgName} <${settings.email_from_address}>`,
       to: [rep.email],
       subject,
       html,
+      ...(logoCid ? { attachments: [logoCid] } : {}),
     });
 
     console.log(`[rep-email] ${params.type} sent to ${rep.email}`);
@@ -154,7 +261,7 @@ export async function sendRepInviteEmail(params: {
       .single();
 
     const branding = (brandingRow?.data as Record<string, string>) || {};
-    const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
+    const orgName = branding.org_name || params.orgId.toUpperCase();
     const accentColor = branding.accent_color || "#8B5CF6";
     const logoUrl = branding.logo_url || null;
     const siteUrl = await resolveTenantUrl(params.orgId, supabase);
@@ -164,35 +271,65 @@ export async function sendRepInviteEmail(params: {
     const settings = await getRepSettings(params.orgId);
     const inviteUrl = `${siteUrl}/rep/invite/${encodeURIComponent(params.inviteToken)}`;
 
-    const subject = `You've been selected as a ${orgName} Rep`;
-    const html = wrapEmail(accentColor, orgName, logoUrl, `
-      <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-        You've been selected.
-      </h1>
-      <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
-        Hey ${escapeHtml(params.firstName)}, the team at <strong style="color: #1a1a1a;">${escapeHtml(orgName)}</strong> wants you on board as an official rep.
-      </p>
-      <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-        <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: ${accentColor}; margin: 0 0 8px 0; font-weight: 600;">
-          Your Discount Code
-        </p>
-        <p style="font-size: 20px; font-weight: 700; font-family: monospace; color: #1a1a1a; margin: 0; letter-spacing: 3px;">
-          ${escapeHtml(params.discountCode || "Awaiting activation")}
-        </p>
-      </div>
-      <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
-        Share your code with your network. Every ticket sold earns you points, unlocks rewards, and climbs you up the leaderboard.
-      </p>
-      <a href="${inviteUrl}" style="display: inline-block; background: ${accentColor}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none; letter-spacing: 0.5px;">
-        Accept Invite
-      </a>
+    // Resolve logo for CID inline embedding
+    const logoCid = await resolveLogoCid(logoUrl, params.orgId, supabase);
+    const hasLogo = !!logoCid;
+    const safeOrgName = escapeHtml(orgName);
+
+    const subject = `You've been selected as a ${safeOrgName} Rep`;
+    const html = wrapEmail(accentColor, safeOrgName, hasLogo, `
+          <tr>
+            <td style="padding: 0 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+                You've been selected.
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                Hey ${escapeHtml(params.firstName)}, the team at <strong style="color: #111;">${safeOrgName}</strong> wants you on board as an official rep.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accentColor}; margin-bottom: 8px;">
+                      YOUR DISCOUNT CODE
+                    </div>
+                    <div style="font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 3px;">
+                      ${escapeHtml(params.discountCode || "Awaiting activation")}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                Share your code with your network. Every ticket sold earns you points, unlocks rewards, and climbs you up the leaderboard.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 32px; text-align: center;">
+              <a href="${inviteUrl}" style="display: inline-block; background-color: ${accentColor}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 6px; text-decoration: none; letter-spacing: 0.5px;">
+                Accept Invite
+              </a>
+            </td>
+          </tr>
     `);
 
     await resend.emails.send({
-      from: `${settings.email_from_name} <${settings.email_from_address}>`,
+      from: `${orgName} <${settings.email_from_address}>`,
       to: [params.email],
       subject,
       html,
+      ...(logoCid ? { attachments: [logoCid] } : {}),
     });
 
     console.log(`[rep-email] Invite sent to ${params.email}`);
@@ -210,10 +347,10 @@ function buildEmail(
   const rep = ctx.rep as Record<string, unknown>;
   const orgName = escapeHtml(ctx.orgName as string);
   const accent = ctx.accentColor as string;
-  const logoUrl = ctx.logoUrl as string | null;
+  const hasLogo = ctx.hasLogo as boolean;
   const siteUrl = ctx.siteUrl as string;
   const firstName = escapeHtml((rep.first_name as string) || "there");
-  const wrap = (body: string) => wrapEmail(accent, orgName, logoUrl, body);
+  const wrap = (body: string) => wrapEmail(accent, orgName, hasLogo, body);
 
   switch (type) {
     case "email_verification": {
@@ -221,18 +358,34 @@ function buildEmail(
       return {
         subject: `Verify your email — ${orgName} Reps`,
         html: wrap(`
-          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-            Verify your email
-          </h1>
-          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
-            Hey ${firstName}, tap the button below to confirm your email and activate your rep account.
-          </p>
-          <a href="${verifyUrl}" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none; letter-spacing: 0.5px;">
-            Verify Email
-          </a>
-          <p style="font-size: 12px; color: #9ca3af; margin: 24px 0 0 0; line-height: 1.6;">
-            If you didn\u2019t sign up for ${orgName} Reps, you can ignore this email.
-          </p>
+          <tr>
+            <td style="padding: 0 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+                Verify your email
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                Hey ${firstName}, tap the button below to confirm your email and activate your rep account.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <a href="${verifyUrl}" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 6px; text-decoration: none; letter-spacing: 0.5px;">
+                Verify Email
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 32px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 1.6; color: #999;">
+                If you didn\u2019t sign up for ${orgName} Reps, you can ignore this email.
+              </p>
+            </td>
+          </tr>
         `),
       };
     }
@@ -241,25 +394,43 @@ function buildEmail(
       return {
         subject: `Welcome to the team, ${firstName}!`,
         html: wrap(`
-          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-            Welcome aboard, ${firstName}.
-          </h1>
-          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
-            You're now an official <strong style="color: #1a1a1a;">${orgName}</strong> rep. Your dashboard is live and your journey starts now.
-          </p>
-          ${rep.invite_token ? `
-          <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: ${accent}; margin: 0 0 4px 0; font-weight: 600;">
-              Getting Started
-            </p>
-            <p style="font-size: 14px; color: #374151; margin: 0; line-height: 1.6;">
-              Share your personal discount code, complete quests, and earn points to unlock rewards.
-            </p>
-          </div>
-          ` : ""}
-          <a href="${siteUrl}/rep" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
-            Go to Dashboard
-          </a>
+          <tr>
+            <td style="padding: 0 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+                Welcome aboard.
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                You're now an official <strong style="color: #111;">${orgName}</strong> rep. Your dashboard is live and your journey starts now.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 6px;">
+                      GETTING STARTED
+                    </div>
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #374151; line-height: 1.6;">
+                      Share your personal discount code, complete quests, and earn points to unlock exclusive rewards.
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 32px; text-align: center;">
+              <a href="${siteUrl}/rep" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 6px; text-decoration: none;">
+                Go to Dashboard
+              </a>
+            </td>
+          </tr>
         `),
       };
 
@@ -267,25 +438,45 @@ function buildEmail(
       return {
         subject: `New Quest: ${escapeHtml(String(ctx.quest_title || "Complete it for points!"))}`,
         html: wrap(`
-          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-            New Quest Available
-          </h1>
-          <p style="font-size: 14px; color: #4b5563; margin: 0 0 16px 0; line-height: 1.6;">
-            Hey ${firstName}, there's a new quest waiting for you.
-          </p>
-          <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <p style="font-size: 18px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-              ${escapeHtml(String(ctx.quest_title || "New Quest"))}
-            </p>
-            ${ctx.quest_description ? `<p style="font-size: 14px; color: #4b5563; margin: 0 0 12px 0;">${escapeHtml(String(ctx.quest_description))}</p>` : ""}
-            <div style="display: inline-block; background: ${accent}; color: #fff; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 6px;">
-              +${ctx.points_reward || 0} PTS
-            </div>
-            ${ctx.expires_at ? `<p style="font-size: 12px; color: #9ca3af; margin: 8px 0 0 0;">Expires: ${ctx.expires_at}</p>` : ""}
-          </div>
-          <a href="${siteUrl}/rep/quests" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
-            View Quest
-          </a>
+          <tr>
+            <td style="padding: 0 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+                New Quest Available
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 16px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                Hey ${firstName}, there's a new quest waiting for you.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 700; color: #111; margin-bottom: 8px;">
+                      ${escapeHtml(String(ctx.quest_title || "New Quest"))}
+                    </div>
+                    ${ctx.quest_description ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555; margin-bottom: 12px; line-height: 1.5;">${escapeHtml(String(ctx.quest_description))}</div>` : ""}
+                    <div style="display: inline-block; background-color: ${accent}; color: #fff; font-family: 'Courier New', monospace; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 4px; letter-spacing: 1px;">
+                      +${ctx.points_reward || 0} PTS
+                    </div>
+                    ${ctx.expires_at ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #999; margin-top: 10px;">Expires: ${escapeHtml(String(ctx.expires_at))}</div>` : ""}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 32px; text-align: center;">
+              <a href="${siteUrl}/rep/quests" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 6px; text-decoration: none;">
+                View Quest
+              </a>
+            </td>
+          </tr>
         `),
       };
 
@@ -293,23 +484,43 @@ function buildEmail(
       return {
         subject: "You've unlocked a reward!",
         html: wrap(`
-          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-            Reward Unlocked!
-          </h1>
-          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
-            ${firstName}, you've hit a milestone and unlocked a reward.
-          </p>
-          <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
-            <p style="font-size: 20px; font-weight: 700; color: #1a1a1a; margin: 0 0 4px 0;">
-              ${escapeHtml(String(ctx.reward_name || "Reward"))}
-            </p>
-            <p style="font-size: 14px; color: #4b5563; margin: 0;">
-              ${escapeHtml(String(ctx.milestone_title || "Milestone achieved"))}
-            </p>
-          </div>
-          <a href="${siteUrl}/rep/rewards" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
-            Claim Reward
-          </a>
+          <tr>
+            <td style="padding: 0 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+                Reward Unlocked
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                ${firstName}, you've hit a milestone and unlocked a reward.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 24px; text-align: center;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 20px; font-weight: 700; color: #111; margin-bottom: 4px;">
+                      ${escapeHtml(String(ctx.reward_name || "Reward"))}
+                    </div>
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">
+                      ${escapeHtml(String(ctx.milestone_title || "Milestone achieved"))}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 32px; text-align: center;">
+              <a href="${siteUrl}/rep/rewards" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 6px; text-decoration: none;">
+                Claim Reward
+              </a>
+            </td>
+          </tr>
         `),
       };
 
@@ -321,23 +532,43 @@ function buildEmail(
       return {
         subject: `Your reward is ready — ${rewardName}`,
         html: wrap(`
-          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-            Reward Fulfilled!
-          </h1>
-          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
-            ${firstName}, your reward has been processed and is ready for you.
-          </p>
-          <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
-            <p style="font-size: 20px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-              ${rewardName}
-            </p>
-            ${productDetails ? `<p style="font-size: 14px; color: #059669; margin: 0 0 4px 0;">Product: ${productDetails}</p>` : ""}
-            ${customValue ? `<p style="font-size: 14px; color: #4b5563; margin: 0 0 4px 0;">${customValue}</p>` : ""}
-            ${fulfilmentNotes ? `<p style="font-size: 13px; color: #6b7280; margin: 8px 0 0 0; font-style: italic;">&ldquo;${fulfilmentNotes}&rdquo;</p>` : ""}
-          </div>
-          <a href="${siteUrl}/rep/rewards" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
-            View Rewards
-          </a>
+          <tr>
+            <td style="padding: 0 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+                Reward Fulfilled
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                ${firstName}, your reward has been processed and is ready for you.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 24px; text-align: center;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 20px; font-weight: 700; color: #111; margin-bottom: 8px;">
+                      ${rewardName}
+                    </div>
+                    ${productDetails ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #059669; margin-bottom: 4px;">Product: ${productDetails}</div>` : ""}
+                    ${customValue ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555; margin-bottom: 4px;">${customValue}</div>` : ""}
+                    ${fulfilmentNotes ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #6b7280; margin-top: 8px; font-style: italic;">&ldquo;${fulfilmentNotes}&rdquo;</div>` : ""}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 32px; text-align: center;">
+              <a href="${siteUrl}/rep/rewards" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 6px; text-decoration: none;">
+                View Rewards
+              </a>
+            </td>
+          </tr>
         `),
       };
     }
@@ -350,23 +581,43 @@ function buildEmail(
       return {
         subject: `You leveled up — ${newLevelName}!`,
         html: wrap(`
-          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-            Level Up!
-          </h1>
-          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
-            ${firstName}, you've been promoted.
-          </p>
-          <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
-            <p style="font-size: 13px; color: #9ca3af; margin: 0 0 4px 0; text-decoration: line-through;">
-              Level ${oldLevel} &mdash; ${oldLevelName}
-            </p>
-            <p style="font-size: 28px; font-weight: 800; margin: 8px 0 0 0; color: ${accent};">
-              Level ${newLevel} &mdash; ${newLevelName}
-            </p>
-          </div>
-          <a href="${siteUrl}/rep" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
-            View Dashboard
-          </a>
+          <tr>
+            <td style="padding: 0 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+                Level Up
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                ${firstName}, you've been promoted.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 24px; text-align: center;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #999; text-decoration: line-through; margin-bottom: 8px;">
+                      Level ${oldLevel} &mdash; ${oldLevelName}
+                    </div>
+                    <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: 800; color: ${accent}; letter-spacing: 1px;">
+                      Level ${newLevel} &mdash; ${newLevelName}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 32px; text-align: center;">
+              <a href="${siteUrl}/rep" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 6px; text-decoration: none;">
+                View Dashboard
+              </a>
+            </td>
+          </tr>
         `),
       };
     }
@@ -375,18 +626,34 @@ function buildEmail(
       return {
         subject: `Update on your ${orgName} application`,
         html: wrap(`
-          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-            Application Update
-          </h1>
-          <p style="font-size: 14px; color: #4b5563; margin: 0 0 16px 0; line-height: 1.6;">
-            Hey ${firstName}, thanks for your interest in joining the ${orgName} rep team.
-          </p>
-          <p style="font-size: 14px; color: #4b5563; margin: 0 0 16px 0; line-height: 1.6;">
-            After careful review, we&rsquo;re unable to bring you on board at this time. This doesn&rsquo;t mean the door is closed &mdash; we run new campaigns regularly and encourage you to apply again in the future.
-          </p>
-          <p style="font-size: 14px; color: #4b5563; margin: 0; line-height: 1.6;">
-            Keep pushing. Keep creating.
-          </p>
+          <tr>
+            <td style="padding: 0 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+                Application Update
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 16px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                Hey ${firstName}, thanks for your interest in joining the ${orgName} rep team.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 16px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                After careful review, we&rsquo;re unable to bring you on board at this time. This doesn&rsquo;t mean the door is closed &mdash; we run new campaigns regularly and encourage you to apply again in the future.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 32px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                Keep pushing. Keep creating.
+              </p>
+            </td>
+          </tr>
         `),
       };
 
@@ -394,88 +661,142 @@ function buildEmail(
       return {
         subject: "Someone used your code!",
         html: wrap(`
-          <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
-            Sale incoming!
-          </h1>
-          <p style="font-size: 14px; color: #4b5563; margin: 0 0 24px 0; line-height: 1.6;">
-            ${firstName}, someone just used your discount code to buy tickets.
-          </p>
-          <div style="background: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <div style="display: flex; gap: 24px;">
-              <div>
-                <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: ${accent}; margin: 0 0 4px 0; font-weight: 600;">Tickets</p>
-                <p style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0;">${ctx.ticket_count || 0}</p>
-              </div>
-              <div>
-                <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: ${accent}; margin: 0 0 4px 0; font-weight: 600;">Revenue</p>
-                <p style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0;">&pound;${Number(ctx.order_total || 0).toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-          <a href="${siteUrl}/rep/" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
-            View Dashboard
-          </a>
+          <tr>
+            <td style="padding: 0 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+                Sale incoming!
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                ${firstName}, someone just used your discount code to buy tickets.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 20px;" width="50%" align="center">
+                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 6px;">
+                      TICKETS
+                    </div>
+                    <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: 700; color: #111;">
+                      ${ctx.ticket_count || 0}
+                    </div>
+                  </td>
+                  <td style="padding: 20px;" width="50%" align="center">
+                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 6px;">
+                      REVENUE
+                    </div>
+                    <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: 700; color: #111;">
+                      &pound;${Number(ctx.order_total || 0).toFixed(2)}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 32px; text-align: center;">
+              <a href="${siteUrl}/rep/" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 6px; text-decoration: none;">
+                View Dashboard
+              </a>
+            </td>
+          </tr>
         `),
       };
 
     default:
-      return { subject: "Entry Reps Update", html: "" };
+      return { subject: `${orgName} Reps Update`, html: "" };
   }
 }
 
+// ─── Email Wrapper ──────────────────────────────────────────────────────────
+
 /**
- * Wrap email content in the branded layout.
+ * Wrap email body in the branded layout.
  *
- * Design: Clean, minimal, Entry-platform-first with tenant context.
- * Header shows Entry wordmark + tenant logo (or name).
- * Footer: "Sent via Entry" with platform link.
+ * Matches the order confirmation email structure:
+ * - Table-based layout for Outlook/Gmail compatibility
+ * - Accent bar at top
+ * - Dark header with CID-embedded logo (linear-gradient dark mode trick)
+ * - Clean white content area
+ * - "Powered by Entry" footer
+ * - All styles inline
+ *
+ * Body content should be <tr>...</tr> rows (inserted into the content table).
  */
-function wrapEmail(accent: string, orgName: string, logoUrl: string | null, body: string): string {
-  // Header: Entry wordmark on left, tenant logo/name on right
-  const tenantBrand = logoUrl
-    ? `<img src="${logoUrl}" alt="${orgName}" style="height: 20px; width: auto; vertical-align: middle;" />`
-    : `<span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">${orgName}</span>`;
+function wrapEmail(accent: string, orgName: string, hasLogo: boolean, body: string): string {
+  const logoHtml = hasLogo
+    ? `<img src="cid:brand-logo" alt="${orgName}" height="48" style="height: 48px; width: auto; display: inline-block;">`
+    : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #fff;">${orgName}</div>`;
 
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <meta name="supported-color-schemes" content="light">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
 </head>
-<body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; -webkit-text-size-adjust: 100%;">
-  <!-- Outer wrapper for background color -->
-  <div style="background-color: #f9fafb; padding: 40px 16px;">
-    <div style="max-width: 520px; margin: 0 auto;">
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased; color-scheme: light only;">
+  <!-- Wrapper -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
 
-      <!-- Header -->
-      <div style="padding: 0 8px; margin-bottom: 24px;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+        <!-- Container -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+
+          <!-- Accent Bar -->
           <tr>
-            <td style="vertical-align: middle;">
-              <span style="font-size: 17px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.3px;">Entry</span>
-              <span style="font-size: 13px; color: #d1d5db; margin: 0 8px;">&middot;</span>
-              ${tenantBrand}
+            <td style="height: 4px; background-color: ${accent};"></td>
+          </tr>
+
+          <!-- Dark Header — linear-gradient prevents dark mode inversion -->
+          <tr>
+            <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle; background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);">
+              ${logoHtml}
+            </td>
+          </tr>
+
+          <!-- Spacer -->
+          <tr>
+            <td style="height: 24px;"></td>
+          </tr>
+
+          <!-- Content -->
+          ${body}
+
+        </table>
+
+        <!-- Footer -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
+          <tr>
+            <td style="padding: 16px 0; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #9ca3af; line-height: 1.6;">
+                Powered by <span style="font-weight: 600; color: #6b7280;">Entry</span>
+              </p>
             </td>
           </tr>
         </table>
-      </div>
 
-      <!-- Card -->
-      <div style="background-color: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 36px 32px; margin-bottom: 24px;">
-        ${body}
-      </div>
-
-      <!-- Footer -->
-      <div style="text-align: center; padding: 0 8px;">
-        <p style="font-size: 11px; color: #9ca3af; margin: 0; line-height: 1.6;">
-          Sent via <span style="font-weight: 600; color: #6b7280;">Entry</span> on behalf of ${orgName}
-        </p>
-      </div>
-
-    </div>
-  </div>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 }

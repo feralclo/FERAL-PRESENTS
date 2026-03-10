@@ -43,7 +43,7 @@ export async function GET() {
       // Full rep row (include name/photo for dashboard display)
       supabase
         .from(TABLES.REPS)
-        .select("first_name, display_name, photo_url, points_balance, currency_balance, total_sales, total_revenue, level")
+        .select("id, first_name, display_name, photo_url, points_balance, currency_balance, total_sales, total_revenue, level, onboarding_completed")
         .eq("id", repId)
         .eq("org_id", orgId)
         .single(),
@@ -142,6 +142,7 @@ export async function GET() {
     return NextResponse.json({
       data: {
         rep: {
+          id: rep.id,
           first_name: rep.first_name,
           display_name: rep.display_name,
           photo_url: rep.photo_url,
@@ -150,6 +151,7 @@ export async function GET() {
           total_sales: rep.total_sales,
           total_revenue: rep.total_revenue,
           level: rep.level,
+          onboarding_completed: rep.onboarding_completed ?? false,
         },
         currency_name: settings.currency_name || "FRL",
         level_name: levelName,

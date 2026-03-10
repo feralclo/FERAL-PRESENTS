@@ -42,8 +42,8 @@ export function NotificationPrompt({ onEnable, onDismiss }: NotificationPromptPr
   };
 
   const content = (
-    <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-md rep-fade-in">
-      <div className="w-full max-w-sm mx-4 mb-4 md:mb-0 rounded-2xl border border-border bg-background overflow-hidden rep-slide-up">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md rep-fade-in">
+      <div className="w-full max-w-sm mx-4 rounded-2xl border border-border bg-background overflow-hidden rep-slide-up">
 
         {done ? (
           <div className="p-8 text-center">

@@ -19,13 +19,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RadialGauge, LevelUpOverlay, WelcomeOverlay, hasCompletedOnboarding, CurrencyIcon } from "@/components/rep";
+import { RadialGauge, LevelUpOverlay, WelcomeOverlay, CurrencyIcon } from "@/components/rep";
 import { getTierFromLevel } from "@/lib/rep-tiers";
 import { useCountUp } from "@/hooks/useCountUp";
 import { cn } from "@/lib/utils";
 
 interface DashboardData {
   rep: {
+    id: string;
     first_name: string;
     display_name?: string;
     photo_url?: string;
@@ -34,6 +35,7 @@ interface DashboardData {
     total_sales: number;
     total_revenue: number;
     level: number;
+    onboarding_completed: boolean;
   };
   currency_name: string;
   level_name: string;
@@ -101,10 +103,12 @@ export default function RepDashboardPage() {
           }
           localStorage.setItem(LEVEL_UP_STORAGE_KEY, String(currentLevel));
 
-          // Check if first visit (onboarding)
-          if (!hasCompletedOnboarding()) {
+          // Check if first visit (onboarding) — uses server-side flag
+          if (!d.rep.onboarding_completed) {
             setShowWelcome(true);
           }
+          // Clean up legacy localStorage key
+          try { localStorage.removeItem("rep_onboarded"); } catch { /* noop */ }
 
           // Animate XP bar and stats after load
           setTimeout(() => setXpAnimated(true), 300);
@@ -214,8 +218,10 @@ export default function RepDashboardPage() {
       {showWelcome && (
         <WelcomeOverlay
           repName={rep.display_name || rep.first_name}
+          displayName={rep.display_name || ""}
+          photoUrl={rep.photo_url || ""}
           discountCode={data.discount_codes[0]?.code}
-          onDismiss={() => setShowWelcome(false)}
+          onDismiss={() => { setShowWelcome(false); setLoadKey((k) => k + 1); }}
         />
       )}
 

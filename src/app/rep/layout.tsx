@@ -334,6 +334,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     className={cn(
                       "relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all duration-200",
                       active
@@ -470,6 +471,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={true}
                   className="flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200 no-underline relative pb-0.5"
                 >
                   <div className={cn(
@@ -502,6 +504,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               return (
                 <Link
                   href={HUD_CENTER.href}
+                  prefetch={true}
                   className={cn(
                     "relative flex flex-col items-center -mt-5 z-[2] no-underline",
                     active && "rep-hud-hub-active"
@@ -534,6 +537,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={true}
                   className="flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200 no-underline relative pb-0.5"
                 >
                   <div className={cn(

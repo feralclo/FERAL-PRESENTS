@@ -2,7 +2,7 @@
 /// Handles push notifications, offline caching, and API response caching
 
 const CACHE_NAME = "rep-v2";
-const API_CACHE_NAME = "rep-api-v1";
+const API_CACHE_NAME = "rep-api-v2";
 const OFFLINE_URL = "/rep";
 
 // Assets to pre-cache for offline
@@ -14,6 +14,13 @@ const SWR_API_PATTERNS = [
   "/api/branding",
   "/api/rep-portal/settings",
   "/api/rep-portal/discount",
+  "/api/rep-portal/auth-check",
+  "/api/rep-portal/dashboard",
+  "/api/rep-portal/quests",
+  "/api/rep-portal/rewards",
+  "/api/rep-portal/leaderboard",
+  "/api/rep-portal/sales",
+  "/api/rep-portal/me",
 ];
 
 // Max age for cached API responses (5 minutes)

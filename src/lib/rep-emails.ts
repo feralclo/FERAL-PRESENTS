@@ -393,31 +393,33 @@ function buildEmail(
     case "welcome":
       return {
         subject: `Welcome to the team, ${firstName}!`,
-        html: wrap(`
+        html: wrapWelcomeEmail(orgName, hasLogo, `
           <tr>
             <td style="padding: 0 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
-                Welcome aboard.
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 28px; font-weight: 800; color: #111; letter-spacing: -0.5px;">
+                Welcome to the team.
               </h1>
             </td>
           </tr>
           <tr>
             <td style="padding: 0 32px 24px; text-align: center;">
-              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
-                You're now an official <strong style="color: #111;">${orgName}</strong> rep. Your dashboard is live and your journey starts now.
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #555;">
+                You're officially a <strong style="color: #111;">${orgName}</strong> rep. Your dashboard is live — start sharing, earning, and climbing.
               </p>
             </td>
           </tr>
           <tr>
             <td style="padding: 0 32px 24px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 10px;">
                 <tr>
-                  <td style="padding: 20px;">
-                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 6px;">
-                      GETTING STARTED
+                  <td style="padding: 24px;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #8B5CF6; margin-bottom: 10px;">
+                      HOW IT WORKS
                     </div>
-                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #374151; line-height: 1.6;">
-                      Share your personal discount code, complete quests, and earn points to unlock exclusive rewards.
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #374151; line-height: 1.8;">
+                      <strong style="color: #111;">1.</strong> Share your unique discount code<br>
+                      <strong style="color: #111;">2.</strong> Complete quests to earn bonus XP<br>
+                      <strong style="color: #111;">3.</strong> Climb the leaderboard &amp; unlock rewards
                     </div>
                   </td>
                 </tr>
@@ -426,8 +428,8 @@ function buildEmail(
           </tr>
           <tr>
             <td style="padding: 0 32px 32px; text-align: center;">
-              <a href="${siteUrl}/rep" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 6px; text-decoration: none;">
-                Go to Dashboard
+              <a href="${siteUrl}/rep" style="display: inline-block; background-color: #8B5CF6; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; padding: 16px 40px; border-radius: 10px; text-decoration: none; letter-spacing: 0.3px;">
+                Open Dashboard
               </a>
             </td>
           </tr>
@@ -712,6 +714,82 @@ function buildEmail(
     default:
       return { subject: `${orgName} Reps Update`, html: "" };
   }
+}
+
+// ─── Welcome Email Wrapper ──────────────────────────────────────────────────
+// Special wrapper for the welcome email — "{ORG} PRESENTS" header, ENTRY purple
+// branding, prominent "powered by ENTRY" footer.
+
+function wrapWelcomeEmail(orgName: string, hasLogo: boolean, body: string): string {
+  const headerHtml = hasLogo
+    ? `<img src="cid:brand-logo" alt="${orgName}" height="36" style="height: 36px; width: auto; display: inline-block; margin-bottom: 12px;">
+       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,0.5);">PRESENTS</div>`
+    : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #fff;">${orgName}</div>
+       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-top: 4px;">PRESENTS</div>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased; color-scheme: light only;">
+  <!-- Wrapper -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+
+        <!-- Container -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Purple Gradient Header -->
+          <tr>
+            <td style="height: 140px; padding: 0 32px; text-align: center; vertical-align: middle; background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #A78BFA 100%);">
+              ${headerHtml}
+            </td>
+          </tr>
+
+          <!-- Spacer -->
+          <tr>
+            <td style="height: 28px;"></td>
+          </tr>
+
+          <!-- Content -->
+          ${body}
+
+        </table>
+
+        <!-- ENTRY Branded Footer -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
+          <tr>
+            <td style="padding: 24px 0 8px; text-align: center;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #9ca3af; margin-bottom: 6px;">
+                POWERED BY
+              </div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase;">
+                <span style="color: #8B5CF6;">EN</span><span style="color: #A78BFA;">TRY</span>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 // ─── Email Wrapper ──────────────────────────────────────────────────────────

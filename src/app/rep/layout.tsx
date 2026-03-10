@@ -174,19 +174,29 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
-  // Show install prompt after 3rd visit (only for authenticated active reps)
+  // Show install prompt after onboarding completes (primary trigger) or 3rd visit (fallback)
   useEffect(() => {
     if (!shouldShowInstall || isStandalone || isPublicPage) return;
     if (authState.status !== "active") return;
+
+    // Listen for onboarding completion event — show install prompt immediately after
+    const onOnboardingComplete = () => {
+      const timer = setTimeout(() => setShowInstallModal(true), 800);
+      return () => clearTimeout(timer);
+    };
+    window.addEventListener("rep_onboarding_complete", onOnboardingComplete);
+
+    // Fallback: show after 3rd visit for reps who already completed onboarding
     try {
       const visits = parseInt(localStorage.getItem("rep_visit_count") || "0", 10) + 1;
       localStorage.setItem("rep_visit_count", String(visits));
       if (visits >= 3) {
-        // Delay so it doesn't pop up immediately on page load
         const timer = setTimeout(() => setShowInstallModal(true), 2000);
-        return () => clearTimeout(timer);
+        return () => { clearTimeout(timer); window.removeEventListener("rep_onboarding_complete", onOnboardingComplete); };
       }
     } catch { /* storage unavailable */ }
+
+    return () => window.removeEventListener("rep_onboarding_complete", onOnboardingComplete);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldShowInstall, isStandalone, isPublicPage, authState.status]);
 

@@ -85,6 +85,17 @@ export function CookieConsent() {
       return;
     }
 
+    // Auto-accept in PWA/standalone mode (no banner needed for installed apps)
+    const isStandalone =
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true;
+    if (isStandalone) {
+      const prefs = { analytics: true, marketing: true };
+      saveConsent(prefs);
+      pushConsentUpdate(prefs);
+      return;
+    }
+
     // Show banner after delay
     const timer = setTimeout(() => setVisible(true), 800);
     return () => clearTimeout(timer);

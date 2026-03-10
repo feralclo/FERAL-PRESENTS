@@ -12,9 +12,28 @@ import {
   Camera,
   Loader2,
   User,
+  Dices,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+const TAG_ADJECTIVES = [
+  "Electric", "Cosmic", "Neon", "Shadow", "Hyper", "Turbo", "Stealth",
+  "Lunar", "Solar", "Phantom", "Rogue", "Mystic", "Nova", "Storm",
+  "Blaze", "Frost", "Cyber", "Atomic", "Rapid", "Wild", "Ultra",
+  "Nitro", "Echo", "Vivid", "Prism",
+];
+const TAG_NOUNS = [
+  "Wolf", "Fox", "Hawk", "Phoenix", "Viper", "Panther", "Tiger",
+  "Lynx", "Raven", "Falcon", "Spark", "Flash", "Bolt", "Rider",
+  "Scout", "Ace", "Maven", "Ghost", "Drift", "Rebel",
+];
+
+function generateGamertag(): string {
+  const adj = TAG_ADJECTIVES[Math.floor(Math.random() * TAG_ADJECTIVES.length)];
+  const noun = TAG_NOUNS[Math.floor(Math.random() * TAG_NOUNS.length)];
+  return `${adj}${noun}`;
+}
 
 interface WelcomeOverlayProps {
   repName: string;
@@ -108,8 +127,9 @@ export function WelcomeOverlay({
   const [exiting, setExiting] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Profile setup state
-  const [editedName, setEditedName] = useState(initialDisplayName || "");
+  // Profile setup state — start empty with a fun generated suggestion
+  const [generatedTag] = useState(() => generateGamertag());
+  const [editedName, setEditedName] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -158,8 +178,10 @@ export function WelcomeOverlay({
     setSaving(true);
     try {
       const payload: Record<string, unknown> = { onboarding_completed: true };
-      if (editedName.trim() && editedName.trim() !== initialDisplayName) {
-        payload.display_name = editedName.trim();
+      // Use what they typed, or the generated tag as fallback, or the placeholder tag
+      const finalName = editedName.trim() || generatedTag;
+      if (finalName && finalName !== initialDisplayName) {
+        payload.display_name = finalName;
       }
       if (uploadedPhotoUrl) {
         payload.photo_url = uploadedPhotoUrl;
@@ -176,6 +198,9 @@ export function WelcomeOverlay({
 
     // Clean up legacy localStorage key
     try { localStorage.removeItem("rep_onboarded"); } catch { /* noop */ }
+
+    // Signal layout to show install prompt
+    window.dispatchEvent(new Event("rep_onboarding_complete"));
 
     setExiting(true);
     setTimeout(onDismiss, 400);
@@ -209,35 +234,48 @@ export function WelcomeOverlay({
   const renderStep = () => {
     // Step 0: Choose your name
     if (step === 0) {
+      const handleRandomize = () => {
+        setEditedName(generateGamertag());
+      };
       return (
         <div key={stepKey} className="rep-step-in">
           <div className={cn("inline-flex h-20 w-20 items-center justify-center rounded-2xl mb-6 bg-primary/15")}>
-            <User size={32} style={{ color: "#8B5CF6" }} />
+            <Zap size={32} style={{ color: "#8B5CF6" }} />
           </div>
 
           <h2 className="text-2xl font-bold text-foreground mb-1">
-            Choose your name
+            Pick your tag
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
-            This is how you&apos;ll appear on the leaderboard
+            This is your name on the leaderboard
           </p>
 
-          <div className="w-full max-w-[260px] mx-auto mb-6">
-            <input
-              ref={nameInputRef}
-              type="text"
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              maxLength={50}
-              placeholder={repName || "Your display name"}
-              className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-5 py-4 text-center text-xl font-bold font-mono tracking-wide text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-colors"
-              autoComplete="off"
-              spellCheck={false}
-            />
+          <div className="w-full max-w-[280px] mx-auto mb-4">
+            <div className="relative">
+              <input
+                ref={nameInputRef}
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                maxLength={50}
+                placeholder={generatedTag}
+                className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-5 py-4 pr-12 text-center text-xl font-bold font-mono tracking-wide text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-colors"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                onClick={handleRandomize}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-muted-foreground/40 hover:text-primary hover:bg-primary/10 transition-colors"
+                aria-label="Generate random name"
+              >
+                <Dices size={18} />
+              </button>
+            </div>
           </div>
 
           <p className="text-xs text-muted-foreground/50 max-w-[240px] mx-auto">
-            You can always change this later in your profile
+            Type anything or tap the dice — change it anytime in your profile
           </p>
         </div>
       );

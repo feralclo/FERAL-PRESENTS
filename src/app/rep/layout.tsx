@@ -174,9 +174,9 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
-  // Show install prompt after 3rd visit (only for active reps — not pending/blocked)
+  // Show install prompt after 3rd visit (only for authenticated active reps)
   useEffect(() => {
-    if (!shouldShowInstall || isStandalone) return;
+    if (!shouldShowInstall || isStandalone || isPublicPage) return;
     if (authState.status !== "active") return;
     try {
       const visits = parseInt(localStorage.getItem("rep_visit_count") || "0", 10) + 1;
@@ -188,14 +188,14 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       }
     } catch { /* storage unavailable */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldShowInstall, isStandalone, authState.status]);
+  }, [shouldShowInstall, isStandalone, isPublicPage, authState.status]);
 
   // Show notification prompt for standalone users who haven't enabled push
   useEffect(() => {
-    if (!isStandalone || !pushSupported) return;
+    if (!isStandalone || !pushSupported || isPublicPage) return;
     if (pushPermission === "granted") return;
     if (showInstallModal) return; // Don't overlap with install modal
-    if (authState.status !== "active") return; // Only for active reps
+    if (authState.status !== "active") return; // Only for authenticated active reps
     try {
       const dismissed = localStorage.getItem("rep_notif_prompt_dismissed");
       if (dismissed) {

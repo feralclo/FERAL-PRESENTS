@@ -26,6 +26,7 @@ import { getTierFromLevel } from "@/lib/rep-tiers";
 import { formatRelativeTimeCompact } from "@/lib/rep-utils";
 import { useRepPWA } from "@/hooks/useRepPWA";
 import { InstallPrompt, NotificationPrompt, CurrencyIcon } from "@/components/rep";
+import { playSound, unlockAudio } from "@/lib/rep-sounds";
 
 const NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
@@ -591,9 +592,25 @@ function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const prevUnreadRef = useRef<number | null>(null);
   const router = useRouter();
 
-  // Poll for unread count every 30s + sync app badge
+  // Unlock audio context on first user interaction (required by iOS Safari)
+  useEffect(() => {
+    const unlock = () => {
+      unlockAudio();
+      window.removeEventListener("touchstart", unlock);
+      window.removeEventListener("click", unlock);
+    };
+    window.addEventListener("touchstart", unlock, { once: true });
+    window.addEventListener("click", unlock, { once: true });
+    return () => {
+      window.removeEventListener("touchstart", unlock);
+      window.removeEventListener("click", unlock);
+    };
+  }, []);
+
+  // Poll for unread count every 60s + sync app badge + play sound
   const fetchUnreadCount = useCallback(async () => {
     try {
       const res = await fetch("/api/rep-portal/notifications?limit=1");
@@ -601,6 +618,13 @@ function NotificationCenter() {
         const json = await res.json();
         const count = json.unread_count || 0;
         setUnreadCount(count);
+
+        // Play notification sound when new notifications arrive
+        if (prevUnreadRef.current !== null && count > prevUnreadRef.current) {
+          playSound("notification").catch(() => {});
+        }
+        prevUnreadRef.current = count;
+
         // Sync PWA app icon badge (shows notification count on home screen)
         try {
           if ("setAppBadge" in navigator) {

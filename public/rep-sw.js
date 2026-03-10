@@ -141,13 +141,13 @@ self.addEventListener("push", (event) => {
 
   const options = {
     body: payload.body || "",
-    icon: "/images/rep-icon-192.png",
-    badge: "/images/rep-icon-192.png",
+    icon: "/pwa-icon-192.png",
+    badge: "/pwa-icon-192.png",
     tag: payload.tag || "rep-notification",
     data: {
       url: payload.url || "/rep",
     },
-    vibrate: [100, 50, 100],
+    vibrate: [80, 40, 80, 60, 120],
     actions: payload.actions || [],
   };
 

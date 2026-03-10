@@ -20,16 +20,16 @@ export async function GET() {
     categories: ["social", "entertainment"],
     icons: [
       {
-        src: "/api/rep-portal/pwa-icon?size=192",
+        src: "/pwa-icon-192.png",
         sizes: "192x192",
         type: "image/png",
-        purpose: "any maskable",
+        purpose: "any",
       },
       {
-        src: "/api/rep-portal/pwa-icon?size=512",
+        src: "/pwa-icon-512.png",
         sizes: "512x512",
         type: "image/png",
-        purpose: "any maskable",
+        purpose: "any",
       },
     ],
   };

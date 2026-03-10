@@ -253,6 +253,14 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       statusBar.content = "black-translucent";
       document.head.appendChild(statusBar);
     }
+
+    // Apple touch icon (for iOS home screen)
+    if (!document.querySelector('link[rel="apple-touch-icon"]')) {
+      const touchIcon = document.createElement("link");
+      touchIcon.rel = "apple-touch-icon";
+      touchIcon.href = "/pwa-icon-512.png";
+      document.head.appendChild(touchIcon);
+    }
   }, []);
 
   const showNav = !isPublicPage && authState.status === "active";

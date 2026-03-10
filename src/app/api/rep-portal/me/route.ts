@@ -81,7 +81,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Validate display name: alphanumeric + underscores, 2-20 chars, globally unique
+    // Validate display name: alphanumeric + underscores, 2-20 chars, globally unique, 30-day cooldown
+    let gamertagChanging = false;
     if (display_name !== undefined && display_name !== null && display_name !== "") {
       const trimmed = typeof display_name === "string" ? display_name.trim() : "";
       if (trimmed.length < 2 || trimmed.length > 20) {
@@ -91,17 +92,41 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: "Gamertag can only contain letters, numbers, and underscores" }, { status: 400 });
       }
 
-      // Check global uniqueness (case-insensitive)
-      const { data: existing } = await supabase
+      // Check if gamertag is actually changing
+      const { data: currentRep } = await supabase
         .from(TABLES.REPS)
-        .select("id")
-        .ilike("display_name", trimmed)
-        .neq("id", auth.rep.id)
-        .limit(1)
-        .maybeSingle();
+        .select("display_name, display_name_changed_at")
+        .eq("id", auth.rep.id)
+        .single();
 
-      if (existing) {
-        return NextResponse.json({ error: "That gamertag is already taken" }, { status: 409 });
+      gamertagChanging = !!(currentRep && currentRep.display_name?.toLowerCase() !== trimmed.toLowerCase());
+
+      if (gamertagChanging) {
+        // 30-day cooldown (skip if first time setting gamertag)
+        if (currentRep!.display_name && currentRep!.display_name_changed_at) {
+          const lastChanged = new Date(currentRep!.display_name_changed_at).getTime();
+          const daysSince = (Date.now() - lastChanged) / (1000 * 60 * 60 * 24);
+          if (daysSince < 30) {
+            const daysLeft = Math.ceil(30 - daysSince);
+            return NextResponse.json(
+              { error: `You can change your gamertag in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`, code: "cooldown", days_left: daysLeft },
+              { status: 429 }
+            );
+          }
+        }
+
+        // Check global uniqueness (case-insensitive)
+        const { data: existing } = await supabase
+          .from(TABLES.REPS)
+          .select("id")
+          .ilike("display_name", trimmed)
+          .neq("id", auth.rep.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          return NextResponse.json({ error: "That gamertag is already taken" }, { status: 409 });
+        }
       }
     }
     if (display_name !== undefined && typeof display_name === "string" && display_name.length > 20) {
@@ -134,7 +159,12 @@ export async function PUT(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    if (display_name !== undefined) updatePayload.display_name = display_name;
+    if (display_name !== undefined) {
+      updatePayload.display_name = display_name;
+      if (gamertagChanging) {
+        updatePayload.display_name_changed_at = new Date().toISOString();
+      }
+    }
     if (phone !== undefined) updatePayload.phone = phone || null;
     if (photo_url !== undefined) updatePayload.photo_url = photo_url || null;
     if (instagram !== undefined) updatePayload.instagram = instagram || null;

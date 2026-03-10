@@ -113,30 +113,36 @@ function ImageLightbox({ src, alt }: { src: string; alt: string }) {
 
   return (
     <>
+      {/* Entire image area is tappable */}
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(true); }}
-        className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white transition-colors z-10"
+        className="absolute inset-0 z-10 flex items-center justify-center cursor-zoom-in"
         title="View full image"
       >
-        <ZoomIn size={14} />
+        <span className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/70">
+          <ZoomIn size={14} />
+        </span>
       </button>
       {open && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md rep-fade-in p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md rep-fade-in"
           onClick={() => setOpen(false)}
         >
           <button
-            onClick={() => setOpen(false)}
-            className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors z-10"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+            className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 h-10 w-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 transition-colors z-20"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
-          <img
-            src={src}
-            alt={alt}
-            className="max-w-full max-h-full object-contain rep-slide-up"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="w-full h-full flex items-center justify-center p-8" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={src}
+              alt={alt}
+              className="max-w-full max-h-full object-contain rep-slide-up"
+              style={{ imageRendering: "auto" }}
+              onClick={() => setOpen(false)}
+            />
+          </div>
         </div>,
         document.getElementById("rep-portal-root") || document.body
       )}

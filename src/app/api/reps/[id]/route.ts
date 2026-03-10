@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, SUPABASE_URL } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import { sendRepEmail } from "@/lib/rep-emails";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -106,6 +107,18 @@ export async function PUT(
 
     updates.updated_at = new Date().toISOString();
 
+    // Fetch current status before update (to detect approval transition)
+    let oldStatus: string | null = null;
+    if (updates.status === "active") {
+      const { data: current } = await supabase
+        .from(TABLES.REPS)
+        .select("status")
+        .eq("id", id)
+        .eq("org_id", orgId)
+        .single();
+      oldStatus = current?.status || null;
+    }
+
     const { data, error } = await supabase
       .from(TABLES.REPS)
       .update(updates)
@@ -120,6 +133,11 @@ export async function PUT(
 
     if (!data) {
       return NextResponse.json({ error: "Rep not found" }, { status: 404 });
+    }
+
+    // Send welcome email when approving a pending rep
+    if (updates.status === "active" && oldStatus && oldStatus !== "active") {
+      sendRepEmail({ type: "welcome", repId: id, orgId }).catch(() => {});
     }
 
     return NextResponse.json({ data });

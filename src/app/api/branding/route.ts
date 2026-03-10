@@ -41,16 +41,20 @@ export async function GET() {
       .eq("key", key)
       .single();
 
+    const headers = {
+      "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+    };
+
     if (row?.data && typeof row.data === "object") {
       // Merge with defaults so missing fields fall back gracefully
       const branding: BrandingSettings = {
         ...DEFAULT_BRANDING,
         ...(row.data as BrandingSettings),
       };
-      return NextResponse.json({ data: branding });
+      return NextResponse.json({ data: branding }, { headers });
     }
 
-    return NextResponse.json({ data: DEFAULT_BRANDING });
+    return NextResponse.json({ data: DEFAULT_BRANDING }, { headers });
   } catch (err) {
     Sentry.captureException(err);
     return NextResponse.json({ data: DEFAULT_BRANDING });

@@ -1,11 +1,23 @@
 /// Rep Portal Service Worker
-/// Handles push notifications and basic offline caching
+/// Handles push notifications, offline caching, and API response caching
 
-const CACHE_NAME = "rep-v1";
+const CACHE_NAME = "rep-v2";
+const API_CACHE_NAME = "rep-api-v1";
 const OFFLINE_URL = "/rep";
 
 // Assets to pre-cache for offline
 const PRECACHE_URLS = [OFFLINE_URL];
+
+// API routes to cache with stale-while-revalidate
+// These change infrequently and are safe to serve stale while refreshing
+const SWR_API_PATTERNS = [
+  "/api/branding",
+  "/api/rep-portal/settings",
+  "/api/rep-portal/discount",
+];
+
+// Max age for cached API responses (5 minutes)
+const API_CACHE_MAX_AGE = 5 * 60 * 1000;
 
 // ─── Install ─────────────────────────────────────────────────────────────────
 
@@ -26,25 +38,94 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+          keys
+            .filter((k) => k !== CACHE_NAME && k !== API_CACHE_NAME)
+            .map((k) => caches.delete(k))
         )
       )
       .then(() => self.clients.claim())
   );
 });
 
-// ─── Fetch (network-first, fallback to cache) ───────────────────────────────
+// ─── Fetch ───────────────────────────────────────────────────────────────────
 
 self.addEventListener("fetch", (event) => {
-  // Only handle navigation requests for offline fallback
-  if (event.request.mode !== "navigate") return;
+  const url = new URL(event.request.url);
 
-  event.respondWith(
-    fetch(event.request).catch(() =>
-      caches.match(OFFLINE_URL).then((cached) => cached || new Response("Offline", { status: 503 }))
-    )
-  );
+  // Stale-while-revalidate for cacheable API routes (GET only)
+  if (
+    event.request.method === "GET" &&
+    SWR_API_PATTERNS.some((pattern) => url.pathname.startsWith(pattern))
+  ) {
+    event.respondWith(staleWhileRevalidate(event.request));
+    return;
+  }
+
+  // Navigation requests — network-first with offline fallback
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches
+          .match(OFFLINE_URL)
+          .then((cached) => cached || new Response("Offline", { status: 503 }))
+      )
+    );
+    return;
+  }
 });
+
+// ─── Stale-While-Revalidate Strategy ─────────────────────────────────────────
+
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(API_CACHE_NAME);
+  const cached = await cache.match(request);
+
+  // Start network fetch in background
+  const networkFetch = fetch(request)
+    .then((response) => {
+      // Only cache successful responses
+      if (response.ok) {
+        // Clone before caching (response body can only be read once)
+        const clone = response.clone();
+        // Store with timestamp header for freshness checks
+        const headers = new Headers(clone.headers);
+        headers.set("sw-cached-at", Date.now().toString());
+        clone.blob().then((body) => {
+          cache.put(
+            request,
+            new Response(body, {
+              status: clone.status,
+              statusText: clone.statusText,
+              headers,
+            })
+          );
+        });
+      }
+      return response;
+    })
+    .catch(() => cached || new Response('{"error":"Offline"}', {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    }));
+
+  // If we have a cached response, serve it immediately
+  if (cached) {
+    // Check if cache is stale (older than max age)
+    const cachedAt = parseInt(cached.headers.get("sw-cached-at") || "0", 10);
+    const isStale = Date.now() - cachedAt > API_CACHE_MAX_AGE;
+
+    if (!isStale) {
+      // Fresh cache — still revalidate in background but serve cached
+      return cached;
+    }
+
+    // Stale cache — serve it but the network fetch will update it
+    return cached;
+  }
+
+  // No cache — wait for network
+  return networkFetch;
+}
 
 // ─── Push Notifications ──────────────────────────────────────────────────────
 

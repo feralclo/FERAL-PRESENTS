@@ -65,6 +65,10 @@ export async function GET() {
         level_names: platformConfig.level_names,
         level_thresholds: platformConfig.level_thresholds,
       },
+    }, {
+      headers: {
+        "Cache-Control": "private, max-age=300, stale-while-revalidate=3600",
+      },
     });
   } catch (err) {
     Sentry.captureException(err);

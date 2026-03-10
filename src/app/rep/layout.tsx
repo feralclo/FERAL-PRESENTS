@@ -258,7 +258,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
     if (!document.querySelector('link[rel="apple-touch-icon"]')) {
       const touchIcon = document.createElement("link");
       touchIcon.rel = "apple-touch-icon";
-      touchIcon.href = "/pwa-icon-512.png";
+      touchIcon.href = "/apple-touch-icon.png";
       document.head.appendChild(touchIcon);
     }
   }, []);

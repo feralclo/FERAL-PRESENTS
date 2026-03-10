@@ -106,6 +106,7 @@ export function QuestsTab() {
   const [quests, setQuests] = useState<RepQuest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | QuestStatus>("active");
+  const [eventFilter, setEventFilter] = useState<"all" | "global" | string>("all");
 
   // Create/Edit
   const [showDialog, setShowDialog] = useState(false);
@@ -204,7 +205,9 @@ export function QuestsTab() {
     setPointsReward(String(platformConfig.xp_per_quest_type.social_post));
     setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
     setReferenceUrl(""); setUsesSound(false); setCurrencyReward("0");
-    setSalesTarget(""); setEventId("");
+    setSalesTarget("");
+    // Pre-select event when filtered to a specific event
+    setEventId(eventFilter !== "all" && eventFilter !== "global" ? eventFilter : "");
     setVideoError("");
     setDialogStep("type");
     setFormTab(0);
@@ -373,13 +376,22 @@ export function QuestsTab() {
     setVideoProgress(0);
   }, [orgId]);
 
-  const filtered = filter === "all" ? quests : quests.filter((q) => q.status === filter);
+  // Apply both status and event filters
+  const statusFiltered = filter === "all" ? quests : quests.filter((q) => q.status === filter);
+  const filtered = eventFilter === "all"
+    ? statusFiltered
+    : eventFilter === "global"
+      ? statusFiltered.filter((q) => !q.event_id)
+      : statusFiltered.filter((q) => q.event_id === eventFilter);
   const counts = {
     all: quests.length,
     active: quests.filter((q) => q.status === "active").length,
     paused: quests.filter((q) => q.status === "paused").length,
     archived: quests.filter((q) => q.status === "archived").length,
   };
+  // Events that have quests linked to them (for filter pills)
+  const eventsWithQuests = events.filter((ev) => quests.some((q) => q.event_id === ev.id));
+  const hasGlobalQuests = quests.some((q) => !q.event_id);
   const totalPending = quests.reduce((sum, q) => sum + (q.pending_count || 0), 0);
 
   // Submissions view: filtered list
@@ -454,6 +466,64 @@ export function QuestsTab() {
         {view === "quests" && <Button size="sm" onClick={openCreate}><Plus size={14} /> Create Quest</Button>}
       </div>
 
+      {/* Event filter pills — show when there are event-linked quests */}
+      {view === "quests" && (eventsWithQuests.length > 0 || hasGlobalQuests) && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <Filter size={13} className="text-muted-foreground/50 shrink-0" />
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setEventFilter("all")}
+              className={`rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap transition-colors ${
+                eventFilter === "all"
+                  ? "bg-primary text-white"
+                  : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              All Events
+            </button>
+            {hasGlobalQuests && (
+              <button
+                onClick={() => setEventFilter("global")}
+                className={`rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap transition-colors ${
+                  eventFilter === "global"
+                    ? "bg-success/20 text-success border border-success/30"
+                    : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                Global
+              </button>
+            )}
+            {eventsWithQuests.map((ev) => (
+              <button
+                key={ev.id}
+                onClick={() => setEventFilter(ev.id)}
+                className={`rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap transition-colors ${
+                  eventFilter === ev.id
+                    ? "bg-info/20 text-info border border-info/30"
+                    : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                {ev.name}
+              </button>
+            ))}
+            {/* Show unlinked events too so admin can create quests for them */}
+            {events.filter((ev) => !eventsWithQuests.some((ew) => ew.id === ev.id)).map((ev) => (
+              <button
+                key={ev.id}
+                onClick={() => setEventFilter(ev.id)}
+                className={`rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap transition-colors ${
+                  eventFilter === ev.id
+                    ? "bg-info/20 text-info border border-info/30"
+                    : "bg-muted/30 text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                {ev.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Pending submissions banner — only on quests view */}
       {view === "quests" && totalPending > 0 && !loading && (
         <div className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/5 px-5 py-3.5">
@@ -489,8 +559,18 @@ export function QuestsTab() {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
               <Swords size={20} className="text-primary/60" />
             </div>
-            <p className="mt-4 text-sm font-medium text-foreground">No quests yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">Create quests to engage your reps</p>
+            <p className="mt-4 text-sm font-medium text-foreground">
+              {eventFilter !== "all" && eventFilter !== "global"
+                ? `No quests for ${events.find((e) => e.id === eventFilter)?.name || "this event"}`
+                : eventFilter === "global"
+                  ? "No global quests"
+                  : "No quests yet"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {eventFilter !== "all" && eventFilter !== "global"
+                ? "Create a quest for this event to get reps engaged"
+                : "Create quests to engage your reps"}
+            </p>
             <Button size="sm" className="mt-4" onClick={openCreate}><Plus size={14} /> Create Quest</Button>
           </CardContent>
         </Card>
@@ -886,24 +966,22 @@ export function QuestsTab() {
                       <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={3} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Who can see this quest?</Label>
+                      <Label>Event</Label>
                       <select
                         value={eventId}
                         onChange={(e) => setEventId(e.target.value)}
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                       >
-                        <option value="">All reps (global quest)</option>
+                        <option value="">Global — visible to all reps</option>
                         {events.map((ev) => (
-                          <option key={ev.id} value={ev.id}>Only reps assigned to: {ev.name}</option>
+                          <option key={ev.id} value={ev.id}>{ev.name}</option>
                         ))}
                       </select>
-                      <div className={`rounded-lg px-3 py-2.5 text-xs leading-relaxed ${eventId ? "bg-info/10 border border-info/20 text-info" : "bg-success/10 border border-success/20 text-success"}`}>
-                        {eventId ? (
-                          <>Only reps assigned to this event will see this quest. Assign reps to events from the <strong>Event Boards</strong> tab.</>
-                        ) : (
-                          <>Every active rep will see this quest — no event assignment needed.</>
-                        )}
-                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {eventId
+                          ? "Only reps assigned to this event will see the quest."
+                          : "Every active rep will see this quest."}
+                      </p>
                     </div>
                   </div>
                 )}

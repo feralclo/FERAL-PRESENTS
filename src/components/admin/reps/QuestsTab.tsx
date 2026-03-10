@@ -500,6 +500,7 @@ export function QuestsTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Quest</TableHead>
+                <TableHead>Visible To</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Points</TableHead>
                 <TableHead className="hidden md:table-cell">Completions</TableHead>
@@ -521,6 +522,17 @@ export function QuestsTab() {
                         <Badge variant="warning" className="text-[10px] tabular-nums shrink-0">{quest.pending_count} pending</Badge>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {quest.event_id ? (
+                      <Badge variant="outline" className="text-[10px] gap-1 border-info/30 text-info">
+                        {quest.event?.name || "Event"}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] gap-1 border-success/30 text-success">
+                        All Reps
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell><Badge variant="secondary" className="text-[10px]">{QUEST_TYPE_LABELS[quest.quest_type]}</Badge></TableCell>
                   <TableCell className="font-mono text-xs text-primary font-bold tabular-nums">+{quest.points_reward}</TableCell>
@@ -874,22 +886,24 @@ export function QuestsTab() {
                       <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={3} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Linked Event</Label>
+                      <Label>Who can see this quest?</Label>
                       <select
                         value={eventId}
                         onChange={(e) => setEventId(e.target.value)}
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                       >
-                        <option value="">None (global quest)</option>
+                        <option value="">All reps (global quest)</option>
                         {events.map((ev) => (
-                          <option key={ev.id} value={ev.id}>{ev.name}</option>
+                          <option key={ev.id} value={ev.id}>Only reps assigned to: {ev.name}</option>
                         ))}
                       </select>
-                      <p className="text-[10px] text-muted-foreground">
-                        {questType === "sales_milestone"
-                          ? "Tie sales tracking to a specific event, or leave blank to count all sales"
-                          : "Link to an event so reps get a share URL that takes followers directly to it"}
-                      </p>
+                      <div className={`rounded-lg px-3 py-2.5 text-xs leading-relaxed ${eventId ? "bg-info/10 border border-info/20 text-info" : "bg-success/10 border border-success/20 text-success"}`}>
+                        {eventId ? (
+                          <>Only reps assigned to this event will see this quest. Assign reps to events from the <strong>Event Boards</strong> tab.</>
+                        ) : (
+                          <>Every active rep will see this quest — no event assignment needed.</>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

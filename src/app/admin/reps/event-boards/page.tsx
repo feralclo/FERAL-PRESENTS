@@ -352,10 +352,10 @@ export default function EventBoardsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
-              Event Leaderboards
+              Event Boards
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Assign reps, configure position rewards, and lock final results
+              Assign reps to events, manage leaderboards, and award position prizes
             </p>
           </div>
         </div>

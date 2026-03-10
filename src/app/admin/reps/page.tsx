@@ -41,9 +41,9 @@ export default function RepsHubPage() {
           <Trophy size={18} className="text-primary/70" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">Event Leaderboards</p>
+          <p className="text-sm font-medium text-foreground">Event Boards</p>
           <p className="text-xs text-muted-foreground">
-            Assign position rewards, preview standings, and lock results
+            Assign reps to events, manage leaderboards, and award position prizes
           </p>
         </div>
         <ExternalLink size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />

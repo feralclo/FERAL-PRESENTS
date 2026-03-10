@@ -42,7 +42,7 @@ export async function autoAssignRepToAllEvents(params: {
     .from(TABLES.EVENTS)
     .select("id, name")
     .eq("org_id", orgId)
-    .in("status", ["published", "active"]);
+    .in("status", ["published", "active", "live"]);
 
   if (!events || events.length === 0) return { assigned: 0 };
 

@@ -591,13 +591,24 @@ function NotificationCenter() {
   const panelRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Poll for unread count every 30s
+  // Poll for unread count every 30s + sync app badge
   const fetchUnreadCount = useCallback(async () => {
     try {
       const res = await fetch("/api/rep-portal/notifications?limit=1");
       if (res.ok) {
         const json = await res.json();
-        setUnreadCount(json.unread_count || 0);
+        const count = json.unread_count || 0;
+        setUnreadCount(count);
+        // Sync PWA app icon badge (shows notification count on home screen)
+        try {
+          if ("setAppBadge" in navigator) {
+            if (count > 0) {
+              (navigator as unknown as { setAppBadge: (n: number) => Promise<void> }).setAppBadge(count);
+            } else {
+              (navigator as unknown as { clearAppBadge: () => Promise<void> }).clearAppBadge();
+            }
+          }
+        } catch { /* Badging API not supported or permission denied */ }
       }
     } catch { /* silent */ }
   }, []);

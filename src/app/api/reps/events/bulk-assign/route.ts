@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
-import { autoAssignAllRepsToEvent } from "@/lib/rep-utils";
+import { autoAssignAllRepsToEvent } from "@/lib/rep-auto-assign";
 import * as Sentry from "@sentry/nextjs";
 
 /**

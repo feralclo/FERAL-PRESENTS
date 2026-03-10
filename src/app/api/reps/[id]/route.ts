@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, SUPABASE_URL } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendRepEmail } from "@/lib/rep-emails";
-import { autoAssignRepToAllEvents } from "@/lib/rep-utils";
+import { autoAssignRepToAllEvents } from "@/lib/rep-auto-assign";
 import * as Sentry from "@sentry/nextjs";
 
 /**

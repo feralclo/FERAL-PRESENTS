@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { TikTokIcon, InstallPrompt } from "@/components/rep";
+import { TikTokIcon, InstallPrompt, CropModal } from "@/components/rep";
 import { useRepPWA } from "@/hooks/useRepPWA";
 import { getTierFromLevel } from "@/lib/rep-tiers";
 import { openSocialProfile } from "@/lib/rep-social";
@@ -49,31 +49,12 @@ interface RepProfile {
 }
 
 /**
- * Crop and resize an image file to a square, returns base64 JPEG.
+ * Read a file as a data URL (for crop modal source).
  */
-function processProfileImage(file: File): Promise<string> {
+function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const img = new Image();
     const reader = new FileReader();
-
-    reader.onload = () => {
-      img.onload = () => {
-        const size = Math.min(img.width, img.height);
-        const x = (img.width - size) / 2;
-        const y = (img.height - size) / 2;
-
-        const canvas = document.createElement("canvas");
-        canvas.width = 400;
-        canvas.height = 400;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return reject(new Error("Canvas not supported"));
-
-        ctx.drawImage(img, x, y, size, size, 0, 0, 400, 400);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
-      };
-      img.onerror = () => reject(new Error("Failed to load image"));
-      img.src = reader.result as string;
-    };
+    reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
@@ -97,6 +78,7 @@ export default function RepProfilePage() {
   const [tiktok, setTiktok] = useState("");
   const [bio, setBio] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   // Discount
   const [discountCode, setDiscountCode] = useState("");
@@ -142,26 +124,30 @@ export default function RepProfilePage() {
     })();
   }, [loadKey]);
 
+  // File selected → open crop modal
   const handlePhotoSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Reset input so the same file can be selected again
     e.target.value = "";
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setCropSrc(dataUrl);
+    } catch { /* ignore */ }
+  }, []);
 
+  // Crop confirmed → upload and save
+  const handleCropConfirm = useCallback(async (croppedDataUrl: string) => {
+    setCropSrc(null);
+    setPhotoPreview(croppedDataUrl);
     setUploading(true);
     setError("");
 
     try {
-      const imageData = await processProfileImage(file);
-      setPhotoPreview(imageData);
-
-      // Upload to server
       const key = `rep-avatar-${profile?.id || "unknown"}-${Date.now()}`;
       const uploadRes = await fetch("/api/rep-portal/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageData, key }),
+        body: JSON.stringify({ imageData: croppedDataUrl, key }),
       });
 
       if (!uploadRes.ok) {
@@ -653,6 +639,15 @@ export default function RepProfilePage() {
           Sign Out
         </Button>
       </div>
+
+      {/* Crop Modal */}
+      {cropSrc && (
+        <CropModal
+          imageSrc={cropSrc}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
     </div>
   );
 }

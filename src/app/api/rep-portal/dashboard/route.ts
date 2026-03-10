@@ -38,6 +38,7 @@ export async function GET() {
       leaderboardResult,
       recentSalesResult,
       activeEventsResult,
+      allOrgEventsResult,
       domainResult,
     ] = await Promise.all([
       // Full rep row (include name/photo for dashboard display)
@@ -85,6 +86,14 @@ export async function GET() {
         .select("id, event_id, sales_count, revenue, assigned_at, event:events(id, name, slug, date_start, status, cover_image)")
         .eq("rep_id", repId)
         .eq("org_id", orgId),
+
+      // All live/published events in this org (for discovery)
+      supabase
+        .from(TABLES.EVENTS)
+        .select("id, name, slug, date_start, status, cover_image, venue_name")
+        .eq("org_id", orgId)
+        .in("status", ["published", "active", "live"])
+        .order("date_start", { ascending: true }),
 
       // Tenant's primary domain for building share URLs
       supabase
@@ -139,6 +148,19 @@ export async function GET() {
       }
     );
 
+    // Discoverable events = org events the rep is NOT already assigned to
+    const assignedIds = new Set(flatEvents.map((e: Record<string, unknown>) => String(e.id)));
+    const discoverableEvents = (allOrgEventsResult.data || [])
+      .filter((e: Record<string, unknown>) => !assignedIds.has(String(e.id)))
+      .map((e: Record<string, unknown>) => ({
+        id: e.id,
+        name: e.name,
+        slug: e.slug,
+        date_start: e.date_start,
+        cover_image: e.cover_image || undefined,
+        venue_name: e.venue_name || undefined,
+      }));
+
     return NextResponse.json({
       data: {
         rep: {
@@ -162,6 +184,7 @@ export async function GET() {
         leaderboard_position: leaderboardPosition,
         recent_sales: recentSalesResult.data || [],
         active_events: flatEvents,
+        discoverable_events: discoverableEvents,
         public_url: domainResult.data?.hostname
           ? `https://${domainResult.data.hostname}`
           : null,

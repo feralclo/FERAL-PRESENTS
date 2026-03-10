@@ -15,6 +15,7 @@ import {
   Dices,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CropModal } from "./CropModal";
 import { cn } from "@/lib/utils";
 
 const TAG_ADJECTIVES = [
@@ -44,31 +45,12 @@ interface WelcomeOverlayProps {
 }
 
 /**
- * Crop and resize an image file to a 400x400 square JPEG.
+ * Read a file as a data URL (for crop modal source).
  */
-function processProfileImage(file: File): Promise<string> {
+function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const img = new Image();
     const reader = new FileReader();
-
-    reader.onload = () => {
-      img.onload = () => {
-        const size = Math.min(img.width, img.height);
-        const x = (img.width - size) / 2;
-        const y = (img.height - size) / 2;
-
-        const canvas = document.createElement("canvas");
-        canvas.width = 400;
-        canvas.height = 400;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return reject(new Error("Canvas not supported"));
-
-        ctx.drawImage(img, x, y, size, size, 0, 0, 400, 400);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
-      };
-      img.onerror = () => reject(new Error("Failed to load image"));
-      img.src = reader.result as string;
-    };
+    reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
@@ -133,6 +115,7 @@ export function WelcomeOverlay({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,30 +130,34 @@ export function WelcomeOverlay({
     }
   }, [step]);
 
+  // File selected → open crop modal
   const handlePhotoSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setCropSrc(dataUrl);
+    } catch { /* ignore */ }
+  }, []);
 
+  // Crop confirmed → upload
+  const handleCropConfirm = useCallback(async (croppedDataUrl: string) => {
+    setCropSrc(null);
+    setPhotoPreview(croppedDataUrl);
     setUploading(true);
     try {
-      const imageData = await processProfileImage(file);
-      setPhotoPreview(imageData);
-
       const key = `rep-avatar-onboard-${Date.now()}`;
       const uploadRes = await fetch("/api/rep-portal/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageData, key }),
+        body: JSON.stringify({ imageData: croppedDataUrl, key }),
       });
-
       if (uploadRes.ok) {
         const { url } = await uploadRes.json();
         setUploadedPhotoUrl(url);
       }
-    } catch {
-      // Photo upload failed — not blocking, they can do it later
-    }
+    } catch { /* upload failed — not blocking */ }
     setUploading(false);
   }, []);
 
@@ -471,5 +458,16 @@ export function WelcomeOverlay({
   );
 
   if (typeof document === "undefined") return null;
-  return createPortal(content, document.getElementById("rep-portal-root") || document.body);
+  return (
+    <>
+      {createPortal(content, document.getElementById("rep-portal-root") || document.body)}
+      {cropSrc && (
+        <CropModal
+          imageSrc={cropSrc}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
+    </>
+  );
 }

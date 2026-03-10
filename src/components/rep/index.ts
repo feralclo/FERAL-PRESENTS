@@ -6,6 +6,7 @@ export { ConfettiOverlay } from "./ConfettiOverlay";
 export { LevelUpOverlay } from "./LevelUpOverlay";
 export { TikTokIcon } from "./TikTokIcon";
 export { WelcomeOverlay } from "./WelcomeOverlay";
+export { CropModal } from "./CropModal";
 export { InstallPrompt } from "./InstallPrompt";
 export { NotificationPrompt } from "./NotificationPrompt";
 export { CurrencyIcon } from "./CurrencyIcon";

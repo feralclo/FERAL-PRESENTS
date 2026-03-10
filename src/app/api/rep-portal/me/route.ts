@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import { syncRepDiscountCode } from "@/lib/discount-codes";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -137,6 +138,17 @@ export async function PUT(request: NextRequest) {
         { error: "Failed to update profile" },
         { status: 500 }
       );
+    }
+
+    // Sync discount code when display_name changes
+    if (display_name !== undefined && rep?.display_name) {
+      syncRepDiscountCode({
+        repId: auth.rep.id,
+        orgId,
+        newDisplayName: rep.display_name,
+      }).catch((err) => {
+        console.error("[rep-portal/me] Discount sync error:", err);
+      });
     }
 
     return NextResponse.json({ data: rep });

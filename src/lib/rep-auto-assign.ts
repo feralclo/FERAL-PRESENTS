@@ -5,11 +5,12 @@
  */
 
 import { TABLES, repsKey } from "@/lib/constants";
-import { createRepDiscountCode } from "@/lib/discount-codes";
+import { getOrCreateRepDiscount } from "@/lib/discount-codes";
 
 /**
  * Auto-assign a rep to all upcoming/published events they aren't already on.
- * Creates discount codes for each assignment. Checks the auto_assign_events setting.
+ * Gets or creates a single discount code per rep (based on gamertag).
+ * Checks the auto_assign_events setting.
  * Silently skips events that already have the rep assigned.
  */
 export async function autoAssignRepToAllEvents(params: {
@@ -18,10 +19,11 @@ export async function autoAssignRepToAllEvents(params: {
   repId: string;
   orgId: string;
   repFirstName: string;
+  repDisplayName?: string;
   /** Skip the settings check (used when caller already verified) */
   skipSettingsCheck?: boolean;
 }): Promise<{ assigned: number }> {
-  const { supabase, repId, orgId, repFirstName, skipSettingsCheck } = params;
+  const { supabase, repId, orgId, repFirstName, repDisplayName, skipSettingsCheck } = params;
 
   // Check if auto-assign is enabled (unless caller already checked)
   if (!skipSettingsCheck) {
@@ -55,40 +57,27 @@ export async function autoAssignRepToAllEvents(params: {
 
   const assignedEventIds = new Set((existing || []).map((e: { event_id: string }) => e.event_id));
 
+  // Get unassigned events
+  const unassignedEvents = events.filter((e: { id: string }) => !assignedEventIds.has(e.id));
+  if (unassignedEvents.length === 0) return { assigned: 0 };
+
+  // Get or create a single discount for this rep (globally unique, works for all events)
+  const discount = await getOrCreateRepDiscount({
+    repId,
+    orgId,
+    firstName: repFirstName,
+    displayName: repDisplayName,
+  });
+
   let assigned = 0;
-  for (const event of events) {
-    if (assignedEventIds.has(event.id)) continue;
-
-    // Check for existing discount
-    let discountId: string | null = null;
-    const { data: existingDiscount } = await supabase
-      .from(TABLES.DISCOUNTS)
-      .select("id")
-      .eq("org_id", orgId)
-      .eq("rep_id", repId)
-      .contains("applicable_event_ids", [event.id])
-      .maybeSingle();
-
-    if (existingDiscount) {
-      discountId = existingDiscount.id;
-    } else {
-      const newDiscount = await createRepDiscountCode({
-        repId,
-        orgId,
-        firstName: repFirstName,
-        applicableEventIds: [event.id],
-        description: `Rep discount: ${repFirstName} — ${event.name}`,
-      });
-      if (newDiscount) discountId = newDiscount.id;
-    }
-
+  for (const event of unassignedEvents) {
     const { error } = await supabase
       .from(TABLES.REP_EVENTS)
       .insert({
         org_id: orgId,
         rep_id: repId,
         event_id: event.id,
-        discount_id: discountId,
+        discount_id: discount?.id || null,
         sales_count: 0,
         revenue: 0,
       });
@@ -110,12 +99,12 @@ export async function autoAssignAllRepsToEvent(params: {
   eventName: string;
   orgId: string;
 }): Promise<{ assigned: number }> {
-  const { supabase, eventId, eventName, orgId } = params;
+  const { supabase, eventId, orgId } = params;
 
   // Get all active reps
   const { data: reps } = await supabase
     .from(TABLES.REPS)
-    .select("id, first_name")
+    .select("id, first_name, display_name")
     .eq("org_id", orgId)
     .eq("status", "active");
 
@@ -134,27 +123,13 @@ export async function autoAssignAllRepsToEvent(params: {
   for (const rep of reps) {
     if (assignedRepIds.has(rep.id)) continue;
 
-    let discountId: string | null = null;
-    const { data: existingDiscount } = await supabase
-      .from(TABLES.DISCOUNTS)
-      .select("id")
-      .eq("org_id", orgId)
-      .eq("rep_id", rep.id)
-      .contains("applicable_event_ids", [eventId])
-      .maybeSingle();
-
-    if (existingDiscount) {
-      discountId = existingDiscount.id;
-    } else {
-      const newDiscount = await createRepDiscountCode({
-        repId: rep.id,
-        orgId,
-        firstName: rep.first_name,
-        applicableEventIds: [eventId],
-        description: `Rep discount: ${rep.first_name} — ${eventName}`,
-      });
-      if (newDiscount) discountId = newDiscount.id;
-    }
+    // Get or create a single discount for this rep
+    const discount = await getOrCreateRepDiscount({
+      repId: rep.id,
+      orgId,
+      firstName: rep.first_name,
+      displayName: rep.display_name,
+    });
 
     const { error } = await supabase
       .from(TABLES.REP_EVENTS)
@@ -162,7 +137,7 @@ export async function autoAssignAllRepsToEvent(params: {
         org_id: orgId,
         rep_id: rep.id,
         event_id: eventId,
-        discount_id: discountId,
+        discount_id: discount?.id || null,
         sales_count: 0,
         revenue: 0,
       });

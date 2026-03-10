@@ -13,6 +13,10 @@ import {
   Check,
   Flame,
   Share2,
+  Calendar,
+  MapPin,
+  Plus,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +49,7 @@ interface DashboardData {
   active_quests: number;
   pending_rewards: number;
   active_events: { id: string; name: string; slug: string; sales_count: number; revenue: number; cover_image?: string }[];
+  discoverable_events: { id: string; name: string; slug: string; date_start?: string; cover_image?: string; venue_name?: string }[];
   recent_sales: { id: string; order_number: string; total: number; created_at: string; points_earned?: number }[];
   discount_codes: { code: string }[];
   settings?: { points_per_sale: number; currency_per_sale: number };
@@ -65,6 +70,7 @@ export default function RepDashboardPage() {
   const [xpAnimated, setXpAnimated] = useState(false);
   const [statsReady, setStatsReady] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [joiningEventId, setJoiningEventId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -148,6 +154,22 @@ export default function RepDashboardPage() {
       // Fallback to copy
       copyCode(code);
     }
+  };
+
+  const joinEvent = async (eventId: string) => {
+    setJoiningEventId(eventId);
+    try {
+      const res = await fetch("/api/rep-portal/join-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId }),
+      });
+      if (res.ok) {
+        // Reload dashboard to reflect new assignment
+        setLoadKey((k) => k + 1);
+      }
+    } catch { /* ignore */ }
+    setJoiningEventId(null);
   };
 
   if (loading) {
@@ -451,6 +473,64 @@ export default function RepDashboardPage() {
           </Card>
         </Link>
       </div>
+
+      {/* ── Discover Events ── */}
+      {data.discoverable_events && data.discoverable_events.length > 0 && (
+        <div className="space-y-3 rep-slide-up" style={{ animationDelay: "225ms" }}>
+          <div className="flex items-center gap-2 px-1">
+            <Calendar size={14} className="text-primary" />
+            <h2 className="text-xs font-bold uppercase tracking-[2px] text-muted-foreground">
+              Join Events
+            </h2>
+          </div>
+          {data.discoverable_events.map((event) => (
+            <Card key={event.id} className="py-0 gap-0 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-center gap-3 p-3">
+                  {event.cover_image ? (
+                    <div className="h-14 w-14 rounded-xl overflow-hidden shrink-0 bg-muted/50">
+                      <img src={event.cover_image} alt="" className="h-full w-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="h-14 w-14 rounded-xl shrink-0 bg-primary/10 flex items-center justify-center">
+                      <Calendar size={20} className="text-primary/50" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{event.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {event.date_start && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(event.date_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
+                      )}
+                      {event.venue_name && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                          <MapPin size={8} />
+                          {event.venue_name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => joinEvent(event.id)}
+                    disabled={joiningEventId === event.id}
+                    className="shrink-0 rounded-xl"
+                  >
+                    {joiningEventId === event.id ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Plus size={12} />
+                    )}
+                    Join
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* ── Recent Sales (max 2) ── */}
       {data.recent_sales.length > 0 && (

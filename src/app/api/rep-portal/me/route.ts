@@ -81,9 +81,31 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Validate field lengths
-    if (display_name !== undefined && typeof display_name === "string" && display_name.length > 50) {
-      return NextResponse.json({ error: "Display name must be 50 characters or less" }, { status: 400 });
+    // Validate display name: alphanumeric + underscores, 2-20 chars, globally unique
+    if (display_name !== undefined && display_name !== null && display_name !== "") {
+      const trimmed = typeof display_name === "string" ? display_name.trim() : "";
+      if (trimmed.length < 2 || trimmed.length > 20) {
+        return NextResponse.json({ error: "Gamertag must be 2–20 characters" }, { status: 400 });
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
+        return NextResponse.json({ error: "Gamertag can only contain letters, numbers, and underscores" }, { status: 400 });
+      }
+
+      // Check global uniqueness (case-insensitive)
+      const { data: existing } = await supabase
+        .from(TABLES.REPS)
+        .select("id")
+        .ilike("display_name", trimmed)
+        .neq("id", auth.rep.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        return NextResponse.json({ error: "That gamertag is already taken" }, { status: 409 });
+      }
+    }
+    if (display_name !== undefined && typeof display_name === "string" && display_name.length > 20) {
+      return NextResponse.json({ error: "Gamertag must be 20 characters or less" }, { status: 400 });
     }
     if (bio !== undefined && typeof bio === "string" && bio.length > 500) {
       return NextResponse.json({ error: "Bio must be 500 characters or less" }, { status: 400 });

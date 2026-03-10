@@ -193,6 +193,11 @@ export default function RepProfilePage() {
           bio: bio.trim() || null,
         }),
       });
+      if (res.status === 409) {
+        setError("That gamertag is already taken — try another one");
+        setSaving(false);
+        return;
+      }
       if (res.ok) {
         const json = await res.json().catch(() => null);
         if (json?.data) {
@@ -449,19 +454,20 @@ export default function RepProfilePage() {
             <h2 className="text-sm font-semibold text-foreground">Edit Profile</h2>
           </div>
 
-          {/* Display Name */}
+          {/* Gamertag */}
           <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-              Display Name
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Flame size={10} className="text-primary" /> Gamertag
             </Label>
             <Input
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              maxLength={50}
-              placeholder="How you appear on the leaderboard"
+              onChange={(e) => setDisplayName(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+              maxLength={20}
+              placeholder="YourGamertag"
+              className="font-mono tracking-wide"
             />
             <p className="text-[10px] text-muted-foreground/60">
-              This is what other reps see. Leave blank to use your first name.
+              Your unique identity. Letters, numbers, underscores only. This is how you appear on the leaderboard and your share link.
             </p>
           </div>
 

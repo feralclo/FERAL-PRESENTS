@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { Scanlines } from "@/components/layout/Scanlines";
@@ -12,6 +12,12 @@ import type { BrandingSettings } from "@/types/settings";
 import "@/styles/base.css";
 import "@/styles/effects.css";
 import "@/styles/cookie.css";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Entry — Events & Tickets",

@@ -272,8 +272,8 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   // ── Loading ──
   if (authState.status === "loading") {
     return (
-      <div data-admin data-rep className="min-h-screen bg-background text-foreground">
-        <div className="flex items-center justify-center min-h-screen">
+      <div data-admin data-rep className="min-h-[100dvh] bg-background text-foreground">
+        <div className="flex items-center justify-center min-h-[100dvh]">
           <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
         </div>
       </div>
@@ -283,7 +283,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   // ── Email Unverified Gate ──
   if (authState.status === "email_unverified") {
     return (
-      <div data-admin data-rep className="min-h-screen bg-background text-foreground">
+      <div data-admin data-rep className="min-h-[100dvh] bg-background text-foreground">
         <EmailVerificationGate
           email={authState.email}
           firstName={authState.firstName}
@@ -296,7 +296,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   // ── Pending Review Gate ──
   if (authState.status === "pending_review") {
     return (
-      <div data-admin data-rep className="min-h-screen bg-background text-foreground">
+      <div data-admin data-rep className="min-h-[100dvh] bg-background text-foreground">
         <PendingReviewGate
           firstName={authState.firstName}
           brandName={brandName}
@@ -308,7 +308,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   const tier = repStats ? getTierFromLevel(repStats.level) : null;
 
   return (
-    <div data-admin data-rep className="min-h-screen bg-background text-foreground">
+    <div data-admin data-rep className="min-h-[100dvh] bg-background text-foreground">
       {/* Desktop top nav */}
       {showNav && (
         <header className="sticky top-0 z-40 hidden md:flex items-center justify-between border-b border-white/[0.06] bg-background/80 backdrop-blur-2xl px-6 h-14">
@@ -378,10 +378,12 @@ export default function RepLayout({ children }: { children: ReactNode }) {
         </header>
       )}
 
-      {/* Mobile top bar — Status HUD */}
+      {/* Mobile top bar — Status HUD (extends behind status bar for edge-to-edge) */}
       {showNav && (
-        <div className="relative md:hidden">
-          <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top),16px)] pb-3">
+        <div className="sticky top-0 z-40 md:hidden bg-background/90 backdrop-blur-xl">
+          {/* Safe area spacer — fills the notch/dynamic island area with background */}
+          <div className="h-[env(safe-area-inset-top)]" />
+          <div className="flex items-center justify-between px-5 py-3">
             <Link href="/rep" className="flex items-center gap-2.5">
               {branding?.logo_url ? (
                 <img src={branding.logo_url} alt="" className="h-7 w-auto" />
@@ -415,7 +417,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           {/* Purple gradient edge line */}
-          <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+          <div className="mx-4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         </div>
       )}
 

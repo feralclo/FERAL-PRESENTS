@@ -1727,6 +1727,23 @@ body:has([data-rep]) > .noise {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+   PRIZE POOL — Expandable header with warm glow
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-prize-pool-header {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.06), rgba(251, 191, 36, 0.02));
+  position: relative;
+  overflow: hidden;
+}
+.rep-prize-pool-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 20% 50%, rgba(251, 191, 36, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    EVENT CARD V2 (Leaderboard redesign)
    ══════════════════════════════════════════════════════════════════════ */
 

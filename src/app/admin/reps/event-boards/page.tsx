@@ -143,16 +143,18 @@ export default function EventBoardsPage() {
   const loadEvents = useCallback(async () => {
     setLoading(true);
     try {
-      // Get all events, rewards, and settings in parallel
-      const [eventsRes, rewardsRes, settingsRes] = await Promise.all([
+      // Fetch everything in parallel — single bulk endpoint replaces N+1 per-event calls
+      const [eventsRes, rewardsRes, settingsRes, summaryRes] = await Promise.all([
         fetch("/api/events"),
         fetch("/api/reps/rewards"),
         fetch("/api/reps/settings"),
+        fetch("/api/reps/events/summary"),
       ]);
 
       const eventsJson = await eventsRes.json();
       const rewardsJson = await rewardsRes.json();
       const settingsJson = await settingsRes.json();
+      const summaryJson = await summaryRes.json();
 
       if (rewardsJson.data) {
         setRewards(rewardsJson.data.filter((r: Reward) => r.status === "active"));
@@ -162,36 +164,27 @@ export default function EventBoardsPage() {
       }
 
       const allEvents = eventsJson.data || [];
+      const stats = summaryJson.data?.stats || {};
+      const rewardsByEvent = summaryJson.data?.rewards || {};
 
-      // For each event, get rep assignments and position rewards
-      const eventsWithReps: EventWithReps[] = [];
-
-      for (const event of allEvents) {
-        // Get rep assignments for this event
-        const assignRes = await fetch(`/api/reps/events?event_id=${event.id}`);
-        const assignJson = await assignRes.json();
-        const assignments = assignJson.data || [];
-
-        // Get position rewards
-        const prRes = await fetch(`/api/reps/events/leaderboard/${event.id}/rewards`);
-        const prJson = await prRes.json();
-        const posRewards: PositionReward[] = prJson.data || [];
-
+      const eventsWithReps: EventWithReps[] = allEvents.map((event: { id: string; name: string; slug: string; date_start?: string; status: string }) => {
+        const eventStats = stats[event.id] || { reps_count: 0, total_sales: 0, total_revenue: 0 };
+        const posRewards: PositionReward[] = rewardsByEvent[event.id] || [];
         const locked = posRewards.some((pr: PositionReward) => pr.awarded_rep_id !== null);
 
-        eventsWithReps.push({
+        return {
           event_id: event.id,
           event_name: event.name,
           event_slug: event.slug,
           event_date: event.date_start || null,
           event_status: event.status,
-          reps_count: assignments.length,
-          total_sales: assignments.reduce((sum: number, a: { sales_count: number }) => sum + (a.sales_count || 0), 0),
-          total_revenue: assignments.reduce((sum: number, a: { revenue: number }) => sum + Number(a.revenue || 0), 0),
+          reps_count: eventStats.reps_count,
+          total_sales: eventStats.total_sales,
+          total_revenue: eventStats.total_revenue,
           position_rewards: posRewards,
           locked,
-        });
-      }
+        };
+      });
 
       // Sort: upcoming first, then by date
       eventsWithReps.sort((a, b) => {
@@ -399,71 +392,84 @@ export default function EventBoardsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {events.map((event) => (
-            <Card key={event.event_id} className="py-0 gap-0">
-              <CardContent className="p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  {/* Event info */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-semibold text-foreground">{event.event_name}</h3>
-                      <Badge
-                        variant={event.event_status === "published" ? "success" : "secondary"}
-                        className="text-[10px]"
-                      >
-                        {event.event_status}
-                      </Badge>
-                      {event.locked && (
-                        <Badge variant="warning" className="text-[10px]">
-                          <Lock size={8} className="mr-0.5" /> Locked
-                        </Badge>
-                      )}
+        <div className="space-y-3">
+          {events.map((event) => {
+            const hasRewards = event.position_rewards.length > 0;
+            return (
+              <Card key={event.event_id} className="py-0 gap-0 overflow-hidden">
+                <CardContent className="p-0">
+                  {/* Top row: event info + status */}
+                  <div className="px-5 pt-4 pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <h3 className="text-sm font-semibold text-foreground truncate">{event.event_name}</h3>
+                          <Badge
+                            variant={event.event_status === "published" ? "success" : "secondary"}
+                            className="text-[10px] shrink-0"
+                          >
+                            {event.event_status}
+                          </Badge>
+                          {event.locked && (
+                            <Badge variant="warning" className="text-[10px] shrink-0">
+                              <Lock size={8} className="mr-0.5" /> Locked
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {event.event_date
+                            ? new Date(event.event_date).toLocaleDateString("en-GB", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "No date set"}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {event.event_date
-                        ? new Date(event.event_date).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : "No date set"}
-                      {" · "}
-                      {event.reps_count} reps · {event.total_sales} sales · {fmtMoney(event.total_revenue, orgCurrency)} revenue
-                    </p>
+
+                    {/* Stats row */}
+                    <div className="grid grid-cols-3 gap-3 mt-3">
+                      <div className="rounded-lg bg-muted/30 px-3 py-2 text-center">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Reps</p>
+                        <p className="text-base font-bold font-mono text-foreground">{event.reps_count}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/30 px-3 py-2 text-center">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sales</p>
+                        <p className="text-base font-bold font-mono text-foreground">{event.total_sales}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/30 px-3 py-2 text-center">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Revenue</p>
+                        <p className="text-base font-bold font-mono text-foreground">{fmtMoney(event.total_revenue, orgCurrency)}</p>
+                      </div>
+                    </div>
 
                     {/* Position rewards preview */}
-                    {event.position_rewards.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {event.position_rewards.map((pr) => {
-                          const parts: string[] = [];
-                          if (pr.xp_reward) parts.push(`+${pr.xp_reward} XP`);
-                          if (pr.currency_reward) parts.push(`+${pr.currency_reward} ${currencyName}`);
-                          if (pr.reward_name) parts.push(pr.reward_name);
+                    {hasRewards && (
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        {event.position_rewards.slice(0, 3).map((pr, i) => {
+                          const colors = ["text-yellow-500", "text-slate-400", "text-orange-500"];
+                          const bgs = ["bg-yellow-500/8", "bg-slate-400/8", "bg-orange-500/8"];
                           return (
                             <span
                               key={pr.position}
-                              className="inline-flex items-center gap-1 rounded-md bg-primary/8 px-2 py-0.5 text-[10px] font-medium text-primary"
+                              className={`inline-flex items-center gap-1 rounded-md ${bgs[i] || "bg-muted/30"} px-2 py-1 text-[10px] font-semibold ${colors[i] || "text-muted-foreground"}`}
                             >
-                              <Gift size={10} />
-                              {ordinal(pr.position)}: {parts.join(" ") || "—"}
-                              {pr.awarded_rep_id && (
-                                <span className="text-success ml-1">✓</span>
-                              )}
+                              <Crown size={9} />
+                              {ordinal(pr.position)}
+                              {pr.currency_reward ? ` · ${pr.currency_reward} ${currencyName}` : ""}
+                              {pr.reward_name ? ` · ${pr.reward_name}` : ""}
+                              {pr.awarded_rep_id && <Check size={9} className="text-success ml-0.5" />}
                             </span>
                           );
                         })}
                       </div>
                     )}
-
-                    {/* No reps state */}
-                    {event.reps_count === 0 && (
-                      <p className="text-xs text-warning/80 mt-1">No reps assigned — click &quot;Assign All&quot; to add all active reps</p>
-                    )}
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  {/* Actions bar */}
+                  <div className="flex items-center gap-2 px-5 py-3 border-t border-border">
+                    {/* Rep assignment — dropdown-style grouped */}
                     <Button
                       variant="outline"
                       size="sm"
@@ -478,31 +484,34 @@ export default function EventBoardsPage() {
                       Assign All
                     </Button>
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={() => openAssignDialog(event)}
+                      className="text-muted-foreground"
                     >
-                      <UserPlus size={14} /> Select Reps
+                      <UserPlus size={14} /> Pick
                     </Button>
                     {event.reps_count > 0 && (
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => loadPreview(event.event_id)}
+                        className="text-muted-foreground"
                       >
                         <Trophy size={14} /> Preview
                       </Button>
                     )}
+                    <div className="flex-1" />
                     {!event.locked && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => openRewardsDialog(event)}
                       >
-                        <Gift size={14} /> Rewards
+                        <Gift size={14} /> Prizes
                       </Button>
                     )}
-                    {!event.locked && event.position_rewards.length > 0 && event.reps_count > 0 && (
+                    {!event.locked && hasRewards && event.reps_count > 0 && (
                       <Button
                         size="sm"
                         onClick={() => {
@@ -510,14 +519,14 @@ export default function EventBoardsPage() {
                           setLockError("");
                         }}
                       >
-                        <Lock size={14} /> Lock Results
+                        <Lock size={14} /> Lock & Award
                       </Button>
                     )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

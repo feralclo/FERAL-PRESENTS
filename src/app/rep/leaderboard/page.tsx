@@ -7,6 +7,7 @@ import {
   Calendar,
   Clock,
   ChevronRight,
+  ChevronDown,
   ArrowLeft,
   Gift,
   Lock,
@@ -18,6 +19,7 @@ import {
   Plus,
   MapPin,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -759,6 +761,146 @@ function EventCard({ event, currencyName, onClick, index }: { event: EventSummar
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PRIZE POOL — Expandable premium prize display
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const POSITION_COLORS = [
+  { bg: "from-yellow-500/15 to-yellow-600/5", border: "border-yellow-500/25", medal: "text-yellow-400", glow: "shadow-yellow-500/10", accent: "bg-yellow-500/15 text-yellow-300" },
+  { bg: "from-slate-300/10 to-slate-400/5", border: "border-slate-400/20", medal: "text-slate-300", glow: "shadow-slate-400/10", accent: "bg-slate-400/12 text-slate-300" },
+  { bg: "from-orange-500/12 to-orange-600/5", border: "border-orange-500/20", medal: "text-orange-400", glow: "shadow-orange-500/10", accent: "bg-orange-500/12 text-orange-300" },
+];
+
+const POSITION_LABELS = ["1st Place", "2nd Place", "3rd Place"];
+
+function PrizePool({ rewards, currencyName }: { rewards: PositionReward[]; currencyName: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="mb-5 rep-card-reveal">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full rounded-2xl border border-warning/15 rep-prize-pool-header active:scale-[0.98] transition-all"
+      >
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-warning/20 to-warning/5 border border-warning/20 flex items-center justify-center">
+                <Trophy size={16} className="text-warning" />
+              </div>
+              <Sparkles size={10} className="absolute -top-1 -right-1 text-warning/60" />
+            </div>
+            <div className="text-left">
+              <p className="text-[13px] font-bold text-foreground">Prize Pool</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {rewards.length} position{rewards.length !== 1 ? "s" : ""} rewarded
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {/* Medal preview — collapsed hint */}
+            {!expanded && (
+              <div className="flex items-center -space-x-1">
+                {rewards.slice(0, 3).map((_, i) => (
+                  <span key={i} className="text-base">{MEDAL_EMOJI[i]}</span>
+                ))}
+              </div>
+            )}
+            <ChevronDown
+              size={16}
+              className={cn(
+                "text-muted-foreground transition-transform duration-300",
+                expanded && "rotate-180"
+              )}
+            />
+          </div>
+        </div>
+      </button>
+
+      {/* Expanded prize details */}
+      <div
+        className={cn(
+          "grid transition-all duration-300 ease-out",
+          expanded ? "grid-rows-[1fr] opacity-100 mt-2.5" : "grid-rows-[0fr] opacity-0 mt-0"
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="space-y-2">
+            {rewards.map((pr, i) => {
+              const colors = POSITION_COLORS[i] || POSITION_COLORS[2];
+              const hasPhysicalReward = !!pr.reward_name;
+
+              return (
+                <div
+                  key={pr.position}
+                  className={cn(
+                    "rounded-xl border p-3.5 bg-gradient-to-r transition-all",
+                    colors.bg, colors.border,
+                    "shadow-sm", colors.glow
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Medal + position */}
+                    <div className="shrink-0 text-center">
+                      <span className="text-2xl leading-none block">{i < 3 ? MEDAL_EMOJI[i] : ""}</span>
+                      {i >= 3 && (
+                        <span className="text-sm font-black font-mono text-muted-foreground">{ordinal(pr.position)}</span>
+                      )}
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mt-1">
+                        {POSITION_LABELS[i] || `${ordinal(pr.position)} Place`}
+                      </p>
+                    </div>
+
+                    {/* Rewards detail */}
+                    <div className="flex-1 min-w-0">
+                      {/* Digital rewards */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {pr.xp_reward ? (
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-primary/15 px-2 py-1 text-[11px] font-bold text-primary border border-primary/10">
+                            <Zap size={10} />
+                            +{pr.xp_reward.toLocaleString()} XP
+                          </span>
+                        ) : null}
+                        {pr.currency_reward ? (
+                          <span className={cn(
+                            "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold border",
+                            colors.accent, colors.border
+                          )}>
+                            <Sparkles size={10} />
+                            +{pr.currency_reward.toLocaleString()} {currencyName}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* Physical reward */}
+                      {hasPhysicalReward && (
+                        <div className="mt-2 flex items-center gap-2 rounded-lg bg-white/[0.04] border border-white/[0.06] px-2.5 py-1.5">
+                          <Gift size={13} className={colors.medal} />
+                          <span className="text-[12px] font-semibold text-foreground">{pr.reward_name}</span>
+                        </div>
+                      )}
+
+                      {/* Awarded indicator */}
+                      {pr.awarded_rep_id && (
+                        <p className="text-[10px] text-success/80 font-semibold mt-1.5 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-success/60 inline-block" />
+                          Awarded
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // EVENT LEADERBOARD VIEW
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -881,51 +1023,7 @@ function EventLeaderboardView({
 
       {/* Prize pool */}
       {data.position_rewards.length > 0 && (
-        <div className="mb-5 rounded-2xl border border-warning/15 bg-gradient-to-b from-warning/[0.06] to-transparent p-4">
-          <p className="text-[10px] uppercase tracking-[3px] text-warning/80 font-bold mb-3 flex items-center justify-center gap-2">
-            <Trophy size={12} />
-            Prizes Up For Grabs
-          </p>
-          <div className="space-y-2.5">
-            {data.position_rewards.map((pr, i) => {
-              const medalBg = i === 0 ? "bg-yellow-500/10 border-yellow-500/20" :
-                              i === 1 ? "bg-slate-400/10 border-slate-400/15" :
-                              i === 2 ? "bg-orange-500/10 border-orange-500/15" :
-                              "bg-white/[0.03] border-white/[0.06]";
-              return (
-                <div key={pr.position} className={`flex items-center gap-3 rounded-xl border p-3 ${medalBg}`}>
-                  <div className="text-center w-8 shrink-0">
-                    <span className="text-lg">{i < 3 ? MEDAL_EMOJI[i] : ""}</span>
-                    {i >= 3 && <span className="text-xs font-bold font-mono text-muted-foreground">{ordinal(pr.position)}</span>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {pr.xp_reward ? (
-                        <span className="inline-flex items-center gap-0.5 rounded-md bg-primary/12 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                          +{pr.xp_reward} XP
-                        </span>
-                      ) : null}
-                      {pr.currency_reward ? (
-                        <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
-                          +{pr.currency_reward} {currencyName}
-                        </span>
-                      ) : null}
-                    </div>
-                    {pr.reward_name && (
-                      <p className="text-[11px] text-foreground/80 mt-1 font-medium">{pr.reward_name}</p>
-                    )}
-                    {pr.awarded_rep_id && (
-                      <p className="text-[10px] text-success/70 mt-0.5">Awarded</p>
-                    )}
-                  </div>
-                  {pr.reward_name && (
-                    <Gift size={14} className={i === 0 ? "text-yellow-500/50" : i === 1 ? "text-slate-400/50" : "text-orange-500/50"} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <PrizePool rewards={data.position_rewards} currencyName={currencyName} />
       )}
 
       {/* Leaderboard entries */}

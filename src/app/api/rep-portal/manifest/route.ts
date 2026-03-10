@@ -1,7 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
-import { getOrgIdFromRequest } from "@/lib/org";
+import { NextResponse } from "next/server";
 
 /**
  * GET /api/rep-portal/manifest — Dynamic PWA manifest with tenant brand name
@@ -9,29 +6,10 @@ import { getOrgIdFromRequest } from "@/lib/org";
  * Public route (no auth) — the browser fetches this automatically.
  * Resolves org_id from the request host to get the tenant's brand name.
  */
-export async function GET(request: NextRequest) {
-  const orgId = getOrgIdFromRequest(request);
-
-  let brandName = "Entry Reps";
-  try {
-    const supabase = await getSupabaseAdmin();
-    if (supabase) {
-      const { data: brandingRow } = await supabase
-        .from(TABLES.SITE_SETTINGS)
-        .select("data")
-        .eq("key", `${orgId}_branding`)
-        .single();
-
-      const branding = (brandingRow?.data as Record<string, string>) || {};
-      if (branding.org_name) {
-        brandName = `${branding.org_name} Reps`;
-      }
-    }
-  } catch { /* fallback to default name */ }
-
+export async function GET() {
   const manifest = {
-    name: brandName,
-    short_name: brandName,
+    name: "ENTRY",
+    short_name: "ENTRY",
     description: "Sell tickets, complete quests, climb the leaderboard.",
     start_url: "/rep",
     scope: "/rep",

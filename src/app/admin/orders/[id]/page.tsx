@@ -35,6 +35,8 @@ import {
   MailCheck,
   Tag,
   Percent,
+  MapPin,
+  CalendarDays,
 } from "lucide-react";
 
 /* ── Status styling ── */
@@ -160,6 +162,15 @@ function formatDateTime(d: string) {
 
 function getInitials(first?: string, last?: string): string {
   return `${(first?.[0] || "").toUpperCase()}${(last?.[0] || "").toUpperCase()}`;
+}
+
+function formatEventDate(d: string) {
+  return new Date(d).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /* ════════════════════════════════════════════════════════
@@ -304,7 +315,7 @@ export default function OrderDetailPage() {
 
   return (
     <div>
-      {/* Header */}
+      {/* Order Summary */}
       <div className="mb-6">
         <Link
           href="/admin/orders/"
@@ -313,9 +324,9 @@ export default function OrderDetailPage() {
           <ArrowLeft size={12} /> Back to Orders
         </Link>
 
-        {/* Order header card */}
         <Card>
           <CardContent className="p-6">
+            {/* Top row: Order # + Status + Actions */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="flex items-center gap-3">
@@ -335,18 +346,10 @@ export default function OrderDetailPage() {
                     </Badge>
                   )}
                 </div>
-                <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock size={12} />
-                    {formatDateTime(order.created_at)}
-                  </span>
-                  {event?.name && (
-                    <>
-                      <span className="text-border">·</span>
-                      <span>{event.name}</span>
-                    </>
-                  )}
-                </div>
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock size={11} />
+                  {formatDateTime(order.created_at)}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
@@ -363,6 +366,140 @@ export default function OrderDetailPage() {
                 )}
               </div>
             </div>
+
+            <Separator className="my-5" />
+
+            {/* Event block */}
+            {event?.name && (
+              <div className="mb-5 rounded-xl border border-border bg-muted/30 p-4">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                  Event
+                </p>
+                <p className="text-lg font-bold text-foreground">{event.name}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  {event.date_start && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <CalendarDays size={13} className="text-muted-foreground/60" />
+                      {formatEventDate(event.date_start)}
+                    </span>
+                  )}
+                  {event.venue_name && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin size={13} className="text-muted-foreground/60" />
+                      {event.venue_name}{event.city ? `, ${event.city}` : ""}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Items breakdown */}
+            {(ticketItems.length > 0 || merchItems.length > 0) && (
+              <div className="mb-5">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                  Items Ordered
+                </p>
+                <div className="space-y-2">
+                  {ticketItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                          <Ticket size={15} className="text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {item.ticket_type?.name || "Ticket"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {item.qty} &times; {fmtMoney(Number(item.unit_price), order.currency)}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="font-mono text-sm font-bold text-foreground">
+                        {fmtMoney(Number(item.unit_price) * item.qty, order.currency)}
+                      </span>
+                    </div>
+                  ))}
+                  {merchItems.map((item, idx) => {
+                    const merchMeta = (isMerchPreorder && Array.isArray(orderMeta.merch_items))
+                      ? (orderMeta.merch_items as { product_name?: string; product_type?: string; product_image?: string; merch_size?: string }[])[idx]
+                      : null;
+                    const displayName = merchMeta?.product_name
+                      || (item.ticket_type?.name === "Merch Pre-order" ? "Merchandise" : item.ticket_type?.name)
+                      || "Merchandise";
+                    const productImage = merchMeta?.product_image;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          {productImage ? (
+                            <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-lg border border-border">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={productImage} alt={displayName} className="h-full w-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                              <Shirt size={15} className="text-primary" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{displayName}</p>
+                            <div className="mt-0.5 flex items-center gap-1.5">
+                              {item.merch_size && (
+                                <Badge variant="secondary" className="text-[10px]">
+                                  {item.merch_size}
+                                </Badge>
+                              )}
+                              <span className="text-xs text-muted-foreground">
+                                {item.qty} &times; {fmtMoney(Number(item.unit_price), order.currency)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <span className="font-mono text-sm font-bold text-foreground">
+                          {fmtMoney(Number(item.unit_price) * item.qty, order.currency)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Total line */}
+                <div className="mt-3 flex items-center justify-between border-t border-border px-1 pt-3">
+                  <span className="text-sm font-semibold text-foreground">Total</span>
+                  <span className="font-mono text-xl font-bold text-foreground">
+                    {fmtMoney(Number(order.total), order.currency)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Customer quick view */}
+            {customer && (
+              <Link
+                href={`/admin/customers/${customer.id}/`}
+                className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3 transition-colors hover:bg-muted/40"
+              >
+                <Avatar
+                  size="sm"
+                  tier="primary"
+                  initials={getInitials(customer.first_name, customer.last_name)}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">
+                    {customer.first_name} {customer.last_name}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{customer.email}</p>
+                </div>
+                <ExternalLink size={12} className="flex-shrink-0 text-muted-foreground/40" />
+              </Link>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -603,124 +740,6 @@ export default function OrderDetailPage() {
         </Card>
       </div>
 
-      {/* What Was Ordered — Tickets */}
-      {ticketItems.length > 0 && (
-        <Card className="mt-4 overflow-hidden">
-          <CardHeader className="border-b border-border pb-4">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Ticket size={15} className="text-muted-foreground" />
-              Ticket Types ({ticketItems.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-2">
-              {ticketItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                      <Ticket size={14} className="text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {item.ticket_type?.name || "Ticket"}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {item.qty} x {fmtMoney(Number(item.unit_price), order.currency)}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-mono text-sm font-bold text-foreground">
-                    {fmtMoney(Number(item.unit_price) * item.qty, order.currency)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* What Was Ordered — Merchandise */}
-      {merchItems.length > 0 && (
-        <Card className="mt-4 overflow-hidden">
-          <CardHeader className="border-b border-border pb-4">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Shirt size={15} className="text-muted-foreground" />
-              Merchandise ({merchItems.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              {merchItems.map((item, idx) => {
-                // For merch pre-orders, get the actual product details from order metadata
-                const merchMeta = (isMerchPreorder && Array.isArray(orderMeta.merch_items))
-                  ? (orderMeta.merch_items as { product_name?: string; product_type?: string; product_image?: string; merch_size?: string }[])[idx]
-                  : null;
-                const displayName = merchMeta?.product_name
-                  || (item.ticket_type?.name === "Merch Pre-order" ? "Merchandise" : item.ticket_type?.name)
-                  || "Merchandise";
-                const productType = merchMeta?.product_type;
-                const productImage = merchMeta?.product_image;
-
-                return (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-3"
-                  >
-                    {/* Product image or fallback */}
-                    {productImage ? (
-                      <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-border">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={productImage}
-                          alt={displayName}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-muted border border-border">
-                        <Shirt size={22} className="text-muted-foreground/40" />
-                      </div>
-                    )}
-
-                    {/* Product details */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">
-                            {displayName}
-                          </p>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                            {productType && (
-                              <Badge variant="secondary" className="text-[10px] font-medium">
-                                {productType}
-                              </Badge>
-                            )}
-                            {item.merch_size && (
-                              <Badge variant="secondary" className="text-[10px] font-semibold">
-                                Size {item.merch_size}
-                              </Badge>
-                            )}
-                            <span className="text-xs text-muted-foreground">
-                              Qty {item.qty} &times; {fmtMoney(Number(item.unit_price), order.currency)}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="font-mono text-sm font-bold text-foreground flex-shrink-0">
-                          {fmtMoney(Number(item.unit_price) * item.qty, order.currency)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Individual Tickets / Collection QR Codes */}
       {order.tickets && order.tickets.length > 0 && (
         <Card className="mt-4 overflow-hidden">
@@ -789,7 +808,7 @@ export default function OrderDetailPage() {
                           )}
                         </div>
 
-                        {/* Product name (merch) or holder name */}
+                        {/* Ticket type + holder name */}
                         {merchProduct?.product_name ? (
                           <p className="mt-1 text-xs text-foreground/80 font-medium">
                             {merchProduct.product_name}
@@ -798,9 +817,21 @@ export default function OrderDetailPage() {
                             </span>
                           </p>
                         ) : (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {ticket.holder_first_name} {ticket.holder_last_name}
-                          </p>
+                          <div className="mt-1 flex items-center gap-1.5">
+                            {ticket.ticket_type?.name && (
+                              <span className="text-xs font-medium text-foreground/70">
+                                {ticket.ticket_type.name}
+                              </span>
+                            )}
+                            {ticket.ticket_type?.name && (ticket.holder_first_name || ticket.holder_last_name) && (
+                              <span className="text-muted-foreground/40">·</span>
+                            )}
+                            {(ticket.holder_first_name || ticket.holder_last_name) && (
+                              <span className="text-xs text-muted-foreground">
+                                {ticket.holder_first_name} {ticket.holder_last_name}
+                              </span>
+                            )}
+                          </div>
                         )}
 
                       {/* Scan status */}

@@ -38,7 +38,7 @@ export interface Order {
   updated_at: string;
   // Joined fields
   customer?: Customer;
-  event?: { name: string; slug: string; date_start: string };
+  event?: { name: string; slug: string; date_start: string; venue_name?: string; city?: string };
   items?: OrderItem[];
   tickets?: Ticket[];
 }

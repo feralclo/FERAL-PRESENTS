@@ -6,6 +6,7 @@ import { getOrgIdFromRequest } from "@/lib/org";
 import { getRepSettings } from "@/lib/rep-points";
 import { sendRepEmail } from "@/lib/rep-emails";
 import { ensureRepCustomer } from "@/lib/rep-utils";
+import { autoAssignRepToAllEvents } from "@/lib/rep-auto-assign";
 
 /**
  * GET /auth/rep-callback
@@ -223,7 +224,19 @@ export async function GET(request: NextRequest) {
       repId: newRep.id,
       orgId,
       data: {},
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error("[auth/rep-callback] Failed to send welcome email:", err);
+    });
+
+    // Auto-assign to all events
+    autoAssignRepToAllEvents({
+      supabase: adminClient,
+      repId: newRep.id,
+      orgId,
+      repFirstName: firstName,
+    }).catch((err) => {
+      console.error("[auth/rep-callback] Failed to auto-assign events:", err);
+    });
   }
 
   return response;

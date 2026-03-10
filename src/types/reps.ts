@@ -277,7 +277,7 @@ export const DEFAULT_REP_PROGRAM_SETTINGS: RepProgramSettings = {
   leaderboard_visible: true,
   max_events_per_rep: null,
   welcome_message: null,
-  email_from_name: "Entry Reps",
+  email_from_name: "Entry",
   email_from_address: "noreply@mail.entry.events",
   currency_per_sale: 10,
   currency_name: "FRL",

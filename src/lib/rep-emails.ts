@@ -97,6 +97,7 @@ export async function sendRepEmail(params: RepEmailParams): Promise<void> {
     const branding = (brandingRow?.data as Record<string, string>) || {};
     const orgName = branding.org_name || params.orgId.toUpperCase();
     const accentColor = branding.accent_color || "#8B5CF6";
+    const logoUrl = branding.logo_url || null;
 
     // Get program settings for sender info
     const settings = await getRepSettings(params.orgId);
@@ -110,6 +111,7 @@ export async function sendRepEmail(params: RepEmailParams): Promise<void> {
       rep,
       orgName,
       accentColor,
+      logoUrl,
       siteUrl,
       settings,
       ...params.data,
@@ -154,6 +156,7 @@ export async function sendRepInviteEmail(params: {
     const branding = (brandingRow?.data as Record<string, string>) || {};
     const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
     const accentColor = branding.accent_color || "#8B5CF6";
+    const logoUrl = branding.logo_url || null;
     const siteUrl = await resolveTenantUrl(params.orgId, supabase);
     if (!siteUrl) {
       console.warn("[rep-email] No tenant domain or NEXT_PUBLIC_SITE_URL — invite link will be broken");
@@ -162,7 +165,7 @@ export async function sendRepInviteEmail(params: {
     const inviteUrl = `${siteUrl}/rep/invite/${encodeURIComponent(params.inviteToken)}`;
 
     const subject = `You've been selected as a ${orgName} Rep`;
-    const html = wrapEmail(accentColor, orgName, `
+    const html = wrapEmail(accentColor, orgName, logoUrl, `
       <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
         You've been selected.
       </h1>
@@ -207,15 +210,17 @@ function buildEmail(
   const rep = ctx.rep as Record<string, unknown>;
   const orgName = escapeHtml(ctx.orgName as string);
   const accent = ctx.accentColor as string;
+  const logoUrl = ctx.logoUrl as string | null;
   const siteUrl = ctx.siteUrl as string;
   const firstName = escapeHtml((rep.first_name as string) || "there");
+  const wrap = (body: string) => wrapEmail(accent, orgName, logoUrl, body);
 
   switch (type) {
     case "email_verification": {
       const verifyUrl = `${siteUrl}/rep/verify-email?token=${encodeURIComponent(String(ctx.verification_token || ""))}`;
       return {
         subject: `Verify your email — ${orgName} Reps`,
-        html: wrapEmail(accent, orgName, `
+        html: wrap(`
           <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Verify your email
           </h1>
@@ -235,7 +240,7 @@ function buildEmail(
     case "welcome":
       return {
         subject: `Welcome to the team, ${firstName}!`,
-        html: wrapEmail(accent, orgName, `
+        html: wrap(`
           <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Welcome aboard, ${firstName}.
           </h1>
@@ -261,7 +266,7 @@ function buildEmail(
     case "quest_notification":
       return {
         subject: `New Quest: ${escapeHtml(String(ctx.quest_title || "Complete it for points!"))}`,
-        html: wrapEmail(accent, orgName, `
+        html: wrap(`
           <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             New Quest Available
           </h1>
@@ -287,7 +292,7 @@ function buildEmail(
     case "reward_unlocked":
       return {
         subject: "You've unlocked a reward!",
-        html: wrapEmail(accent, orgName, `
+        html: wrap(`
           <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Reward Unlocked!
           </h1>
@@ -315,7 +320,7 @@ function buildEmail(
       const fulfilmentNotes = ctx.notes ? escapeHtml(String(ctx.notes)) : null;
       return {
         subject: `Your reward is ready — ${rewardName}`,
-        html: wrapEmail(accent, orgName, `
+        html: wrap(`
           <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Reward Fulfilled!
           </h1>
@@ -344,7 +349,7 @@ function buildEmail(
       const oldLevelName = escapeHtml(String(ctx.old_level_name || `Level ${oldLevel}`));
       return {
         subject: `You leveled up — ${newLevelName}!`,
-        html: wrapEmail(accent, orgName, `
+        html: wrap(`
           <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Level Up!
           </h1>
@@ -369,7 +374,7 @@ function buildEmail(
     case "application_rejected":
       return {
         subject: `Update on your ${orgName} application`,
-        html: wrapEmail(accent, orgName, `
+        html: wrap(`
           <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Application Update
           </h1>
@@ -388,7 +393,7 @@ function buildEmail(
     case "sale_notification":
       return {
         subject: "Someone used your code!",
-        html: wrapEmail(accent, orgName, `
+        html: wrap(`
           <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px 0;">
             Sale incoming!
           </h1>
@@ -420,31 +425,55 @@ function buildEmail(
 
 /**
  * Wrap email content in the branded layout.
+ *
+ * Design: Clean, minimal, Entry-platform-first with tenant context.
+ * Header shows Entry wordmark + tenant logo (or name).
+ * Footer: "Sent via Entry" with platform link.
  */
-function wrapEmail(accent: string, orgName: string, body: string): string {
+function wrapEmail(accent: string, orgName: string, logoUrl: string | null, body: string): string {
+  // Header: Entry wordmark on left, tenant logo/name on right
+  const tenantBrand = logoUrl
+    ? `<img src="${logoUrl}" alt="${orgName}" style="height: 20px; width: auto; vertical-align: middle;" />`
+    : `<span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">${orgName}</span>`;
+
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head>
-<body style="margin: 0; padding: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a;">
-  <div style="max-width: 560px; margin: 0 auto; padding: 40px 24px;">
-    <!-- Header -->
-    <div style="margin-bottom: 32px;">
-      <span style="font-family: monospace; font-size: 13px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: ${accent};">
-        ENTRY REPS
-      </span>
-      <span style="font-size: 11px; color: #6b7280; margin-left: 8px;">
-        &times; ${orgName}
-      </span>
-    </div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; -webkit-text-size-adjust: 100%;">
+  <!-- Outer wrapper for background color -->
+  <div style="background-color: #f9fafb; padding: 40px 16px;">
+    <div style="max-width: 520px; margin: 0 auto;">
 
-    <!-- Body -->
-    ${body}
+      <!-- Header -->
+      <div style="padding: 0 8px; margin-bottom: 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+          <tr>
+            <td style="vertical-align: middle;">
+              <span style="font-size: 17px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.3px;">Entry</span>
+              <span style="font-size: 13px; color: #d1d5db; margin: 0 8px;">&middot;</span>
+              ${tenantBrand}
+            </td>
+          </tr>
+        </table>
+      </div>
 
-    <!-- Footer -->
-    <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
-      <p style="font-size: 11px; color: #9ca3af; margin: 0; line-height: 1.6;">
-        Powered by <span style="color: ${accent}; font-weight: 600;">Entry</span> &mdash; The events platform.
-      </p>
+      <!-- Card -->
+      <div style="background-color: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 36px 32px; margin-bottom: 24px;">
+        ${body}
+      </div>
+
+      <!-- Footer -->
+      <div style="text-align: center; padding: 0 8px;">
+        <p style="font-size: 11px; color: #9ca3af; margin: 0; line-height: 1.6;">
+          Sent via <span style="font-weight: 600; color: #6b7280;">Entry</span> on behalf of ${orgName}
+        </p>
+      </div>
+
     </div>
   </div>
 </body>

@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, SUPABASE_URL } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendRepEmail } from "@/lib/rep-emails";
+import { autoAssignRepToAllEvents } from "@/lib/rep-utils";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -135,9 +136,15 @@ export async function PUT(
       return NextResponse.json({ error: "Rep not found" }, { status: 404 });
     }
 
-    // Send welcome email when approving a pending rep
+    // Send welcome email + auto-assign to events when approving a pending rep
     if (updates.status === "active" && oldStatus && oldStatus !== "active") {
       sendRepEmail({ type: "welcome", repId: id, orgId }).catch(() => {});
+      autoAssignRepToAllEvents({
+        supabase,
+        repId: id,
+        orgId,
+        repFirstName: data.first_name || "Rep",
+      }).catch(() => {});
     }
 
     return NextResponse.json({ data });

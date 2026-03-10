@@ -41,6 +41,7 @@ import {
   Save,
   Crown,
   UserPlus,
+  Users,
   Check,
 } from "lucide-react";
 import { DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
@@ -137,6 +138,7 @@ export default function EventBoardsPage() {
   const [selectedRepIds, setSelectedRepIds] = useState<Set<string>>(new Set());
   const [loadingAssign, setLoadingAssign] = useState(false);
   const [assignSaving, setAssignSaving] = useState(false);
+  const [bulkAssigning, setBulkAssigning] = useState<string | null>(null);
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
@@ -338,6 +340,21 @@ export default function EventBoardsPage() {
     setAssignSaving(false);
   };
 
+  const handleBulkAssign = async (event: EventWithReps) => {
+    setBulkAssigning(event.event_id);
+    try {
+      await fetch("/api/reps/events/bulk-assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: event.event_id }),
+      });
+      loadEvents();
+    } catch {
+      /* network */
+    }
+    setBulkAssigning(null);
+  };
+
   return (
     <div className="space-y-6 p-6 lg:p-8">
       {/* Header */}
@@ -441,7 +458,7 @@ export default function EventBoardsPage() {
 
                     {/* No reps state */}
                     {event.reps_count === 0 && (
-                      <p className="text-xs text-muted-foreground/60 italic mt-1">No reps assigned</p>
+                      <p className="text-xs text-warning/80 mt-1">No reps assigned — click &quot;Assign All&quot; to add all active reps</p>
                     )}
                   </div>
 
@@ -450,9 +467,22 @@ export default function EventBoardsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => handleBulkAssign(event)}
+                      disabled={bulkAssigning === event.event_id}
+                    >
+                      {bulkAssigning === event.event_id ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Users size={14} />
+                      )}
+                      Assign All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => openAssignDialog(event)}
                     >
-                      <UserPlus size={14} /> Assign Reps
+                      <UserPlus size={14} /> Select Reps
                     </Button>
                     {event.reps_count > 0 && (
                       <Button

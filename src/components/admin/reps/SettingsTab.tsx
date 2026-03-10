@@ -52,6 +52,7 @@ export function SettingsTab() {
         email_from_address: settings.email_from_address,
         currency_per_sale: settings.currency_per_sale,
         currency_name: settings.currency_name,
+        auto_assign_events: settings.auto_assign_events,
       };
       const res = await fetch("/api/reps/settings", {
         method: "POST",
@@ -107,6 +108,13 @@ export function SettingsTab() {
                 <p className="text-[11px] text-muted-foreground">Reps can see the full leaderboard</p>
               </div>
               <Switch checked={settings.leaderboard_visible} onCheckedChange={(v) => update("leaderboard_visible", v)} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Auto-Assign Events</p>
+                <p className="text-[11px] text-muted-foreground">New reps get assigned to all active events automatically</p>
+              </div>
+              <Switch checked={settings.auto_assign_events} onCheckedChange={(v) => update("auto_assign_events", v)} />
             </div>
           </CardContent>
         </Card>

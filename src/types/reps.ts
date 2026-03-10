@@ -253,6 +253,8 @@ export interface RepProgramSettings {
   currency_per_sale: number;
   /** Tenant-specific currency name (e.g., "FRL") */
   currency_name: string;
+  /** Auto-assign all active reps to new events */
+  auto_assign_events: boolean;
 }
 
 export const DEFAULT_REP_PROGRAM_SETTINGS: RepProgramSettings = {
@@ -281,6 +283,7 @@ export const DEFAULT_REP_PROGRAM_SETTINGS: RepProgramSettings = {
   email_from_address: "noreply@mail.entry.events",
   currency_per_sale: 10,
   currency_name: "FRL",
+  auto_assign_events: true,
 };
 
 // ─── Dashboard Stats ─────────────────────────────────────────────────────────

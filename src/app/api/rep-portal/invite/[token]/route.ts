@@ -368,8 +368,8 @@ export async function POST(
       }
     }
 
-    // Upsert customer and link to rep (fire-and-forget)
-    import("@/lib/rep-utils").then(({ ensureRepCustomer }) => {
+    // Upsert customer, link to rep, and auto-assign to events (fire-and-forget)
+    import("@/lib/rep-utils").then(({ ensureRepCustomer, autoAssignRepToAllEvents }) => {
       ensureRepCustomer({
         supabase,
         repId: rep.id,
@@ -377,6 +377,13 @@ export async function POST(
         email: finalEmail,
         firstName: (first_name || rep.first_name || "").trim(),
         lastName: (last_name || rep.last_name || "").trim(),
+      }).catch(() => {});
+
+      autoAssignRepToAllEvents({
+        supabase,
+        repId: rep.id,
+        orgId,
+        repFirstName: (first_name || rep.first_name || "Rep").trim(),
       }).catch(() => {});
     }).catch(() => {});
 

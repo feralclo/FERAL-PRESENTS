@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       "enabled", "auto_approve", "default_discount_percent",
       "default_discount_type", "leaderboard_visible",
       "max_events_per_rep", "welcome_message", "email_from_name", "email_from_address",
-      "currency_per_sale", "currency_name",
+      "currency_per_sale", "currency_name", "auto_assign_events",
     ]);
     for (const key of Object.keys(settings)) {
       if (!allowedKeys.has(key)) {

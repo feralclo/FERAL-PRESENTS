@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Upsert customer and link to rep (fire-and-forget)
-    import("@/lib/rep-utils").then(({ ensureRepCustomer }) => {
+    import("@/lib/rep-utils").then(({ ensureRepCustomer, autoAssignRepToAllEvents }) => {
       ensureRepCustomer({
         supabase,
         repId: rep.id,
@@ -241,6 +241,16 @@ export async function POST(request: NextRequest) {
         firstName: first_name.trim(),
         lastName: last_name.trim(),
       }).catch(() => {});
+
+      // Auto-assign to all events if rep is immediately active (auto_approve)
+      if (rep.status === "active") {
+        autoAssignRepToAllEvents({
+          supabase,
+          repId: rep.id,
+          orgId,
+          repFirstName: first_name.trim(),
+        }).catch(() => {});
+      }
     }).catch(() => {});
 
     // Send verification email (welcome email sent after verification)

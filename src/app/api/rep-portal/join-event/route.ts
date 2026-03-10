@@ -34,12 +34,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
     }
 
-    // Verify event exists and belongs to rep's org
+    // Verify event exists, belongs to rep's org, and is rep-enabled
     const { data: event } = await supabase
       .from(TABLES.EVENTS)
       .select("id, name, slug, status")
       .eq("id", eventId)
       .eq("org_id", orgId)
+      .eq("rep_enabled", true)
       .in("status", ["published", "active", "live"])
       .single();
 

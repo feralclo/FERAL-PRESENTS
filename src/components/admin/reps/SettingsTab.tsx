@@ -15,27 +15,61 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, RotateCcw, Info } from "lucide-react";
+import { Loader2, Save, RotateCcw, Info, Calendar } from "lucide-react";
 import type { RepProgramSettings } from "@/types/reps";
 import { DEFAULT_REP_PROGRAM_SETTINGS } from "@/types/reps";
+
+interface CampaignEvent {
+  id: string;
+  name: string;
+  slug: string;
+  date_start: string | null;
+  status: string;
+  cover_image: string | null;
+  rep_enabled: boolean;
+}
 
 export function SettingsTab() {
   const [settings, setSettings] = useState<RepProgramSettings>(DEFAULT_REP_PROGRAM_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [campaignEvents, setCampaignEvents] = useState<CampaignEvent[]>([]);
+  const [togglingEvent, setTogglingEvent] = useState<string | null>(null);
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/reps/settings");
-      const json = await res.json();
-      if (json.data) setSettings({ ...DEFAULT_REP_PROGRAM_SETTINGS, ...json.data });
+      const [settingsRes, eventsRes] = await Promise.all([
+        fetch("/api/reps/settings"),
+        fetch("/api/reps/campaign-events"),
+      ]);
+      const settingsJson = await settingsRes.json();
+      const eventsJson = await eventsRes.json();
+      if (settingsJson.data) setSettings({ ...DEFAULT_REP_PROGRAM_SETTINGS, ...settingsJson.data });
+      if (eventsJson.data) setCampaignEvents(eventsJson.data);
     } catch { /* network */ }
     setLoading(false);
   }, []);
 
   useEffect(() => { loadSettings(); }, [loadSettings]);
+
+  const toggleEventRepEnabled = async (eventId: string, enabled: boolean) => {
+    setTogglingEvent(eventId);
+    try {
+      const res = await fetch("/api/reps/campaign-events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId, rep_enabled: enabled }),
+      });
+      if (res.ok) {
+        setCampaignEvents((prev) =>
+          prev.map((e) => (e.id === eventId ? { ...e, rep_enabled: enabled } : e))
+        );
+      }
+    } catch { /* network */ }
+    setTogglingEvent(null);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -193,6 +227,61 @@ export function SettingsTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Campaign Events — full width below the 2-col grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Calendar size={14} className="text-primary" />
+            Campaign Events
+          </CardTitle>
+          <p className="text-[11px] text-muted-foreground">
+            Choose which events are part of the rep programme. Only enabled events will appear for reps to join and sell.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {campaignEvents.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No events found. Create events first.</p>
+          ) : (
+            <div className="space-y-1">
+              {campaignEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {event.cover_image ? (
+                      <div className="h-9 w-9 rounded-lg overflow-hidden shrink-0 bg-muted/50">
+                        <img src={event.cover_image} alt="" className="h-full w-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="h-9 w-9 rounded-lg shrink-0 bg-primary/10 flex items-center justify-center">
+                        <Calendar size={14} className="text-primary/50" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{event.name}</p>
+                      <div className="flex items-center gap-2">
+                        {event.date_start && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(event.date_start).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground capitalize">{event.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={event.rep_enabled}
+                    disabled={togglingEvent === event.id}
+                    onCheckedChange={(checked) => toggleEventRepEnabled(event.id, checked)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

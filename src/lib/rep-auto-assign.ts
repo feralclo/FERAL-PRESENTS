@@ -39,11 +39,12 @@ export async function autoAssignRepToAllEvents(params: {
     }
   }
 
-  // Get all published/active events for this org
+  // Get all published/active rep-enabled events for this org
   const { data: events } = await supabase
     .from(TABLES.EVENTS)
     .select("id, name")
     .eq("org_id", orgId)
+    .eq("rep_enabled", true)
     .in("status", ["published", "active", "live"]);
 
   if (!events || events.length === 0) return { assigned: 0 };

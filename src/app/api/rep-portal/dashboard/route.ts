@@ -87,11 +87,12 @@ export async function GET() {
         .eq("rep_id", repId)
         .eq("org_id", orgId),
 
-      // All live/published events in this org (for discovery)
+      // All live/published events in this org that are rep-enabled (for discovery)
       supabase
         .from(TABLES.EVENTS)
         .select("id, name, slug, date_start, status, cover_image, venue_name")
         .eq("org_id", orgId)
+        .eq("rep_enabled", true)
         .in("status", ["published", "active", "live"])
         .order("date_start", { ascending: true }),
 

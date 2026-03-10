@@ -15,8 +15,12 @@ import {
   ArrowDown,
   Users,
   Zap,
+  Plus,
+  MapPin,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState, RepPageError } from "@/components/rep";
@@ -414,22 +418,34 @@ function AllTimeLeaderboard() {
 // EVENTS LEADERBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
 
+interface DiscoverableEvent {
+  id: string;
+  name: string;
+  slug: string;
+  date_start?: string;
+  cover_image?: string;
+  venue_name?: string;
+}
+
 function EventsLeaderboard() {
   const [events, setEvents] = useState<EventSummary[]>([]);
+  const [discoverableEvents, setDiscoverableEvents] = useState<DiscoverableEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [loadKey, setLoadKey] = useState(0);
   const [currencyName, setCurrencyName] = useState("FRL");
+  const [joiningEventId, setJoiningEventId] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
     setError("");
     (async () => {
       try {
-        const [eventsRes, settingsRes] = await Promise.all([
+        const [eventsRes, settingsRes, dashRes] = await Promise.all([
           fetch("/api/rep-portal/leaderboard/events"),
           fetch("/api/rep-portal/settings"),
+          fetch("/api/rep-portal/dashboard"),
         ]);
         if (!eventsRes.ok) {
           setError("Failed to load events");
@@ -440,12 +456,30 @@ function EventsLeaderboard() {
         setEvents(eventsJson.data || []);
         const settingsJson = await settingsRes.json().catch(() => ({}));
         if (settingsJson.data?.currency_name) setCurrencyName(settingsJson.data.currency_name);
+        // Get discoverable events for the empty / low-event state
+        const dashJson = dashRes.ok ? await dashRes.json() : {};
+        setDiscoverableEvents(dashJson.data?.discoverable_events || []);
       } catch {
         setError("Failed to load events");
       }
       setLoading(false);
     })();
   }, [loadKey]);
+
+  const joinEvent = async (eventId: string) => {
+    setJoiningEventId(eventId);
+    try {
+      const res = await fetch("/api/rep-portal/join-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId }),
+      });
+      if (res.ok) {
+        setLoadKey((k) => k + 1);
+      }
+    } catch { /* ignore */ }
+    setJoiningEventId(null);
+  };
 
   if (loading) return <LeaderboardSkeleton />;
   if (error) return <ErrorState error={error} onRetry={() => setLoadKey((k) => k + 1)} />;
@@ -462,12 +496,70 @@ function EventsLeaderboard() {
 
   if (events.length === 0) {
     return (
-      <div className="rep-fade-in">
+      <div className="rep-fade-in space-y-6">
         <EmptyState
           icon={Calendar}
           title="No active events"
-          subtitle="You'll see events here once you're assigned."
+          subtitle={discoverableEvents.length > 0
+            ? "Join an event below to start competing."
+            : "You'll see events here once you're assigned."}
         />
+        {discoverableEvents.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Plus size={14} className="text-primary" />
+              <h3 className="text-xs font-bold uppercase tracking-[2px] text-muted-foreground">
+                Join Events
+              </h3>
+            </div>
+            {discoverableEvents.map((event) => (
+              <Card key={event.id} className="py-0 gap-0 overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex items-center gap-3 p-3">
+                    {event.cover_image ? (
+                      <div className="h-14 w-14 rounded-xl overflow-hidden shrink-0 bg-muted/50">
+                        <img src={event.cover_image} alt="" className="h-full w-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="h-14 w-14 rounded-xl shrink-0 bg-primary/10 flex items-center justify-center">
+                        <Calendar size={20} className="text-primary/50" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{event.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {event.date_start && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(event.date_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                          </span>
+                        )}
+                        {event.venue_name && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                            <MapPin size={8} />
+                            {event.venue_name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => joinEvent(event.id)}
+                      disabled={joiningEventId === event.id}
+                      className="shrink-0 rounded-xl"
+                    >
+                      {joiningEventId === event.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <Plus size={12} />
+                      )}
+                      Join
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -492,6 +584,64 @@ function EventsLeaderboard() {
           index={i}
         />
       ))}
+
+      {/* Discoverable events — subtle section below active events */}
+      {discoverableEvents.length > 0 && (
+        <div className="pt-4 space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <Plus size={12} className="text-muted-foreground" />
+            <h3 className="text-[10px] font-bold uppercase tracking-[2px] text-muted-foreground">
+              More Events
+            </h3>
+          </div>
+          {discoverableEvents.map((event) => (
+            <div
+              key={event.id}
+              className="flex items-center gap-3 rounded-xl border border-dashed border-border/60 p-3"
+            >
+              {event.cover_image ? (
+                <div className="h-10 w-10 rounded-lg overflow-hidden shrink-0 bg-muted/50">
+                  <img src={event.cover_image} alt="" className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className="h-10 w-10 rounded-lg shrink-0 bg-primary/5 flex items-center justify-center">
+                  <Calendar size={14} className="text-primary/40" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{event.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {event.date_start && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {new Date(event.date_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </span>
+                  )}
+                  {event.venue_name && (
+                    <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                      <MapPin size={8} />
+                      {event.venue_name}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => joinEvent(event.id)}
+                disabled={joiningEventId === event.id}
+                className="shrink-0 rounded-xl text-xs"
+              >
+                {joiningEventId === event.id ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Plus size={12} />
+                )}
+                Join
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

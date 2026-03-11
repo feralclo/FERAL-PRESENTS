@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   Trophy,
@@ -78,6 +78,8 @@ export default function RepDashboardPage() {
   const [statsReady, setStatsReady] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [joiningEventId, setJoiningEventId] = useState<string | null>(null);
+
+  const reloadDashboard = useCallback(() => setLoadKey((k) => k + 1), []);
 
   useEffect(() => {
     (async () => {
@@ -263,7 +265,7 @@ export default function RepDashboardPage() {
 
       {/* ── Pending Rep Dashboard ── */}
       {rep.status === "pending" && !showWelcome && (
-        <PendingDashboard repName={rep.display_name || rep.first_name} photoUrl={rep.photo_url} />
+        <PendingDashboard repName={rep.display_name || rep.first_name} photoUrl={rep.photo_url} onApproved={reloadDashboard} />
       )}
 
       {/* ── Active Rep Dashboard ── */}
@@ -592,7 +594,7 @@ export default function RepDashboardPage() {
 
 // ─── Pending Rep Dashboard ───────────────────────────────────────────────────
 
-function PendingDashboard({ repName, photoUrl }: { repName: string; photoUrl?: string }) {
+function PendingDashboard({ repName, photoUrl, onApproved }: { repName: string; photoUrl?: string; onApproved?: () => void }) {
   const [isStandalone] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(display-mode: standalone)").matches
@@ -603,6 +605,21 @@ function PendingDashboard({ repName, photoUrl }: { repName: string; photoUrl?: s
     if (typeof navigator === "undefined") return false;
     return /iPad|iPhone|iPod/.test(navigator.userAgent);
   });
+
+  // Poll for status change every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/rep-portal/dashboard");
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json.data?.rep?.status === "active") {
+          onApproved?.();
+        }
+      } catch { /* ignore */ }
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [onApproved]);
 
   return (
     <div className="space-y-5 rep-slide-up">

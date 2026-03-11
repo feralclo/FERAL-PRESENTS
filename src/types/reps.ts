@@ -399,6 +399,7 @@ export type RepNotificationType =
   | "level_up"
   | "reward_fulfilled"
   | "manual_grant"
+  | "approved"
   | "general"
   | "approved";
 

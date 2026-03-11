@@ -5,9 +5,14 @@ import { createPortal } from "react-dom";
 import {
   Camera,
   Loader2,
-  User,
   Dices,
   Check,
+  Download,
+  Bell,
+  Zap,
+  Wifi,
+  Share,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CropModal } from "./CropModal";
@@ -50,8 +55,8 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-// Total steps: name + photo
-const TOTAL_STEPS = 2;
+// Total steps: name + photo + install app
+const TOTAL_STEPS = 3;
 
 export function WelcomeOverlay({
   repName,
@@ -167,19 +172,28 @@ export function WelcomeOverlay({
   // ── Render step content ──
 
   const renderStep = () => {
-    // Step 0: Choose your name
+    // Step 0: Choose your nickname
     if (step === 0) {
       const handleRandomize = () => {
         setEditedName(generateGamertag());
       };
       return (
         <div key={stepKey} className="rep-step-in">
-          <div className={cn("inline-flex h-16 w-16 items-center justify-center rounded-2xl mb-5 bg-primary/15")}>
-            <User size={28} style={{ color: "#8B5CF6" }} />
+          {/* User's avatar or initial */}
+          <div className="inline-flex h-20 w-20 items-center justify-center rounded-full overflow-hidden mx-auto mb-5 ring-2 ring-primary/30">
+            {initialPhotoUrl ? (
+              <img src={initialPhotoUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-primary/10">
+                <span className="text-3xl font-bold text-primary">
+                  {(repName || "?").charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
 
           <h2 className="text-2xl font-bold text-foreground mb-1">
-            Choose your rep name
+            Choose your nickname
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
             This is how you&apos;ll appear on the leaderboard
@@ -217,63 +231,134 @@ export function WelcomeOverlay({
     }
 
     // Step 1: Add your photo
+    if (step === 1) {
+      return (
+        <div key={stepKey} className="rep-step-in">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoSelect}
+          />
+
+          <h2 className="text-2xl font-bold text-foreground mb-1">
+            Add your photo
+          </h2>
+          <p className="text-sm text-muted-foreground mb-8">
+            Show everyone who you are
+          </p>
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="relative inline-block group mb-6"
+            aria-label="Upload profile photo"
+          >
+            <div className={cn(
+              "h-28 w-28 rounded-full overflow-hidden mx-auto border-2 border-white/[0.1] transition-all",
+              uploading && "animate-pulse"
+            )}>
+              {photoSrc ? (
+                <img src={photoSrc} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center bg-primary/10">
+                  <span className="text-4xl font-bold text-primary">
+                    {(editedName || repName || "?").charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </div>
+            {/* Camera overlay */}
+            <div className={cn(
+              "absolute inset-0 rounded-full flex items-center justify-center bg-black/50 transition-opacity duration-200",
+              uploading ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-active:opacity-100"
+            )}>
+              {uploading ? (
+                <Loader2 size={24} className="text-white animate-spin" />
+              ) : (
+                <Camera size={24} className="text-white" />
+              )}
+            </div>
+          </button>
+
+          <p className="text-sm text-primary font-medium mb-2">
+            Tap to upload
+          </p>
+          <p className="text-xs text-muted-foreground/50 max-w-[240px] mx-auto">
+            Optional — you can skip this and add one later
+          </p>
+        </div>
+      );
+    }
+
+    // Step 2: Download the app
+    const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = typeof window !== "undefined" && (
+      window.matchMedia("(display-mode: standalone)").matches
+      || ("standalone" in navigator && (navigator as { standalone?: boolean }).standalone === true)
+    );
+
     return (
       <div key={stepKey} className="rep-step-in">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handlePhotoSelect}
-        />
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl mb-5 bg-primary/15">
+          <Download size={28} style={{ color: "#8B5CF6" }} />
+        </div>
 
         <h2 className="text-2xl font-bold text-foreground mb-1">
-          Add your photo
+          {isStandalone ? "You\u2019re all set!" : "Get the app"}
         </h2>
-        <p className="text-sm text-muted-foreground mb-8">
-          Show everyone who you are
+        <p className="text-sm text-muted-foreground mb-6">
+          {isStandalone
+            ? "Push notifications are ready to go"
+            : "Never miss a sale or update"}
         </p>
 
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="relative inline-block group mb-6"
-          aria-label="Upload profile photo"
-        >
-          <div className={cn(
-            "h-28 w-28 rounded-full overflow-hidden mx-auto border-2 border-white/[0.1] transition-all",
-            uploading && "animate-pulse"
-          )}>
-            {photoSrc ? (
-              <img src={photoSrc} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center bg-primary/10">
-                <span className="text-4xl font-bold text-primary">
-                  {(editedName || repName || "?").charAt(0).toUpperCase()}
-                </span>
+        {isStandalone ? (
+          <div className="flex items-center justify-center gap-2 text-success mb-4">
+            <Check size={18} />
+            <span className="text-sm font-semibold">App installed</span>
+          </div>
+        ) : (
+          <div className="space-y-4 max-w-[280px] mx-auto">
+            <div className="space-y-2.5 text-left">
+              {[
+                { icon: Bell, label: "Push notifications for sales & approval", color: "#8B5CF6" },
+                { icon: Zap, label: "Instant access from your home screen", color: "#F59E0B" },
+                { icon: Wifi, label: "Works offline — check stats anywhere", color: "#34D399" },
+              ].map((b) => {
+                const Icon = b.icon;
+                return (
+                  <div key={b.label} className="flex items-center gap-2.5">
+                    <Icon size={13} style={{ color: b.color }} />
+                    <p className="text-xs text-muted-foreground">{b.label}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {isIOS ? (
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5">
+                <div className="flex items-center justify-center gap-2.5 text-sm text-muted-foreground">
+                  <span className="text-xs">Tap</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/30 bg-primary/10">
+                    <Share size={14} className="text-primary" />
+                  </div>
+                  <span className="text-xs">then</span>
+                  <div className="flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5">
+                    <Plus size={12} className="text-primary" />
+                    <span className="text-[11px] font-medium text-primary">Add to Home Screen</span>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-          {/* Camera overlay */}
-          <div className={cn(
-            "absolute inset-0 rounded-full flex items-center justify-center bg-black/50 transition-opacity duration-200",
-            uploading ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-active:opacity-100"
-          )}>
-            {uploading ? (
-              <Loader2 size={24} className="text-white animate-spin" />
             ) : (
-              <Camera size={24} className="text-white" />
+              <p className="text-xs text-muted-foreground/70 text-center">
+                Your browser will prompt you to install — or use your browser&apos;s menu to add to home screen
+              </p>
             )}
           </div>
-        </button>
-
-        <p className="text-sm text-primary font-medium mb-2">
-          Tap to upload
-        </p>
-        <p className="text-xs text-muted-foreground/50 max-w-[240px] mx-auto">
-          Optional — you can skip this and add one later
-        </p>
+        )}
       </div>
     );
   };

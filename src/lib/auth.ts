@@ -94,8 +94,11 @@ export async function requireAuth(): Promise<
  * Verifies the current request has a valid Supabase Auth session AND
  * that the session belongs to an active rep. Returns the rep row
  * or a 401/403 NextResponse.
+ *
+ * Options:
+ *   allowPending — if true, pending reps are allowed through (for onboarding flows)
  */
-export async function requireRepAuth(): Promise<
+export async function requireRepAuth(options?: { allowPending?: boolean }): Promise<
   | { rep: { id: string; auth_user_id: string; email: string; org_id: string; status: string }; error: null }
   | { rep: null; error: NextResponse }
 > {
@@ -178,6 +181,9 @@ export async function requireRepAuth(): Promise<
           repByEmail.auth_user_id = user.id;
 
           if (repByEmail.status !== "active") {
+            if (options?.allowPending && repByEmail.status === "pending") {
+              return { rep: repByEmail, error: null };
+            }
             return {
               rep: null,
               error: NextResponse.json(
@@ -207,13 +213,17 @@ export async function requireRepAuth(): Promise<
     }
 
     if (rep.status !== "active") {
-      return {
-        rep: null,
-        error: NextResponse.json(
-          { error: "Your account is not active. Please contact support.", code: `rep_${rep.status}` },
-          { status: 403 }
-        ),
-      };
+      if (options?.allowPending && rep.status === "pending") {
+        // Allow pending reps through for onboarding flows
+      } else {
+        return {
+          rep: null,
+          error: NextResponse.json(
+            { error: "Your account is not active. Please contact support.", code: `rep_${rep.status}` },
+            { status: 403 }
+          ),
+        };
+      }
     }
 
     setSentryUserContext({ id: rep.auth_user_id, email: rep.email, role: "rep", orgId: rep.org_id });

@@ -17,6 +17,10 @@ import {
   MapPin,
   Plus,
   Loader2,
+  Clock,
+  Sparkles,
+  Target,
+  Shield,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +44,7 @@ interface DashboardData {
     total_revenue: number;
     level: number;
     onboarding_completed: boolean;
+    status?: string;
   };
   currency_name: string;
   level_name: string;
@@ -243,6 +248,7 @@ export default function RepDashboardPage() {
           displayName={rep.display_name || ""}
           photoUrl={rep.photo_url || ""}
           discountCode={data.discount_codes[0]?.code}
+          isPending={rep.status === "pending"}
           onDismiss={() => { setShowWelcome(false); setLoadKey((k) => k + 1); }}
         />
       )}
@@ -255,6 +261,14 @@ export default function RepDashboardPage() {
         />
       )}
 
+      {/* ── Pending Rep Dashboard ── */}
+      {rep.status === "pending" && !showWelcome && (
+        <PendingDashboard repName={rep.display_name || rep.first_name} photoUrl={rep.photo_url} />
+      )}
+
+      {/* ── Active Rep Dashboard ── */}
+      {rep.status !== "pending" && (
+        <>
       {/* ── Hero Player Card ── */}
       <div className="relative rep-slide-up rep-hero-banner">
         <div className="text-center py-2">
@@ -569,6 +583,138 @@ export default function RepDashboardPage() {
         </div>
       )}
 
+      </>
+      )}
+
+    </div>
+  );
+}
+
+// ─── Pending Rep Dashboard ───────────────────────────────────────────────────
+
+function PendingDashboard({ repName, photoUrl }: { repName: string; photoUrl?: string }) {
+  const previewFeatures = [
+    {
+      icon: Flame,
+      color: "#F97316",
+      bg: "bg-orange-500/10",
+      title: "Your Discount Code",
+      desc: "Get your unique code to share with friends",
+    },
+    {
+      icon: Compass,
+      color: "#8B5CF6",
+      bg: "bg-primary/10",
+      title: "Bonus Quests",
+      desc: "Complete tasks for bonus XP and rewards",
+    },
+    {
+      icon: Trophy,
+      color: "#F59E0B",
+      bg: "bg-amber-500/10",
+      title: "Leaderboard",
+      desc: "Compete for the top spot and win prizes",
+    },
+    {
+      icon: Gift,
+      color: "#34D399",
+      bg: "bg-success/10",
+      title: "Reward Shop",
+      desc: "Spend earnings on tickets, merch, and more",
+    },
+  ];
+
+  return (
+    <div className="space-y-6 rep-slide-up">
+      {/* Welcome header */}
+      <div className="text-center py-4">
+        <div className="inline-flex h-20 w-20 items-center justify-center rounded-full overflow-hidden mx-auto mb-4 ring-2 ring-warning/30">
+          {photoUrl ? (
+            <img src={photoUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center bg-warning/10">
+              <span className="text-3xl font-bold text-warning">
+                {repName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+        </div>
+        <h1 className="text-xl font-bold text-foreground mb-1">
+          Welcome, {repName}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Your profile is all set — you&apos;re almost in
+        </p>
+      </div>
+
+      {/* Status card */}
+      <div className="rounded-2xl border border-warning/15 bg-warning/[0.04] p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning/10">
+            <Clock size={20} className="text-warning" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-foreground mb-1">Application Under Review</h2>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Your application is being reviewed by the team. This usually takes less than 24 hours.
+              You&apos;ll receive a notification as soon as you&apos;re approved.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* What's coming — preview cards */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 px-1">
+          <Sparkles size={14} className="text-primary" />
+          <h2 className="text-xs font-bold uppercase tracking-[2px] text-muted-foreground">
+            What&apos;s Waiting for You
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {previewFeatures.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <Card key={feature.title} className="py-0 gap-0 opacity-80">
+                <CardContent className="p-4">
+                  <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl mb-3", feature.bg)}>
+                    <Icon size={18} style={{ color: feature.color }} />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground mb-0.5">{feature.title}</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{feature.desc}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tips */}
+      <div className="rounded-2xl border border-border/50 bg-card/50 p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <Shield size={14} className="text-primary" />
+          <h3 className="text-xs font-bold uppercase tracking-[2px] text-muted-foreground">While You Wait</h3>
+        </div>
+        <div className="space-y-2.5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5">
+              <Target size={10} className="text-primary" />
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              <span className="text-foreground font-medium">Complete your profile</span> — add your socials and bio in the profile tab
+            </p>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5">
+              <TrendingUp size={10} className="text-primary" />
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              <span className="text-foreground font-medium">Install the app</span> — add it to your home screen for the best experience
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

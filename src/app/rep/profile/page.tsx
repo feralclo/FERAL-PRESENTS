@@ -196,13 +196,13 @@ export default function RepProfilePage() {
         }),
       });
       if (res.status === 409) {
-        setError("That gamertag is already taken — try another one");
+        setError("That rep name is already taken — try another one");
         setSaving(false);
         return;
       }
       if (res.status === 429) {
         const json = await res.json().catch(() => null);
-        setError(json?.error || "You can only change your gamertag once every 30 days");
+        setError(json?.error || "You can only change your rep name once every 30 days");
         setSaving(false);
         return;
       }
@@ -462,10 +462,10 @@ export default function RepProfilePage() {
             <h2 className="text-sm font-semibold text-foreground">Edit Profile</h2>
           </div>
 
-          {/* Gamertag */}
+          {/* Rep Name */}
           <div className="space-y-2">
             <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Flame size={10} className="text-primary" /> Gamertag
+              <Flame size={10} className="text-primary" /> Rep Name
             </Label>
             {(() => {
               const lastChanged = profile?.display_name_changed_at ? new Date(profile.display_name_changed_at).getTime() : 0;
@@ -478,13 +478,13 @@ export default function RepProfilePage() {
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
                     maxLength={20}
-                    placeholder="YourGamertag"
+                    placeholder="YourRepName"
                     className="font-mono tracking-wide"
                     disabled={!!onCooldown}
                   />
                   {onCooldown ? (
                     <p className="text-[10px] text-amber-400/80 flex items-center gap-1">
-                      <Lock size={9} /> You can change your gamertag in {daysLeft} day{daysLeft === 1 ? "" : "s"}
+                      <Lock size={9} /> You can change your rep name in {daysLeft} day{daysLeft === 1 ? "" : "s"}
                     </p>
                   ) : (
                     <p className="text-[10px] text-muted-foreground/60">

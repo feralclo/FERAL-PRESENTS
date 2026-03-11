@@ -12,7 +12,7 @@ import * as Sentry from "@sentry/nextjs";
  */
 export async function GET() {
   try {
-    const auth = await requireRepAuth();
+    const auth = await requireRepAuth({ allowPending: true });
     if (auth.error) return auth.error;
     const orgId = auth.rep.org_id;
 
@@ -56,7 +56,7 @@ export async function GET() {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const auth = await requireRepAuth();
+    const auth = await requireRepAuth({ allowPending: true });
     if (auth.error) return auth.error;
     const orgId = auth.rep.org_id;
 
@@ -86,10 +86,10 @@ export async function PUT(request: NextRequest) {
     if (display_name !== undefined && display_name !== null && display_name !== "") {
       const trimmed = typeof display_name === "string" ? display_name.trim() : "";
       if (trimmed.length < 2 || trimmed.length > 20) {
-        return NextResponse.json({ error: "Gamertag must be 2–20 characters" }, { status: 400 });
+        return NextResponse.json({ error: "Rep name must be 2–20 characters" }, { status: 400 });
       }
       if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
-        return NextResponse.json({ error: "Gamertag can only contain letters, numbers, and underscores" }, { status: 400 });
+        return NextResponse.json({ error: "Rep name can only contain letters, numbers, and underscores" }, { status: 400 });
       }
 
       // Check if gamertag is actually changing
@@ -109,7 +109,7 @@ export async function PUT(request: NextRequest) {
           if (daysSince < 30) {
             const daysLeft = Math.ceil(30 - daysSince);
             return NextResponse.json(
-              { error: `You can change your gamertag in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`, code: "cooldown", days_left: daysLeft },
+              { error: `You can change your rep name in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`, code: "cooldown", days_left: daysLeft },
               { status: 429 }
             );
           }
@@ -125,12 +125,12 @@ export async function PUT(request: NextRequest) {
           .maybeSingle();
 
         if (existing) {
-          return NextResponse.json({ error: "That gamertag is already taken" }, { status: 409 });
+          return NextResponse.json({ error: "That rep name is already taken" }, { status: 409 });
         }
       }
     }
     if (display_name !== undefined && typeof display_name === "string" && display_name.length > 20) {
-      return NextResponse.json({ error: "Gamertag must be 20 characters or less" }, { status: 400 });
+      return NextResponse.json({ error: "Rep name must be 20 characters or less" }, { status: 400 });
     }
     if (bio !== undefined && typeof bio === "string" && bio.length > 500) {
       return NextResponse.json({ error: "Bio must be 500 characters or less" }, { status: 400 });

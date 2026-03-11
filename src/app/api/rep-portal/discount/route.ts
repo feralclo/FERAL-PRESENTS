@@ -13,7 +13,7 @@ import * as Sentry from "@sentry/nextjs";
  */
 export async function GET() {
   try {
-    const auth = await requireRepAuth();
+    const auth = await requireRepAuth({ allowPending: true });
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;

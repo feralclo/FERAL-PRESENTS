@@ -41,6 +41,7 @@ interface WelcomeOverlayProps {
   displayName: string;
   photoUrl: string;
   discountCode?: string;
+  isPending?: boolean;
   onDismiss: () => void;
 }
 
@@ -102,6 +103,7 @@ export function WelcomeOverlay({
   displayName: initialDisplayName,
   photoUrl: initialPhotoUrl,
   discountCode,
+  isPending,
   onDismiss,
 }: WelcomeOverlayProps) {
   const [step, setStep] = useState(0);
@@ -231,10 +233,10 @@ export function WelcomeOverlay({
           </div>
 
           <h2 className="text-2xl font-bold text-foreground mb-1">
-            Pick your tag
+            Choose your rep name
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
-            This is your name on the leaderboard
+            This is how you&apos;ll appear on the leaderboard
           </p>
 
           <div className="w-full max-w-[280px] mx-auto mb-4">
@@ -375,7 +377,9 @@ export function WelcomeOverlay({
         {current.isFinal && (
           <div className="mt-6 mb-4">
             <p className="text-sm text-muted-foreground/70 mb-6">
-              Your dashboard is loaded. Start sharing your code and earning points.
+              {isPending
+                ? "Your application is being reviewed. We\u2019ll notify you as soon as you\u2019re approved!"
+                : "Your dashboard is loaded. Start sharing your code and earning points."}
             </p>
           </div>
         )}

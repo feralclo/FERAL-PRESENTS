@@ -8,7 +8,7 @@ import * as Sentry from "@sentry/nextjs";
  * Save a push subscription for the authenticated rep.
  */
 export async function POST(req: NextRequest) {
-  const auth = await requireRepAuth();
+  const auth = await requireRepAuth({ allowPending: true });
   if (auth.error) return auth.error;
 
   try {
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
  * Remove a push subscription for the authenticated rep.
  */
 export async function DELETE(req: NextRequest) {
-  const auth = await requireRepAuth();
+  const auth = await requireRepAuth({ allowPending: true });
   if (auth.error) return auth.error;
 
   try {

@@ -424,7 +424,8 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               <p className="text-[11px] text-muted-foreground mt-0.5">Your application is under review. You can explore in the meantime.</p>
             </div>
           </div>
-          {pushPermission !== "granted" && (
+          {/* Only show push notification prompt inside the installed PWA (not in Safari/browser) */}
+          {isStandalone && pushSupported && pushPermission !== "granted" && (
             <button
               type="button"
               onClick={requestPush}

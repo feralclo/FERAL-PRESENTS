@@ -15,11 +15,12 @@ import * as Sentry from "@sentry/nextjs";
  */
 export async function GET() {
   try {
-    const auth = await requireRepAuth();
+    const auth = await requireRepAuth({ allowPending: true });
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
     const orgId = auth.rep.org_id;
+    const isPending = auth.rep.status === "pending";
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -175,6 +176,7 @@ export async function GET() {
           total_revenue: rep.total_revenue,
           level: rep.level,
           onboarding_completed: rep.onboarding_completed ?? false,
+          status: isPending ? "pending" : "active",
         },
         currency_name: settings.currency_name || "FRL",
         level_name: levelName,

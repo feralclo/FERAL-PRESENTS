@@ -30,6 +30,11 @@ import {
   Trash2,
   Pencil,
   Save,
+  Megaphone,
+  UserCog,
+  Scroll,
+  Coins,
+  Settings,
 } from "lucide-react";
 import type { OrgUser } from "@/types/team";
 
@@ -49,7 +54,7 @@ const PERMISSION_CONFIG = [
   {
     key: "perm_marketing" as const,
     label: "Marketing",
-    description: "Analytics, reps, communications, discounts",
+    description: "Analytics, communications, discounts",
     icon: BarChart3,
   },
   {
@@ -57,6 +62,38 @@ const PERMISSION_CONFIG = [
     label: "Finance",
     description: "Payment settings, tax, org settings, branding",
     icon: Wallet,
+  },
+  {
+    key: "perm_reps" as const,
+    label: "Reps",
+    description: "Access to rep program management",
+    icon: Megaphone,
+    subPermissions: [
+      {
+        key: "perm_reps_manage" as const,
+        label: "Manage Reps",
+        description: "Approve, reject, edit, assign and suspend reps",
+        icon: UserCog,
+      },
+      {
+        key: "perm_reps_content" as const,
+        label: "Quests & Rewards",
+        description: "Create and edit quests, rewards and milestones",
+        icon: Scroll,
+      },
+      {
+        key: "perm_reps_award" as const,
+        label: "Award Currency",
+        description: "Manually award or deduct XP and FRL currency",
+        icon: Coins,
+      },
+      {
+        key: "perm_reps_settings" as const,
+        label: "Rep Settings",
+        description: "Configure rep program settings and tiers",
+        icon: Settings,
+      },
+    ],
   },
 ];
 
@@ -75,6 +112,11 @@ export default function UsersPage() {
     perm_orders: false,
     perm_marketing: false,
     perm_finance: false,
+    perm_reps: false,
+    perm_reps_manage: false,
+    perm_reps_content: false,
+    perm_reps_award: false,
+    perm_reps_settings: false,
   });
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
@@ -87,6 +129,11 @@ export default function UsersPage() {
     perm_orders: false,
     perm_marketing: false,
     perm_finance: false,
+    perm_reps: false,
+    perm_reps_manage: false,
+    perm_reps_content: false,
+    perm_reps_award: false,
+    perm_reps_settings: false,
   });
   const [editSaving, setEditSaving] = useState(false);
 
@@ -150,6 +197,11 @@ export default function UsersPage() {
         perm_orders: false,
         perm_marketing: false,
         perm_finance: false,
+        perm_reps: false,
+        perm_reps_manage: false,
+        perm_reps_content: false,
+        perm_reps_award: false,
+        perm_reps_settings: false,
       });
       fetchMembers();
     } catch {
@@ -166,6 +218,11 @@ export default function UsersPage() {
       perm_orders: member.perm_orders,
       perm_marketing: member.perm_marketing,
       perm_finance: member.perm_finance,
+      perm_reps: member.perm_reps,
+      perm_reps_manage: member.perm_reps_manage,
+      perm_reps_content: member.perm_reps_content,
+      perm_reps_award: member.perm_reps_award,
+      perm_reps_settings: member.perm_reps_settings,
     });
     setEditOpen(true);
     setActionsOpen(null);
@@ -323,11 +380,23 @@ export default function UsersPage() {
                       Full Access
                     </span>
                   ) : (
-                    PERMISSION_CONFIG.filter((p) => member[p.key]).map((p) => (
-                      <Badge key={p.key} variant="outline" className="text-[10px] text-muted-foreground">
-                        {p.label}
-                      </Badge>
-                    ))
+                    PERMISSION_CONFIG.filter((p) => member[p.key]).map((p) => {
+                      if (p.key === "perm_reps" && "subPermissions" in p) {
+                        const subLabels = p.subPermissions!
+                          .filter((sp) => member[sp.key as keyof OrgUser])
+                          .map((sp) => sp.label);
+                        return (
+                          <Badge key={p.key} variant="outline" className="text-[10px] text-muted-foreground">
+                            Reps{subLabels.length > 0 && subLabels.length < p.subPermissions!.length ? ` (${subLabels.join(", ")})` : ""}
+                          </Badge>
+                        );
+                      }
+                      return (
+                        <Badge key={p.key} variant="outline" className="text-[10px] text-muted-foreground">
+                          {p.label}
+                        </Badge>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -444,21 +513,70 @@ export default function UsersPage() {
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Permissions</Label>
               {PERMISSION_CONFIG.map((perm) => {
                 const Icon = perm.icon;
+                const hasSubPerms = "subPermissions" in perm && perm.subPermissions;
                 return (
-                  <div key={perm.key} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Icon size={14} className="text-muted-foreground" />
-                      <div>
-                        <span className="text-sm text-foreground">{perm.label}</span>
-                        <p className="text-[11px] text-muted-foreground">{perm.description}</p>
+                  <div key={perm.key}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Icon size={14} className="text-muted-foreground" />
+                        <div>
+                          <span className="text-sm text-foreground">{perm.label}</span>
+                          <p className="text-[11px] text-muted-foreground">{perm.description}</p>
+                        </div>
                       </div>
+                      <Switch
+                        checked={inviteForm[perm.key]}
+                        onCheckedChange={(checked) => {
+                          if (hasSubPerms && !checked) {
+                            // Turning off parent clears all sub-perms
+                            setInviteForm((f) => ({
+                              ...f,
+                              [perm.key]: false,
+                              perm_reps_manage: false,
+                              perm_reps_content: false,
+                              perm_reps_award: false,
+                              perm_reps_settings: false,
+                            }));
+                          } else if (hasSubPerms && checked) {
+                            // Turning on parent enables all sub-perms by default
+                            setInviteForm((f) => ({
+                              ...f,
+                              [perm.key]: true,
+                              perm_reps_manage: true,
+                              perm_reps_content: true,
+                              perm_reps_award: true,
+                              perm_reps_settings: true,
+                            }));
+                          } else {
+                            setInviteForm((f) => ({ ...f, [perm.key]: checked }));
+                          }
+                        }}
+                      />
                     </div>
-                    <Switch
-                      checked={inviteForm[perm.key]}
-                      onCheckedChange={(checked) =>
-                        setInviteForm((f) => ({ ...f, [perm.key]: checked }))
-                      }
-                    />
+                    {hasSubPerms && inviteForm.perm_reps && (
+                      <div className="ml-6 mt-2 space-y-2 border-l border-border pl-4">
+                        {perm.subPermissions!.map((sub) => {
+                          const SubIcon = sub.icon;
+                          return (
+                            <div key={sub.key} className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <SubIcon size={12} className="text-muted-foreground/60" />
+                                <div>
+                                  <span className="text-xs text-foreground">{sub.label}</span>
+                                  <p className="text-[10px] text-muted-foreground">{sub.description}</p>
+                                </div>
+                              </div>
+                              <Switch
+                                checked={inviteForm[sub.key as keyof typeof inviteForm] as boolean}
+                                onCheckedChange={(checked) =>
+                                  setInviteForm((f) => ({ ...f, [sub.key]: checked }))
+                                }
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -498,21 +616,68 @@ export default function UsersPage() {
           <div className="space-y-3 py-2">
             {PERMISSION_CONFIG.map((perm) => {
               const Icon = perm.icon;
+              const hasSubPerms = "subPermissions" in perm && perm.subPermissions;
               return (
-                <div key={perm.key} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icon size={14} className="text-muted-foreground" />
-                    <div>
-                      <span className="text-sm text-foreground">{perm.label}</span>
-                      <p className="text-[11px] text-muted-foreground">{perm.description}</p>
+                <div key={perm.key}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon size={14} className="text-muted-foreground" />
+                      <div>
+                        <span className="text-sm text-foreground">{perm.label}</span>
+                        <p className="text-[11px] text-muted-foreground">{perm.description}</p>
+                      </div>
                     </div>
+                    <Switch
+                      checked={editPerms[perm.key]}
+                      onCheckedChange={(checked) => {
+                        if (hasSubPerms && !checked) {
+                          setEditPerms((p) => ({
+                            ...p,
+                            [perm.key]: false,
+                            perm_reps_manage: false,
+                            perm_reps_content: false,
+                            perm_reps_award: false,
+                            perm_reps_settings: false,
+                          }));
+                        } else if (hasSubPerms && checked) {
+                          setEditPerms((p) => ({
+                            ...p,
+                            [perm.key]: true,
+                            perm_reps_manage: true,
+                            perm_reps_content: true,
+                            perm_reps_award: true,
+                            perm_reps_settings: true,
+                          }));
+                        } else {
+                          setEditPerms((p) => ({ ...p, [perm.key]: checked }));
+                        }
+                      }}
+                    />
                   </div>
-                  <Switch
-                    checked={editPerms[perm.key]}
-                    onCheckedChange={(checked) =>
-                      setEditPerms((p) => ({ ...p, [perm.key]: checked }))
-                    }
-                  />
+                  {hasSubPerms && editPerms.perm_reps && (
+                    <div className="ml-6 mt-2 space-y-2 border-l border-border pl-4">
+                      {perm.subPermissions!.map((sub) => {
+                        const SubIcon = sub.icon;
+                        return (
+                          <div key={sub.key} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <SubIcon size={12} className="text-muted-foreground/60" />
+                              <div>
+                                <span className="text-xs text-foreground">{sub.label}</span>
+                                <p className="text-[10px] text-muted-foreground">{sub.description}</p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={editPerms[sub.key as keyof typeof editPerms] as boolean}
+                              onCheckedChange={(checked) =>
+                                setEditPerms((p) => ({ ...p, [sub.key]: checked }))
+                              }
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}

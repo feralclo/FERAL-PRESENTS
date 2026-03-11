@@ -23,7 +23,7 @@ export async function GET() {
   const { data: orgUser } = await db
     .from(TABLES.ORG_USERS)
     .select(
-      "first_name, last_name, role, perm_events, perm_orders, perm_marketing, perm_finance, created_at"
+      "first_name, last_name, role, perm_events, perm_orders, perm_marketing, perm_finance, perm_reps, perm_reps_manage, perm_reps_content, perm_reps_award, perm_reps_settings, created_at"
     )
     .eq("auth_user_id", auth.user.id)
     .eq("org_id", auth.orgId)
@@ -50,6 +50,11 @@ export async function GET() {
     perm_orders: orgUser?.perm_orders ?? true,
     perm_marketing: orgUser?.perm_marketing ?? false,
     perm_finance: orgUser?.perm_finance ?? false,
+    perm_reps: orgUser?.perm_reps ?? false,
+    perm_reps_manage: orgUser?.perm_reps_manage ?? false,
+    perm_reps_content: orgUser?.perm_reps_content ?? false,
+    perm_reps_award: orgUser?.perm_reps_award ?? false,
+    perm_reps_settings: orgUser?.perm_reps_settings ?? false,
     created_at: orgUser?.created_at || null,
     has_google: hasGoogle,
     has_password: hasPassword,

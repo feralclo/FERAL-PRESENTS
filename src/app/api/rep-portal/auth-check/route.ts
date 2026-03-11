@@ -79,11 +79,11 @@ export async function GET() {
       );
     }
 
-    // For active reps, include stats for the HUD top bar (no extra API call needed)
+    // Lightweight stats — only fetch what's already in the rep row (no extra queries)
+    // Full stats (rank, quest count) are fetched by the dashboard endpoint instead
     let stats: { xp: number; level: number; rank: number | null; active_quests: number; currency_balance: number; currency_name: string } | undefined;
     if (rep.status === "active") {
       try {
-        // Fetch full rep record for points/level/currency + settings for currency name
         const [{ data: fullRep }, settings] = await Promise.all([
           adminDb
             .from(TABLES.REPS)
@@ -93,28 +93,11 @@ export async function GET() {
           getRepSettings(orgId),
         ]);
 
-        // Get rank (position among active reps by total_sales desc)
-        const { data: rankData } = await adminDb
-          .from(TABLES.REPS)
-          .select("id")
-          .eq("org_id", orgId)
-          .eq("status", "active")
-          .order("total_sales", { ascending: false });
-
-        const rankIndex = rankData?.findIndex((r: { id: string }) => r.id === rep.id) ?? -1;
-
-        // Count active quests assigned to this rep
-        const { count: questCount } = await adminDb
-          .from(TABLES.REP_QUESTS)
-          .select("id", { count: "exact", head: true })
-          .eq("org_id", orgId)
-          .eq("status", "active");
-
         stats = {
           xp: fullRep?.points_balance || 0,
           level: fullRep?.level || 1,
-          rank: rankIndex >= 0 ? rankIndex + 1 : null,
-          active_quests: questCount || 0,
+          rank: null, // Rank computed by dashboard — too expensive for auth check
+          active_quests: 0, // Quest count loaded by dashboard
           currency_balance: fullRep?.currency_balance || 0,
           currency_name: settings.currency_name || "FRL",
         };

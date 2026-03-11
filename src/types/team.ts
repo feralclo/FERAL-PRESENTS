@@ -10,6 +10,11 @@ export interface OrgUser {
   perm_orders: boolean;
   perm_marketing: boolean;
   perm_finance: boolean;
+  perm_reps: boolean;
+  perm_reps_manage: boolean;
+  perm_reps_content: boolean;
+  perm_reps_award: boolean;
+  perm_reps_settings: boolean;
   status: "invited" | "active" | "suspended";
   invite_token: string | null;
   invite_expires_at: string | null;
@@ -23,4 +28,9 @@ export interface OrgUserPermissions {
   perm_orders: boolean;
   perm_marketing: boolean;
   perm_finance: boolean;
+  perm_reps: boolean;
+  perm_reps_manage: boolean;
+  perm_reps_content: boolean;
+  perm_reps_award: boolean;
+  perm_reps_settings: boolean;
 }

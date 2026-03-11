@@ -47,7 +47,7 @@ export async function GET() {
 
   const { data: members, error } = await supabase
     .from(TABLES.ORG_USERS)
-    .select("id, org_id, auth_user_id, email, first_name, last_name, role, perm_events, perm_orders, perm_marketing, perm_finance, status, invite_expires_at, invited_by, created_at, updated_at")
+    .select("id, org_id, auth_user_id, email, first_name, last_name, role, perm_events, perm_orders, perm_marketing, perm_finance, perm_reps, perm_reps_manage, perm_reps_content, perm_reps_award, perm_reps_settings, status, invite_expires_at, invited_by, created_at, updated_at")
     .eq("org_id", orgId)
     .order("created_at", { ascending: true });
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
   if (ownerCheck.error) return ownerCheck.error;
 
   const body = await request.json();
-  const { email, first_name, last_name, perm_events, perm_orders, perm_marketing, perm_finance } = body;
+  const { email, first_name, last_name, perm_events, perm_orders, perm_marketing, perm_finance, perm_reps, perm_reps_manage, perm_reps_content, perm_reps_award, perm_reps_settings } = body;
 
   if (!email || typeof email !== "string") {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -123,10 +123,15 @@ export async function POST(request: NextRequest) {
       perm_orders: !!perm_orders,
       perm_marketing: !!perm_marketing,
       perm_finance: !!perm_finance,
+      perm_reps: !!perm_reps,
+      perm_reps_manage: !!perm_reps_manage,
+      perm_reps_content: !!perm_reps_content,
+      perm_reps_award: !!perm_reps_award,
+      perm_reps_settings: !!perm_reps_settings,
       status: "invited",
       invited_by: auth.user.id,
     })
-    .select("id, org_id, email, first_name, last_name, role, perm_events, perm_orders, perm_marketing, perm_finance, status, invite_expires_at, created_at, updated_at")
+    .select("id, org_id, email, first_name, last_name, role, perm_events, perm_orders, perm_marketing, perm_finance, perm_reps, perm_reps_manage, perm_reps_content, perm_reps_award, perm_reps_settings, status, invite_expires_at, created_at, updated_at")
     .single();
 
   if (error) {

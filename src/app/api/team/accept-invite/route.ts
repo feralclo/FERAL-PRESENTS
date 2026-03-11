@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const [memberResult, brandingResult, generalResult] = await Promise.all([
       supabase
         .from(TABLES.ORG_USERS)
-        .select("id, email, first_name, last_name, status, auth_user_id, invite_expires_at, perm_events, perm_orders, perm_marketing, perm_finance")
+        .select("id, email, first_name, last_name, status, auth_user_id, invite_expires_at, perm_events, perm_orders, perm_marketing, perm_finance, perm_reps, perm_reps_manage, perm_reps_content, perm_reps_award, perm_reps_settings")
         .eq("invite_token", token)
         .eq("org_id", orgId)
         .single(),
@@ -85,6 +85,11 @@ export async function GET(request: NextRequest) {
         perm_orders: member.perm_orders,
         perm_marketing: member.perm_marketing,
         perm_finance: member.perm_finance,
+        perm_reps: member.perm_reps,
+        perm_reps_manage: member.perm_reps_manage,
+        perm_reps_content: member.perm_reps_content,
+        perm_reps_award: member.perm_reps_award,
+        perm_reps_settings: member.perm_reps_settings,
       },
       org: {
         name: orgName,

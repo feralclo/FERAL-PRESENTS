@@ -75,6 +75,20 @@ export async function PUT(
   if (typeof body.perm_orders === "boolean") update.perm_orders = body.perm_orders;
   if (typeof body.perm_marketing === "boolean") update.perm_marketing = body.perm_marketing;
   if (typeof body.perm_finance === "boolean") update.perm_finance = body.perm_finance;
+  if (typeof body.perm_reps === "boolean") {
+    update.perm_reps = body.perm_reps;
+    // When disabling top-level reps access, clear all sub-permissions
+    if (!body.perm_reps) {
+      update.perm_reps_manage = false;
+      update.perm_reps_content = false;
+      update.perm_reps_award = false;
+      update.perm_reps_settings = false;
+    }
+  }
+  if (typeof body.perm_reps_manage === "boolean") update.perm_reps_manage = body.perm_reps_manage;
+  if (typeof body.perm_reps_content === "boolean") update.perm_reps_content = body.perm_reps_content;
+  if (typeof body.perm_reps_award === "boolean") update.perm_reps_award = body.perm_reps_award;
+  if (typeof body.perm_reps_settings === "boolean") update.perm_reps_settings = body.perm_reps_settings;
   if (body.status === "active" || body.status === "suspended") update.status = body.status;
   if (typeof body.first_name === "string" && body.first_name.trim()) update.first_name = body.first_name.trim();
   if (typeof body.last_name === "string") update.last_name = body.last_name.trim();
@@ -84,7 +98,7 @@ export async function PUT(
     .update(update)
     .eq("id", id)
     .eq("org_id", orgId)
-    .select("id, org_id, email, first_name, last_name, role, perm_events, perm_orders, perm_marketing, perm_finance, status, created_at, updated_at")
+    .select("id, org_id, email, first_name, last_name, role, perm_events, perm_orders, perm_marketing, perm_finance, perm_reps, perm_reps_manage, perm_reps_content, perm_reps_award, perm_reps_settings, status, created_at, updated_at")
     .single();
 
   if (error) {

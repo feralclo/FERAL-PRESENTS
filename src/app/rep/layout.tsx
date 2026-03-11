@@ -13,13 +13,14 @@ import {
   User,
   TrendingUp,
   Mail,
-  Clock,
   Loader2,
   Bell,
   Star,
   ArrowUp,
   CheckCircle2,
   X,
+  Download,
+  Share,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTierFromLevel } from "@/lib/rep-tiers";
@@ -407,30 +408,20 @@ export default function RepLayout({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {/* Pending acceptance banner */}
-      {isPending && showNav && (
-        <div className="mx-4 mt-2 space-y-2">
-          <div className="rounded-xl bg-warning/8 border border-warning/15 px-4 py-3 flex items-center gap-3">
-            <Clock size={16} className="text-warning shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-warning">Pending Acceptance</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Your application is under review. You can explore in the meantime.</p>
+      {/* Pending rep: push notification prompt (only in installed PWA) */}
+      {isPending && showNav && isStandalone && pushSupported && pushPermission !== "granted" && (
+        <div className="mx-4 mt-2">
+          <button
+            type="button"
+            onClick={requestPush}
+            className="w-full rounded-xl bg-primary/8 border border-primary/15 px-4 py-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+          >
+            <Bell size={16} className="text-primary shrink-0" />
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-xs font-semibold text-primary">Enable Notifications</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Get notified instantly when you&apos;re accepted</p>
             </div>
-          </div>
-          {/* Only show push notification prompt inside the installed PWA (not in Safari/browser) */}
-          {isStandalone && pushSupported && pushPermission !== "granted" && (
-            <button
-              type="button"
-              onClick={requestPush}
-              className="w-full rounded-xl bg-primary/8 border border-primary/15 px-4 py-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
-            >
-              <Bell size={16} className="text-primary shrink-0" />
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-xs font-semibold text-primary">Enable Notifications</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Get notified instantly when you&apos;re accepted</p>
-              </div>
-            </button>
-          )}
+          </button>
         </div>
       )}
 
@@ -470,8 +461,14 @@ export default function RepLayout({ children }: { children: ReactNode }) {
         />
       )}
 
-      {/* Mobile bottom nav — HUD Command Bar */}
-      {showNav && (
+      {/* Mobile bottom bar — "Download App" for pending, full HUD nav for active */}
+      {showNav && isPending && !isStandalone && (
+        <PendingInstallBar
+          platform={platform}
+          onInstall={() => setShowInstallModal(true)}
+        />
+      )}
+      {showNav && !isPending && (
         <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4 pointer-events-none">
           <nav className="flex items-end justify-around rounded-[20px] border border-white/[0.06] bg-[rgba(12,12,18,0.94)] backdrop-blur-[24px] saturate-[1.4] shadow-[0_-4px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04),0_-1px_0_rgba(139,92,246,0.08)] px-2 pb-1.5 pt-2.5 relative pointer-events-auto">
             {/* Left items */}
@@ -576,6 +573,36 @@ export default function RepLayout({ children }: { children: ReactNode }) {
           </nav>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Pending Install Bar (replaces bottom nav for pending reps) ──────────────
+
+function PendingInstallBar({
+  platform,
+  onInstall,
+}: {
+  platform: "ios" | "android" | "desktop" | "unknown";
+  onInstall: () => void;
+}) {
+  const isIOS = platform === "ios";
+
+  return (
+    <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4">
+      <button
+        type="button"
+        onClick={onInstall}
+        className="w-full flex items-center justify-center gap-3 rounded-[20px] border border-primary/20 bg-[rgba(12,12,18,0.94)] backdrop-blur-[24px] saturate-[1.4] shadow-[0_-4px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04),0_-1px_0_rgba(139,92,246,0.08)] px-6 py-4 active:scale-[0.98] transition-transform"
+      >
+        <Download size={18} className="text-primary" />
+        <span className="text-sm font-semibold text-foreground">Download App</span>
+        {isIOS && (
+          <span className="text-[10px] text-muted-foreground ml-1">
+            via <Share size={10} className="inline text-primary" /> Share
+          </span>
+        )}
+      </button>
     </div>
   );
 }

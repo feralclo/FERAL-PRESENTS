@@ -192,15 +192,28 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Sync discount code when display_name changes
+    // Sync discount code when display_name changes (await so dashboard reload sees the new code)
     if (display_name !== undefined && rep?.display_name) {
-      syncRepDiscountCode({
-        repId: auth.rep.id,
-        orgId,
-        newDisplayName: rep.display_name,
-      }).catch((err) => {
+      try {
+        const syncResult = await syncRepDiscountCode({
+          repId: auth.rep.id,
+          orgId,
+          newDisplayName: rep.display_name,
+        });
+
+        // If no discount existed to sync, create one with the new name
+        if (!syncResult) {
+          const { getOrCreateRepDiscount } = await import("@/lib/discount-codes");
+          await getOrCreateRepDiscount({
+            repId: auth.rep.id,
+            orgId,
+            firstName: rep.first_name || "Rep",
+            displayName: rep.display_name,
+          });
+        }
+      } catch (err) {
         console.error("[rep-portal/me] Discount sync error:", err);
-      });
+      }
     }
 
     return NextResponse.json({ data: rep });

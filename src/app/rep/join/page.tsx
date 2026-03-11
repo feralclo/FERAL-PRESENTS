@@ -43,6 +43,19 @@ export default function RepJoinPage() {
   /* ── Google OAuth ── */
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  /* ── Branding ── */
+  const [branding, setBranding] = useState<{ org_name?: string; logo_url?: string } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/branding");
+        const json = await res.json();
+        if (json.data) setBranding(json.data);
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
   /* ── Form values ── */
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -216,8 +229,11 @@ export default function RepJoinPage() {
       <div className="flex min-h-screen flex-col items-center justify-center px-6">
         <div className="text-center max-w-sm rep-fade-in">
           <div className="mb-8">
+            {branding?.logo_url ? (
+              <img src={branding.logo_url} alt="" className="h-12 w-auto mx-auto mb-3" />
+            ) : null}
             <span className="font-mono text-xs font-bold uppercase tracking-[4px] text-primary">
-              Entry Reps
+              {branding?.org_name || "Entry"} Reps
             </span>
           </div>
 

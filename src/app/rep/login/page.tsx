@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { CheckCircle2, LogIn, Loader2, Zap } from "lucide-react";
+import { CheckCircle2, LogIn, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,17 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [branding, setBranding] = useState<{ org_name?: string; logo_url?: string } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/branding");
+        const json = await res.json();
+        if (json.data) setBranding(json.data);
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -143,14 +154,20 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-8 rep-fade-in">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shadow-[0_0_12px_rgba(139,92,246,0.08)] mb-4">
-            <Zap size={20} className="text-primary" />
-          </div>
-          <h1 className="font-mono text-xl font-bold uppercase tracking-[4px] text-primary">
-            Entry Reps
-          </h1>
+          {branding?.logo_url ? (
+            <img src={branding.logo_url} alt="" className="h-12 w-auto mx-auto mb-4" />
+          ) : (
+            <h1 className="font-mono text-xl font-bold uppercase tracking-[4px] text-primary mb-1">
+              {branding?.org_name || "Entry"} Reps
+            </h1>
+          )}
+          {branding?.logo_url && (
+            <h1 className="font-mono text-sm font-bold uppercase tracking-[4px] text-primary mb-1">
+              {branding?.org_name || "Entry"} Reps
+            </h1>
+          )}
           <p className="text-sm text-muted-foreground mt-1">
-            Sign in to your dashboard
+            Sign in or apply to join
           </p>
         </div>
 
@@ -256,9 +273,9 @@ function LoginForm() {
         </Card>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Want to become a rep?{" "}
+          New here? Sign in with Google to apply, or{" "}
           <Link href="/rep/join" className="text-primary hover:underline font-medium">
-            Apply here
+            apply with email
           </Link>
         </p>
       </div>

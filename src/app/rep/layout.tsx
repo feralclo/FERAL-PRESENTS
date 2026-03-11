@@ -67,6 +67,7 @@ interface RepAuthState {
   status: "loading" | "unauthenticated" | "no_rep" | "email_unverified" | "pending" | "pending_review" | "blocked" | "active";
   email?: string;
   firstName?: string;
+  onboardingCompleted?: boolean;
 }
 
 interface RepStats {
@@ -143,6 +144,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             status: "pending",
             email: rep.email,
             firstName: rep.first_name,
+            onboardingCompleted: rep.onboarding_completed ?? false,
           });
           return;
         }
@@ -159,7 +161,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
           setRepStats(json.stats);
         }
 
-        setAuthState({ status: "active" });
+        setAuthState({ status: "active", onboardingCompleted: rep.onboarding_completed ?? true });
       } catch {
         if (!cancelled) {
           router.replace("/rep/login");
@@ -187,15 +189,17 @@ export default function RepLayout({ children }: { children: ReactNode }) {
     };
     window.addEventListener("rep_onboarding_complete", onOnboardingComplete);
 
-    // Fallback: show after 3rd visit for reps who already completed onboarding
-    try {
-      const visits = parseInt(localStorage.getItem("rep_visit_count") || "0", 10) + 1;
-      localStorage.setItem("rep_visit_count", String(visits));
-      if (visits >= 3) {
-        const timer = setTimeout(() => setShowInstallModal(true), 2000);
-        return () => { clearTimeout(timer); window.removeEventListener("rep_onboarding_complete", onOnboardingComplete); };
-      }
-    } catch { /* storage unavailable */ }
+    // Fallback: show after 3rd visit — but ONLY if onboarding is already completed
+    if (authState.onboardingCompleted) {
+      try {
+        const visits = parseInt(localStorage.getItem("rep_visit_count") || "0", 10) + 1;
+        localStorage.setItem("rep_visit_count", String(visits));
+        if (visits >= 3) {
+          const timer = setTimeout(() => setShowInstallModal(true), 2000);
+          return () => { clearTimeout(timer); window.removeEventListener("rep_onboarding_complete", onOnboardingComplete); };
+        }
+      } catch { /* storage unavailable */ }
+    }
 
     return () => window.removeEventListener("rep_onboarding_complete", onOnboardingComplete);
   // eslint-disable-next-line react-hooks/exhaustive-deps

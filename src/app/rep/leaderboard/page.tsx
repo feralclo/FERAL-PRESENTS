@@ -78,11 +78,6 @@ interface EventLeaderboardData {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const MEDAL_COLORS = ["#FBBF24", "#94A3B8", "#CD7F32"];
-const REWARD_PILL_STYLES = [
-  "rep-reward-pill-gold",
-  "rep-reward-pill-silver",
-  "rep-reward-pill-bronze",
-];
 const MEDAL_EMOJI = ["\uD83D\uDC51", "\uD83E\uDD48", "\uD83E\uDD49"];
 
 const POSITION_STORAGE_KEY = "rep_leaderboard_positions";
@@ -731,18 +726,13 @@ function EventCard({ event, currencyName, onClick, index }: { event: EventSummar
           </div>
         </div>
 
-        {/* Position rewards preview */}
+        {/* Prize indicator — subtle hint, details visible inside */}
         {event.position_rewards.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-white/[0.06]">
-            <Gift size={12} className="text-warning/70 mt-0.5" />
-            {event.position_rewards.map((pr, i) => (
-              <span
-                key={pr.position}
-                className={`rep-reward-pill ${REWARD_PILL_STYLES[i] || "rep-reward-pill-bronze"}`}
-              >
-                {ordinal(pr.position)}: {formatRewardPill(pr, currencyName)}
-              </span>
-            ))}
+          <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/[0.06]">
+            <Gift size={12} className="text-warning/70" />
+            <span className="text-[10px] font-semibold text-warning/70 uppercase tracking-wider">
+              {event.position_rewards.length} prize{event.position_rewards.length !== 1 ? "s" : ""} up for grabs
+            </span>
           </div>
         )}
       </div>
@@ -1233,10 +1223,3 @@ function ordinal(n: number): string {
   return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
 }
 
-function formatRewardPill(pr: PositionReward, currencyName: string): string {
-  const parts: string[] = [];
-  if (pr.xp_reward) parts.push(`+${pr.xp_reward} XP`);
-  if (pr.currency_reward) parts.push(`+${pr.currency_reward} ${currencyName}`);
-  if (pr.reward_name) parts.push(pr.reward_name);
-  return parts.length > 0 ? parts.join(" ") : "\u2014";
-}

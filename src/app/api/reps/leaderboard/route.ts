@@ -29,20 +29,26 @@ export async function GET(request: NextRequest) {
       const { data, error } = await supabase
         .from(TABLES.REP_EVENTS)
         .select(
-          "rep_id, sales_count, revenue, rep:reps(id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level, points_balance)"
+          "rep_id, sales_count, revenue, rep:reps(id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level, points_balance, status)"
         )
         .eq("org_id", orgId)
         .eq("event_id", eventId)
         .order("revenue", { ascending: false })
-        .limit(50);
+        .limit(200);
 
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
-      // Flatten the joined data
-      const leaderboard = (data || []).map(
-        (row: Record<string, unknown>) => {
+      // Flatten + filter to active reps only
+      const leaderboard = (data || [])
+        .filter((row: Record<string, unknown>) => {
+          const rep = Array.isArray(row.rep) ? row.rep[0] : row.rep;
+          const r = (rep || {}) as Record<string, unknown>;
+          return r.status === "active";
+        })
+        .slice(0, 50)
+        .map((row: Record<string, unknown>) => {
           const rep = Array.isArray(row.rep) ? row.rep[0] : row.rep;
           const r = (rep || {}) as Record<string, unknown>;
           return {
@@ -56,8 +62,7 @@ export async function GET(request: NextRequest) {
             level: r.level ?? 1,
             points_balance: r.points_balance ?? 0,
           };
-        }
-      );
+        });
 
       return NextResponse.json({ data: leaderboard });
     }

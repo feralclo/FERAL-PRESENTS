@@ -63,19 +63,21 @@ export async function GET() {
         const event = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown> | null;
         const eventId = (event?.id || re.event_id) as string;
 
-        // Get total reps for this event
+        // Get total active reps for this event (inner join filters inactive reps)
         const { count: repsCount } = await supabase
           .from(TABLES.REP_EVENTS)
-          .select("id", { count: "exact", head: true })
-          .eq("org_id", orgId)
-          .eq("event_id", eventId);
-
-        // Get rep's position (how many reps have higher revenue)
-        const { count: ahead } = await supabase
-          .from(TABLES.REP_EVENTS)
-          .select("id", { count: "exact", head: true })
+          .select("id, rep:reps!inner(id)", { count: "exact", head: true })
           .eq("org_id", orgId)
           .eq("event_id", eventId)
+          .eq("rep.status", "active");
+
+        // Get rep's position (how many active reps have higher revenue)
+        const { count: ahead } = await supabase
+          .from(TABLES.REP_EVENTS)
+          .select("id, rep:reps!inner(id)", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .eq("event_id", eventId)
+          .eq("rep.status", "active")
           .gt("revenue", Number(re.revenue));
 
         const yourPosition = Number(re.revenue) > 0 || Number(re.sales_count) > 0

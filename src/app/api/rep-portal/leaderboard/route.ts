@@ -120,12 +120,12 @@ async function getEventLeaderboard(
     supabase
       .from(TABLES.REP_EVENTS)
       .select(
-        "rep_id, sales_count, revenue, rep:reps(id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level)"
+        "rep_id, sales_count, revenue, rep:reps(id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level, status)"
       )
       .eq("org_id", orgId)
       .eq("event_id", eventId)
       .order("revenue", { ascending: false })
-      .limit(50),
+      .limit(200),
     supabase
       .from(TABLES.EVENTS)
       .select("id, name, date_start, status")
@@ -148,7 +148,15 @@ async function getEventLeaderboard(
     );
   }
 
-  const leaderboard = (leaderboardResult.data || []).map(
+  // Filter to only active reps, then take top 50
+  const activeEntries = (leaderboardResult.data || []).filter(
+    (re: Record<string, unknown>) => {
+      const rep = re.rep as Record<string, unknown> | null;
+      return rep?.status === "active";
+    }
+  );
+
+  const leaderboard = activeEntries.slice(0, 50).map(
     (re: Record<string, unknown>, index: number) => {
       const rep = re.rep as Record<string, unknown> | null;
       return {

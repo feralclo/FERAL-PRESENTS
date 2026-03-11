@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Compass, Zap } from "lucide-react";
+import { Compass, Zap, Calendar, MapPin, Plus, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { RepPageError } from "@/components/rep";
 import { QuestCard } from "@/components/rep/QuestCard";
 import { QuestDetailSheet } from "@/components/rep/QuestDetailSheet";
@@ -54,6 +56,10 @@ export default function RepQuestsPage() {
   const [currencyName, setCurrencyName] = useState("FRL");
   const [discountCode, setDiscountCode] = useState<string | undefined>();
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
+  const [discoverableEvents, setDiscoverableEvents] = useState<
+    { id: string; name: string; slug: string; date_start?: string; cover_image?: string; venue_name?: string }[]
+  >([]);
+  const [joiningEventId, setJoiningEventId] = useState<string | null>(null);
 
   // Detail modal
   const [detailQuest, setDetailQuest] = useState<Quest | null>(null);
@@ -85,10 +91,11 @@ export default function RepQuestsPage() {
 
   const loadQuests = useCallback(async () => {
     try {
-      const [res, settingsRes, discountRes] = await Promise.all([
+      const [res, settingsRes, discountRes, dashRes] = await Promise.all([
         fetch("/api/rep-portal/quests"),
         fetch("/api/rep-portal/settings"),
         fetch("/api/rep-portal/discount"),
+        fetch("/api/rep-portal/dashboard"),
       ]);
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
@@ -103,6 +110,9 @@ export default function RepQuestsPage() {
       if (settingsJson.data?.public_url) setPublicUrl(settingsJson.data.public_url);
       const discountJson = discountRes.ok ? await discountRes.json() : { data: [] };
       if (discountJson.data?.[0]?.code) setDiscountCode(discountJson.data[0].code);
+      // Discoverable events — for "join events to unlock quests" CTA
+      const dashJson = dashRes.ok ? await dashRes.json() : {};
+      setDiscoverableEvents(dashJson.data?.discoverable_events || []);
     } catch {
       setError("Failed to load quests — check your connection");
     }
@@ -152,6 +162,22 @@ export default function RepQuestsPage() {
     // Default max_completions to 1 — quests without an explicit limit are one-time
     const maxComp = q.max_completions ?? 1;
     return getApprovedCount(q) >= maxComp;
+  };
+
+  const joinEvent = async (eventId: string) => {
+    setJoiningEventId(eventId);
+    try {
+      const res = await fetch("/api/rep-portal/join-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId }),
+      });
+      if (res.ok) {
+        // Reload quests — newly joined events may unlock event-specific quests
+        loadQuests();
+      }
+    } catch { /* ignore */ }
+    setJoiningEventId(null);
   };
 
   const activeQuests = quests.filter((q) => !isQuestCompleted(q));
@@ -207,6 +233,66 @@ export default function RepQuestsPage() {
           </div>
         )}
       </div>
+
+      {/* Join Events — unlock more quests */}
+      {discoverableEvents.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-3">
+            <p className="text-[13px] font-semibold text-foreground">
+              Join events to unlock event quests
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Each event has its own quests and leaderboard
+            </p>
+          </div>
+          {discoverableEvents.map((event) => (
+            <Card key={event.id} className="py-0 gap-0 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-center gap-3 p-3">
+                  {event.cover_image ? (
+                    <div className="h-12 w-12 rounded-xl overflow-hidden shrink-0 bg-muted/50">
+                      <img src={event.cover_image} alt="" className="h-full w-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="h-12 w-12 rounded-xl shrink-0 bg-primary/10 flex items-center justify-center">
+                      <Calendar size={18} className="text-primary/50" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{event.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {event.date_start && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(event.date_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
+                      )}
+                      {event.venue_name && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                          <MapPin size={8} />
+                          {event.venue_name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => joinEvent(event.id)}
+                    disabled={joiningEventId === event.id}
+                    className="shrink-0 rounded-xl"
+                  >
+                    {joiningEventId === event.id ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Plus size={12} />
+                    )}
+                    Join
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Inline error */}
       {error && quests.length > 0 && (

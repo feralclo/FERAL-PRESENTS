@@ -400,8 +400,7 @@ export type RepNotificationType =
   | "reward_fulfilled"
   | "manual_grant"
   | "approved"
-  | "general"
-  | "approved";
+  | "general";
 
 export interface RepNotification {
   id: string;

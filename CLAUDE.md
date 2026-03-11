@@ -525,7 +525,7 @@ shadcn/ui + Tailwind + admin tokens. Gaming effects in `rep-effects.css` (class 
 3. **Supabase RLS** — should enforce org_id at DB level
 4. **Cron multi-org** — `/api/cron/*` still uses `ORG_ID` fallback, should iterate all orgs
 5. **Aura theme** — still in code, pending removal
-6. **Reward shop fulfillment** — `rep-reward-fulfillment.ts` exists but automated types (free_ticket, vip_upgrade, merch) not yet wired end-to-end
+
 
 ---
 

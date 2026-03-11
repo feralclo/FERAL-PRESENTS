@@ -82,8 +82,8 @@ export default function RepJoinPage() {
       if (user) {
         const res = await fetch("/api/rep-portal/signup-google", { method: "POST" });
         if (res.ok) {
-          // Tag is_rep handled server-side — redirect to rep portal
-          router.push("/rep");
+          // Hard navigation to avoid stale cached page state
+          window.location.href = "/rep";
           return;
         }
         // If it failed (e.g. service error), fall through to normal OAuth

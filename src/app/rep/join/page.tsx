@@ -75,6 +75,23 @@ export default function RepJoinPage() {
       return;
     }
 
+    // If user is already logged in (e.g. admin with Google), create rep directly
+    // without a full OAuth redirect — avoids disrupting the existing session
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const res = await fetch("/api/rep-portal/signup-google", { method: "POST" });
+        if (res.ok) {
+          // Tag is_rep handled server-side — redirect to rep portal
+          router.push("/rep");
+          return;
+        }
+        // If it failed (e.g. service error), fall through to normal OAuth
+      }
+    } catch {
+      // No existing session or check failed — proceed with OAuth
+    }
+
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {

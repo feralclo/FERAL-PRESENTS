@@ -64,7 +64,7 @@ interface OrgBranding {
 }
 
 interface RepAuthState {
-  status: "loading" | "unauthenticated" | "no_rep" | "email_unverified" | "pending_review" | "blocked" | "active";
+  status: "loading" | "unauthenticated" | "no_rep" | "email_unverified" | "pending" | "pending_review" | "blocked" | "active";
   email?: string;
   firstName?: string;
 }
@@ -137,10 +137,10 @@ export default function RepLayout({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Gate: pending review
+        // Pending reps: let them in with limited access (banner shown in layout)
         if (rep.status === "pending") {
           setAuthState({
-            status: "pending_review",
+            status: "pending",
             email: rep.email,
             firstName: rep.first_name,
           });
@@ -178,7 +178,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   // Show install prompt after onboarding completes (primary trigger) or 3rd visit (fallback)
   useEffect(() => {
     if (!shouldShowInstall || isStandalone || isPublicPage) return;
-    if (authState.status !== "active") return;
+    if (authState.status !== "active" && authState.status !== "pending") return;
 
     // Listen for onboarding completion event — show install prompt immediately after
     const onOnboardingComplete = () => {
@@ -206,7 +206,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
     if (!isStandalone || !pushSupported || isPublicPage) return;
     if (pushPermission === "granted") return;
     if (showInstallModal) return; // Don't overlap with install modal
-    if (authState.status !== "active") return; // Only for authenticated active reps
+    if (authState.status !== "active" && authState.status !== "pending") return;
     try {
       const dismissed = localStorage.getItem("rep_notif_prompt_dismissed");
       if (dismissed) {
@@ -264,7 +264,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const showNav = !isPublicPage && authState.status === "active";
+  const showNav = !isPublicPage && (authState.status === "active" || authState.status === "pending");
 
   const brandName = branding?.org_name
     ? `${branding.org_name} Reps`
@@ -294,17 +294,8 @@ export default function RepLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // ── Pending Review Gate ──
-  if (authState.status === "pending_review") {
-    return (
-      <div data-admin data-rep className="min-h-[100dvh] bg-background text-foreground">
-        <PendingReviewGate
-          firstName={authState.firstName}
-          brandName={brandName}
-        />
-      </div>
-    );
-  }
+  // Pending reps: show dashboard with banner (not a full lockout)
+  const isPending = authState.status === "pending";
 
   const tier = repStats ? getTierFromLevel(repStats.level) : null;
 
@@ -420,6 +411,17 @@ export default function RepLayout({ children }: { children: ReactNode }) {
           </div>
           {/* Purple gradient edge line */}
           <div className="mx-4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+        </div>
+      )}
+
+      {/* Pending acceptance banner */}
+      {isPending && showNav && (
+        <div className="mx-4 mt-2 rounded-xl bg-warning/8 border border-warning/15 px-4 py-3 flex items-center gap-3">
+          <Clock size={16} className="text-warning shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-warning">Pending Acceptance</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Your application is under review. You can explore in the meantime.</p>
+          </div>
         </div>
       )}
 
@@ -909,56 +911,3 @@ function EmailVerificationGate({
   );
 }
 
-// ─── Pending Review Gate ──────────────────────────────────────────────────────
-
-function PendingReviewGate({
-  firstName,
-  brandName,
-}: {
-  firstName?: string;
-  brandName: string;
-}) {
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/rep-portal/logout", { method: "POST" });
-    } catch { /* silent */ }
-    router.replace("/rep/login");
-  };
-
-  return (
-    <div className="flex min-h-screen items-center justify-center px-6">
-      <div className="text-center max-w-sm rep-fade-in">
-        {/* Brand mark */}
-        <div className="mb-6">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[3px] text-primary/60">
-            {brandName}
-          </span>
-        </div>
-
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-warning/10 border border-warning/20 mb-6">
-          <Clock size={28} className="text-warning" />
-        </div>
-
-        <h2 className="text-xl font-bold text-foreground mb-2">Application Under Review</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed mb-8 max-w-[280px] mx-auto">
-          {firstName ? `Hey ${firstName}, your` : "Your"} application is being reviewed by the team. We&apos;ll notify you by email once you&apos;re approved.
-        </p>
-
-        <div className="rounded-xl border border-border bg-card px-5 py-4 mb-8">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            This usually takes less than 24 hours. If you have questions, reach out to the team directly.
-          </p>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Sign out
-        </button>
-      </div>
-    </div>
-  );
-}

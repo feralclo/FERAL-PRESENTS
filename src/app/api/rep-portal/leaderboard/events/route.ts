@@ -26,7 +26,7 @@ export async function GET() {
     const { data: repEvents, error: reError } = await supabase
       .from(TABLES.REP_EVENTS)
       .select(
-        "event_id, sales_count, revenue, event:events(id, name, slug, date_start, status, cover_image)"
+        "event_id, sales_count, revenue, event:events(id, name, slug, date_start, status, cover_image, hero_image)"
       )
       .eq("org_id", orgId)
       .eq("rep_id", repId)
@@ -101,7 +101,7 @@ export async function GET() {
           event_name: (event?.name || "Unknown") as string,
           event_date: (event?.date_start || null) as string | null,
           event_status: (event?.status || "draft") as string,
-          cover_image: (event?.cover_image || null) as string | null,
+          cover_image: (event?.hero_image || event?.cover_image || null) as string | null,
           reps_count: repsCount || 0,
           your_position: yourPosition,
           your_sales: Number(re.sales_count),

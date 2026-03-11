@@ -66,6 +66,7 @@ function LoginForm() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/rep-callback`,
+        queryParams: { prompt: "select_account" },
       },
     });
 

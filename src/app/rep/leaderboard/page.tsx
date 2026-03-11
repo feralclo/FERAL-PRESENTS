@@ -653,6 +653,7 @@ function EventsLeaderboard() {
 function EventCard({ event, currencyName, onClick, index }: { event: EventSummary; currencyName: string; onClick: () => void; index: number }) {
   const isLive = !event.locked && isEventUpcoming(event.event_date);
   const isPast = !isEventUpcoming(event.event_date);
+  const hasCover = !!event.cover_image;
 
   return (
     <button
@@ -665,85 +666,74 @@ function EventCard({ event, currencyName, onClick, index }: { event: EventSummar
       )}
       style={{ animationDelay: `${index * 80}ms` }}
     >
-      {/* Ambient cover image */}
-      {event.cover_image && (
-        <div className="rep-event-ambient">
-          <img src={event.cover_image} alt="" />
+      {/* Cover image background */}
+      {hasCover && (
+        <div className="absolute inset-0 overflow-hidden rounded-[20px]">
+          <img src={event.cover_image!} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-black/40" />
         </div>
       )}
 
       <div className="relative z-[1] p-5">
-        {/* Status + Event name */}
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1.5">
-              {isLive && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 border border-success/20 px-2.5 py-0.5 text-[10px] font-bold text-success uppercase tracking-wider">
-                  <span className="rep-live-dot" />
-                  Live
-                </span>
-              )}
-              {event.locked && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 border border-warning/20 px-2.5 py-0.5 text-[10px] font-bold text-warning uppercase tracking-wider">
-                  <Lock size={9} /> Locked
-                </span>
-              )}
-              {isPast && !event.locked && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted/30 border border-border px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  Ended
-                </span>
-              )}
-            </div>
-            <h3 className="text-base font-bold text-foreground truncate">{event.event_name}</h3>
-            {event.event_date && (
-              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                <Calendar size={11} />
-                {formatEventDate(event.event_date)}
-              </p>
+        {/* Top: status badge + chevron */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {isLive && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 border border-success/20 px-2.5 py-0.5 text-[10px] font-bold text-success uppercase tracking-wider">
+                <span className="rep-live-dot" />
+                Live
+              </span>
+            )}
+            {event.locked && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 border border-warning/20 px-2.5 py-0.5 text-[10px] font-bold text-warning uppercase tracking-wider">
+                <Lock size={9} /> Locked
+              </span>
+            )}
+            {isPast && !event.locked && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.08] border border-white/[0.08] px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                Ended
+              </span>
             )}
           </div>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] border border-white/[0.06]">
-            <ChevronRight size={16} className="text-muted-foreground" />
-          </div>
+          <ChevronRight size={16} className="text-muted-foreground" />
         </div>
 
-        {/* Countdown (if upcoming) */}
-        {isLive && event.event_date && (
-          <div className="mb-4">
-            <CountdownTimer targetDate={event.event_date} />
-          </div>
+        {/* Event name + date */}
+        <h3 className="text-lg font-bold text-foreground truncate">{event.event_name}</h3>
+        {event.event_date && (
+          <p className="text-xs text-muted-foreground/80 mt-0.5 flex items-center gap-1.5">
+            <Calendar size={11} />
+            {formatEventDate(event.event_date)}
+          </p>
         )}
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-4 gap-3">
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-3 text-center">
-            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Rank</p>
-            <p className="text-lg font-black font-mono text-primary">
+        {/* Compact stats row — rank + sales + reps, no earned/countdown */}
+        <div className="flex items-center gap-3 mt-4">
+          <div className={cn(
+            "rounded-lg px-3 py-1.5 text-center",
+            hasCover ? "bg-white/[0.08] border border-white/[0.08]" : "bg-white/[0.03] border border-white/[0.04]"
+          )}>
+            <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Rank</p>
+            <p className="text-base font-black font-mono text-primary">
               {event.your_position ? `#${event.your_position}` : "\u2014"}
             </p>
           </div>
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-3 text-center">
-            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Sales</p>
-            <p className="text-lg font-black font-mono text-foreground">{event.your_sales}</p>
+          <div className={cn(
+            "rounded-lg px-3 py-1.5 text-center",
+            hasCover ? "bg-white/[0.08] border border-white/[0.08]" : "bg-white/[0.03] border border-white/[0.04]"
+          )}>
+            <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Sales</p>
+            <p className="text-base font-black font-mono text-foreground">{event.your_sales}</p>
           </div>
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-3 text-center">
-            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Earned</p>
-            <p className="text-lg font-black font-mono text-foreground">
-              £{Number(event.your_revenue).toFixed(0)}
-            </p>
-          </div>
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-3 text-center">
-            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Reps</p>
-            <p className="text-lg font-black font-mono text-muted-foreground flex items-center justify-center gap-1">
-              <Users size={12} />
-              {event.reps_count}
-            </p>
+          <div className="flex items-center gap-1.5 ml-auto text-xs text-muted-foreground/60">
+            <Users size={12} />
+            {event.reps_count} rep{event.reps_count !== 1 ? "s" : ""}
           </div>
         </div>
 
         {/* Position rewards preview */}
         {event.position_rewards.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-white/[0.06]">
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-white/[0.06]">
             <Gift size={12} className="text-warning/70 mt-0.5" />
             {event.position_rewards.map((pr, i) => (
               <span

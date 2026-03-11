@@ -1,8 +1,8 @@
 /// Rep Portal Service Worker
 /// Handles push notifications, offline caching, and API response caching
 
-const CACHE_NAME = "rep-v2";
-const API_CACHE_NAME = "rep-api-v2";
+const CACHE_NAME = "rep-v3";
+const API_CACHE_NAME = "rep-api-v3";
 const OFFLINE_URL = "/rep";
 
 // Assets to pre-cache for offline
@@ -58,6 +58,26 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
+
+  // On POST/PUT/DELETE to rep-portal APIs, bust the cache so subsequent
+  // GETs return fresh data (fixes stale balance after reward claims, etc.)
+  if (
+    event.request.method !== "GET" &&
+    url.pathname.startsWith("/api/rep-portal/")
+  ) {
+    event.waitUntil(
+      caches.open(API_CACHE_NAME).then((cache) =>
+        cache.keys().then((keys) =>
+          Promise.all(
+            keys
+              .filter((k) => new URL(k.url).pathname.startsWith("/api/rep-portal/"))
+              .map((k) => cache.delete(k))
+          )
+        )
+      )
+    );
+    // Fall through — don't intercept the mutation itself
+  }
 
   // Stale-while-revalidate for cacheable API routes (GET only)
   if (

@@ -398,7 +398,9 @@ export type RepNotificationType =
   | "sale_attributed"
   | "level_up"
   | "reward_fulfilled"
-  | "manual_grant";
+  | "manual_grant"
+  | "general"
+  | "approved";
 
 export interface RepNotification {
   id: string;

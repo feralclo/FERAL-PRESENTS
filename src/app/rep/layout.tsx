@@ -416,12 +416,27 @@ export default function RepLayout({ children }: { children: ReactNode }) {
 
       {/* Pending acceptance banner */}
       {isPending && showNav && (
-        <div className="mx-4 mt-2 rounded-xl bg-warning/8 border border-warning/15 px-4 py-3 flex items-center gap-3">
-          <Clock size={16} className="text-warning shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-warning">Pending Acceptance</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Your application is under review. You can explore in the meantime.</p>
+        <div className="mx-4 mt-2 space-y-2">
+          <div className="rounded-xl bg-warning/8 border border-warning/15 px-4 py-3 flex items-center gap-3">
+            <Clock size={16} className="text-warning shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-warning">Pending Acceptance</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Your application is under review. You can explore in the meantime.</p>
+            </div>
           </div>
+          {pushPermission !== "granted" && (
+            <button
+              type="button"
+              onClick={requestPush}
+              className="w-full rounded-xl bg-primary/8 border border-primary/15 px-4 py-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+            >
+              <Bell size={16} className="text-primary shrink-0" />
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-xs font-semibold text-primary">Enable Notifications</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Get notified instantly when you&apos;re accepted</p>
+              </div>
+            </button>
+          )}
         </div>
       )}
 

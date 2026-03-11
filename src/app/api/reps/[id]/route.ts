@@ -5,6 +5,7 @@ import { TABLES, SUPABASE_URL } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendRepEmail } from "@/lib/rep-emails";
 import { autoAssignRepToAllEvents } from "@/lib/rep-auto-assign";
+import { createNotification } from "@/lib/rep-notifications";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -136,9 +137,17 @@ export async function PUT(
       return NextResponse.json({ error: "Rep not found" }, { status: 404 });
     }
 
-    // Send welcome email + auto-assign to events when approving a pending rep
+    // Send welcome email, push notification + auto-assign when approving a pending rep
     if (updates.status === "active" && oldStatus && oldStatus !== "active") {
       sendRepEmail({ type: "welcome", repId: id, orgId }).catch(() => {});
+      createNotification({
+        repId: id,
+        orgId,
+        type: "approved",
+        title: "You're in!",
+        body: "Your application has been approved. Welcome to the team — start earning now!",
+        link: "/rep/",
+      }).catch(() => {});
       autoAssignRepToAllEvents({
         supabase,
         repId: id,

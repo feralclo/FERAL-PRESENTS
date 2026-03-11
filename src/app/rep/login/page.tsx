@@ -55,7 +55,8 @@ function LoginForm() {
           return;
         }
 
-        router.replace(redirect);
+        // Hard navigation to avoid stale cached page state
+        window.location.href = redirect;
         return;
       } catch { /* fall through */ }
 
@@ -71,6 +72,18 @@ function LoginForm() {
       setError("Authentication service unavailable");
       setGoogleLoading(false);
       return;
+    }
+
+    // If already signed in with Google, try the fast path (no OAuth redirect)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      try {
+        const res = await fetch("/api/rep-portal/signup-google", { method: "POST" });
+        if (res.ok) {
+          window.location.href = redirect;
+          return;
+        }
+      } catch { /* fall through to OAuth */ }
     }
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -133,7 +146,7 @@ function LoginForm() {
         return;
       }
 
-      router.push(redirect);
+      window.location.href = redirect;
     } catch {
       await supabase.auth.signOut();
       setError("Failed to verify rep account");

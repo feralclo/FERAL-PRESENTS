@@ -408,19 +408,23 @@ export default function RepLayout({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {/* Pending rep: push notification prompt (only in installed PWA) */}
+      {/* Pending rep: push notification banner (only in installed PWA, not yet granted) */}
       {isPending && showNav && isStandalone && pushSupported && pushPermission !== "granted" && (
-        <div className="mx-4 mt-2">
+        <div className="mx-4 mt-3">
           <button
             type="button"
             onClick={requestPush}
-            className="w-full rounded-xl bg-primary/8 border border-primary/15 px-4 py-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+            className="w-full rounded-2xl bg-primary/12 border-2 border-primary/25 px-4 py-4 flex items-center gap-4 active:scale-[0.98] transition-transform shadow-[0_0_20px_rgba(139,92,246,0.1)]"
           >
-            <Bell size={16} className="text-primary shrink-0" />
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-xs font-semibold text-primary">Enable Notifications</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Get notified instantly when you&apos;re accepted</p>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20 relative">
+              <Bell size={18} className="text-primary" />
+              <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-background animate-pulse" />
             </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-bold text-foreground">Get notified when you&apos;re accepted</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Tap to enable push notifications</p>
+            </div>
+            <ArrowUp size={14} className="text-primary shrink-0 rotate-90" />
           </button>
         </div>
       )}
@@ -458,6 +462,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             setShowNotificationPrompt(false);
             try { localStorage.setItem("rep_notif_prompt_dismissed", String(Date.now())); } catch {}
           }}
+          isPending={isPending}
         />
       )}
 

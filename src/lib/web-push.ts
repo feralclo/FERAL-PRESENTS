@@ -45,9 +45,12 @@ export async function savePushSubscription(
     return;
   }
   const supabase = await getSupabaseAdmin();
-  if (!supabase) return;
+  if (!supabase) {
+    console.error("[web-push] No supabase admin client for saving push subscription");
+    return;
+  }
 
-  await supabase
+  const { error } = await supabase
     .from("rep_push_subscriptions")
     .upsert(
       {
@@ -60,6 +63,12 @@ export async function savePushSubscription(
       },
       { onConflict: "rep_id,endpoint" }
     );
+
+  if (error) {
+    console.error(`[web-push] Failed to save push subscription for rep=${repId}:`, error);
+  } else {
+    console.info(`[web-push] Push subscription saved for rep=${repId} endpoint=${subscription.endpoint.slice(0, 60)}...`);
+  }
 }
 
 /**
@@ -113,8 +122,10 @@ export async function sendPushToRep(
   const { data: subs } = await query;
 
   if (!subs || subs.length === 0) {
+    console.warn(`[web-push] No push subscriptions found for rep=${repId} org=${orgId || "any"}`);
     return { sent: 0, failed: 0 };
   }
+  console.info(`[web-push] Found ${subs.length} subscription(s) for rep=${repId}`);
 
   let sent = 0;
   let failed = 0;
@@ -144,8 +155,10 @@ export async function sendPushToRep(
         .eq("id", sub.id);
     } catch (err: unknown) {
       failed++;
-      // If subscription is expired/invalid (410 Gone, 404 Not Found), mark for removal
       const statusCode = (err as { statusCode?: number })?.statusCode;
+      const errMsg = (err as { message?: string })?.message || String(err);
+      console.error(`[web-push] Send failed for sub=${sub.id} status=${statusCode}: ${errMsg}`);
+      // If subscription is expired/invalid (410 Gone, 404 Not Found), mark for removal
       if (statusCode === 410 || statusCode === 404) {
         staleIds.push(sub.id);
       }

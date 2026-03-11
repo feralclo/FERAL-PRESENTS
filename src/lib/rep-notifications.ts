@@ -4,9 +4,9 @@ import { sendPushToRep, isPushConfigured } from "@/lib/web-push";
 import type { RepNotificationType } from "@/types/reps";
 
 /**
- * Create an in-app notification for a rep.
+ * Create an in-app notification for a rep and send a push notification.
  *
- * Fire-and-forget — never throws. Failures are logged and silently ignored.
+ * Never throws — failures are logged.
  */
 export async function createNotification(params: {
   repId: string;
@@ -19,7 +19,10 @@ export async function createNotification(params: {
 }): Promise<void> {
   try {
     const supabase = await getSupabaseAdmin();
-    if (!supabase) return;
+    if (!supabase) {
+      console.error("[rep-notifications] No supabase admin client");
+      return;
+    }
 
     const { error } = await supabase.from(TABLES.REP_NOTIFICATIONS).insert({
       org_id: params.orgId,
@@ -36,16 +39,21 @@ export async function createNotification(params: {
       return;
     }
 
-    // Send push notification (fire-and-forget, never blocks)
+    // Send push notification — await so errors are logged properly
     if (isPushConfigured()) {
-      sendPushToRep(params.repId, {
-        title: params.title,
-        body: params.body,
-        url: params.link,
-        tag: params.type, // Collapse duplicate notification types
-      }, params.orgId).catch((err) => {
-        console.warn("[rep-notifications] Push send failed:", err);
-      });
+      try {
+        const result = await sendPushToRep(params.repId, {
+          title: params.title,
+          body: params.body,
+          url: params.link,
+          tag: params.type,
+        }, params.orgId);
+        console.info(`[rep-notifications] Push sent to rep=${params.repId} type=${params.type}: sent=${result.sent} failed=${result.failed}`);
+      } catch (err) {
+        console.error("[rep-notifications] Push send error:", err);
+      }
+    } else {
+      console.warn("[rep-notifications] Push not configured — VAPID keys missing");
     }
   } catch (err) {
     console.error("[rep-notifications] Failed to create notification:", err);

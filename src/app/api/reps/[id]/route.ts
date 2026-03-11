@@ -112,13 +112,14 @@ export async function PUT(
     // Fetch current status before update (to detect approval transition)
     let oldStatus: string | null = null;
     if (updates.status === "active") {
-      const { data: current } = await supabase
+      const { data: current, error: statusErr } = await supabase
         .from(TABLES.REPS)
         .select("status")
         .eq("id", id)
         .eq("org_id", orgId)
         .single();
       oldStatus = current?.status || null;
+      console.info(`[reps/${id}] Approval check: oldStatus=${oldStatus} orgId=${orgId} fetchError=${statusErr?.message || "none"}`);
     }
 
     const { data, error } = await supabase
@@ -139,21 +140,27 @@ export async function PUT(
 
     // Send welcome email, push notification + auto-assign when approving a pending rep
     if (updates.status === "active" && oldStatus && oldStatus !== "active") {
-      sendRepEmail({ type: "welcome", repId: id, orgId }).catch(() => {});
-      createNotification({
+      console.info(`[reps/${id}] Approving rep (was ${oldStatus}). Sending email + push + auto-assign.`);
+      sendRepEmail({ type: "welcome", repId: id, orgId }).catch((err) => {
+        console.error(`[reps/${id}] Welcome email failed:`, err);
+      });
+      // Await notification so push errors are logged (createNotification never throws)
+      await createNotification({
         repId: id,
         orgId,
         type: "approved",
         title: "You're in!",
         body: "Your application has been approved. Welcome to the team — start earning now!",
         link: "/rep/",
-      }).catch(() => {});
+      });
       autoAssignRepToAllEvents({
         supabase,
         repId: id,
         orgId,
         repFirstName: data.first_name || "Rep",
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error(`[reps/${id}] Auto-assign failed:`, err);
+      });
     }
 
     return NextResponse.json({ data });

@@ -223,14 +223,28 @@ export function useRepPWA() {
       });
       setState((s) => ({ ...s, pushSubscribed: true }));
 
-      // Send subscription to server
-      await fetch("/api/rep-portal/push-subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscription: subscription.toJSON() }),
-      }).catch(() => {
-        console.info("[RepPWA] Push subscription stored locally. Server sync pending.");
-      });
+      // Send subscription to server — retry once on failure
+      const subJson = subscription.toJSON();
+      let serverSaved = false;
+      for (let attempt = 0; attempt < 2 && !serverSaved; attempt++) {
+        try {
+          const res = await fetch("/api/rep-portal/push-subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subscription: subJson }),
+          });
+          if (res.ok) {
+            serverSaved = true;
+          } else {
+            console.warn(`[RepPWA] Push subscribe server returned ${res.status} (attempt ${attempt + 1})`);
+          }
+        } catch (err) {
+          console.warn(`[RepPWA] Push subscribe network error (attempt ${attempt + 1}):`, err);
+        }
+      }
+      if (!serverSaved) {
+        console.error("[RepPWA] Failed to save push subscription to server after 2 attempts");
+      }
 
       return subscription;
     } catch (err) {

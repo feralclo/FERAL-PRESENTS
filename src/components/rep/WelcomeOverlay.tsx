@@ -232,12 +232,16 @@ export function WelcomeOverlay({
 
     // Step 1: Add your photo
     if (step === 1) {
+      const triggerUpload = () => {
+        if (!uploading) fileInputRef.current?.click();
+      };
       return (
         <div key={stepKey} className="rep-step-in">
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            capture="user"
             className="hidden"
             onChange={handlePhotoSelect}
           />
@@ -251,41 +255,38 @@ export function WelcomeOverlay({
 
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={triggerUpload}
             disabled={uploading}
-            className="relative inline-block group mb-6"
+            className="relative inline-block mb-4 cursor-pointer active:scale-95 transition-transform"
             aria-label="Upload profile photo"
           >
             <div className={cn(
-              "h-28 w-28 rounded-full overflow-hidden mx-auto border-2 border-white/[0.1] transition-all",
-              uploading && "animate-pulse"
+              "h-28 w-28 rounded-full overflow-hidden mx-auto border-2 transition-all",
+              uploading ? "border-primary/30 animate-pulse" : "border-white/[0.15] border-dashed"
             )}>
               {photoSrc ? (
                 <img src={photoSrc} alt="" className="h-full w-full object-cover" />
               ) : (
-                <div className="h-full w-full flex items-center justify-center bg-primary/10">
-                  <span className="text-4xl font-bold text-primary">
-                    {(editedName || repName || "?").charAt(0).toUpperCase()}
-                  </span>
+                <div className="h-full w-full flex flex-col items-center justify-center bg-primary/10 gap-1">
+                  <Camera size={24} className="text-primary/60" />
                 </div>
               )}
             </div>
-            {/* Camera overlay */}
-            <div className={cn(
-              "absolute inset-0 rounded-full flex items-center justify-center bg-black/50 transition-opacity duration-200",
-              uploading ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-active:opacity-100"
-            )}>
-              {uploading ? (
+            {uploading && (
+              <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50">
                 <Loader2 size={24} className="text-white animate-spin" />
-              ) : (
-                <Camera size={24} className="text-white" />
-              )}
-            </div>
+              </div>
+            )}
           </button>
 
-          <p className="text-sm text-primary font-medium mb-2">
-            Tap to upload
-          </p>
+          <button
+            type="button"
+            onClick={triggerUpload}
+            disabled={uploading}
+            className="text-sm text-primary font-semibold mb-2 active:opacity-70 transition-opacity cursor-pointer"
+          >
+            {photoSrc ? "Change photo" : "Tap to upload"}
+          </button>
           <p className="text-xs text-muted-foreground/50 max-w-[240px] mx-auto">
             Optional — you can skip this and add one later
           </p>
@@ -293,70 +294,88 @@ export function WelcomeOverlay({
       );
     }
 
-    // Step 2: Download the app
+    // Step 2: Install the app — compelling, urgent
     const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isStandalone = typeof window !== "undefined" && (
       window.matchMedia("(display-mode: standalone)").matches
       || ("standalone" in navigator && (navigator as { standalone?: boolean }).standalone === true)
     );
 
+    if (isStandalone) {
+      return (
+        <div key={stepKey} className="rep-step-in">
+          <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-success/15 border-2 border-success/25 mb-5">
+            <Check size={36} className="text-success" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-1">
+            You&apos;re all set!
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            App installed — push notifications are ready
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div key={stepKey} className="rep-step-in">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl mb-5 bg-primary/15">
-          <Download size={28} style={{ color: "#8B5CF6" }} />
+        {/* Attention-grabbing animated icon */}
+        <div className="relative inline-block mb-5">
+          <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-primary/25 to-primary/10 border border-primary/20 flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(139,92,246,0.15)]">
+            <Download size={32} className="text-primary" />
+          </div>
+          {/* Pulsing notification dot */}
+          <span className="absolute -top-1 -right-1 flex h-5 w-5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40" />
+            <span className="relative inline-flex rounded-full h-5 w-5 bg-primary items-center justify-center">
+              <Bell size={10} className="text-white" />
+            </span>
+          </span>
         </div>
 
         <h2 className="text-2xl font-bold text-foreground mb-1">
-          {isStandalone ? "You\u2019re all set!" : "Get the app"}
+          One last thing
         </h2>
-        <p className="text-sm text-muted-foreground mb-6">
-          {isStandalone
-            ? "Push notifications are ready to go"
-            : "Never miss a sale or update"}
+        <p className="text-base font-medium text-primary mb-2">
+          Don&apos;t miss your acceptance!
+        </p>
+        <p className="text-sm text-muted-foreground mb-6 max-w-[260px] mx-auto leading-relaxed">
+          Install the app to get a <strong className="text-foreground">push notification</strong> the moment you&apos;re approved — plus alerts for every sale you make.
         </p>
 
-        {isStandalone ? (
-          <div className="flex items-center justify-center gap-2 text-success mb-4">
-            <Check size={18} />
-            <span className="text-sm font-semibold">App installed</span>
-          </div>
-        ) : (
-          <div className="space-y-4 max-w-[280px] mx-auto">
-            <div className="space-y-2.5 text-left">
-              {[
-                { icon: Bell, label: "Push notifications for sales & approval", color: "#8B5CF6" },
-                { icon: Zap, label: "Instant access from your home screen", color: "#F59E0B" },
-                { icon: Wifi, label: "Works offline — check stats anywhere", color: "#34D399" },
-              ].map((b) => {
-                const Icon = b.icon;
-                return (
-                  <div key={b.label} className="flex items-center gap-2.5">
-                    <Icon size={13} style={{ color: b.color }} />
-                    <p className="text-xs text-muted-foreground">{b.label}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {isIOS ? (
-              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5">
-                <div className="flex items-center justify-center gap-2.5 text-sm text-muted-foreground">
-                  <span className="text-xs">Tap</span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/30 bg-primary/10">
-                    <Share size={14} className="text-primary" />
-                  </div>
-                  <span className="text-xs">then</span>
-                  <div className="flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5">
-                    <Plus size={12} className="text-primary" />
-                    <span className="text-[11px] font-medium text-primary">Add to Home Screen</span>
+        {/* iOS instructions — large, clear, step-by-step */}
+        {isIOS ? (
+          <div className="space-y-3 max-w-[280px] mx-auto">
+            <div className="rounded-xl bg-primary/[0.06] border border-primary/15 p-4">
+              <p className="text-xs font-bold text-primary uppercase tracking-wider mb-3">How to install</p>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-xs font-bold text-primary">1</div>
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    Tap <div className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary/30 bg-primary/10"><Share size={13} className="text-primary" /></div> below
                   </div>
                 </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-xs font-bold text-primary">2</div>
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    Tap <span className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"><Plus size={10} /> Add to Home Screen</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-success/15 text-xs font-bold text-success">3</div>
+                  <p className="text-sm text-foreground">Tap <strong className="text-success">Add</strong> — done!</p>
+                </div>
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground/70 text-center">
-                Your browser will prompt you to install — or use your browser&apos;s menu to add to home screen
-              </p>
-            )}
+            </div>
+            <p className="text-[10px] text-muted-foreground/50 text-center">
+              Takes 5 seconds. Open the app from your home screen after.
+            </p>
+          </div>
+        ) : (
+          <div className="max-w-[280px] mx-auto">
+            <p className="text-xs text-muted-foreground/70 text-center mb-2">
+              Your browser will prompt you to install — or use your browser&apos;s menu to add to home screen
+            </p>
           </div>
         )}
       </div>

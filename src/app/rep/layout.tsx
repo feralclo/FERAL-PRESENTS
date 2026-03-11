@@ -195,6 +195,17 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldShowInstall, isStandalone, isPublicPage, authState.status]);
 
+  // Immediately show install modal after onboarding completes (if not already installed)
+  useEffect(() => {
+    if (isStandalone || isPublicPage) return;
+    const handleOnboardingComplete = () => {
+      // Short delay so WelcomeOverlay exit animation finishes
+      setTimeout(() => setShowInstallModal(true), 600);
+    };
+    window.addEventListener("rep-onboarding-complete", handleOnboardingComplete);
+    return () => window.removeEventListener("rep-onboarding-complete", handleOnboardingComplete);
+  }, [isStandalone, isPublicPage]);
+
   // Show notification prompt for standalone users who haven't enabled push
   useEffect(() => {
     if (!isStandalone || !pushSupported || isPublicPage) return;

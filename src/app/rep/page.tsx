@@ -251,7 +251,12 @@ export default function RepDashboardPage() {
           repName={rep.display_name || rep.first_name}
           displayName={rep.display_name || ""}
           photoUrl={rep.photo_url || ""}
-          onDismiss={() => { setShowWelcome(false); setLoadKey((k) => k + 1); }}
+          onDismiss={() => {
+            setShowWelcome(false);
+            setLoadKey((k) => k + 1);
+            // Trigger install prompt in layout if not standalone
+            window.dispatchEvent(new CustomEvent("rep-onboarding-complete"));
+          }}
         />
       )}
 

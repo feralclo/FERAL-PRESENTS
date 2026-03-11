@@ -3,16 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
-  Flame,
-  Compass,
-  Trophy,
-  ChevronRight,
-  Zap,
-  Rocket,
   Camera,
   Loader2,
   User,
   Dices,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CropModal } from "./CropModal";
@@ -40,8 +35,6 @@ interface WelcomeOverlayProps {
   repName: string;
   displayName: string;
   photoUrl: string;
-  discountCode?: string;
-  isPending?: boolean;
   onDismiss: () => void;
 }
 
@@ -57,53 +50,13 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-// Steps after the interactive profile setup
-const INFO_STEPS = [
-  {
-    icon: Flame,
-    iconColor: "#F97316",
-    iconBg: "bg-orange-500/15",
-    title: "Your Discount Code",
-    subtitle: "Every rep gets a unique discount code.",
-    body: "Share it with friends — every sale earns you XP and moves you up the ranks.",
-    showCode: true,
-  },
-  {
-    icon: Compass,
-    iconColor: "#8B5CF6",
-    iconBg: "bg-primary/15",
-    title: "Bonus Quests",
-    subtitle: "Complete tasks to earn bonus points.",
-    body: "Post on TikTok, share stories, create content — each quest has its own reward.",
-  },
-  {
-    icon: Trophy,
-    iconColor: "#F59E0B",
-    iconBg: "bg-amber-500/15",
-    title: "Leaderboard",
-    subtitle: "Compete for the top spot.",
-    body: "Top-ranked reps at each event win exclusive prizes. Your position updates in real time.",
-  },
-  {
-    icon: Rocket,
-    iconColor: "#34D399",
-    iconBg: "bg-success/15",
-    title: "You're Ready",
-    subtitle: "Let's go.",
-    body: null,
-    isFinal: true,
-  },
-];
-
-// Total steps: 2 interactive + 4 info
-const TOTAL_STEPS = 2 + INFO_STEPS.length;
+// Total steps: name + photo
+const TOTAL_STEPS = 2;
 
 export function WelcomeOverlay({
   repName,
   displayName: initialDisplayName,
   photoUrl: initialPhotoUrl,
-  discountCode,
-  isPending,
   onDismiss,
 }: WelcomeOverlayProps) {
   const [step, setStep] = useState(0);
@@ -188,9 +141,6 @@ export function WelcomeOverlay({
     // Clean up legacy localStorage key
     try { localStorage.removeItem("rep_onboarded"); } catch { /* noop */ }
 
-    // Signal layout to show install prompt
-    window.dispatchEvent(new Event("rep_onboarding_complete"));
-
     setExiting(true);
     setTimeout(onDismiss, 400);
   };
@@ -204,14 +154,10 @@ export function WelcomeOverlay({
     }
   };
 
-  const skip = () => {
-    saveAndDismiss();
-  };
-
   // Escape key to skip
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") skip();
+      if (e.key === "Escape") saveAndDismiss();
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
@@ -228,8 +174,8 @@ export function WelcomeOverlay({
       };
       return (
         <div key={stepKey} className="rep-step-in">
-          <div className={cn("inline-flex h-20 w-20 items-center justify-center rounded-2xl mb-6 bg-primary/15")}>
-            <Zap size={32} style={{ color: "#8B5CF6" }} />
+          <div className={cn("inline-flex h-16 w-16 items-center justify-center rounded-2xl mb-5 bg-primary/15")}>
+            <User size={28} style={{ color: "#8B5CF6" }} />
           </div>
 
           <h2 className="text-2xl font-bold text-foreground mb-1">
@@ -271,118 +217,63 @@ export function WelcomeOverlay({
     }
 
     // Step 1: Add your photo
-    if (step === 1) {
-      return (
-        <div key={stepKey} className="rep-step-in">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handlePhotoSelect}
-          />
-
-          <h2 className="text-2xl font-bold text-foreground mb-1">
-            Add your photo
-          </h2>
-          <p className="text-sm text-muted-foreground mb-8">
-            Show everyone who you are
-          </p>
-
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="relative inline-block group mb-6"
-            aria-label="Upload profile photo"
-          >
-            <div className={cn(
-              "h-28 w-28 rounded-full overflow-hidden mx-auto border-2 border-white/[0.1] transition-all",
-              uploading && "animate-pulse"
-            )}>
-              {photoSrc ? (
-                <img src={photoSrc} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center bg-primary/10">
-                  <span className="text-4xl font-bold text-primary">
-                    {(editedName || repName || "?").charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )}
-            </div>
-            {/* Camera overlay */}
-            <div className={cn(
-              "absolute inset-0 rounded-full flex items-center justify-center bg-black/50 transition-opacity duration-200",
-              uploading ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-active:opacity-100"
-            )}>
-              {uploading ? (
-                <Loader2 size={24} className="text-white animate-spin" />
-              ) : (
-                <Camera size={24} className="text-white" />
-              )}
-            </div>
-          </button>
-
-          <p className="text-sm text-primary font-medium mb-2">
-            Tap to upload
-          </p>
-          <p className="text-xs text-muted-foreground/50 max-w-[240px] mx-auto">
-            Optional — you can skip this and add one later
-          </p>
-        </div>
-      );
-    }
-
-    // Steps 2+: Info slides
-    const infoIndex = step - 2;
-    const current = INFO_STEPS[infoIndex];
-    if (!current) return null;
-
-    const Icon = current.icon;
-
     return (
       <div key={stepKey} className="rep-step-in">
-        <div className={cn(
-          "inline-flex h-20 w-20 items-center justify-center rounded-2xl mb-6",
-          current.iconBg
-        )}>
-          <Icon size={32} style={{ color: current.iconColor }} />
-        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handlePhotoSelect}
+        />
 
         <h2 className="text-2xl font-bold text-foreground mb-1">
-          {current.isFinal ? <>You&apos;re Ready</> : current.title}
+          Add your photo
         </h2>
-
-        <p className="text-sm text-muted-foreground mb-5">
-          {current.subtitle}
+        <p className="text-sm text-muted-foreground mb-8">
+          Show everyone who you are
         </p>
 
-        {/* Discount code highlight */}
-        {current.showCode && discountCode && (
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-6 py-4 mb-5">
-            <p className="text-2xl font-black font-mono tracking-[6px] text-foreground">
-              {discountCode}
-            </p>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="relative inline-block group mb-6"
+          aria-label="Upload profile photo"
+        >
+          <div className={cn(
+            "h-28 w-28 rounded-full overflow-hidden mx-auto border-2 border-white/[0.1] transition-all",
+            uploading && "animate-pulse"
+          )}>
+            {photoSrc ? (
+              <img src={photoSrc} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-primary/10">
+                <span className="text-4xl font-bold text-primary">
+                  {(editedName || repName || "?").charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
-        )}
-
-        {/* Body text */}
-        {current.body && (
-          <p className="text-sm text-muted-foreground/80 leading-relaxed max-w-[280px] mx-auto mb-8">
-            {current.body}
-          </p>
-        )}
-
-        {/* Final step — big CTA text */}
-        {current.isFinal && (
-          <div className="mt-6 mb-4">
-            <p className="text-sm text-muted-foreground/70 mb-6">
-              {isPending
-                ? "Your application is being reviewed. We\u2019ll notify you as soon as you\u2019re approved!"
-                : "Your dashboard is loaded. Start sharing your code and earning points."}
-            </p>
+          {/* Camera overlay */}
+          <div className={cn(
+            "absolute inset-0 rounded-full flex items-center justify-center bg-black/50 transition-opacity duration-200",
+            uploading ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-active:opacity-100"
+          )}>
+            {uploading ? (
+              <Loader2 size={24} className="text-white animate-spin" />
+            ) : (
+              <Camera size={24} className="text-white" />
+            )}
           </div>
-        )}
+        </button>
+
+        <p className="text-sm text-primary font-medium mb-2">
+          Tap to upload
+        </p>
+        <p className="text-xs text-muted-foreground/50 max-w-[240px] mx-auto">
+          Optional — you can skip this and add one later
+        </p>
       </div>
     );
   };
@@ -422,7 +313,7 @@ export function WelcomeOverlay({
             </button>
           ) : (
             <button
-              onClick={skip}
+              onClick={saveAndDismiss}
               disabled={saving}
               className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors px-3 py-2"
             >
@@ -446,14 +337,11 @@ export function WelcomeOverlay({
               </span>
             ) : isLast ? (
               <>
-                <Rocket size={16} />
-                Let&apos;s Go
+                <Check size={16} />
+                Done
               </>
             ) : (
-              <>
-                Next
-                <ChevronRight size={16} />
-              </>
+              "Next"
             )}
           </Button>
         </div>

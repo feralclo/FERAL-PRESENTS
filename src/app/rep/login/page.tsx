@@ -167,7 +167,7 @@ function LoginForm() {
             </h1>
           )}
           <p className="text-sm text-muted-foreground mt-1">
-            Sign in or apply to join
+            Sign in to your rep dashboard
           </p>
         </div>
 
@@ -273,9 +273,9 @@ function LoginForm() {
         </Card>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          New here? Sign in with Google to apply, or{" "}
+          Want to become a rep?{" "}
           <Link href="/rep/join" className="text-primary hover:underline font-medium">
-            apply with email
+            Apply here
           </Link>
         </p>
       </div>

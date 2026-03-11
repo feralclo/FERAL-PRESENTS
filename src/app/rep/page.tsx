@@ -19,8 +19,10 @@ import {
   Loader2,
   Clock,
   Sparkles,
-  Target,
-  Shield,
+  Download,
+  Bell,
+  Wifi,
+  Share,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -247,8 +249,6 @@ export default function RepDashboardPage() {
           repName={rep.display_name || rep.first_name}
           displayName={rep.display_name || ""}
           photoUrl={rep.photo_url || ""}
-          discountCode={data.discount_codes[0]?.code}
-          isPending={rep.status === "pending"}
           onDismiss={() => { setShowWelcome(false); setLoadKey((k) => k + 1); }}
         />
       )}
@@ -593,47 +593,27 @@ export default function RepDashboardPage() {
 // ─── Pending Rep Dashboard ───────────────────────────────────────────────────
 
 function PendingDashboard({ repName, photoUrl }: { repName: string; photoUrl?: string }) {
-  const previewFeatures = [
-    {
-      icon: Flame,
-      color: "#F97316",
-      bg: "bg-orange-500/10",
-      title: "Your Discount Code",
-      desc: "Get your unique code to share with friends",
-    },
-    {
-      icon: Compass,
-      color: "#8B5CF6",
-      bg: "bg-primary/10",
-      title: "Bonus Quests",
-      desc: "Complete tasks for bonus XP and rewards",
-    },
-    {
-      icon: Trophy,
-      color: "#F59E0B",
-      bg: "bg-amber-500/10",
-      title: "Leaderboard",
-      desc: "Compete for the top spot and win prizes",
-    },
-    {
-      icon: Gift,
-      color: "#34D399",
-      bg: "bg-success/10",
-      title: "Reward Shop",
-      desc: "Spend earnings on tickets, merch, and more",
-    },
-  ];
+  const [isStandalone] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(display-mode: standalone)").matches
+      || ("standalone" in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone);
+  });
+
+  const [isIOS] = useState(() => {
+    if (typeof navigator === "undefined") return false;
+    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  });
 
   return (
-    <div className="space-y-6 rep-slide-up">
+    <div className="space-y-5 rep-slide-up">
       {/* Welcome header */}
       <div className="text-center py-4">
-        <div className="inline-flex h-20 w-20 items-center justify-center rounded-full overflow-hidden mx-auto mb-4 ring-2 ring-warning/30">
+        <div className="inline-flex h-20 w-20 items-center justify-center rounded-full overflow-hidden mx-auto mb-4 ring-2 ring-primary/30">
           {photoUrl ? (
             <img src={photoUrl} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="h-full w-full flex items-center justify-center bg-warning/10">
-              <span className="text-3xl font-bold text-warning">
+            <div className="h-full w-full flex items-center justify-center bg-primary/10">
+              <span className="text-3xl font-bold text-primary">
                 {repName.charAt(0).toUpperCase()}
               </span>
             </div>
@@ -643,78 +623,124 @@ function PendingDashboard({ repName, photoUrl }: { repName: string; photoUrl?: s
           Welcome, {repName}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Your profile is all set — you&apos;re almost in
+          You&apos;re in — just waiting for the green light
         </p>
       </div>
 
-      {/* Status card */}
-      <div className="rounded-2xl border border-warning/15 bg-warning/[0.04] p-5">
+      {/* Status card — positive framing */}
+      <div className="rounded-2xl border border-primary/15 bg-primary/[0.04] p-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning/10">
-            <Clock size={20} className="text-warning" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+            <Clock size={20} className="text-primary" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-foreground mb-1">Application Under Review</h2>
+            <h2 className="text-sm font-bold text-foreground mb-1">Under Review</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Your application is being reviewed by the team. This usually takes less than 24 hours.
-              You&apos;ll receive a notification as soon as you&apos;re approved.
+              We&apos;re reviewing your application — usually takes less than 24 hours. You&apos;ll get a notification the moment you&apos;re approved.
             </p>
           </div>
         </div>
       </div>
 
-      {/* What's coming — preview cards */}
+      {/* What you'll unlock — exciting, not locked */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <Sparkles size={14} className="text-primary" />
           <h2 className="text-xs font-bold uppercase tracking-[2px] text-muted-foreground">
-            What&apos;s Waiting for You
+            What You&apos;ll Unlock
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          {previewFeatures.map((feature) => {
-            const Icon = feature.icon;
+        <div className="rounded-2xl border border-border/50 bg-card/50 overflow-hidden divide-y divide-border/50">
+          {[
+            { icon: Flame, color: "#F97316", text: "Your own discount code to share and earn from every sale" },
+            { icon: Compass, color: "#8B5CF6", text: "Quests and challenges to earn bonus XP" },
+            { icon: Trophy, color: "#F59E0B", text: "Compete on the leaderboard for event prizes" },
+            { icon: Gift, color: "#34D399", text: "Spend your earnings on tickets, merch, and more" },
+          ].map((item) => {
+            const Icon = item.icon;
             return (
-              <Card key={feature.title} className="py-0 gap-0 opacity-80">
-                <CardContent className="p-4">
-                  <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl mb-3", feature.bg)}>
-                    <Icon size={18} style={{ color: feature.color }} />
-                  </div>
-                  <p className="text-sm font-semibold text-foreground mb-0.5">{feature.title}</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">{feature.desc}</p>
-                </CardContent>
-              </Card>
+              <div key={item.text} className="flex items-center gap-3 px-4 py-3.5">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: `${item.color}15` }}
+                >
+                  <Icon size={14} style={{ color: item.color }} />
+                </div>
+                <p className="text-[13px] text-foreground/90 leading-snug">{item.text}</p>
+              </div>
             );
           })}
         </div>
       </div>
 
-      {/* Tips */}
-      <div className="rounded-2xl border border-border/50 bg-card/50 p-5 space-y-3">
-        <div className="flex items-center gap-2">
-          <Shield size={14} className="text-primary" />
-          <h3 className="text-xs font-bold uppercase tracking-[2px] text-muted-foreground">While You Wait</h3>
-        </div>
-        <div className="space-y-2.5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5">
-              <Target size={10} className="text-primary" />
+      {/* Install the app — inline card (only shown if not already installed) */}
+      {!isStandalone && (
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+              <Download size={18} className="text-primary" />
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              <span className="text-foreground font-medium">Complete your profile</span> — add your socials and bio in the profile tab
-            </p>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5">
-              <TrendingUp size={10} className="text-primary" />
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Install the App</h3>
+              <p className="text-xs text-muted-foreground">Get push notifications when you&apos;re approved</p>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              <span className="text-foreground font-medium">Install the app</span> — add it to your home screen for the best experience
-            </p>
           </div>
+
+          <div className="space-y-2.5">
+            {[
+              { icon: Bell, label: "Push notifications for sales & updates", color: "#8B5CF6" },
+              { icon: Zap, label: "Instant access from your home screen", color: "#F59E0B" },
+              { icon: Wifi, label: "Works offline — check stats anywhere", color: "#34D399" },
+            ].map((b) => {
+              const Icon = b.icon;
+              return (
+                <div key={b.label} className="flex items-center gap-2.5">
+                  <Icon size={13} style={{ color: b.color }} />
+                  <p className="text-xs text-muted-foreground">{b.label}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Platform-specific instructions */}
+          {isIOS ? (
+            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5">
+              <div className="flex items-center justify-center gap-2.5 text-sm text-muted-foreground">
+                <span className="text-xs">Tap</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/30 bg-primary/10">
+                  <Share size={14} className="text-primary" />
+                </div>
+                <span className="text-xs">then</span>
+                <div className="flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5">
+                  <Plus size={12} className="text-primary" />
+                  <span className="text-[11px] font-medium text-primary">Add to Home Screen</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground/70 text-center">
+              Your browser will prompt you to install — or use your browser&apos;s menu to add to home screen
+            </p>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* Complete your profile — gentle nudge */}
+      <Link href="/rep/profile" className="block">
+        <div className="rounded-2xl border border-border/50 bg-card/50 px-4 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+              <Sparkles size={14} className="text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Complete your profile</p>
+              <p className="text-[11px] text-muted-foreground">Add your socials and bio</p>
+            </div>
+          </div>
+          <ChevronRight size={14} className="text-muted-foreground/40" />
+        </div>
+      </Link>
     </div>
   );
 }

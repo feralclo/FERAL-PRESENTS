@@ -440,17 +440,27 @@ export async function ensureMerchPassTicketType(
   orgId: string,
   eventId: string
 ): Promise<string> {
-  // Check if one already exists
+  // Check if one already exists (any status — if it was accidentally activated
+  // e.g. by sequential mode toggle, we still reuse it instead of creating duplicates)
   const { data: existing } = await supabase
     .from(TABLES.TICKET_TYPES)
-    .select("id")
+    .select("id, status")
     .eq("org_id", orgId)
     .eq("event_id", eventId)
     .eq("name", "Merch Pre-order")
-    .eq("status", "hidden")
+    .limit(1)
     .single();
 
-  if (existing) return existing.id;
+  if (existing) {
+    // If it was accidentally un-hidden, restore it to hidden
+    if (existing.status !== "hidden") {
+      await supabase
+        .from(TABLES.TICKET_TYPES)
+        .update({ status: "hidden", sort_order: 9999, updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+    }
+    return existing.id;
+  }
 
   // Create the hidden ticket type
   const { data: created, error } = await supabase

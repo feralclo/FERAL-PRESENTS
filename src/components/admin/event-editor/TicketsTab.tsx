@@ -149,9 +149,11 @@ export function TicketsTab({
         updateSetting("ticket_group_release_mode", updated);
         // Auto-activate hidden tickets — sequential release handles visibility,
         // so hidden tickets would never appear. Activate them so the system works.
+        // Skip system tickets (price 0 with no capacity) — these are auto-created
+        // by the merch/reward system and should stay hidden.
         setTicketTypes((prev) =>
           prev.map((tt) => {
-            if (!groupMap[tt.id] && tt.status === "hidden") {
+            if (!groupMap[tt.id] && tt.status === "hidden" && !(Number(tt.price) === 0 && !tt.capacity)) {
               return { ...tt, status: "active" as const };
             }
             return tt;
@@ -175,12 +177,12 @@ export function TicketsTab({
 
     if (sequentialGroupNames.size === 0) return result;
 
-    // Build per-group sorted ticket lists
+    // Build per-group sorted ticket lists (exclude hidden — they don't participate in the sequence)
     for (const groupName of sequentialGroupNames) {
       const gTickets = ticketTypes
         .filter((tt) => {
           const ttGroup = groupMap[tt.id] || "__ungrouped__";
-          return ttGroup === groupName;
+          return ttGroup === groupName && tt.status !== "hidden";
         })
         .sort((a, b) => a.sort_order - b.sort_order);
 
@@ -216,7 +218,7 @@ export function TicketsTab({
       const gTickets = ticketTypes
         .filter((tt) => {
           const ttGroup = groupMap[tt.id] || "__ungrouped__";
-          return ttGroup === groupName;
+          return ttGroup === groupName && tt.status !== "hidden";
         })
         .sort((a, b) => a.sort_order - b.sort_order);
 
@@ -227,8 +229,14 @@ export function TicketsTab({
     return result;
   }, [ticketTypes, groupMap, sequentialGroups]);
 
-  // Group tickets
-  const ungrouped = ticketTypes.filter((tt) => !groupMap[tt.id]);
+  // System ticket types (hidden, £0, no capacity) are auto-created by the merch/reward
+  // system. Filter them from the admin display — they're invisible on the public page
+  // and should never be manually managed.
+  const isSystemTicket = (tt: TicketTypeRow) =>
+    tt.status === "hidden" && Number(tt.price) === 0 && !tt.capacity;
+
+  // Group tickets (excluding system tickets)
+  const ungrouped = ticketTypes.filter((tt) => !groupMap[tt.id] && !isSystemTicket(tt));
 
   return (
     <div className="space-y-4">
@@ -347,7 +355,7 @@ export function TicketsTab({
           {/* Grouped tickets */}
           {groups.map((gName, gi) => {
             const gTickets = ticketTypes.filter(
-              (tt) => groupMap[tt.id] === gName
+              (tt) => groupMap[tt.id] === gName && !isSystemTicket(tt)
             );
             return (
               <Card key={gName} className="py-0 gap-0 overflow-hidden">
@@ -363,7 +371,8 @@ export function TicketsTab({
                   onActivateGroupTickets={(groupName) => {
                     setTicketTypes((prev) =>
                       prev.map((tt) => {
-                        if (groupMap[tt.id] === groupName && tt.status === "hidden") {
+                        // Skip system tickets (price 0 with no capacity) — auto-created by merch/reward system
+                        if (groupMap[tt.id] === groupName && tt.status === "hidden" && !(Number(tt.price) === 0 && !tt.capacity)) {
                           return { ...tt, status: "active" as const };
                         }
                         return tt;

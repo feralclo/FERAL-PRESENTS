@@ -23,7 +23,7 @@ export function MidnightTierProgression({
   );
 
   return (
-    <div className="flex gap-1.5 max-[480px]:gap-1 mb-5 max-[480px]:mb-4 pb-5 max-[480px]:pb-4 border-b border-foreground/[0.05]">
+    <div className="flex gap-1 -mx-1.5 mb-5 max-[480px]:mb-4 pb-5 max-[480px]:pb-4 border-b border-foreground/[0.05]">
       {tickets.map((tt, i) => {
         const soldOut = tt.status === "sold_out" || (tt.sold || 0) >= (tt.capacity || Infinity);
         const isActive = i === firstActiveIdx;
@@ -33,14 +33,14 @@ export function MidnightTierProgression({
           <div
             key={tt.id}
             className={cn(
-              "flex-1 p-2.5 max-[480px]:p-2 text-center rounded-lg transition-all duration-200 min-w-0",
+              "flex-1 p-2 text-center rounded-lg transition-all duration-200 min-w-0",
               soldOut && "opacity-40 bg-foreground/[0.01]",
               isActive && "bg-primary/[0.05] border border-primary/25",
               isNext && "border border-dashed border-foreground/[0.05] opacity-45",
               !soldOut && !isActive && !isNext && "bg-foreground/[0.015] border border-foreground/[0.05]",
             )}
           >
-            <span className="font-[family-name:var(--font-sans)] text-[9px] max-[480px]:text-[8px] font-semibold tracking-[0.04em] uppercase block mb-1 text-muted-foreground leading-tight break-words hyphens-auto">
+            <span className="font-[family-name:var(--font-sans)] text-[8px] font-semibold tracking-[0.01em] uppercase block mb-1 whitespace-nowrap text-muted-foreground">
               {isActive && <span className="text-foreground/90">{tt.name}</span>}
               {!isActive && tt.name}
             </span>

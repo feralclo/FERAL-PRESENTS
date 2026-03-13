@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { fmtMoney } from "@/lib/format";
 import { useOrgCurrency } from "@/hooks/useOrgCurrency";
+import { useOrgTimezone } from "@/hooks/useOrgTimezone";
+import { tzMidnight, formatInTimezone } from "@/lib/timezone";
 
 /* ── Types ── */
 type Period = "today" | "7d" | "30d";
@@ -390,25 +392,15 @@ function OrdersSearch({
 }
 
 /* ── Helpers ── */
-function getDateStart(period: Period): string {
-  const now = new Date();
+function getDateStart(period: Period, tz: string): string {
   switch (period) {
     case "today":
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      return tzMidnight(tz, 0);
     case "7d":
-      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     case "30d":
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   }
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 /* ════════════════════════════════════════════════════════
@@ -432,6 +424,7 @@ function OrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currency: orgCurrency } = useOrgCurrency();
+  const { timezone: orgTimezone } = useOrgTimezone();
   const customerIdParam = searchParams.get("customer_id");
   const customerNameParam = searchParams.get("customer_name");
 
@@ -497,7 +490,7 @@ function OrdersContent() {
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const dateStart = getDateStart(period);
+      const dateStart = getDateStart(period, orgTimezone);
       const res = await fetch(`/api/admin/orders-stats?from=${encodeURIComponent(dateStart)}`);
       const json = await res.json();
 
@@ -510,7 +503,7 @@ function OrdersContent() {
       // Fail silently
     }
     setStatsLoading(false);
-  }, [period]);
+  }, [period, orgTimezone]);
 
   const handleExportCSV = useCallback(async () => {
     setExporting(true);
@@ -800,7 +793,7 @@ function OrdersContent() {
                       </Link>
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
-                      {formatDate(order.created_at)}
+                      {formatInTimezone(order.created_at, orgTimezone)}
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
                       {order.customer

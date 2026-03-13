@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import { getOrgTimezone, tzMidnight, getTimezoneAbbr } from "@/lib/timezone";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -28,9 +29,10 @@ export async function GET() {
       );
     }
 
-    const now = new Date();
-    const todayStr = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const yStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString();
+    // Use org's configured timezone for "today" boundaries
+    const tz = await getOrgTimezone(orgId);
+    const todayStr = tzMidnight(tz, 0);
+    const yStart = tzMidnight(tz, -1);
     const yEnd = todayStr;
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
@@ -223,6 +225,8 @@ export async function GET() {
       recentCheckoutSessions: recentCheckoutsRes.data || [],
       topEvents: topEvents.slice(0, 5),
       eventSlugMap,
+      timezone: tz,
+      timezoneAbbr: getTimezoneAbbr(tz),
     });
   } catch (err) {
     Sentry.captureException(err);

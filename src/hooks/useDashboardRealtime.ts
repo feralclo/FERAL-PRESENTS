@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
+import { tzMidnight } from "@/lib/timezone";
 import type { ActivityItem } from "@/components/admin/dashboard/ActivityFeed";
 import type { TopEventRow } from "@/components/admin/dashboard/TopEventsTable";
 
@@ -39,23 +40,14 @@ export interface DashboardState {
   activityFeed: ActivityItem[];
   // Top events
   topEvents: TopEventRow[];
+  // Timezone
+  timezone: string;
+  timezoneAbbr: string;
   // Meta
   isLoading: boolean;
 }
 
 /* ── Helpers ── */
-
-function todayStart(): string {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-}
-
-function yesterdayRange(): { start: string; end: string } {
-  const now = new Date();
-  const yStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  const yEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return { start: yStart.toISOString(), end: yEnd.toISOString() };
-}
 
 function minutesAgo(n: number): string {
   return new Date(Date.now() - n * 60 * 1000).toISOString();
@@ -80,6 +72,8 @@ export function useDashboardRealtime(): DashboardState {
   });
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
   const [topEvents, setTopEvents] = useState<TopEventRow[]>([]);
+  const [timezone, setTimezone] = useState("Europe/London");
+  const [timezoneAbbr, setTimezoneAbbr] = useState("GMT");
 
   // Mutable maps for real-time presence tracking
   const visitorMap = useRef<Map<string, number>>(new Map());
@@ -255,6 +249,8 @@ export function useDashboardRealtime(): DashboardState {
       setInCheckout(data.inCheckout ?? 0);
       if (data.topEvents) setTopEvents(data.topEvents);
       if (data.eventSlugMap) eventSlugMap.current = data.eventSlugMap;
+      if (data.timezone) setTimezone(data.timezone);
+      if (data.timezoneAbbr) setTimezoneAbbr(data.timezoneAbbr);
 
       return true;
     } catch (err) {
@@ -268,8 +264,8 @@ export function useDashboardRealtime(): DashboardState {
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
-    const todayStr = todayStart();
-    const yRange = yesterdayRange();
+    const todayStr = tzMidnight(timezone, 0);
+    const yRange = { start: tzMidnight(timezone, -1), end: todayStr };
 
     const [
       ordersRes, ticketsRes, yOrdersRes, yTicketsRes,
@@ -313,7 +309,7 @@ export function useDashboardRealtime(): DashboardState {
       recentCheckouts: (recentCheckoutsRes.data || []) as { session_id: string; timestamp: string }[],
       recentActivity: (recentActivityRes.data || []) as { event_type: string; event_name?: string; product_name?: string; product_price?: number; timestamp: string }[],
     });
-  }, [processQueryResults, orgId]);
+  }, [processQueryResults, orgId, timezone]);
 
   /* ── Initial data load: API first, direct queries as fallback ── */
   const loadInitialData = useCallback(async () => {
@@ -546,6 +542,8 @@ export function useDashboardRealtime(): DashboardState {
     funnel,
     activityFeed,
     topEvents,
+    timezone,
+    timezoneAbbr,
     isLoading,
-  }), [activeVisitors, activeCarts, inCheckout, todayWithConversion, yesterday, funnel, activityFeed, topEvents, isLoading]);
+  }), [activeVisitors, activeCarts, inCheckout, todayWithConversion, yesterday, funnel, activityFeed, topEvents, timezone, timezoneAbbr, isLoading]);
 }

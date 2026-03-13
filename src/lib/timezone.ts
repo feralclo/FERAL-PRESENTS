@@ -179,6 +179,82 @@ export function tzLocalToUtc(val: string, tz: string): string | null {
 }
 
 /**
+ * Get the current date components (year, month, day) in a target timezone.
+ * Returns { year, month (1-based), day }.
+ */
+function datePartsInTz(tz: string, date: Date = new Date()): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value || "0");
+  return { year: get("year"), month: get("month"), day: get("day") };
+}
+
+/**
+ * Get the UTC ISO string for midnight (00:00) on a given date in a target timezone.
+ * Useful for computing "today start" or "yesterday start" relative to a business timezone.
+ *
+ * @param tz    IANA timezone (e.g. "Europe/London")
+ * @param dayOffset  Number of days to offset (0 = today, -1 = yesterday)
+ */
+export function tzMidnight(tz: string, dayOffset = 0): string {
+  const { year, month, day } = datePartsInTz(tz);
+  // Use Date to handle month/year rollovers (e.g. day 1, offset -1)
+  const d = new Date(year, month - 1, day + dayOffset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const localMidnight = `${y}-${m}-${dd}T00:00`;
+  return tzLocalToUtc(localMidnight, tz) || new Date().toISOString();
+}
+
+/**
+ * Format a UTC ISO timestamp for display in a target timezone.
+ * Returns "13 Mar, 14:30" style string.
+ */
+export function formatInTimezone(iso: string, tz: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(iso));
+  } catch {
+    return new Date(iso).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+}
+
+/**
+ * Server-side helper: fetch the org's configured timezone from site_settings.
+ * Falls back to "Europe/London" if not set.
+ */
+export async function getOrgTimezone(orgId: string): Promise<string> {
+  const { getSupabaseAdmin } = await import("@/lib/supabase/admin");
+  const { generalKey } = await import("@/lib/constants");
+  const supabase = await getSupabaseAdmin();
+  if (!supabase) return "Europe/London";
+
+  const { data } = await supabase
+    .from("site_settings")
+    .select("data")
+    .eq("key", generalKey(orgId))
+    .single();
+
+  const settings = data?.data as { timezone?: string } | null;
+  return settings?.timezone || "Europe/London";
+}
+
+/**
  * Get the short timezone abbreviation for display — e.g. "GMT", "EST", "CET"
  */
 export function getTimezoneAbbr(tz: string): string {

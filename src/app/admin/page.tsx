@@ -175,6 +175,7 @@ export default function AdminDashboard() {
     funnel,
     activityFeed,
     topEvents,
+    timezoneAbbr,
     isLoading,
   } = useDashboardRealtime();
 
@@ -245,6 +246,11 @@ export default function AdminDashboard() {
       <div className="mb-10">
         <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
           Today&apos;s Performance
+          {timezoneAbbr && (
+            <span className="ml-2 text-[10px] font-normal normal-case tracking-normal text-muted-foreground/60">
+              ({timezoneAbbr})
+            </span>
+          )}
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <LiveStatCard

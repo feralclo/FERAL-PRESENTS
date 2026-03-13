@@ -11,6 +11,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import type { Order } from "@/types/orders";
 import { fmtMoney } from "@/lib/format";
+import { useOrgTimezone } from "@/hooks/useOrgTimezone";
 import {
   ArrowLeft,
   Download,
@@ -62,18 +63,30 @@ interface TimelineEntry {
   canResend?: boolean;
 }
 
-function buildTimeline(order: Order): TimelineEntry[] {
+function buildTimeline(order: Order, tz?: string): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
   const orderMetadata = (order.metadata || {}) as Record<string, unknown>;
   const isMerch = orderMetadata.order_type === "merch_preorder";
-  const fmt = (d: string) =>
-    new Date(d).toLocaleString("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const fmt = (d: string) => {
+    try {
+      return new Intl.DateTimeFormat("en-GB", {
+        timeZone: tz,
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(d));
+    } catch {
+      return new Date(d).toLocaleString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+  };
 
   entries.push({
     label: isMerch ? "Merch pre-order placed" : "Order placed",
@@ -150,14 +163,25 @@ function buildTimeline(order: Order): TimelineEntry[] {
 
 /* ── Helpers ── */
 
-function formatDateTime(d: string) {
-  return new Date(d).toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function formatDateTime(d: string, tz?: string) {
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(d));
+  } catch {
+    return new Date(d).toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
 }
 
 function getInitials(first?: string, last?: string): string {
@@ -186,6 +210,7 @@ export default function OrderDetailPage() {
   const [showRefund, setShowRefund] = useState(false);
   const [refundReason, setRefundReason] = useState("");
   const [resendingEmail, setResendingEmail] = useState(false);
+  const { timezone: orgTimezone } = useOrgTimezone();
   const [repAttribution, setRepAttribution] = useState<{
     repName: string;
     pointsAwarded: number;
@@ -303,7 +328,7 @@ export default function OrderDetailPage() {
 
   const customer = order.customer;
   const event = order.event;
-  const timeline = buildTimeline(order);
+  const timeline = buildTimeline(order, orgTimezone);
 
   // Detect merch-only pre-order from metadata
   const orderMeta = (order.metadata || {}) as Record<string, unknown>;
@@ -348,7 +373,7 @@ export default function OrderDetailPage() {
                 </div>
                 <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock size={11} />
-                  {formatDateTime(order.created_at)}
+                  {formatDateTime(order.created_at, orgTimezone)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -840,7 +865,7 @@ export default function OrderDetailPage() {
                           <div className="flex items-center gap-1.5">
                             <CheckCircle2 size={11} className="text-success" />
                             <span className="font-mono text-[10px] text-muted-foreground">
-                              Scanned {formatDateTime(ticket.scanned_at)}
+                              Scanned {formatDateTime(ticket.scanned_at, orgTimezone)}
                             </span>
                           </div>
                         ) : ticket.status === "cancelled" ? (

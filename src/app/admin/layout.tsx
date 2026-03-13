@@ -202,11 +202,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const isEditorPage = pathname.startsWith("/admin/ticketstore/editor");
   const isBackendRoute = pathname.startsWith("/admin/backend");
   const isSettingsRoute = pathname.startsWith("/admin/settings");
-  const isBypassRoute = isLoginPage || isInvitePage || isSignupPage || isBetaPage || isOnboardingPage || isEditorPage || isBackendRoute || isSettingsRoute;
+  const isUnauthRoute = isLoginPage || isInvitePage || isSignupPage || isBetaPage || isOnboardingPage;
+  const isBypassRoute = isUnauthRoute || isEditorPage || isBackendRoute || isSettingsRoute;
 
   // Fetch user email + platform owner flag on mount
   useEffect(() => {
-    if (isBypassRoute) return;
+    if (isUnauthRoute) return;
     (async () => {
       try {
         const supabase = getSupabaseClient();

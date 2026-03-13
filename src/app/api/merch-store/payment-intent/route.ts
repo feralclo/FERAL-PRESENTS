@@ -478,7 +478,18 @@ export async function POST(request: NextRequest) {
       customer_first_name: customer.first_name,
       customer_last_name: customer.last_name,
       customer_phone: customer.phone || "",
-      items_json: JSON.stringify(validatedItems),
+      // IMPORTANT: Stripe limits each metadata value to 500 characters.
+      // Store only essential fields — omit product_name, product_type, product_image.
+      items_json: JSON.stringify(validatedItems.map((item) => {
+        const entry: { c: string; p: string; q: number; u: number; s?: string } = {
+          c: item.collection_item_id,
+          p: item.product_id,
+          q: item.qty,
+          u: item.unit_price,
+        };
+        if (item.merch_size) entry.s = item.merch_size;
+        return entry;
+      })),
     };
 
     if (typeof customer.marketing_consent === "boolean") {

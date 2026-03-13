@@ -344,7 +344,50 @@ export async function createOrder(
   }
 
   // ------------------------------------------------------------------
-  // 5. Create order items + individual tickets
+  // 5. Atomically reserve stock for all line items BEFORE creating
+  //    order items / tickets. increment_sold checks capacity and
+  //    returns false when there aren't enough tickets left.
+  //    If any item fails, we rollback already-incremented items.
+  // ------------------------------------------------------------------
+  const incrementedItems: { ticket_type_id: string; qty: number }[] = [];
+
+  for (const item of items) {
+    const tt = ttMap.get(item.ticket_type_id);
+    if (!tt) continue;
+
+    const { data: success } = await supabase.rpc("increment_sold", {
+      p_ticket_type_id: item.ticket_type_id,
+      p_qty: item.qty,
+    });
+
+    if (success === false) {
+      // Rollback already-incremented ticket types
+      for (const prev of incrementedItems) {
+        await supabase.rpc("increment_sold", {
+          p_ticket_type_id: prev.ticket_type_id,
+          p_qty: -prev.qty,
+        });
+      }
+      // Delete the order we already created (no tickets were made yet)
+      await supabase
+        .from(TABLES.ORDERS)
+        .delete()
+        .eq("id", order.id);
+
+      throw new OrderCreationError(
+        `Tickets sold out: "${tt.name}" does not have ${item.qty} remaining`,
+        409
+      );
+    }
+
+    incrementedItems.push({
+      ticket_type_id: item.ticket_type_id,
+      qty: item.qty,
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // 5b. Create order items + individual tickets (stock already reserved)
   // ------------------------------------------------------------------
   const allTickets: CreatedTicket[] = [];
 
@@ -382,13 +425,6 @@ export async function createOrder(
         merch_size: item.merch_size,
       });
     }
-
-    // Atomically increment sold count — prevents overselling under concurrency.
-    // This uses a Postgres function instead of read-then-write.
-    await supabase.rpc("increment_sold", {
-      p_ticket_type_id: item.ticket_type_id,
-      p_qty: item.qty,
-    });
   }
 
   if (allTickets.length > 0) {

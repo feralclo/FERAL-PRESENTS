@@ -65,94 +65,123 @@ export async function POST(request: NextRequest) {
     const geoCountry = request.headers.get("x-vercel-ip-country");
 
     // ── 1. Upsert customer ──
-    // Check if customer already exists by email
-    const { data: existing } = await supabase
-      .from(TABLES.CUSTOMERS)
-      .select("id, first_name, last_name, total_orders")
-      .eq("org_id", orgId)
-      .eq("email", normalizedEmail)
-      .single();
+    // Customer creation is best-effort — failures here must NOT block checkout.
+    // Race condition: concurrent requests for the same email can cause unique
+    // constraint violations (23505). We handle this by falling back to a select.
+    let customerId: string | null = null;
 
-    let customerId: string;
-
-    if (existing) {
-      customerId = existing.id;
-
-      // Only update name if provided AND customer doesn't already have a name
-      // from a completed order (don't overwrite confirmed purchase data with
-      // partial checkout data)
-      const updates: Record<string, unknown> = {
-        updated_at: new Date().toISOString(),
-      };
-      if (first_name || last_name) {
-        // Update name if customer has no name yet, or if they haven't purchased
-        if (!existing.first_name || existing.total_orders === 0) {
-          if (first_name) updates.first_name = first_name;
-          if (last_name) updates.last_name = last_name;
-        }
-      }
-      // Explicit checkout consent always wins (user made an active choice)
-      if (typeof marketing_consent === "boolean") {
-        updates.marketing_consent = marketing_consent;
-        updates.marketing_consent_at = new Date().toISOString();
-        updates.marketing_consent_source = "checkout";
-      }
-      if (Object.keys(updates).length > 1) {
-        await supabase
-          .from(TABLES.CUSTOMERS)
-          .update(updates)
-          .eq("id", customerId);
-      }
-    } else {
-      // Create new customer — just email initially, name added later
-      const { data: newCustomer, error: custErr } = await supabase
+    try {
+      // Check if customer already exists by email
+      const { data: existing } = await supabase
         .from(TABLES.CUSTOMERS)
-        .insert({
-          org_id: orgId,
-          email: normalizedEmail,
-          first_name: first_name || null,
-          last_name: last_name || null,
-          source: "checkout",
-          total_orders: 0,
-          total_spent: 0,
-          city: geoCity ? decodeURIComponent(geoCity) : null,
-          country: geoCountry || null,
-          ...(typeof marketing_consent === "boolean" ? {
-            marketing_consent,
-            marketing_consent_at: new Date().toISOString(),
-            marketing_consent_source: "checkout",
-          } : {}),
-        })
-        .select("id")
+        .select("id, first_name, last_name, total_orders")
+        .eq("org_id", orgId)
+        .eq("email", normalizedEmail)
         .single();
 
-      if (custErr || !newCustomer) {
-        console.error("Failed to create customer:", custErr);
-        return NextResponse.json(
-          { error: "Failed to create customer" },
-          { status: 500 }
-        );
-      }
-      customerId = newCustomer.id;
+      if (existing) {
+        customerId = existing.id;
 
-      // Best-effort: set a fun rave nickname for the discoverer profile
-      // (column may not exist yet in older database schemas)
-      try {
-        const nickname = generateNickname(normalizedEmail);
-        await supabase
+        // Only update name if provided AND customer doesn't already have a name
+        // from a completed order (don't overwrite confirmed purchase data with
+        // partial checkout data)
+        const updates: Record<string, unknown> = {
+          updated_at: new Date().toISOString(),
+        };
+        if (first_name || last_name) {
+          // Update name if customer has no name yet, or if they haven't purchased
+          if (!existing.first_name || existing.total_orders === 0) {
+            if (first_name) updates.first_name = first_name;
+            if (last_name) updates.last_name = last_name;
+          }
+        }
+        // Explicit checkout consent always wins (user made an active choice)
+        if (typeof marketing_consent === "boolean") {
+          updates.marketing_consent = marketing_consent;
+          updates.marketing_consent_at = new Date().toISOString();
+          updates.marketing_consent_source = "checkout";
+        }
+        if (Object.keys(updates).length > 1) {
+          await supabase
+            .from(TABLES.CUSTOMERS)
+            .update(updates)
+            .eq("id", customerId);
+        }
+      } else {
+        // Create new customer — just email initially, name added later
+        const { data: newCustomer, error: custErr } = await supabase
           .from(TABLES.CUSTOMERS)
-          .update({ nickname })
-          .eq("id", customerId);
-      } catch {
-        // Ignore — nickname column may not exist yet
+          .insert({
+            org_id: orgId,
+            email: normalizedEmail,
+            first_name: first_name || null,
+            last_name: last_name || null,
+            source: "checkout",
+            total_orders: 0,
+            total_spent: 0,
+            city: geoCity ? decodeURIComponent(geoCity) : null,
+            country: geoCountry || null,
+            ...(typeof marketing_consent === "boolean" ? {
+              marketing_consent,
+              marketing_consent_at: new Date().toISOString(),
+              marketing_consent_source: "checkout",
+            } : {}),
+          })
+          .select("id")
+          .single();
+
+        if (custErr) {
+          // Handle race condition: another request created this customer
+          // between our SELECT and INSERT (unique constraint violation)
+          if (custErr.code === "23505") {
+            const { data: raceCustomer } = await supabase
+              .from(TABLES.CUSTOMERS)
+              .select("id")
+              .eq("org_id", orgId)
+              .eq("email", normalizedEmail)
+              .single();
+            customerId = raceCustomer?.id ?? null;
+          }
+
+          if (!customerId) {
+            console.error("Failed to create customer (non-fatal):", custErr.message, custErr.code);
+            Sentry.captureMessage("Checkout capture: customer upsert failed", {
+              level: "warning",
+              extra: { email: normalizedEmail, orgId, errorCode: custErr.code, errorMessage: custErr.message },
+            });
+          }
+        } else if (newCustomer) {
+          customerId = newCustomer.id;
+        }
+
+        // Best-effort: set a fun rave nickname for the discoverer profile
+        // (column may not exist yet in older database schemas)
+        if (customerId) {
+          try {
+            const nickname = generateNickname(normalizedEmail);
+            await supabase
+              .from(TABLES.CUSTOMERS)
+              .update({ nickname })
+              .eq("id", customerId);
+          } catch {
+            // Ignore — nickname column may not exist yet
+          }
+        }
       }
+    } catch (customerErr) {
+      // Customer creation is non-critical — log and continue
+      console.error("Customer upsert threw (non-fatal):", customerErr);
+      Sentry.captureMessage("Checkout capture: customer upsert exception", {
+        level: "warning",
+        extra: { email: normalizedEmail, orgId },
+      });
     }
 
     // ── 2. Upsert abandoned cart (if event/items provided) ──
     let cartCreated = false;
     let cartError: string | null = null;
 
-    if (event_id && items && Array.isArray(items)) {
+    if (event_id && items && Array.isArray(items) && customerId) {
       // Check for existing cart for this customer + event (pending or abandoned)
       const { data: existingCart, error: findErr } = await supabase
         .from(TABLES.ABANDONED_CARTS)
@@ -231,9 +260,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      customer_id: customerId,
+      customer_id: customerId ?? "unknown",
       cart_created: cartCreated,
       ...(cartError ? { cart_error: cartError } : {}),
+      ...(!customerId ? { customer_warning: "Customer record could not be created" } : {}),
     });
   } catch (err) {
     Sentry.captureException(err);

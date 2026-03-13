@@ -4,7 +4,7 @@ import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
-import { createOrder, type OrderVat, type OrderDiscount } from "@/lib/orders";
+import { createOrder, OrderCreationError, type OrderVat, type OrderDiscount } from "@/lib/orders";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import { updateOrgPlanSettings } from "@/lib/plans";
@@ -222,8 +222,14 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
     return;
   }
 
+  // Parse items — supports both compact format {t,q,s} (new) and full format {ticket_type_id,qty,merch_size} (legacy)
+  const rawItems = JSON.parse(itemsJson) as Array<Record<string, unknown>>;
   const items: { ticket_type_id: string; qty: number; merch_size?: string }[] =
-    JSON.parse(itemsJson);
+    rawItems.map((i) => ({
+      ticket_type_id: (i.t as string) || (i.ticket_type_id as string),
+      qty: (i.q as number) || (i.qty as number),
+      ...(((i.s as string) || (i.merch_size as string)) ? { merch_size: (i.s as string) || (i.merch_size as string) } : {}),
+    }));
 
   const supabase = await getSupabaseAdmin();
   if (!supabase) {
@@ -417,6 +423,21 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
   } catch (err) {
     Sentry.captureException(err);
     console.error("Failed to create order for PI:", paymentIntent.id, err);
+
+    // If tickets sold out after payment succeeded, this is a critical orphan —
+    // money taken but no ticket issued. Log it prominently for resolution.
+    if (err instanceof OrderCreationError && err.statusCode === 409) {
+      logPaymentEvent({
+        orgId,
+        type: "checkout_error",
+        severity: "critical",
+        stripePaymentIntentId: paymentIntent.id,
+        errorCode: "sold_out_after_payment",
+        errorMessage: err.message,
+        customerEmail,
+        metadata: { items: itemsJson, event_id: eventId },
+      });
+    }
   }
 }
 

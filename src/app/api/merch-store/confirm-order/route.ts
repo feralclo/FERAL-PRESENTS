@@ -125,7 +125,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const items: MerchOrderLineItem[] = JSON.parse(itemsJson);
+    // Parse items — supports compact format {c,p,q,u,s} (new) and full format (legacy).
+    // Compact format omits product_name/type/image to stay under Stripe's 500-char metadata limit.
+    const rawMerchItems = JSON.parse(itemsJson) as Array<Record<string, unknown>>;
+    const isCompact = rawMerchItems.length > 0 && "c" in rawMerchItems[0];
+
+    let items: MerchOrderLineItem[];
+    if (isCompact) {
+      // Re-hydrate product details from the database
+      const productIds = [...new Set(rawMerchItems.map((i) => i.p as string))];
+      const { data: products } = await supabase
+        .from(TABLES.PRODUCTS)
+        .select("id, name, type, images")
+        .in("id", productIds);
+      const productMap = new Map(
+        (products || []).map((p: { id: string; name: string; type?: string; images?: unknown }) => [p.id, p])
+      );
+
+      items = rawMerchItems.map((i) => {
+        const product = productMap.get(i.p as string);
+        let productImage: string | undefined;
+        if (product?.images) {
+          const imgs = product.images;
+          if (Array.isArray(imgs) && imgs.length > 0) productImage = imgs[0];
+          else if (typeof imgs === "object" && imgs !== null) {
+            const imgObj = imgs as { front?: string; back?: string };
+            productImage = imgObj.front || imgObj.back;
+          }
+        }
+        return {
+          collection_item_id: i.c as string,
+          product_id: i.p as string,
+          product_name: product?.name || "Merch Item",
+          product_type: product?.type || undefined,
+          product_image: productImage,
+          qty: i.q as number,
+          unit_price: i.u as number,
+          ...(i.s ? { merch_size: i.s as string } : {}),
+        };
+      });
+    } else {
+      items = rawMerchItems as unknown as MerchOrderLineItem[];
+    }
 
     // Fetch event
     const { data: event } = await supabase

@@ -176,6 +176,32 @@ export async function POST(request: NextRequest) {
     const metadata = paymentIntent.metadata;
     const eventId = metadata.event_id;
     const metaOrgId = metadata.org_id || orgId;
+
+    // Validate that the PaymentIntent's org_id matches the request-derived org_id.
+    // An attacker could forge a PaymentIntent with a different org's metadata to
+    // create orders against another tenant.
+    if (metaOrgId !== orgId) {
+      const warning = `org_id mismatch: request=${orgId}, metadata=${metaOrgId}, pi=${payment_intent_id}`;
+      console.warn(`[confirm-order] ${warning}`);
+      Sentry.captureMessage(`confirm-order org_id mismatch`, {
+        level: "warning",
+        extra: { requestOrgId: orgId, metadataOrgId: metaOrgId, paymentIntentId: payment_intent_id },
+      });
+      logPaymentEvent({
+        orgId,
+        type: "checkout_error",
+        severity: "critical",
+        errorCode: "org_id_mismatch",
+        errorMessage: warning,
+        stripePaymentIntentId: payment_intent_id,
+        ipAddress: getClientIp(request),
+      });
+      return NextResponse.json(
+        { error: "Organization mismatch" },
+        { status: 403 }
+      );
+    }
+
     const customerEmail = metadata.customer_email;
     const customerFirstName = metadata.customer_first_name;
     const customerLastName = metadata.customer_last_name;
@@ -189,8 +215,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Parse items — supports both compact format {t,q,s} (new) and full format {ticket_type_id,qty,merch_size} (legacy)
+    const rawItems = JSON.parse(itemsJson) as Array<Record<string, unknown>>;
     const items: { ticket_type_id: string; qty: number; merch_size?: string }[] =
-      JSON.parse(itemsJson);
+      rawItems.map((i) => ({
+        ticket_type_id: (i.t as string) || (i.ticket_type_id as string),
+        qty: (i.q as number) || (i.qty as number),
+        ...(((i.s as string) || (i.merch_size as string)) ? { merch_size: (i.s as string) || (i.merch_size as string) } : {}),
+      }));
 
     // Fetch event (include venue/date fields for order confirmation email)
     const { data: event } = await supabase

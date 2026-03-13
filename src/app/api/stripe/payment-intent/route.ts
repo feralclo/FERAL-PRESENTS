@@ -491,7 +491,17 @@ export async function POST(request: NextRequest) {
       })
       .join(", ");
 
-    // Store order details in metadata for webhook to use
+    // Store order details in metadata for webhook to use.
+    // IMPORTANT: Stripe limits each metadata value to 500 characters.
+    // Strip items down to only the fields needed by confirm-order / webhook
+    // (ticket_type_id, qty, merch_size) — omit name, price, image, etc.
+    const minimalItems = (items as { ticket_type_id: string; qty: number; merch_size?: string }[]).map((item) => {
+      const entry: { t: string; q: number; s?: string } = { t: item.ticket_type_id, q: item.qty };
+      if (item.merch_size) entry.s = item.merch_size;
+      return entry;
+    });
+    const itemsJsonValue = JSON.stringify(minimalItems);
+
     const metadata: Record<string, string> = {
       event_id,
       event_slug: event.slug,
@@ -500,7 +510,7 @@ export async function POST(request: NextRequest) {
       customer_first_name: customer.first_name,
       customer_last_name: customer.last_name,
       customer_phone: customer.phone || "",
-      items_json: JSON.stringify(items),
+      items_json: itemsJsonValue,
     };
 
     if (typeof customer.marketing_consent === "boolean") {
@@ -539,6 +549,20 @@ export async function POST(request: NextRequest) {
       metadata.vat_inclusive = vatInclusive ? "true" : "false";
     }
 
+    // Deterministic idempotency key so retries (network timeout, browser refresh)
+    // reuse the same PaymentIntent instead of creating duplicates.
+    // Key is derived from: org, event, customer email, sorted cart items, discount, and currency.
+    const cartFingerprint = JSON.stringify({
+      items: (items as { ticket_type_id: string; qty: number }[])
+        .map((i) => ({ id: i.ticket_type_id, qty: i.qty }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+      email: customer.email.toLowerCase(),
+      eventId: event_id,
+      discount: discount_code || "",
+      currency: chargeCurrency,
+    });
+    const idempotencyKey = `pi_${orgId}_${Buffer.from(cartFingerprint).toString("base64url").slice(0, 40)}`;
+
     // Helper to create the PI (shared between connected + platform paths)
     const createPI = async () => {
       try {
@@ -552,7 +576,7 @@ export async function POST(request: NextRequest) {
               metadata,
               automatic_payment_methods: { enabled: true },
             },
-            { stripeAccount: stripeAccountId }
+            { stripeAccount: stripeAccountId, idempotencyKey }
           );
         }
         return await stripe.paymentIntents.create({
@@ -561,7 +585,7 @@ export async function POST(request: NextRequest) {
           description: `${event.name} — ${description}`,
           metadata,
           automatic_payment_methods: { enabled: true },
-        });
+        }, { idempotencyKey });
       } catch (piErr) {
         // If Stripe rejects the currency (e.g. unsupported on connected account),
         // fall back to base currency so checkout still works
@@ -621,29 +645,14 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Fire-and-forget increment of discount used_count.
- * Uses a simple read-then-write; acceptable for discount tracking
- * (the hard enforcement happens at validation time).
+ * Fire-and-forget atomic increment of discount used_count.
+ * Uses the `increment_discount_used` Postgres RPC so the UPDATE is a single
+ * atomic `SET used_count = used_count + 1` — no read-then-write race condition.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function incrementDiscountUsed(supabase: any, code: string, orgId: string) {
   supabase
-    .from(TABLES.DISCOUNTS)
-    .select("id, used_count")
-    .eq("org_id", orgId)
-    .ilike("code", code)
-    .single()
-    .then(({ data }: { data: { id: string; used_count: number } | null }) => {
-      if (data) {
-        supabase
-          .from(TABLES.DISCOUNTS)
-          .update({
-            used_count: (data.used_count || 0) + 1,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", data.id)
-          .then(() => {});
-      }
-    })
+    .rpc("increment_discount_used", { p_code: code, p_org_id: orgId })
+    .then(() => {})
     .catch(() => {});
 }

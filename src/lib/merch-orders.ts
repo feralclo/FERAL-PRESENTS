@@ -324,11 +324,20 @@ export async function createMerchOrder(
       });
     }
 
-    // Increment sold count on the merch pass ticket type
-    await supabase.rpc("increment_sold", {
+    // Atomically increment sold count — checks capacity before updating.
+    const { data: soldOk } = await supabase.rpc("increment_sold", {
       p_ticket_type_id: merchPassTicketTypeId,
       p_qty: item.qty,
     });
+
+    if (soldOk === false) {
+      // Merch pass ticket type hit capacity — clean up
+      await supabase
+        .from(TABLES.ORDERS)
+        .delete()
+        .eq("id", order.id);
+      throw new MerchOrderError("Merch pre-order capacity exceeded", 409);
+    }
   }
 
   if (allTickets.length > 0) {

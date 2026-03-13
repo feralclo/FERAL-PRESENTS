@@ -155,6 +155,18 @@ function createMockSupabase(config: {
       return updateChain;
     });
 
+    // delete — supports arbitrary .eq() chaining
+    chain.delete = vi.fn().mockImplementation(() => {
+      const deleteChain: Record<string, unknown> = {};
+      deleteChain.eq = vi.fn().mockReturnValue(deleteChain);
+      Object.defineProperty(deleteChain, "then", {
+        value: (resolve: (v: unknown) => void) => {
+          resolve({ data: null, error: null });
+        },
+      });
+      return deleteChain;
+    });
+
     return chain;
   }
 
@@ -162,7 +174,7 @@ function createMockSupabase(config: {
     from: vi.fn().mockImplementation((tableName: string) => makeChain(tableName)),
     rpc: vi.fn().mockImplementation(() => ({
       then: (resolve: (v: unknown) => void) => {
-        resolve(rpcSuccess ? { data: null, error: null } : { data: null, error: { message: "RPC failed" } });
+        resolve(rpcSuccess ? { data: true, error: null } : { data: false, error: null });
       },
     })),
   };
@@ -366,6 +378,76 @@ describe("createOrder", () => {
     expect(params.supabase.rpc).toHaveBeenCalledWith("increment_sold", {
       p_ticket_type_id: "tt-b",
       p_qty: 1,
+    });
+  });
+
+  it("throws 409 OrderCreationError when increment_sold returns false (sold out)", async () => {
+    const supabase = createMockSupabase({
+      tables: {
+        ticket_types: [TICKET_TYPE_A, TICKET_TYPE_B],
+        customers: [],
+        orders: [{ total: 95 }],
+      },
+      insertReturns: {
+        customers: { id: "cust-1" },
+        orders: { id: "order-1", order_number: "FERAL-00001" },
+        order_items: { id: "oi-1" },
+      },
+      rpcSuccess: false, // increment_sold returns false → sold out
+    });
+
+    const params = buildParams({ supabase });
+
+    await expect(createOrder(params)).rejects.toThrow(OrderCreationError);
+    await expect(createOrder(params)).rejects.toThrow(/sold out/i);
+
+    // Verify the error has a 409 status code
+    try {
+      await createOrder(params);
+    } catch (err) {
+      expect(err).toBeInstanceOf(OrderCreationError);
+      expect((err as OrderCreationError).statusCode).toBe(409);
+    }
+  });
+
+  it("rolls back already-incremented items when a later item is sold out", async () => {
+    // First RPC call succeeds (tt-a), second fails (tt-b)
+    let rpcCallCount = 0;
+    const supabase = createMockSupabase({
+      tables: {
+        ticket_types: [TICKET_TYPE_A, TICKET_TYPE_B],
+        customers: [],
+        orders: [{ total: 95 }],
+      },
+      insertReturns: {
+        customers: { id: "cust-1" },
+        orders: { id: "order-1", order_number: "FERAL-00001" },
+        order_items: { id: "oi-1" },
+      },
+    });
+
+    // Override rpc to succeed on first call, fail on second
+    supabase.rpc = vi.fn().mockImplementation(() => {
+      rpcCallCount++;
+      return {
+        then: (resolve: (v: unknown) => void) => {
+          // First call (tt-a) succeeds, second call (tt-b) fails
+          resolve({ data: rpcCallCount <= 1, error: null });
+        },
+      };
+    });
+
+    const params = buildParams({ supabase });
+
+    await expect(createOrder(params)).rejects.toThrow(OrderCreationError);
+
+    // Should have called rpc 3 times: 1 success + 1 failure + 1 rollback
+    expect(supabase.rpc).toHaveBeenCalledTimes(3);
+
+    // Third call should be the rollback (negative qty for tt-a)
+    expect(supabase.rpc).toHaveBeenNthCalledWith(3, "increment_sold", {
+      p_ticket_type_id: "tt-a",
+      p_qty: -2,
     });
   });
 

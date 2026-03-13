@@ -235,26 +235,6 @@ export function formatInTimezone(iso: string, tz: string): string {
 }
 
 /**
- * Server-side helper: fetch the org's configured timezone from site_settings.
- * Falls back to "Europe/London" if not set.
- */
-export async function getOrgTimezone(orgId: string): Promise<string> {
-  const { getSupabaseAdmin } = await import("@/lib/supabase/admin");
-  const { generalKey } = await import("@/lib/constants");
-  const supabase = await getSupabaseAdmin();
-  if (!supabase) return "Europe/London";
-
-  const { data } = await supabase
-    .from("site_settings")
-    .select("data")
-    .eq("key", generalKey(orgId))
-    .single();
-
-  const settings = data?.data as { timezone?: string } | null;
-  return settings?.timezone || "Europe/London";
-}
-
-/**
  * Get the short timezone abbreviation for display — e.g. "GMT", "EST", "CET"
  */
 export function getTimezoneAbbr(tz: string): string {

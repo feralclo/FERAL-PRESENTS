@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, generalKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
-import { getOrgTimezone, tzMidnight, getTimezoneAbbr } from "@/lib/timezone";
+import { tzMidnight, getTimezoneAbbr } from "@/lib/timezone";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -30,7 +30,12 @@ export async function GET() {
     }
 
     // Use org's configured timezone for "today" boundaries
-    const tz = await getOrgTimezone(orgId);
+    const { data: generalData } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", generalKey(orgId))
+      .single();
+    const tz = (generalData?.data as { timezone?: string })?.timezone || "Europe/London";
     const todayStr = tzMidnight(tz, 0);
     const yStart = tzMidnight(tz, -1);
     const yEnd = todayStr;

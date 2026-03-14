@@ -44,9 +44,6 @@ import {
   Plus,
   X,
   Users,
-  Search,
-  RotateCcw,
-  Share2,
 } from "lucide-react";
 import { THEME_VIBES, getVibeCssVars } from "@/lib/theme-vibes";
 import { FONT_PAIRINGS, buildGoogleFontsUrl } from "@/lib/font-pairings";
@@ -101,7 +98,7 @@ interface EventOption {
 }
 
 /* ─── Editor section IDs ─── */
-type SectionId = "style" | "typography" | "logo" | "identity" | "social" | "content" | "hero-banner" | "about-section" | "search-social";
+type SectionId = "style" | "typography" | "logo" | "identity" | "social" | "content" | "hero-banner" | "about-section";
 
 /* ═══════════════════════════════════════════════════════
    TICKET STORE EDITOR — Full-screen, Shopify-style
@@ -1131,172 +1128,6 @@ function TicketStoreEditorPage() {
                       />
                     </FieldRow>
                   </div>
-                </EditorSection>
-
-                <EditorSection
-                  id="search-social"
-                  label="Search & Social"
-                  icon={<Search size={14} />}
-                  open={openSection === "search-social"}
-                  onToggle={() =>
-                    setOpenSection(openSection === "search-social" ? null! : "search-social")
-                  }
-                >
-                  {(() => {
-                    const orgName = branding.org_name || "Entry";
-                    const autoTitle = `${orgName} — Events & Tickets`;
-                    const autoDesc = `Discover upcoming events and buy tickets from ${orgName}. Live music, experiences, and more.`;
-                    const finalTitle = homepageSettings.seo_title?.trim() || autoTitle;
-                    const finalDesc = homepageSettings.seo_description?.trim() || autoDesc;
-                    const titleLen = finalTitle.length;
-                    const descLen = finalDesc.length;
-                    const titleColor = titleLen > 60 ? "text-destructive" : titleLen > 50 ? "text-warning" : "text-success";
-                    const descColor = descLen > 160 ? "text-destructive" : descLen > 140 ? "text-warning" : "text-success";
-                    const shareImage = homepageSettings.og_image_url || homepageSettings.hero_image_url;
-
-                    return (
-                      <div className="space-y-4">
-                        {/* Google preview */}
-                        <div>
-                          <p className="text-[10px] text-muted-foreground/60 mb-2 font-medium">Google Preview</p>
-                          <div className="rounded-lg border border-border/50 bg-white p-3 space-y-0.5">
-                            <p
-                              className="text-[12px] leading-tight truncate"
-                              style={{ color: "#1a0dab", fontFamily: "Arial, sans-serif" }}
-                            >
-                              {finalTitle}
-                            </p>
-                            <p
-                              className="text-[10px] truncate"
-                              style={{ color: "#006621", fontFamily: "Arial, sans-serif" }}
-                            >
-                              yourdomain.com
-                            </p>
-                            <p
-                              className="text-[10px] leading-relaxed"
-                              style={{
-                                color: "#545454",
-                                fontFamily: "Arial, sans-serif",
-                                display: "-webkit-box",
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: "vertical" as const,
-                                overflow: "hidden",
-                              }}
-                            >
-                              {finalDesc}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Social share preview */}
-                        <div>
-                          <p className="text-[10px] text-muted-foreground/60 mb-2 font-medium flex items-center gap-1">
-                            <Share2 size={10} /> Social Share Preview
-                          </p>
-                          <div className="rounded-lg border border-border/50 overflow-hidden bg-zinc-900">
-                            {shareImage ? (
-                              <div className="relative w-full aspect-[1200/630] bg-zinc-800">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={shareImage}
-                                  alt="Share preview"
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-full aspect-[1200/630] bg-zinc-800 flex items-center justify-center">
-                                <span className="text-[10px] text-muted-foreground/40">No share image set</span>
-                              </div>
-                            )}
-                            <div className="p-2.5 space-y-0.5">
-                              <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">yourdomain.com</p>
-                              <p className="text-[11px] text-foreground font-medium truncate">{finalTitle}</p>
-                              <p className="text-[10px] text-muted-foreground/70 line-clamp-2">{finalDesc}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Character counts */}
-                        <div className="flex gap-4 text-[10px]">
-                          <span className={titleColor}>Title: {titleLen}/60</span>
-                          <span className={descColor}>Desc: {descLen}/160</span>
-                        </div>
-
-                        <Separator />
-
-                        {/* Meta title */}
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-[11px] text-muted-foreground">Meta Title</Label>
-                            {homepageSettings.seo_title && (
-                              <button
-                                type="button"
-                                onClick={() => updateHomepage({ seo_title: "" })}
-                                className="flex items-center gap-0.5 text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-                              >
-                                <RotateCcw size={9} /> Reset
-                              </button>
-                            )}
-                          </div>
-                          <Input
-                            value={homepageSettings.seo_title || ""}
-                            onChange={(e) => updateHomepage({ seo_title: e.target.value })}
-                            placeholder={autoTitle}
-                            className="h-8 text-xs"
-                          />
-                          <p className="text-[10px] text-muted-foreground/50">
-                            Shown in Google results. Ideal: 50–60 characters.
-                          </p>
-                        </div>
-
-                        {/* Meta description */}
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-[11px] text-muted-foreground">Meta Description</Label>
-                            {homepageSettings.seo_description && (
-                              <button
-                                type="button"
-                                onClick={() => updateHomepage({ seo_description: "" })}
-                                className="flex items-center gap-0.5 text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-                              >
-                                <RotateCcw size={9} /> Reset
-                              </button>
-                            )}
-                          </div>
-                          <Textarea
-                            value={homepageSettings.seo_description || ""}
-                            onChange={(e) => updateHomepage({ seo_description: e.target.value })}
-                            placeholder={autoDesc}
-                            rows={3}
-                            className="text-xs"
-                          />
-                          <p className="text-[10px] text-muted-foreground/50">
-                            Shown below the title in search results. Ideal: 140–160 characters.
-                          </p>
-                        </div>
-
-                        <Separator />
-
-                        {/* OG share image */}
-                        <div className="space-y-1.5">
-                          <Label className="text-[11px] text-muted-foreground">Share Image</Label>
-                          <ImageUpload
-                            value={homepageSettings.og_image_url || ""}
-                            onChange={(url) => updateHomepage({ og_image_url: url })}
-                            label=""
-                          />
-                          <p className="text-[10px] text-muted-foreground/50">
-                            Shown when your homepage is shared on social media. Recommended: 1200 × 630px.
-                            {!homepageSettings.og_image_url && homepageSettings.hero_image_url && (
-                              <span className="block mt-0.5 text-muted-foreground/40">
-                                Currently using your hero banner image.
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()}
                 </EditorSection>
               </>
             )}

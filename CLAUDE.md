@@ -416,10 +416,19 @@ Hooks returning objects/functions as effect deps MUST use `useMemo`. **Stable re
 
 ## Testing
 
-**Framework**: Vitest + @testing-library/react (jsdom). Config: `vitest.config.ts`. Setup: `src/__tests__/setup.ts`.
-**Run**: `npm test` (single) or `npm run test:watch` (watch).
+**Framework**: Vitest + @testing-library/react (jsdom). Config: `vitest.config.ts` (projects: `unit` + `integration`). Setup: `src/__tests__/setup.ts`.
 
-**13 test suites**: `auth`, `signup`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useTraffic`, `wallet-passes`, `products`, `orders`, `rate-limit`, `rep-deletion`, `vat`, `merch-images`
+**Scripts**: `npm test` (unit only, 1.6s), `npm run test:integration` (real DB, ~97s), `npm run test:all` (both).
+
+**Unit tests (16 suites, 284 tests)**: `auth`, `signup`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useTraffic`, `wallet-passes`, `products`, `orders`, `rate-limit`, `rep-deletion`, `vat`, `merch-images`, `payment-intent`, `confirm-order`, `webhook`
+
+**Integration tests (3 suites, 13 tests)**: `payment-intent.integration`, `confirm-order.integration`, `webhook.integration`. Hit real Supabase (Stripe mocked). All data scoped to `org_id = '__test_integration__'`. Shared setup: `src/__tests__/integration/setup.ts`.
+
+**Pre-push hook**: `npm test` runs automatically before every `git push`. Blocks push if tests fail. Cannot be skipped.
+
+**CI gate**: `vercel-build` script runs unit tests before `next build`. Failed tests → failed deploy.
+
+**MANDATORY before committing**: Always run `npm test`. When changes touch payment/checkout code (`stripe/`, `lib/orders.ts`, `lib/stripe/`, checkout components), also run `npm run test:integration` before pushing.
 
 **Rules**: New hooks need test files. New API routes should have tests. Referential stability tests mandatory for hooks with object/function deps. Test state logic, API shape, edge cases, payment flows — not UI rendering or CSS.
 

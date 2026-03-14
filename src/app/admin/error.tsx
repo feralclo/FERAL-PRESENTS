@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 export default function AdminError({
   error,
@@ -10,7 +11,7 @@ export default function AdminError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[admin] Client error:", error);
+    Sentry.captureException(error);
 
     // ChunkLoadError happens when a new deployment invalidates old JS chunks.
     // Auto-reload to pick up the new deployment's assets.

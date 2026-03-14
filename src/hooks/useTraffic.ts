@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
 import type { TrafficEventType } from "@/types/analytics";
+
+/** Common bot/crawler user-agent patterns */
+const BOT_UA =
+  /bot|crawl|spider|slurp|facebookexternalhit|Mediapartners|Googlebot|AdsBot|Baiduspider|bingbot|DuckDuckBot|YandexBot|Sogou|exabot|facebot|ia_archiver|MJ12bot|SemrushBot|AhrefsBot|DotBot|PetalBot|HeadlessChrome|PhantomJS|Puppeteer|Lighthouse/i;
+
+function isBot(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return BOT_UA.test(navigator.userAgent);
+}
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "";
@@ -86,12 +95,17 @@ function extractEventName(path: string): string | undefined {
  */
 export function useTraffic(pagePath?: string) {
   const orgId = useOrgId();
+  // Guard: prevent duplicate page-view fires for the same path
+  const lastFiredPath = useRef<string>("");
 
   // Track page view on mount
   useEffect(() => {
-    if (isDevMode()) return;
+    if (isDevMode() || isBot()) return;
 
     const path = pagePath || window.location.pathname;
+    if (lastFiredPath.current === path) return;
+    lastFiredPath.current = path;
+
     const eventType = detectEventType(path);
     const eventName = extractEventName(path);
     const utm = getUtmParams();
@@ -108,7 +122,7 @@ export function useTraffic(pagePath?: string) {
   }, [pagePath, orgId]);
 
   const trackEngagement = useCallback((type: TrafficEventType) => {
-    if (isDevMode()) return;
+    if (isDevMode() || isBot()) return;
     sendTrafficEvent({
       event_type: type,
       page_path: window.location.pathname,
@@ -120,7 +134,7 @@ export function useTraffic(pagePath?: string) {
 
   const trackAddToCart = useCallback(
     (productName: string, price: number, qty: number) => {
-      if (isDevMode()) return;
+      if (isDevMode() || isBot()) return;
       sendTrafficEvent({
         event_type: "add_to_cart",
         page_path: window.location.pathname,

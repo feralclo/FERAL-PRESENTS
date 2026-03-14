@@ -11,6 +11,10 @@ const trackLimiter = createRateLimiter("track", {
   windowSeconds: 60,
 });
 
+/** Common bot/crawler user-agent patterns */
+const BOT_UA =
+  /bot|crawl|spider|slurp|facebookexternalhit|Mediapartners|Googlebot|AdsBot|Baiduspider|bingbot|DuckDuckBot|YandexBot|Sogou|exabot|facebot|ia_archiver|MJ12bot|SemrushBot|AhrefsBot|DotBot|PetalBot|HeadlessChrome|PhantomJS|Puppeteer|Lighthouse/i;
+
 /**
  * Allowed fields for traffic_events table.
  * Only these fields are accepted — everything else is silently dropped.
@@ -73,6 +77,12 @@ export async function POST(request: NextRequest) {
   try {
     const blocked = trackLimiter(request);
     if (blocked) return blocked;
+
+    // Reject bot/crawler traffic to keep analytics clean
+    const ua = request.headers.get("user-agent") || "";
+    if (BOT_UA.test(ua)) {
+      return NextResponse.json({ success: true }); // 200 but don't store
+    }
 
     const orgId = getOrgIdFromRequest(request);
     const body = await request.json();

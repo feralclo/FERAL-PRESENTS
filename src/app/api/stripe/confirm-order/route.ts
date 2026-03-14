@@ -344,6 +344,10 @@ export async function POST(request: NextRequest) {
     // Fire in the background — don't block the response.
     // Uses deterministic event_id (`purchase-{order_number}`) so Meta
     // deduplicates with the client-side pixel Purchase event.
+    // Extracts _fbp/_fbc cookies from the request — these are the critical
+    // signals Meta uses to attribute purchases back to specific ads/ad sets.
+    const fbp = request.cookies.get("_fbp")?.value;
+    const fbc = request.cookies.get("_fbc")?.value;
     fireServerPurchaseEvent(request, metaOrgId, {
       orderNumber: result.order.order_number,
       total: fromSmallestUnit(paymentIntent.amount, event.currency),
@@ -356,6 +360,8 @@ export async function POST(request: NextRequest) {
       customerPhone,
       customerId: result.order.customer_id,
       eventSourceUrl: request.headers.get("referer") || `${process.env.NEXT_PUBLIC_SITE_URL || ""}/event/${event.slug}/checkout/`,
+      fbp,
+      fbc,
     }).catch((err) => console.error("[Meta CAPI] Server Purchase error:", err));
 
     return NextResponse.json({ data: fullOrder });
@@ -401,6 +407,8 @@ async function fireServerPurchaseEvent(
     customerPhone?: string;
     customerId?: string;
     eventSourceUrl: string;
+    fbp?: string;
+    fbc?: string;
   }
 ) {
   const settings = await fetchMarketingSettings(orgId);
@@ -425,6 +433,10 @@ async function fireServerPurchaseEvent(
     user_data: {
       client_ip_address: clientIp,
       client_user_agent: clientUa,
+      // _fbp and _fbc are the critical attribution cookies — they link
+      // purchases back to specific Meta ads/ad sets/campaigns
+      ...(data.fbp && { fbp: data.fbp }),
+      ...(data.fbc && { fbc: data.fbc }),
       ...(data.customerEmail && { em: hashSHA256(data.customerEmail) }),
       ...(data.customerFirstName && { fn: hashSHA256(data.customerFirstName) }),
       ...(data.customerLastName && { ln: hashSHA256(data.customerLastName) }),

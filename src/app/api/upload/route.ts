@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate content type is a safe image format
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif"];
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
     const detectedType = imageData.match(/^data:(image\/[\w+.-]+);/)?.[1];
     if (!detectedType || !allowedTypes.includes(detectedType)) {
       return NextResponse.json(

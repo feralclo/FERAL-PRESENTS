@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL } from "@/lib/constants";
+import { createRateLimiter } from "@/lib/rate-limit";
 import * as Sentry from "@sentry/nextjs";
+
+// 3 attempts per hour per IP
+const recoverLimiter = createRateLimiter("auth-recover", {
+  limit: 3,
+  windowSeconds: 3600,
+});
 
 /**
  * POST /api/auth/recover — Emergency admin account recovery
@@ -16,6 +23,8 @@ import * as Sentry from "@sentry/nextjs";
  */
 export async function POST(request: NextRequest) {
   try {
+    const blocked = recoverLimiter(request);
+    if (blocked) return blocked;
     const { email, password, token } = await request.json();
 
     if (!email || !password || !token) {

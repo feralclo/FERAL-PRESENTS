@@ -638,11 +638,29 @@ describe("requirePlatformOwner", () => {
 
 describe("Constants security", () => {
   it("does not contain hardcoded Supabase credentials", async () => {
-    const constants = await import("@/lib/constants");
+    // Reset module cache so constants.ts is re-evaluated with clean env
+    vi.resetModules();
 
-    // With env vars not set in test, these should be empty strings
-    // NOT hardcoded JWT tokens
-    expect(constants.SUPABASE_URL).not.toContain("supabase.co");
-    expect(constants.SUPABASE_ANON_KEY).not.toContain("eyJ");
+    // Temporarily remove Supabase env vars so we can verify the source
+    // code doesn't contain hardcoded fallback credentials
+    const savedUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const savedKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    try {
+      const constants = await import("@/lib/constants");
+
+      // Without env vars, these should be empty strings (the || "" fallback)
+      // NOT hardcoded JWT tokens or Supabase URLs
+      expect(constants.SUPABASE_URL).not.toContain("supabase.co");
+      expect(constants.SUPABASE_ANON_KEY).not.toContain("eyJ");
+    } finally {
+      // Restore env vars
+      if (savedUrl !== undefined) process.env.NEXT_PUBLIC_SUPABASE_URL = savedUrl;
+      if (savedKey !== undefined) process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = savedKey;
+      // Reset modules again so other tests get the real values
+      vi.resetModules();
+    }
   });
 });

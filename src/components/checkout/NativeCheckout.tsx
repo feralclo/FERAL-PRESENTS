@@ -1213,7 +1213,13 @@ function SinglePageCheckoutForm({
         const orderData = await orderRes.json();
         if (orderRes.ok && orderData.data) {
           onComplete(orderData.data);
+        } else if (orderRes.status === 409) {
+          // Sold out after payment — customer was charged but tickets gone
+          setError("These tickets just sold out. Your payment will be refunded automatically within 5-10 business days.");
+          setProcessing(false);
+          reportCheckoutError({ errorCode: "sold_out_after_payment", errorMessage: orderData.error || "Sold out", eventId: event.id, eventSlug: slug, customerEmail: email });
         } else {
+          // Transient error — webhook will likely create the order
           onComplete({
             id: "",
             org_id: orgId,
@@ -1448,7 +1454,14 @@ function SinglePageCheckoutForm({
         if (orderRes.ok && orderData.data) {
           trackEngagement("payment_success");
           onComplete(orderData.data);
+        } else if (orderRes.status === 409) {
+          // Sold out after payment — customer was charged but tickets gone
+          trackEngagement("payment_failed");
+          setError("These tickets just sold out. Your payment will be refunded automatically within 5-10 business days.");
+          setProcessing(false);
+          reportCheckoutError({ errorCode: "sold_out_after_payment", errorMessage: orderData.error || "Sold out", eventId: event.id, eventSlug: slug, customerEmail: email });
         } else {
+          // Transient error — webhook will likely create the order
           trackEngagement("payment_success");
           onComplete({
             id: "",

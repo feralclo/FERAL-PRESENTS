@@ -158,8 +158,11 @@ function ExpressCheckoutInner({
         const orderData = await orderRes.json();
         if (orderRes.ok && orderData.data) {
           onSuccess(orderData.data);
+        } else if (orderRes.status === 409) {
+          // Sold out after payment — customer was charged but tickets gone
+          onError("These tickets just sold out. Your payment will be refunded automatically within 5-10 business days.");
         } else {
-          // Payment succeeded — order will be reconciled via webhook
+          // Transient error — webhook will likely create the order
           onSuccess({
             id: "",
             org_id: orgId,

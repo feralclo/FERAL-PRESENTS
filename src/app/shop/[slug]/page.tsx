@@ -1,6 +1,7 @@
 import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, brandingKey, merchStoreKey } from "@/lib/constants";
+import { getCanonicalBaseUrl } from "@/lib/seo";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import type { BrandingSettings } from "@/types/settings";
@@ -20,10 +21,11 @@ export async function generateMetadata({
   let orgName = "Entry";
   let collectionTitle = "Shop";
   let faviconUrl: string | undefined;
+  let baseUrl = "";
 
   if (supabase) {
     try {
-      const [brandingRes, collectionRes] = await Promise.all([
+      const [brandingRes, collectionRes, resolvedBaseUrl] = await Promise.all([
         supabase
           .from(TABLES.SITE_SETTINGS)
           .select("data")
@@ -36,20 +38,32 @@ export async function generateMetadata({
           .eq("slug", slug)
           .eq("status", "active")
           .single(),
+        getCanonicalBaseUrl(orgId),
       ]);
       const branding = brandingRes.data?.data as BrandingSettings | undefined;
       if (branding?.org_name) orgName = branding.org_name;
       if (branding?.favicon_url) faviconUrl = branding.favicon_url;
       if (collectionRes.data?.title) collectionTitle = collectionRes.data.title;
+      if (resolvedBaseUrl) baseUrl = resolvedBaseUrl;
     } catch {
       // Use defaults
     }
   }
 
+  const canonicalUrl = baseUrl ? `${baseUrl}/shop/${slug}/` : undefined;
+
   return {
     title: `${collectionTitle} | ${orgName}`,
     description: `Pre-order merch for ${collectionTitle}. Collect at the event.`,
     ...(faviconUrl ? { icons: { icon: faviconUrl, apple: faviconUrl } } : {}),
+    ...(canonicalUrl ? { alternates: { canonical: canonicalUrl } } : {}),
+    openGraph: {
+      type: "website",
+      title: `${collectionTitle} | ${orgName}`,
+      description: `Pre-order merch for ${collectionTitle}. Collect at the event.`,
+      ...(canonicalUrl ? { url: canonicalUrl } : {}),
+      siteName: orgName,
+    },
   };
 }
 

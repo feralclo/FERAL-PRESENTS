@@ -3,6 +3,7 @@ import { LandingPage } from "@/components/landing/LandingPage";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, homepageKey, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
+import { getCanonicalBaseUrl, buildOrganizationJsonLd } from "@/lib/seo";
 import type { LandingEvent } from "@/types/events";
 import type { HomepageSettings } from "@/types/settings";
 import type { BrandingSettings } from "@/types/settings";
@@ -21,17 +22,17 @@ const DEFAULT_HERO: HomepageSettings = {
 
 /** Dynamic metadata — reads org branding so each tenant gets their own title/OG */
 export async function generateMetadata(): Promise<Metadata> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const orgId = await getOrgId();
   let orgName = "Entry";
   let faviconUrl: string | undefined;
   let twitterHandle: string | undefined;
   let heroImageUrl: string | undefined;
+  let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
 
   try {
-    const orgId = await getOrgId();
     const supabase = await getSupabaseAdmin();
     if (supabase) {
-      const [brandingResult, homepageResult] = await Promise.all([
+      const [brandingResult, homepageResult, resolvedBaseUrl] = await Promise.all([
         supabase
           .from(TABLES.SITE_SETTINGS)
           .select("data")
@@ -42,7 +43,9 @@ export async function generateMetadata(): Promise<Metadata> {
           .select("data")
           .eq("key", homepageKey(orgId))
           .single(),
+        getCanonicalBaseUrl(orgId),
       ]);
+      if (resolvedBaseUrl) baseUrl = resolvedBaseUrl;
       if (brandingResult.data?.data) {
         const branding = brandingResult.data.data as BrandingSettings;
         if (branding.org_name) orgName = branding.org_name;
@@ -60,16 +63,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const title = `${orgName} — Events & Tickets`;
   const description = `Discover upcoming events and buy tickets from ${orgName}. Live music, experiences, and more.`;
+  const canonicalUrl = baseUrl ? `${baseUrl}/` : undefined;
 
   return {
     title,
     description,
     ...(faviconUrl ? { icons: { icon: faviconUrl, apple: faviconUrl } } : {}),
+    ...(canonicalUrl ? { alternates: { canonical: canonicalUrl } } : {}),
     openGraph: {
       type: "website",
       title,
       description,
-      ...(siteUrl ? { url: siteUrl } : {}),
+      ...(canonicalUrl ? { url: canonicalUrl } : {}),
       ...(heroImageUrl ? { images: [{ url: heroImageUrl, width: 1200, height: 630, alt: orgName }] } : {}),
       siteName: orgName,
     },
@@ -90,6 +95,7 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const orgId = await getOrgId();
+  const baseUrl = await getCanonicalBaseUrl(orgId);
   let events: LandingEvent[] = [];
   let heroSettings: HomepageSettings = DEFAULT_HERO;
   let aboutSection: BrandingSettings["about_section"] | undefined;
@@ -144,8 +150,20 @@ export default async function HomePage({
     />
   ) : null;
 
+  // Organization JSON-LD — establishes brand identity in search results
+  const orgJsonLd = buildOrganizationJsonLd({
+    orgName: branding?.org_name || "Entry",
+    siteUrl: baseUrl,
+    logoUrl: branding?.logo_url,
+    description: `Discover upcoming events and buy tickets from ${branding?.org_name || "Entry"}.`,
+  });
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+      />
       {refScript}
       <LandingPage events={events} heroSettings={heroSettings} orgId={orgId} aboutSection={aboutSection} branding={branding} />
     </>

@@ -1,6 +1,7 @@
 import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, brandingKey, merchStoreKey } from "@/lib/constants";
+import { getCanonicalBaseUrl } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import type { BrandingSettings } from "@/types/settings";
@@ -14,15 +15,20 @@ export async function generateMetadata(): Promise<Metadata> {
   const supabase = await getSupabaseAdmin();
   let orgName = "Entry";
   let faviconUrl: string | undefined;
+  let baseUrl = "";
 
   if (supabase) {
     try {
-      const { data } = await supabase
-        .from(TABLES.SITE_SETTINGS)
-        .select("data")
-        .eq("key", brandingKey(orgId))
-        .single();
-      const branding = data?.data as BrandingSettings | undefined;
+      const [brandingRes, resolvedBaseUrl] = await Promise.all([
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", brandingKey(orgId))
+          .single(),
+        getCanonicalBaseUrl(orgId),
+      ]);
+      baseUrl = resolvedBaseUrl;
+      const branding = brandingRes.data?.data as BrandingSettings | undefined;
       if (branding?.org_name) orgName = branding.org_name;
       if (branding?.favicon_url) faviconUrl = branding.favicon_url;
     } catch {
@@ -30,10 +36,22 @@ export async function generateMetadata(): Promise<Metadata> {
     }
   }
 
+  const title = `Shop | ${orgName}`;
+  const description = `Pre-order exclusive merch for ${orgName} events.`;
+  const canonicalUrl = baseUrl ? `${baseUrl}/shop/` : undefined;
+
   return {
-    title: `Shop | ${orgName}`,
-    description: `Pre-order exclusive merch for ${orgName} events.`,
+    title,
+    description,
     ...(faviconUrl ? { icons: { icon: faviconUrl, apple: faviconUrl } } : {}),
+    ...(canonicalUrl ? { alternates: { canonical: canonicalUrl } } : {}),
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      ...(canonicalUrl ? { url: canonicalUrl } : {}),
+      siteName: orgName,
+    },
   };
 }
 

@@ -1,6 +1,7 @@
 import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, brandingKey, merchStoreKey } from "@/lib/constants";
+import { getCanonicalBaseUrl } from "@/lib/seo";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import type { BrandingSettings } from "@/types/settings";
@@ -20,10 +21,12 @@ export async function generateMetadata({
   let orgName = "Entry";
   let productName = "Product";
   let faviconUrl: string | undefined;
+  let productImage: string | undefined;
+  let baseUrl = "";
 
   if (supabase) {
     try {
-      const [brandingRes, itemRes] = await Promise.all([
+      const [brandingRes, itemRes, resolvedBaseUrl] = await Promise.all([
         supabase
           .from(TABLES.SITE_SETTINGS)
           .select("data")
@@ -31,25 +34,39 @@ export async function generateMetadata({
           .single(),
         supabase
           .from(TABLES.MERCH_COLLECTION_ITEMS)
-          .select("product:products(name)")
+          .select("product:products(name, images)")
           .eq("id", itemId)
           .eq("org_id", orgId)
           .single(),
+        getCanonicalBaseUrl(orgId),
       ]);
       const branding = brandingRes.data?.data as BrandingSettings | undefined;
       if (branding?.org_name) orgName = branding.org_name;
       if (branding?.favicon_url) faviconUrl = branding.favicon_url;
-      const product = (itemRes.data?.product as { name?: string }) || {};
+      if (resolvedBaseUrl) baseUrl = resolvedBaseUrl;
+      const product = (itemRes.data?.product as { name?: string; images?: string[] }) || {};
       if (product.name) productName = product.name;
+      if (product.images?.length) productImage = product.images[0];
     } catch {
       // Use defaults
     }
   }
 
+  const canonicalUrl = baseUrl ? `${baseUrl}/shop/${slug}/${itemId}/` : undefined;
+
   return {
     title: `${productName} | ${orgName}`,
     description: `Pre-order ${productName}. Collect at the event.`,
     ...(faviconUrl ? { icons: { icon: faviconUrl, apple: faviconUrl } } : {}),
+    ...(canonicalUrl ? { alternates: { canonical: canonicalUrl } } : {}),
+    openGraph: {
+      type: "website",
+      title: `${productName} | ${orgName}`,
+      description: `Pre-order ${productName}. Collect at the event.`,
+      ...(canonicalUrl ? { url: canonicalUrl } : {}),
+      ...(productImage ? { images: [{ url: productImage, width: 1200, height: 630, alt: productName }] } : {}),
+      siteName: orgName,
+    },
   };
 }
 

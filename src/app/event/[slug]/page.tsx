@@ -11,6 +11,7 @@ import {
   resolveEventSeoTitle,
   resolveEventSeoDescription,
   buildEventJsonLd,
+  getCanonicalBaseUrl,
 } from "@/lib/seo";
 import type { BrandingSettings } from "@/types/settings";
 
@@ -62,26 +63,6 @@ async function fetchBranding(orgId: string): Promise<{ orgName: string; faviconU
   return { orgName, faviconUrl, twitterHandle };
 }
 
-/** Resolve the canonical base URL for the current org */
-async function getBaseUrl(orgId: string): Promise<string> {
-  // Try to find the primary domain for this org
-  try {
-    const supabase = await getSupabaseAdmin();
-    if (supabase) {
-      const { data } = await supabase
-        .from(TABLES.DOMAINS)
-        .select("hostname")
-        .eq("org_id", orgId)
-        .eq("is_primary", true)
-        .single();
-      if (data?.hostname) {
-        return `https://${data.hostname}`;
-      }
-    }
-  } catch { /* Fall through */ }
-  return process.env.NEXT_PUBLIC_SITE_URL || "";
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -94,7 +75,7 @@ export async function generateMetadata({
   if (event) {
     const [{ orgName, faviconUrl, twitterHandle }, baseUrl] = await Promise.all([
       fetchBranding(orgId),
-      getBaseUrl(orgId),
+      getCanonicalBaseUrl(orgId),
     ]);
 
     // Extract artist names from joined data or lineup array
@@ -111,7 +92,7 @@ export async function generateMetadata({
     // Use manual overrides if set, otherwise auto-generated
     const title = resolveEventSeoTitle(event, auto.title);
     const description = resolveEventSeoDescription(event, auto.description);
-    const canonicalUrl = baseUrl ? `${baseUrl}/event/${slug}` : undefined;
+    const canonicalUrl = baseUrl ? `${baseUrl}/event/${slug}/` : undefined;
     const ogImage = event.hero_image || event.cover_image;
 
     return {
@@ -167,7 +148,7 @@ export default async function EventPage({
     getEventFromDB(slug, orgId),
     getActiveTemplate(orgId),
     fetchBranding(orgId),
-    getBaseUrl(orgId),
+    getCanonicalBaseUrl(orgId),
   ]);
 
   if (!event) {
@@ -186,12 +167,18 @@ export default async function EventPage({
         .filter(Boolean) as string[]
     : event.lineup?.filter(Boolean) || [];
 
+  // Extract active ticket prices for AggregateOffer in JSON-LD
+  const activeTicketPrices = (event.ticket_types || [])
+    .filter((tt: { status: string; price: number }) => tt.status === "active" && tt.price > 0)
+    .map((tt: { price: number }) => Number(tt.price));
+
   // JSON-LD structured data for Google rich results
   const jsonLd = buildEventJsonLd({
     event,
     orgName,
     siteUrl: baseUrl,
     artistNames,
+    ticketPrices: activeTicketPrices.length > 0 ? activeTicketPrices : undefined,
   });
 
   const structuredData = (

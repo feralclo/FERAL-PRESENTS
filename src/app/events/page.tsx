@@ -1,6 +1,7 @@
 import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, brandingKey } from "@/lib/constants";
+import { getCanonicalBaseUrl } from "@/lib/seo";
 import type { Metadata } from "next";
 import type { BrandingSettings } from "@/types/settings";
 import type { ListingEvent } from "@/types/events";
@@ -13,26 +14,56 @@ export async function generateMetadata(): Promise<Metadata> {
   const supabase = await getSupabaseAdmin();
   let orgName = "Entry";
   let faviconUrl: string | undefined;
+  let twitterHandle: string | undefined;
+  let heroImageUrl: string | undefined;
+  let baseUrl = "";
 
   if (supabase) {
     try {
-      const { data } = await supabase
-        .from(TABLES.SITE_SETTINGS)
-        .select("data")
-        .eq("key", brandingKey(orgId))
-        .single();
-      const branding = data?.data as BrandingSettings | undefined;
+      const [brandingRes, resolvedBaseUrl] = await Promise.all([
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", brandingKey(orgId))
+          .single(),
+        getCanonicalBaseUrl(orgId),
+      ]);
+      baseUrl = resolvedBaseUrl;
+      const branding = brandingRes.data?.data as BrandingSettings | undefined;
       if (branding?.org_name) orgName = branding.org_name;
       if (branding?.favicon_url) faviconUrl = branding.favicon_url;
+      if (branding?.logo_url) heroImageUrl = branding.logo_url;
+      if (branding?.social_links?.twitter) twitterHandle = branding.social_links.twitter;
     } catch {
       // Use default
     }
   }
 
+  const title = `Events | ${orgName}`;
+  const description = `Browse all upcoming events from ${orgName}. Live music, experiences, and more.`;
+  const canonicalUrl = baseUrl ? `${baseUrl}/events/` : undefined;
+
   return {
-    title: `Events | ${orgName}`,
-    description: `Browse all upcoming events from ${orgName}. Live music, experiences, and more.`,
+    title,
+    description,
     ...(faviconUrl ? { icons: { icon: faviconUrl, apple: faviconUrl } } : {}),
+    ...(canonicalUrl ? { alternates: { canonical: canonicalUrl } } : {}),
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      ...(canonicalUrl ? { url: canonicalUrl } : {}),
+      ...(heroImageUrl ? { images: [{ url: heroImageUrl, width: 1200, height: 630, alt: orgName }] } : {}),
+      siteName: orgName,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(heroImageUrl ? { images: [{ url: heroImageUrl, alt: orgName }] } : {}),
+      ...(twitterHandle ? { creator: twitterHandle.startsWith("@") ? twitterHandle : `@${twitterHandle}` } : {}),
+    },
+    robots: { index: true, follow: true },
   };
 }
 

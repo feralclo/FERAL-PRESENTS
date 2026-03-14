@@ -1,4 +1,6 @@
 import type { Event } from "@/types/events";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { TABLES } from "@/lib/constants";
 
 /**
  * SEO metadata generator for event pages.
@@ -189,13 +191,16 @@ export function buildEventJsonLd({
   orgName,
   siteUrl,
   artistNames,
+  ticketPrices,
 }: {
   event: Event;
   orgName: string;
   siteUrl: string;
   artistNames?: string[];
+  /** Active ticket prices (in display currency, e.g. 15.00) for AggregateOffer */
+  ticketPrices?: number[];
 }): Record<string, unknown> {
-  const eventUrl = `${siteUrl}/event/${event.slug}`;
+  const eventUrl = `${siteUrl}/event/${event.slug}/`;
   const startDate = formatJsonLdDate(event.date_start);
   const endDate = event.date_end ? formatJsonLdDate(event.date_end) : undefined;
 
@@ -257,18 +262,33 @@ export function buildEventJsonLd({
     }));
   }
 
-  // Ticket offers
+  // Ticket offers — AggregateOffer with price range when ticket data available
   if (event.payment_method !== "external") {
     const currency = event.currency || "GBP";
-    jsonLd.offers = {
-      "@type": "Offer",
-      url: eventUrl,
-      priceCurrency: currency,
-      availability:
-        event.status === "live"
-          ? "https://schema.org/InStock"
-          : "https://schema.org/SoldOut",
-    };
+    if (ticketPrices && ticketPrices.length > 0) {
+      jsonLd.offers = {
+        "@type": "AggregateOffer",
+        url: eventUrl,
+        priceCurrency: currency,
+        lowPrice: Math.min(...ticketPrices),
+        highPrice: Math.max(...ticketPrices),
+        offerCount: ticketPrices.length,
+        availability:
+          event.status === "live"
+            ? "https://schema.org/InStock"
+            : "https://schema.org/SoldOut",
+      };
+    } else {
+      jsonLd.offers = {
+        "@type": "Offer",
+        url: eventUrl,
+        priceCurrency: currency,
+        availability:
+          event.status === "live"
+            ? "https://schema.org/InStock"
+            : "https://schema.org/SoldOut",
+      };
+    }
   }
 
   // Doors open
@@ -277,4 +297,55 @@ export function buildEventJsonLd({
   }
 
   return jsonLd;
+}
+
+/**
+ * Resolve the canonical base URL for an org.
+ * Queries the primary domain from the domains table.
+ * Falls back to NEXT_PUBLIC_SITE_URL.
+ *
+ * Used by all public pages to set consistent canonical URLs,
+ * ensuring Google consolidates SEO signals to one domain per tenant.
+ */
+export async function getCanonicalBaseUrl(orgId: string): Promise<string> {
+  try {
+    const supabase = await getSupabaseAdmin();
+    if (supabase) {
+      const { data } = await supabase
+        .from(TABLES.DOMAINS)
+        .select("hostname")
+        .eq("org_id", orgId)
+        .eq("is_primary", true)
+        .single();
+      if (data?.hostname) {
+        return `https://${data.hostname}`;
+      }
+    }
+  } catch { /* Fall through */ }
+  return process.env.NEXT_PUBLIC_SITE_URL || "";
+}
+
+/**
+ * Build JSON-LD structured data for an organization (schema.org/Organization).
+ * Used on the homepage to establish brand identity in search results.
+ */
+export function buildOrganizationJsonLd({
+  orgName,
+  siteUrl,
+  logoUrl,
+  description,
+}: {
+  orgName: string;
+  siteUrl: string;
+  logoUrl?: string;
+  description?: string;
+}): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: orgName,
+    url: siteUrl,
+    ...(logoUrl ? { logo: logoUrl } : {}),
+    ...(description ? { description } : {}),
+  };
 }

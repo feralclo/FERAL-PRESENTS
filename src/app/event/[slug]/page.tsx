@@ -11,8 +11,8 @@ import {
   resolveEventSeoTitle,
   resolveEventSeoDescription,
   buildEventJsonLd,
-  getCanonicalBaseUrl,
 } from "@/lib/seo";
+import { getCanonicalBaseUrl } from "@/lib/seo-server";
 import type { BrandingSettings } from "@/types/settings";
 
 /** Force dynamic rendering — every request fetches fresh data from Supabase.

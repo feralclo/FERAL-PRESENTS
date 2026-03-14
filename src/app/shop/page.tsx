@@ -1,7 +1,7 @@
 import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, brandingKey, merchStoreKey } from "@/lib/constants";
-import { getCanonicalBaseUrl } from "@/lib/seo";
+import { getCanonicalBaseUrl } from "@/lib/seo-server";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import type { BrandingSettings } from "@/types/settings";

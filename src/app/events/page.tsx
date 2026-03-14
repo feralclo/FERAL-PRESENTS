@@ -1,7 +1,7 @@
 import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, brandingKey } from "@/lib/constants";
-import { getCanonicalBaseUrl } from "@/lib/seo";
+import { getCanonicalBaseUrl } from "@/lib/seo-server";
 import type { Metadata } from "next";
 import type { BrandingSettings } from "@/types/settings";
 import type { ListingEvent } from "@/types/events";

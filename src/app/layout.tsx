@@ -7,6 +7,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getOrgId } from "@/lib/org";
 import { OrgProvider } from "@/components/OrgProvider";
 import { buildGoogleFontsUrlFromNames, DEFAULT_HEADING_FONT, DEFAULT_BODY_FONT } from "@/lib/font-pairings";
+import { getCanonicalBaseUrl } from "@/lib/seo-server";
 import type { MarketingSettings } from "@/types/marketing";
 import type { BrandingSettings } from "@/types/settings";
 import "@/styles/base.css";
@@ -19,11 +20,21 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export const metadata: Metadata = {
-  title: "Entry — Events & Tickets",
-  description:
-    "Events, tickets, and experiences. Powered by Entry.",
-};
+/**
+ * Dynamic metadata with `metadataBase` — resolves all relative URLs in metadata
+ * (OG images, favicons, etc.) to absolute URLs for the current tenant's domain.
+ * Without this, og:image would be "/api/media/..." instead of "https://domain.com/api/media/...".
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const orgId = await getOrgId();
+  const baseUrl = await getCanonicalBaseUrl(orgId);
+
+  return {
+    ...(baseUrl ? { metadataBase: new URL(baseUrl) } : {}),
+    title: "Entry — Events & Tickets",
+    description: "Events, tickets, and experiences. Powered by Entry.",
+  };
+}
 
 export default async function RootLayout({
   children,

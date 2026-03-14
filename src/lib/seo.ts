@@ -58,6 +58,13 @@ function stripHtml(text: string): string {
     .trim();
 }
 
+/** Ensure a URL is absolute by prepending baseUrl if it's a relative path */
+function ensureAbsoluteUrl(url: string, baseUrl: string): string {
+  if (!url || !baseUrl) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 interface SeoInput {
   event: Event;
   orgName: string;
@@ -221,9 +228,10 @@ export function buildEventJsonLd({
     jsonLd.description = truncate(stripHtml(desc), 300);
   }
 
-  // Image
+  // Image — must be absolute URL for Google rich results
   if (event.cover_image || event.hero_image) {
-    jsonLd.image = event.hero_image || event.cover_image;
+    const img = event.hero_image || event.cover_image;
+    jsonLd.image = siteUrl ? ensureAbsoluteUrl(img!, siteUrl) : img;
   }
 
   // Location
@@ -317,7 +325,7 @@ export function buildOrganizationJsonLd({
     "@type": "Organization",
     name: orgName,
     url: siteUrl,
-    ...(logoUrl ? { logo: logoUrl } : {}),
+    ...(logoUrl ? { logo: siteUrl ? ensureAbsoluteUrl(logoUrl, siteUrl) : logoUrl } : {}),
     ...(description ? { description } : {}),
   };
 }

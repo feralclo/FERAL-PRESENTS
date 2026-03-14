@@ -14,12 +14,20 @@ export function MarketingConsentCheckbox({
   const isMidnight = variant === "midnight";
 
   return (
-    <label className="flex items-start gap-3 cursor-pointer select-none -mt-1">
-      <button
-        type="button"
+    <div
+      className="flex items-start gap-3 cursor-pointer select-none -mt-1"
+      onClick={() => onChange(!checked)}
+    >
+      <div
         role="checkbox"
         aria-checked={checked}
-        onClick={() => onChange(!checked)}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === " " || e.key === "Enter") {
+            e.preventDefault();
+            onChange(!checked);
+          }
+        }}
         className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all duration-150 ${
           checked
             ? "bg-emerald-500/15 border-emerald-500/40"
@@ -45,7 +53,7 @@ export function MarketingConsentCheckbox({
             />
           </svg>
         )}
-      </button>
+      </div>
       <span
         className={`text-xs leading-relaxed ${
           isMidnight
@@ -55,6 +63,6 @@ export function MarketingConsentCheckbox({
       >
         Keep me updated about future events and offers
       </span>
-    </label>
+    </div>
   );
 }

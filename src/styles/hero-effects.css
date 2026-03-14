@@ -45,6 +45,7 @@
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
+  animation-delay: -9s;
   opacity: var(--vibe-mist-opacity, 1);
   mix-blend-mode: screen;
 }
@@ -57,6 +58,7 @@
     radial-gradient(ellipse at 65% 75%, var(--hero-mist-secondary, rgba(255, 0, 51, 0.10)) 0%, transparent 45%),
     radial-gradient(ellipse at 10% 20%, var(--accent-complement, rgba(120, 180, 255, 0.07)) 0%, transparent 40%);
   animation: mistDrift2 24s ease-in-out infinite alternate;
+  animation-delay: -12s;
 }
 
 /* Floating bokeh — soft light orbs like stage lights through haze */
@@ -75,6 +77,7 @@
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
+  animation-delay: -15s;
   opacity: var(--vibe-bokeh-opacity, 1);
   mix-blend-mode: screen;
 }
@@ -111,6 +114,7 @@
     transparent 100%
   );
   animation: spotlightSweep 12s ease-in-out infinite;
+  animation-delay: -2s;
   mix-blend-mode: overlay;
 }
 
@@ -130,6 +134,7 @@
     transparent 100%
   );
   animation: spotlightSweep2 18s ease-in-out infinite;
+  animation-delay: -4s;
   mix-blend-mode: screen;
 }
 
@@ -157,6 +162,7 @@
     var(--accent-complement-soft, rgba(100, 150, 255, 0.05)) 100%
   );
   animation: lightBreathe 8s ease-in-out infinite;
+  animation-delay: -4s;
   mix-blend-mode: soft-light;
 }
 
@@ -174,6 +180,7 @@
     transparent 40%
   );
   animation: warmthPulse 6s ease-in-out infinite;
+  animation-delay: -3s;
   opacity: var(--vibe-warmth-opacity, 1);
 }
 
@@ -232,6 +239,7 @@
     50vw 45px 1px 0px var(--ember-dim, rgba(255, 150, 60, 0.5)),
     80vw 15px 0.5px 0.5px var(--ember-bright, rgba(255, 180, 80, 0.4));
   animation: embersRise 14s linear infinite;
+  animation-delay: -3s;
 }
 
 .hero__bg-embers::after {

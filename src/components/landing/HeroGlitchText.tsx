@@ -4,6 +4,9 @@ import { useRef, useEffect } from "react";
 
 const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*<>/\\|=-_";
 
+/** Only play scramble + strobe on the first mount per session */
+let _hasPlayedIntro = false;
+
 interface HeroGlitchTextProps {
   line1: string;
   line2: string;
@@ -23,11 +26,65 @@ export function HeroGlitchText({ line1, line2 }: HeroGlitchTextProps) {
     const lines = [line1Ref.current, line2Ref.current].filter(Boolean) as HTMLSpanElement[];
     const lineTexts = [line1, line2];
 
-    // Blank lines initially
-    lines.forEach((line) => (line.textContent = ""));
-
     let glitchTimer: ReturnType<typeof setTimeout> | null = null;
     let glitchInterval: ReturnType<typeof setInterval> | null = null;
+
+    function startPeriodicGlitch() {
+      function doGlitch() {
+        let burstCount = 0;
+        const maxBursts = 4 + Math.floor(Math.random() * 5);
+        containerRef.current?.classList.add("hero-glitch--active");
+
+        glitchInterval = setInterval(() => {
+          if (burstCount >= maxBursts) {
+            lines.forEach((line, i) => (line.textContent = lineTexts[i]));
+            containerRef.current?.classList.remove("hero-glitch--active");
+            if (glitchInterval) clearInterval(glitchInterval);
+            return;
+          }
+
+          for (let li = 0; li < lines.length; li++) {
+            const text = lineTexts[li];
+            let glitched = "";
+            for (let i = 0; i < text.length; i++) {
+              if (Math.random() < 0.2) {
+                glitched +=
+                  SCRAMBLE_CHARS[
+                    Math.floor(Math.random() * SCRAMBLE_CHARS.length)
+                  ];
+              } else {
+                glitched += text[i];
+              }
+            }
+            lines[li].textContent = glitched;
+          }
+          burstCount++;
+        }, 50);
+      }
+
+      function scheduleNext() {
+        const delay = 3000 + Math.random() * 5000;
+        glitchTimer = setTimeout(() => {
+          doGlitch();
+          scheduleNext();
+        }, delay);
+      }
+      scheduleNext();
+    }
+
+    // Skip the scramble intro + strobe on back-navigation (already seen this session)
+    if (_hasPlayedIntro) {
+      lines.forEach((line, i) => (line.textContent = lineTexts[i]));
+      startPeriodicGlitch();
+      return () => {
+        if (glitchTimer) clearTimeout(glitchTimer);
+        if (glitchInterval) clearInterval(glitchInterval);
+      };
+    }
+    _hasPlayedIntro = true;
+
+    // Blank lines initially
+    lines.forEach((line) => (line.textContent = ""));
 
     function scrambleRevealLines() {
       const resolved: boolean[][] = lineTexts.map(() => []);
@@ -85,49 +142,6 @@ export function HeroGlitchText({ line1, line2 }: HeroGlitchTextProps) {
       }
 
       tick();
-    }
-
-    function startPeriodicGlitch() {
-      function doGlitch() {
-        let burstCount = 0;
-        const maxBursts = 4 + Math.floor(Math.random() * 5);
-        containerRef.current?.classList.add("hero-glitch--active");
-
-        glitchInterval = setInterval(() => {
-          if (burstCount >= maxBursts) {
-            lines.forEach((line, i) => (line.textContent = lineTexts[i]));
-            containerRef.current?.classList.remove("hero-glitch--active");
-            if (glitchInterval) clearInterval(glitchInterval);
-            return;
-          }
-
-          for (let li = 0; li < lines.length; li++) {
-            const text = lineTexts[li];
-            let glitched = "";
-            for (let i = 0; i < text.length; i++) {
-              if (Math.random() < 0.2) {
-                glitched +=
-                  SCRAMBLE_CHARS[
-                    Math.floor(Math.random() * SCRAMBLE_CHARS.length)
-                  ];
-              } else {
-                glitched += text[i];
-              }
-            }
-            lines[li].textContent = glitched;
-          }
-          burstCount++;
-        }, 50);
-      }
-
-      function scheduleNext() {
-        const delay = 3000 + Math.random() * 5000;
-        glitchTimer = setTimeout(() => {
-          doGlitch();
-          scheduleNext();
-        }, delay);
-      }
-      scheduleNext();
     }
 
     // Kick off after delay

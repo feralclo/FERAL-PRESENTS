@@ -39,8 +39,8 @@ src/
 │   ├── admin/                 # Admin dashboard (~71 files). Groups: Dashboard, Events,
 │   │                          # Commerce, Growth, Settings, Platform Backend (owner-only).
 │   │                          # Standalone: signup, onboarding, beta, invite, account, payments
-│   ├── rep/                   # Rep portal (13 pages): dashboard, sales, quests, rewards,
-│   │                          # points, leaderboard, profile, login, join, invite, verify-email
+│   ├── rep/                   # Rep portal (12 pages): dashboard, sales, quests, rewards,
+│   │                          # points, leaderboard, profile, profile/[id], login, join, invite/[token], verify-email
 │   └── api/                   # ~200 handlers across 172 route files (see API Routes)
 ├── components/
 │   ├── admin/                 # ImageUpload, ArtistLineupEditor, TierSelector, MerchImageGallery,
@@ -102,7 +102,7 @@ Request → Middleware resolves org_id → sets x-org-id header
 **Public routes (no auth):** Stripe payment routes, `checkout/*`, `GET events|settings|merch|branding|themes|media|health`, `POST track|meta/capi|discounts/validate|popup/capture`, `/api/cron/*` (CRON_SECRET), `/api/unsubscribe`, wallet routes, rep auth routes, `auth/*`, `beta/*`, `team/accept-invite`.
 
 ### Payment System (Stripe)
-Event pages → `NativeCheckout` → `StripePaymentForm` + `ExpressCheckout` (Apple/Google Pay). Flow: PaymentIntent create → confirm → webhook → order + tickets + email. Discounts validated server-side. Payment health monitored via `logPaymentEvent()` → `payment_events` table.
+Event pages → `NativeCheckout` → `StripePaymentForm` + `ExpressCheckout` (Apple/Google Pay). Flow: PaymentIntent create (idempotency key) → confirm → webhook → order + tickets + email. Stock reserved atomically via `increment_sold()` RPC (returns false if sold out, triggers rollback). Discounts validated server-side, incremented atomically via `increment_discount_used()` RPC. Payment health monitored via `logPaymentEvent()` → `payment_events` table.
 
 **External ticketing**: `payment_method: "external"` → `MidnightExternalPage` (hero + about + lineup + CTA, no checkout).
 
@@ -122,7 +122,7 @@ Event pages → `NativeCheckout` → `StripePaymentForm` + `ExpressCheckout` (Ap
 ### Error Monitoring (Sentry)
 Three layers: **Sentry** (crash tracking + session replay), **Payment Monitor** (`payment_events` table), **AI Digest** (Claude Haiku analysis every 6h).
 
-Config: `sentry.{client,server,edge}.config.ts`. Auto-instruments API routes, server components, middleware. Session replay 5%/100% on error. Context enrichment via `setSentryOrgContext()` / `setSentryUserContext()` in auth helpers.
+Config: `sentry.{client,server,edge}.config.ts`. Auto-instruments API routes, server components, middleware. Session replay 5%/100% on error. Tunnel: `/api/monitoring` (bypasses ad blockers). Context enrichment via `setSentryOrgContext()` / `setSentryUserContext()` in auth helpers. All error boundaries (`global-error.tsx`, `admin/error.tsx`, `event/[slug]/error.tsx`) report to Sentry.
 
 **Platform Health Dashboard** (`/admin/backend/health/`): Aggregates Sentry + system health + payments + AI digest.
 
@@ -253,7 +253,7 @@ Sub-permissions auto-clear when parent `perm_reps` is disabled.
 
 All rep tables have `org_id`. Types: `src/types/reps.ts`.
 
-**RPCs**: `claim_reward_atomic()` (deducts currency_balance), `reverse_rep_attribution()`, `get_rep_program_stats()`, `increment_sold()`.
+**RPCs**: `claim_reward_atomic()` (deducts currency_balance), `reverse_rep_attribution()`, `get_rep_program_stats()`, `increment_sold()` (atomic stock reservation, returns boolean), `increment_discount_used()` (atomic discount count, returns integer).
 
 ### Key Constraints
 - `orders.order_number` — unique, `FERAL-XXXXX` (sequential)
@@ -347,7 +347,7 @@ CRUD: `reps` (GET/POST), `reps/[id]` (GET/PUT/DELETE). Settings: `reps/settings`
 - **Platform Health** (owner): `platform/platform-health|platform-digest|sentry|payment-health|payment-health/[id]/resolve|payment-health/resolve-all|payment-digest`
 - **Team**: `team` (GET/POST), `team/[id]`, `team/[id]/resend-invite`, `team/accept-invite` (public)
 - **Uploads**: `upload` (POST base64), `upload-video` (POST signed URL)
-- **Tracking**: `track`, `meta/capi`, `admin/dashboard`, `admin/orders-stats`
+- **Tracking**: `track` (bot-filtered), `meta/capi`, `admin/dashboard`, `admin/orders-stats`
 - **Other**: `media/[key]`, `health`, `unsubscribe`
 
 ### Vercel Cron Jobs
@@ -373,7 +373,7 @@ CRUD: `reps` (GET/POST), `reps/[id]` (GET/PUT/DELETE). Settings: `reps/settings`
 | `useMetaTracking` | Meta Pixel + CAPI (consent-aware, stable refs) |
 | `useDataLayer` | GTM dataLayer push (stable refs) |
 | `useDashboardRealtime` | Dashboard live updates |
-| `useTraffic` | Supabase funnel tracking |
+| `useTraffic` | Supabase funnel tracking (bot-filtered, deduped page views) |
 | `useHypeQueue` | Fake queue progress, localStorage gate, social proof |
 | `useCountdown` | Countdown timer → { days, hours, mins, secs, passed } |
 | `useOrgTimezone` | Org timezone from settings (fallback: Europe/London) |
@@ -424,6 +424,7 @@ Hooks returning objects/functions as effect deps MUST use `useMemo`. **Stable re
 When asked to "check health," "look at errors," or "fix what's broken":
 
 ### Step 1: Fetch unresolved issues
+Note: Sentry is on EU region (`de.sentry.io`). Current `SENTRY_AUTH_TOKEN` only has source-map upload scope — to query issues via API, create a token with `event:read` + `issues:write` at `https://entry-04.sentry.io/settings/auth-tokens/`.
 ```bash
 source .env.local && curl -s -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
   "https://sentry.io/api/0/projects/$SENTRY_ORG/$SENTRY_PROJECT/issues/?query=is:unresolved&sort=freq&limit=25"
@@ -523,8 +524,7 @@ shadcn/ui + Tailwind + admin tokens. Gaming effects in `rep-effects.css` (class 
 1. **Scanner PWA** — API exists (`tickets/[code]` + `scan`) but no frontend
 2. **Google Ads + TikTok tracking** — placeholders only
 3. **Supabase RLS** — should enforce org_id at DB level
-4. **Cron multi-org** — `/api/cron/*` still uses `ORG_ID` fallback, should iterate all orgs
-5. **Aura theme** — still in code, pending removal
+4. **Aura theme** — 18 components still in `src/components/aura/`, pending removal
 
 
 ---

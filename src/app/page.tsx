@@ -28,6 +28,9 @@ export async function generateMetadata(): Promise<Metadata> {
   let faviconUrl: string | undefined;
   let twitterHandle: string | undefined;
   let heroImageUrl: string | undefined;
+  let seoTitle: string | undefined;
+  let seoDescription: string | undefined;
+  let ogImageUrl: string | undefined;
   let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
 
   try {
@@ -56,14 +59,20 @@ export async function generateMetadata(): Promise<Metadata> {
       if (homepageResult.data?.data) {
         const homepage = homepageResult.data.data as HomepageSettings;
         if (homepage.hero_image_url) heroImageUrl = homepage.hero_image_url;
+        if (homepage.seo_title) seoTitle = homepage.seo_title;
+        if (homepage.seo_description) seoDescription = homepage.seo_description;
+        if (homepage.og_image_url) ogImageUrl = homepage.og_image_url;
       }
     }
   } catch {
     // Fall through with defaults
   }
 
-  const title = `${orgName} — Events & Tickets`;
-  const description = `Discover upcoming events and buy tickets from ${orgName}. Live music, experiences, and more.`;
+  const autoTitle = `${orgName} — Events & Tickets`;
+  const autoDescription = `Discover upcoming events and buy tickets from ${orgName}. Live music, experiences, and more.`;
+  const title = seoTitle?.trim() || autoTitle;
+  const description = seoDescription?.trim() || autoDescription;
+  const shareImage = ogImageUrl || heroImageUrl;
   const canonicalUrl = baseUrl ? `${baseUrl}/` : undefined;
 
   return {
@@ -76,14 +85,14 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description,
       ...(canonicalUrl ? { url: canonicalUrl } : {}),
-      ...(heroImageUrl ? { images: [{ url: heroImageUrl, width: 1200, height: 630, alt: orgName }] } : {}),
+      ...(shareImage ? { images: [{ url: shareImage, width: 1200, height: 630, alt: orgName }] } : {}),
       siteName: orgName,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      ...(heroImageUrl ? { images: [{ url: heroImageUrl, alt: orgName }] } : {}),
+      ...(shareImage ? { images: [{ url: shareImage, alt: orgName }] } : {}),
       ...(twitterHandle ? { creator: twitterHandle.startsWith("@") ? twitterHandle : `@${twitterHandle}` } : {}),
     },
   };

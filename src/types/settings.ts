@@ -206,6 +206,12 @@ export interface HomepageSettings {
   hero_focal_y: number;
   /** Extra darkening overlay on hero image (0–80%). 0 = vignette only. */
   hero_overlay_opacity?: number;
+  /** SEO: custom meta title override (auto-generated from org name if empty) */
+  seo_title?: string;
+  /** SEO: custom meta description override (auto-generated if empty) */
+  seo_description?: string;
+  /** SEO: custom Open Graph share image URL (falls back to hero_image_url) */
+  og_image_url?: string;
 }
 
 /** Row shape from site_settings table */

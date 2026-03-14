@@ -271,6 +271,12 @@ Wrong client → silent data loss (RLS blocks return empty arrays).
 - **`getSupabaseClient()`** = browser only (realtime, client reads)
 - Never create raw `createClient()` with anon key server-side
 
+### Row-Level Security (RLS)
+All tables have RLS enabled with org-scoped policies. Helper function `auth_user_org_id()` maps `auth.uid()` → `org_id` via `org_users` or `reps` table.
+- **`anon` role**: INSERT only on `traffic_events`, `popup_events`. SELECT only on public content (`events`, `ticket_types`, `products`, `artists`, `event_artists`, `domains`, `site_settings`). NO access to `orders`, `customers`, `tickets`, or any sensitive table.
+- **`authenticated` role**: Full CRUD scoped to `org_id = auth_user_org_id()` on all tables with `org_id` column. `site_settings` has full access (no `org_id` column — uses key-prefix isolation).
+- **`service_role`**: Bypasses all RLS (used by all API routes via `getSupabaseAdmin()`).
+
 ### External Service Rules (CRITICAL)
 MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments, logs). Use MCP directly — NEVER give user SQL to run. **Stripe** has no MCP — tell user to use dashboard. If MCP token expired, tell user to run `/mcp`. Never assume table/column exists unless documented here.
 
@@ -523,8 +529,7 @@ shadcn/ui + Tailwind + admin tokens. Gaming effects in `rep-effects.css` (class 
 ## Known Gaps
 1. **Scanner PWA** — API exists (`tickets/[code]` + `scan`) but no frontend
 2. **Google Ads + TikTok tracking** — placeholders only
-3. **Supabase RLS** — should enforce org_id at DB level
-4. **Aura theme** — 18 components still in `src/components/aura/`, pending removal
+3. **Aura theme** — 18 components still in `src/components/aura/`, pending removal
 
 
 ---

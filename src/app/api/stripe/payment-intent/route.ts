@@ -609,6 +609,13 @@ export async function POST(request: NextRequest) {
       }
     };
 
+    // Confirmable PI states — anything else means the PI is dead/used
+    const CONFIRMABLE_STATES = new Set([
+      "requires_payment_method",
+      "requires_confirmation",
+      "requires_action",
+    ]);
+
     let paymentIntent: Awaited<ReturnType<typeof stripe.paymentIntents.create>> | null;
     try {
       paymentIntent = await createPI(idempotencyKey);
@@ -621,6 +628,14 @@ export async function POST(request: NextRequest) {
       } else {
         throw err;
       }
+    }
+
+    // If idempotency returned an existing PI that's already succeeded, cancelled,
+    // or otherwise not confirmable (e.g. customer paid then came back to buy again),
+    // create a fresh PI with a unique key so checkout isn't blocked.
+    if (paymentIntent && !CONFIRMABLE_STATES.has(paymentIntent.status)) {
+      const freshKey = `${idempotencyKey}_${Date.now()}`;
+      paymentIntent = await createPI(freshKey);
     }
 
     if (!paymentIntent) {

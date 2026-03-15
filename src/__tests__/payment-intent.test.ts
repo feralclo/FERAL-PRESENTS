@@ -514,6 +514,7 @@ describe("POST /api/stripe/payment-intent", () => {
     mockPaymentIntentsCreate.mockResolvedValue({
       id: "pi_same",
       client_secret: "pi_same_secret",
+      status: "requires_payment_method",
     });
 
     const { POST } = await import(

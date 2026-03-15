@@ -1401,10 +1401,10 @@ function SinglePageCheckoutForm({
 
           if (klarnaError) {
             trackEngagement("payment_failed");
-            setError(
-              klarnaError.message || "Klarna payment failed. Please try again."
-            );
+            const klarnaMsg = klarnaError.message || "Klarna payment failed. Please try again.";
+            setError(klarnaMsg);
             setProcessing(false);
+            reportCheckoutError({ errorCode: klarnaError.code || "klarna_failed", errorMessage: klarnaMsg, eventId: event.id, eventSlug: slug, customerEmail: email });
             return;
           }
           return;
@@ -1430,10 +1430,10 @@ function SinglePageCheckoutForm({
 
           if (paypayError) {
             trackEngagement("payment_failed");
-            setError(
-              paypayError.message || "PayPay payment failed. Please try again."
-            );
+            const paypayMsg = paypayError.message || "PayPay payment failed. Please try again.";
+            setError(paypayMsg);
             setProcessing(false);
+            reportCheckoutError({ errorCode: paypayError.code || "paypay_failed", errorMessage: paypayMsg, eventId: event.id, eventSlug: slug, customerEmail: email });
             return;
           }
           return;

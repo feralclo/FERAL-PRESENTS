@@ -630,12 +630,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // If idempotency returned an existing PI that's already succeeded, cancelled,
-    // or otherwise not confirmable (e.g. customer paid then came back to buy again),
-    // create a fresh PI with a unique key so checkout isn't blocked.
-    if (paymentIntent && !CONFIRMABLE_STATES.has(paymentIntent.status)) {
-      const freshKey = `${idempotencyKey}_${Date.now()}`;
-      paymentIntent = await createPI(freshKey);
+    // Stripe's idempotent response returns the ORIGINAL creation status, not the
+    // PI's current state. A PI that was created as requires_payment_method but has
+    // since been confirmed (succeeded) will still show requires_payment_method in
+    // the idempotent response. We must retrieve the actual current status.
+    if (paymentIntent) {
+      const retrieveOpts = stripeAccountId ? { stripeAccount: stripeAccountId } : undefined;
+      const currentPI = await stripe.paymentIntents.retrieve(paymentIntent.id, retrieveOpts);
+      if (!CONFIRMABLE_STATES.has(currentPI.status)) {
+        // PI is dead (succeeded, cancelled, etc.) — create a fresh one
+        const freshKey = `${idempotencyKey}_${Date.now()}`;
+        paymentIntent = await createPI(freshKey);
+      }
     }
 
     if (!paymentIntent) {

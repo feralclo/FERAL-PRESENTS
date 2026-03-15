@@ -16,8 +16,9 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 // Stripe mock
 const mockPaymentIntentsCreate = vi.fn();
+const mockPaymentIntentsRetrieve = vi.fn();
 const mockStripe = {
-  paymentIntents: { create: mockPaymentIntentsCreate },
+  paymentIntents: { create: mockPaymentIntentsCreate, retrieve: mockPaymentIntentsRetrieve },
 };
 
 vi.mock("@/lib/stripe/server", () => ({
@@ -251,6 +252,11 @@ describe("POST /api/stripe/payment-intent", () => {
     mockPaymentIntentsCreate.mockResolvedValue({
       id: "pi_test123",
       client_secret: "pi_test123_secret_abc",
+    });
+    // retrieve returns confirmable status by default
+    mockPaymentIntentsRetrieve.mockResolvedValue({
+      id: "pi_test123",
+      status: "requires_payment_method",
     });
     setupFrom();
   });
@@ -514,6 +520,10 @@ describe("POST /api/stripe/payment-intent", () => {
     mockPaymentIntentsCreate.mockResolvedValue({
       id: "pi_same",
       client_secret: "pi_same_secret",
+      status: "requires_payment_method",
+    });
+    mockPaymentIntentsRetrieve.mockResolvedValue({
+      id: "pi_same",
       status: "requires_payment_method",
     });
 

@@ -42,18 +42,11 @@ export async function POST(request: NextRequest) {
     const orgId = getOrgIdFromRequest(request);
     const ip = getClientIp(request);
 
-    // Derive severity: Stripe Elements load failure = critical, card errors = warning
-    const severity =
-      error_code === "elements_load_failed" ||
-      error_code === "checkout_crash" ||
-      error_code === "network_error"
-        ? "critical" as const
-        : "warning" as const;
-
+    // Let deriveSeverity() in payment-monitor determine the right severity.
+    // Card declines → warning (normal), real checkout failures → critical (triggers alerts).
     logPaymentEvent({
       orgId,
       type: "client_checkout_error",
-      severity,
       eventId: event_id || undefined,
       errorCode: error_code || "client_error",
       errorMessage: String(error_message).slice(0, 500),

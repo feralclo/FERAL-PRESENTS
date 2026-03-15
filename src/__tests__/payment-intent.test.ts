@@ -65,6 +65,26 @@ vi.mock("@/lib/ticket-visibility", () => ({
   validateSequentialPurchase: vi.fn().mockReturnValue(null),
 }));
 
+// Node.js crypto — Vite externalises it in jsdom; provide a deterministic mock
+function mockCreateHash() {
+  let data = "";
+  const hasher = {
+    update(input: string) { data += input; return hasher; },
+    digest() {
+      let h = 5381;
+      for (let i = 0; i < data.length; i++) {
+        h = ((h << 5) + h + data.charCodeAt(i)) & 0xffffffff;
+      }
+      return Math.abs(h).toString(16).padStart(64, "0");
+    },
+  };
+  return hasher;
+}
+vi.mock("crypto", () => {
+  const mod = { createHash: vi.fn(mockCreateHash) };
+  return { ...mod, default: mod };
+});
+
 // Checkout guards — allow by default
 vi.mock("@/lib/checkout-guards", () => ({
   isRestrictedCheckoutEmail: vi.fn().mockReturnValue(false),

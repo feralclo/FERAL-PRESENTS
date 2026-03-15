@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -553,15 +554,19 @@ export async function POST(request: NextRequest) {
     // reuse the same PaymentIntent instead of creating duplicates.
     // Key is derived from: org, event, customer email, sorted cart items, discount, and currency.
     const cartFingerprint = JSON.stringify({
-      items: (items as { ticket_type_id: string; qty: number }[])
-        .map((i) => ({ id: i.ticket_type_id, qty: i.qty }))
+      items: (items as { ticket_type_id: string; qty: number; merch_size?: string }[])
+        .map((i) => {
+          const entry: { id: string; qty: number; s?: string } = { id: i.ticket_type_id, qty: i.qty };
+          if (i.merch_size) entry.s = i.merch_size;
+          return entry;
+        })
         .sort((a, b) => a.id.localeCompare(b.id)),
       email: customer.email.toLowerCase(),
       eventId: event_id,
       discount: discount_code || "",
       currency: chargeCurrency,
     });
-    const idempotencyKey = `pi_${orgId}_${Buffer.from(cartFingerprint).toString("base64url").slice(0, 40)}`;
+    const idempotencyKey = `pi_${orgId}_${createHash("sha256").update(cartFingerprint).digest("hex")}`;
 
     // Helper to create the PI (shared between connected + platform paths)
     const createPI = async () => {

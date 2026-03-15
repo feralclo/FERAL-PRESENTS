@@ -544,6 +544,48 @@ describe("POST /api/stripe/payment-intent", () => {
     expect(res.status).toBe(200);
   });
 
+  // ── Idempotency key uniqueness ─────────────────────────────────────────
+
+  it("produces different idempotency keys for different emails", async () => {
+    const { POST } = await import(
+      "@/app/api/stripe/payment-intent/route"
+    );
+
+    const req1 = makeRequest(VALID_BODY);
+    await POST(req1);
+    const key1 = mockPaymentIntentsCreate.mock.calls.at(-1)?.[1]?.idempotencyKey;
+
+    const req2 = makeRequest({
+      ...VALID_BODY,
+      customer: { ...VALID_BODY.customer, email: "other@example.com" },
+    });
+    await POST(req2);
+    const key2 = mockPaymentIntentsCreate.mock.calls.at(-1)?.[1]?.idempotencyKey;
+
+    expect(key1).toBeDefined();
+    expect(key2).toBeDefined();
+    expect(key1).not.toBe(key2);
+  });
+
+  it("produces different idempotency keys for different event IDs", async () => {
+    const { POST } = await import(
+      "@/app/api/stripe/payment-intent/route"
+    );
+
+    const req1 = makeRequest(VALID_BODY);
+    await POST(req1);
+    const key1 = mockPaymentIntentsCreate.mock.calls.at(-1)?.[1]?.idempotencyKey;
+
+    setupFrom({ event: { ...EVENT_ROW, id: "evt-2" } });
+    const req2 = makeRequest({ ...VALID_BODY, event_id: "evt-2" });
+    await POST(req2);
+    const key2 = mockPaymentIntentsCreate.mock.calls.at(-1)?.[1]?.idempotencyKey;
+
+    expect(key1).toBeDefined();
+    expect(key2).toBeDefined();
+    expect(key1).not.toBe(key2);
+  });
+
   // ── Happy path ──────────────────────────────────────────────────────────
 
   it("creates PaymentIntent and returns client_secret on valid request", async () => {

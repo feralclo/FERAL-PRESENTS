@@ -5,9 +5,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { LiveStatCard } from "@/components/ui/live-stat-card";
 import { LiveIndicator } from "@/components/ui/live-indicator";
-import { ActivityFeed } from "@/components/admin/dashboard/ActivityFeed";
-import { FunnelChart } from "@/components/admin/dashboard/FunnelChart";
-import { TopEventsTable } from "@/components/admin/dashboard/TopEventsTable";
+import { LivePulse } from "@/components/admin/dashboard/LivePulse";
 import { StripeConnectionBanner } from "@/components/admin/dashboard/StripeConnectionBanner";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
@@ -291,24 +289,14 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── TWO-COLUMN: FUNNEL + ACTIVITY ── */}
-      <div className="mb-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Left Column: Funnel + Top Events */}
-        <div className="space-y-6">
-          <FunnelChart
-            stages={[
-              { label: "Landing", count: funnel.landing },
-              { label: "Tickets", count: funnel.tickets },
-              { label: "Add to Cart", count: funnel.add_to_cart },
-              { label: "Checkout", count: funnel.checkout },
-              { label: "Purchase", count: funnel.purchase },
-            ]}
-          />
-          <TopEventsTable events={topEvents} />
-        </div>
-
-        {/* Right Column: Activity Feed */}
-        <ActivityFeed items={activityFeed} />
+      {/* ── LIVE PULSE: PIPELINE + EVENTS + TRANSACTIONS ── */}
+      <div className="mb-10">
+        <LivePulse
+          funnel={funnel}
+          topEvents={topEvents}
+          activityFeed={activityFeed}
+          currencySymbol={orgCurrencySymbol}
+        />
       </div>
 
       {/* ── QUICK LINKS ── */}

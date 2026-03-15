@@ -3,10 +3,15 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { LiveStatCard } from "@/components/ui/live-stat-card";
 import { LiveIndicator } from "@/components/ui/live-indicator";
-import { LivePulse } from "@/components/admin/dashboard/LivePulse";
+import { LiveStatCard } from "@/components/ui/live-stat-card";
 import { StripeConnectionBanner } from "@/components/admin/dashboard/StripeConnectionBanner";
+import { RevenueHero } from "@/components/admin/dashboard/RevenueHero";
+import { PresenceCards } from "@/components/admin/dashboard/PresenceCards";
+import { BuyerJourney } from "@/components/admin/dashboard/BuyerJourney";
+import { EventSpotlight } from "@/components/admin/dashboard/EventSpotlight";
+import { LiveFeed } from "@/components/admin/dashboard/LiveFeed";
+import { MilestoneBar } from "@/components/admin/dashboard/MilestoneBar";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
 import { fmtMoney } from "@/lib/format";
@@ -15,26 +20,15 @@ import {
   Ticket,
   DollarSign,
   ShoppingBag,
-  ShoppingCart,
-  CreditCard,
-  Users as UsersIcon,
   MousePointerClick,
   CalendarDays,
   ChevronRight,
   BarChart3,
   UserCheck,
+  Users as UsersIcon,
   X,
   Rocket,
 } from "lucide-react";
-
-/* ── Skeleton pulse ── */
-function Skeleton({ className }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-md bg-muted/60 ${className || ""}`}
-    />
-  );
-}
 
 /* ── Quick link card ── */
 function QuickLink({
@@ -69,9 +63,7 @@ function QuickLink({
   );
 }
 
-/* ════════════════════════════════════════════════════════
-   LIVE DASHBOARD
-   ════════════════════════════════════════════════════════ */
+/* ── Welcome Banner ── */
 function WelcomeBanner({
   onDismiss,
   stripeConnected,
@@ -111,6 +103,10 @@ function WelcomeBanner({
   );
 }
 
+/* ════════════════════════════════════════════════════════
+   MISSION CONTROL DASHBOARD
+   ════════════════════════════════════════════════════════ */
+
 export default function AdminDashboard() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [isPlatformOwner, setIsPlatformOwner] = useState(false);
@@ -124,7 +120,6 @@ export default function AdminDashboard() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("welcome") === "1") {
       setShowWelcome(true);
-      // Clean the URL
       const url = new URL(window.location.href);
       url.searchParams.delete("welcome");
       window.history.replaceState({}, "", url.toString());
@@ -136,7 +131,6 @@ export default function AdminDashboard() {
     (async () => {
       try {
         const [, stripeRes] = await Promise.all([
-          // Platform owner detection
           (async () => {
             const supabase = getSupabaseClient();
             if (!supabase) return;
@@ -145,7 +139,6 @@ export default function AdminDashboard() {
               setIsPlatformOwner(true);
             }
           })(),
-          // Stripe connection status
           fetch("/api/stripe/connect/my-account").catch(() => null),
         ]);
 
@@ -159,7 +152,7 @@ export default function AdminDashboard() {
           setStripeStatus({ connected: false, chargesEnabled: false });
         }
       } catch {
-        // Fail silently — banners just won't show
+        // Fail silently
       }
     })();
   }, []);
@@ -175,11 +168,17 @@ export default function AdminDashboard() {
     topEvents,
     timezoneAbbr,
     isLoading,
+    presenceHistory,
+    saleStreak,
+    lastSale,
+    milestones,
+    hourlyRevenue,
+    eventCapacity,
   } = useDashboardRealtime();
 
   return (
     <div>
-      {/* Stripe connection banner — non-dismissible, hidden for platform owner */}
+      {/* Stripe connection banner */}
       {!isPlatformOwner &&
         stripeStatus &&
         (!stripeStatus.connected || !stripeStatus.chargesEnabled) && (
@@ -210,54 +209,35 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── RIGHT NOW ── */}
-      <div className="mb-10">
-        <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
-          Right Now
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <LiveStatCard
-            label="Active Visitors"
-            value={isLoading ? "\u00A0" : activeVisitors.toLocaleString()}
-            icon={UsersIcon}
-            detail="online now"
-            live
-          />
-          <LiveStatCard
-            label="Active Carts"
-            value={isLoading ? "\u00A0" : activeCarts.toLocaleString()}
-            icon={ShoppingCart}
-            detail="open carts"
-            live
-          />
-          <LiveStatCard
-            label="In Checkout"
-            value={isLoading ? "\u00A0" : inCheckout.toLocaleString()}
-            icon={CreditCard}
-            detail="checking out"
-            live
-          />
-        </div>
+      {/* ── REVENUE HERO ── */}
+      <div className="mb-6">
+        <RevenueHero
+          revenue={today.revenue}
+          yesterdayRevenue={yesterday.revenue}
+          orders={today.orders}
+          ticketsSold={today.ticketsSold}
+          avgOrderValue={today.avgOrderValue}
+          hourlyRevenue={hourlyRevenue}
+          currencySymbol={orgCurrencySymbol}
+          lastSale={lastSale}
+          isLoading={isLoading}
+        />
       </div>
 
-      {/* ── TODAY'S PERFORMANCE ── */}
-      <div className="mb-10">
-        <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
-          Today&apos;s Performance
-          {timezoneAbbr && (
-            <span className="ml-2 text-[10px] font-normal normal-case tracking-normal text-muted-foreground/60">
-              ({timezoneAbbr})
-            </span>
-          )}
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <LiveStatCard
-            label="Revenue"
-            value={isLoading ? "\u00A0" : fmtMoney(today.revenue, orgCurrency)}
-            icon={DollarSign}
-            detail="vs yesterday"
-            trend={{ value: today.revenue - yesterday.revenue, format: "currency", currencySymbol: orgCurrencySymbol }}
-          />
+      {/* ── PRESENCE CARDS ── */}
+      <div className="mb-6">
+        <PresenceCards
+          visitors={activeVisitors}
+          carts={activeCarts}
+          checkout={inCheckout}
+          history={presenceHistory}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* ── KPI CARDS ── */}
+      <div className="mb-6">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <LiveStatCard
             label="Orders"
             value={isLoading ? "\u00A0" : today.orders.toLocaleString()}
@@ -289,15 +269,27 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── LIVE PULSE: PIPELINE + EVENTS + TRANSACTIONS ── */}
-      <div className="mb-10">
-        <LivePulse
-          funnel={funnel}
-          topEvents={topEvents}
-          activityFeed={activityFeed}
-          currencySymbol={orgCurrencySymbol}
-        />
+      {/* ── BUYER JOURNEY ── */}
+      <div className="mb-6">
+        <BuyerJourney funnel={funnel} />
       </div>
+
+      {/* ── EVENT SPOTLIGHT + LIVE FEED ── */}
+      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <EventSpotlight
+          events={topEvents}
+          currencySymbol={orgCurrencySymbol}
+          eventCapacity={eventCapacity}
+        />
+        <LiveFeed items={activityFeed} saleStreak={saleStreak} />
+      </div>
+
+      {/* ── MILESTONES ── */}
+      {milestones.length > 0 && (
+        <div className="mb-6">
+          <MilestoneBar milestones={milestones} />
+        </div>
+      )}
 
       {/* ── QUICK LINKS ── */}
       <div className="mt-10">

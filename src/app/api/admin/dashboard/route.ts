@@ -123,6 +123,20 @@ export async function GET() {
       if (!purchasedSessions.has(row.session_id)) inCheckout++;
     }
 
+    // Hourly revenue breakdown (24 slots)
+    const { data: hourlyRows } = await supabase
+      .from(TABLES.ORDERS)
+      .select("total, created_at")
+      .eq("org_id", orgId)
+      .eq("status", "completed")
+      .gte("created_at", todayStr);
+
+    const hourlyRevenue = new Array(24).fill(0);
+    for (const row of hourlyRows || []) {
+      const h = new Date(row.created_at).getHours();
+      hourlyRevenue[h] += Number(row.total);
+    }
+
     // Top events
     const { data: viewRows } = await supabase
       .from(TABLES.TRAFFIC_EVENTS)
@@ -190,6 +204,37 @@ export async function GET() {
     }
     topEvents.sort((a, b) => b.views - a.views);
 
+    // Event capacity (sold vs total for top events)
+    const topEventSlugs = topEvents.slice(0, 5).map((e) => e.eventSlug);
+    const eventCapacity: Record<string, { sold: number; capacity: number }> = {};
+    if (topEventSlugs.length > 0) {
+      // Get event IDs from slugs
+      const { data: eventIdRows } = await supabase
+        .from(TABLES.EVENTS)
+        .select("id, slug")
+        .eq("org_id", orgId)
+        .in("slug", topEventSlugs);
+
+      if (eventIdRows && eventIdRows.length > 0) {
+        const eventIds = eventIdRows.map((e: { id: string }) => e.id);
+        const slugById = new Map(eventIdRows.map((e: { id: string; slug: string }) => [e.id, e.slug]));
+
+        const { data: capacityRows } = await supabase
+          .from(TABLES.TICKET_TYPES)
+          .select("event_id, capacity, sold")
+          .eq("org_id", orgId)
+          .in("event_id", eventIds);
+
+        for (const row of capacityRows || []) {
+          const slug = slugById.get(row.event_id);
+          if (!slug) continue;
+          if (!eventCapacity[slug]) eventCapacity[slug] = { sold: 0, capacity: 0 };
+          eventCapacity[slug].sold += Number(row.sold) || 0;
+          eventCapacity[slug].capacity += Number(row.capacity) || 0;
+        }
+      }
+    }
+
     // Resolve slugs to display names in recent activity
     const recentActivity = (recentActivityRes.data || []).map((row) => ({
       ...row,
@@ -229,6 +274,8 @@ export async function GET() {
       recentPurchaseSessions: recentPurchasesRes.data || [],
       recentCheckoutSessions: recentCheckoutsRes.data || [],
       topEvents: topEvents.slice(0, 5),
+      hourlyRevenue,
+      eventCapacity,
       eventSlugMap,
       timezone: tz,
       timezoneAbbr: getTimezoneAbbr(tz),

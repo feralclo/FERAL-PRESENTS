@@ -26,6 +26,26 @@ interface TodayKPIs {
   conversionRate: number;
 }
 
+export interface PresenceSnapshot {
+  visitors: number;
+  carts: number;
+  checkout: number;
+}
+
+export interface Milestone {
+  type: "streak" | "revenue" | "sellout" | "best_hour" | "conversion";
+  message: string;
+  timestamp: Date;
+  id: string;
+}
+
+export interface LastSale {
+  amount: number;
+  eventName: string;
+  orderNumber: string;
+  timestamp: Date;
+}
+
 export interface DashboardState {
   // Right Now
   activeVisitors: number;
@@ -45,6 +65,13 @@ export interface DashboardState {
   timezoneAbbr: string;
   // Meta
   isLoading: boolean;
+  // New: Mission Control
+  presenceHistory: PresenceSnapshot[];
+  saleStreak: number;
+  lastSale: LastSale | null;
+  milestones: Milestone[];
+  hourlyRevenue: number[];
+  eventCapacity: Record<string, { sold: number; capacity: number }>;
 }
 
 /* ── Helpers ── */
@@ -75,6 +102,14 @@ export function useDashboardRealtime(): DashboardState {
   const [timezone, setTimezone] = useState("Europe/London");
   const [timezoneAbbr, setTimezoneAbbr] = useState("GMT");
 
+  // New: Mission Control state
+  const [presenceHistory, setPresenceHistory] = useState<PresenceSnapshot[]>([]);
+  const [saleStreak, setSaleStreak] = useState(0);
+  const [lastSale, setLastSale] = useState<LastSale | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [hourlyRevenue, setHourlyRevenue] = useState<number[]>(new Array(24).fill(0));
+  const [eventCapacity, setEventCapacity] = useState<Record<string, { sold: number; capacity: number }>>({});
+
   // Mutable maps for real-time presence tracking
   const visitorMap = useRef<Map<string, number>>(new Map());
   const cartSessions = useRef<Map<string, number>>(new Map());
@@ -83,6 +118,14 @@ export function useDashboardRealtime(): DashboardState {
   const feedIdCounter = useRef(0);
   // Slug → display name map (populated from dashboard API, used for realtime events)
   const eventSlugMap = useRef<Record<string, string>>({});
+  // Sale streak tracking
+  const lastSaleTime = useRef<number>(0);
+  const streakCount = useRef(0);
+  // Milestone dedup
+  const milestoneIdCounter = useRef(0);
+  const seenMilestones = useRef<Set<string>>(new Set());
+  // Last sale clear timeout
+  const lastSaleClearTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ── Presence recalculation ── */
   const recalcPresence = useCallback(() => {
@@ -130,6 +173,12 @@ export function useDashboardRealtime(): DashboardState {
       }
     }
     setInCheckout(checkoutCount);
+
+    // Append to presence history (rolling 30 entries)
+    setPresenceHistory((prev) => {
+      const next = [...prev, { visitors: visitorCount, carts: cartCount, checkout: checkoutCount }];
+      return next.slice(-30);
+    });
   }, []);
 
   /* ── Add to activity feed ── */
@@ -251,6 +300,8 @@ export function useDashboardRealtime(): DashboardState {
       if (data.eventSlugMap) eventSlugMap.current = data.eventSlugMap;
       if (data.timezone) setTimezone(data.timezone);
       if (data.timezoneAbbr) setTimezoneAbbr(data.timezoneAbbr);
+      if (data.hourlyRevenue) setHourlyRevenue(data.hourlyRevenue);
+      if (data.eventCapacity) setEventCapacity(data.eventCapacity);
 
       return true;
     } catch (err) {
@@ -477,6 +528,34 @@ export function useDashboardRealtime(): DashboardState {
             };
           });
 
+          // Update hourly revenue for current hour
+          const currentHour = new Date().getHours();
+          setHourlyRevenue((prev) => {
+            const next = [...prev];
+            next[currentHour] += total;
+            return next;
+          });
+
+          // Track sale streak (consecutive sales within 5 min)
+          const now = Date.now();
+          const fiveMinMs = 5 * 60 * 1000;
+          if (now - lastSaleTime.current < fiveMinMs) {
+            streakCount.current++;
+          } else {
+            streakCount.current = 1;
+          }
+          lastSaleTime.current = now;
+          setSaleStreak(streakCount.current);
+
+          // Set lastSale (auto-clear after 3s)
+          const eventName = row.event_name as string | undefined;
+          const displayName = eventName
+            ? eventSlugMap.current[eventName] || eventName
+            : "Unknown event";
+          setLastSale({ amount: total, eventName: displayName, orderNumber, timestamp: new Date() });
+          if (lastSaleClearTimeout.current) clearTimeout(lastSaleClearTimeout.current);
+          lastSaleClearTimeout.current = setTimeout(() => setLastSale(null), 3000);
+
           addActivity({
             type: "order",
             title: `New order ${orderNumber}`,
@@ -524,8 +603,64 @@ export function useDashboardRealtime(): DashboardState {
       supabase.removeChannel(trafficChannel);
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(ticketsChannel);
+      if (lastSaleClearTimeout.current) clearTimeout(lastSaleClearTimeout.current);
     };
   }, [loadInitialData, loadTopEvents, recalcPresence, addActivity, orgId]);
+
+  /* ── Milestones computation ── */
+  useEffect(() => {
+    const newMilestones: Milestone[] = [];
+
+    // Sale streak milestone (3+ in 5min)
+    if (saleStreak >= 3) {
+      const key = `streak-${saleStreak}`;
+      if (!seenMilestones.current.has(key)) {
+        seenMilestones.current.add(key);
+        milestoneIdCounter.current++;
+        newMilestones.push({ type: "streak", message: `${saleStreak}-sale streak!`, timestamp: new Date(), id: `ms-${milestoneIdCounter.current}` });
+      }
+    }
+
+    // Revenue milestones
+    const revThresholds = [500, 1000, 2000, 5000, 10000];
+    for (const t of revThresholds) {
+      const key = `rev-${t}`;
+      if (today.revenue >= t && !seenMilestones.current.has(key)) {
+        seenMilestones.current.add(key);
+        milestoneIdCounter.current++;
+        const label = t >= 1000 ? `£${t / 1000}k` : `£${t}`;
+        newMilestones.push({ type: "revenue", message: `${label} today!`, timestamp: new Date(), id: `ms-${milestoneIdCounter.current}` });
+      }
+    }
+
+    // Sellout proximity (>90%)
+    for (const ev of topEvents) {
+      const cap = eventCapacity[ev.eventSlug];
+      if (cap && cap.capacity > 0) {
+        const pct = (cap.sold / cap.capacity) * 100;
+        const key = `sellout-${ev.eventSlug}`;
+        if (pct >= 90 && !seenMilestones.current.has(key)) {
+          seenMilestones.current.add(key);
+          milestoneIdCounter.current++;
+          newMilestones.push({ type: "sellout", message: `${ev.eventName}: ${Math.round(pct)}% sold!`, timestamp: new Date(), id: `ms-${milestoneIdCounter.current}` });
+        }
+      }
+    }
+
+    if (newMilestones.length > 0) {
+      setMilestones((prev) => [...newMilestones, ...prev].slice(0, 10));
+    }
+  }, [saleStreak, today.revenue, topEvents, eventCapacity]);
+
+  // Auto-dismiss milestones after 30s
+  useEffect(() => {
+    if (milestones.length === 0) return;
+    const timer = setTimeout(() => {
+      const cutoff = Date.now() - 30_000;
+      setMilestones((prev) => prev.filter((m) => m.timestamp.getTime() > cutoff));
+    }, 30_000);
+    return () => clearTimeout(timer);
+  }, [milestones]);
 
   // Derive conversion rate from funnel for today's KPIs
   const todayWithConversion = useMemo<TodayKPIs>(() => ({
@@ -545,5 +680,11 @@ export function useDashboardRealtime(): DashboardState {
     timezone,
     timezoneAbbr,
     isLoading,
-  }), [activeVisitors, activeCarts, inCheckout, todayWithConversion, yesterday, funnel, activityFeed, topEvents, timezone, timezoneAbbr, isLoading]);
+    presenceHistory,
+    saleStreak,
+    lastSale,
+    milestones,
+    hourlyRevenue,
+    eventCapacity,
+  }), [activeVisitors, activeCarts, inCheckout, todayWithConversion, yesterday, funnel, activityFeed, topEvents, timezone, timezoneAbbr, isLoading, presenceHistory, saleStreak, lastSale, milestones, hourlyRevenue, eventCapacity]);
 }

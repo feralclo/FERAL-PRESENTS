@@ -243,3 +243,56 @@
 [data-admin] .collapsible-content[data-state="closed"] {
   animation: collapsible-up 200ms ease-out;
 }
+
+/* ── Dashboard Mission Control animations ── */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes dashboard-pulse {
+    0%, 100% { scale: 1; }
+    50% { scale: 1.03; }
+  }
+
+  @keyframes dashboard-glow {
+    0%, 100% { box-shadow: 0 0 0 transparent; }
+    50% { box-shadow: 0 0 20px rgba(52, 211, 153, 0.3); }
+  }
+
+  @keyframes dashboard-confetti {
+    0% { translate: 0 0; rotate: 0deg; opacity: 1; }
+    100% { translate: var(--cx) var(--cy); rotate: var(--cr); opacity: 0; }
+  }
+
+  @keyframes flow-dots {
+    from { stroke-dashoffset: 16; }
+    to { stroke-dashoffset: 0; }
+  }
+
+  @keyframes milestone-in {
+    from { opacity: 0; translate: 0 10px; scale: 0.95; }
+    to { opacity: 1; translate: 0 0; scale: 1; }
+  }
+
+  @keyframes urgency-glow {
+    0%, 100% { box-shadow: 0 0 0 transparent; }
+    50% { box-shadow: 0 0 16px rgba(244, 63, 94, 0.2); }
+  }
+
+  [data-admin] .dashboard-pulse {
+    animation: dashboard-pulse 400ms ease-out;
+  }
+
+  [data-admin] .dashboard-confetti {
+    animation: dashboard-confetti 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+
+  [data-admin] .flow-dots {
+    animation: flow-dots 800ms linear infinite;
+  }
+
+  [data-admin] .milestone-in {
+    animation: milestone-in 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  [data-admin] .urgency-glow {
+    animation: urgency-glow 2s ease-in-out infinite;
+  }
+}

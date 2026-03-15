@@ -568,8 +568,11 @@ export async function POST(request: NextRequest) {
     });
     const idempotencyKey = `pi_${orgId}_${createHash("sha256").update(cartFingerprint).digest("hex")}`;
 
-    // Helper to create the PI (shared between connected + platform paths)
-    const createPI = async () => {
+    // Helper to create the PI (shared between connected + platform paths).
+    // On idempotency mismatch (same cart but metadata changed — e.g. different
+    // phone, fee update, VAT change), retry once with a unique key so checkout
+    // isn't blocked. The stale PI expires naturally on Stripe after 24h.
+    const createPI = async (key: string): Promise<Awaited<ReturnType<typeof stripe.paymentIntents.create>> | null> => {
       try {
         if (stripeAccountId) {
           return await stripe.paymentIntents.create(
@@ -581,7 +584,7 @@ export async function POST(request: NextRequest) {
               metadata,
               automatic_payment_methods: { enabled: true },
             },
-            { stripeAccount: stripeAccountId, idempotencyKey }
+            { stripeAccount: stripeAccountId, idempotencyKey: key }
           );
         }
         return await stripe.paymentIntents.create({
@@ -590,7 +593,7 @@ export async function POST(request: NextRequest) {
           description: `${event.name} — ${description}`,
           metadata,
           automatic_payment_methods: { enabled: true },
-        }, { idempotencyKey });
+        }, { idempotencyKey: key });
       } catch (piErr) {
         // Only swallow genuine currency-related errors when doing cross-currency.
         // Everything else (IdempotencyError, AuthenticationError, etc.) must propagate
@@ -606,7 +609,19 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    const paymentIntent = await createPI();
+    let paymentIntent: Awaited<ReturnType<typeof stripe.paymentIntents.create>> | null;
+    try {
+      paymentIntent = await createPI(idempotencyKey);
+    } catch (err) {
+      // Idempotency mismatch: same cart identity but PI parameters changed
+      // (customer details, fees, VAT, etc.). Retry with a unique key.
+      if (err instanceof Error && err.message.toLowerCase().includes("idempotent")) {
+        const fallbackKey = `${idempotencyKey}_${Date.now()}`;
+        paymentIntent = await createPI(fallbackKey);
+      } else {
+        throw err;
+      }
+    }
 
     if (!paymentIntent) {
       return NextResponse.json({

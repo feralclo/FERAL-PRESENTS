@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LiveIndicator } from "@/components/ui/live-indicator";
 import { LiveStatCard } from "@/components/ui/live-stat-card";
 import { StripeConnectionBanner } from "@/components/admin/dashboard/StripeConnectionBanner";
+import { CheckoutHealthBanner } from "@/components/admin/dashboard/CheckoutHealthBanner";
 import { RevenueHero } from "@/components/admin/dashboard/RevenueHero";
 import { PresenceCards } from "@/components/admin/dashboard/PresenceCards";
 import { BuyerJourney } from "@/components/admin/dashboard/BuyerJourney";
@@ -104,6 +105,11 @@ export default function AdminDashboard() {
   const [isPlatformOwner, setIsPlatformOwner] = useState(false);
   const { currency: orgCurrency, currencySymbol: orgCurrencySymbol } = useOrgCurrency();
   const [stripeStatus, setStripeStatus] = useState<{ connected: boolean; chargesEnabled: boolean } | null>(null);
+  const [checkoutHealth, setCheckoutHealth] = useState<{
+    status: "healthy" | "degraded" | "down";
+    errors_1h: number;
+    last_error_message: string | null;
+  } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -137,6 +143,22 @@ export default function AdminDashboard() {
     })();
   }, []);
 
+  // Checkout health: fetch on mount + poll every 60s
+  useEffect(() => {
+    const fetchCheckoutHealth = async () => {
+      try {
+        const res = await fetch("/api/admin/checkout-health");
+        if (res.ok) {
+          const json = await res.json();
+          setCheckoutHealth(json);
+        }
+      } catch { /* Fail silently */ }
+    };
+    fetchCheckoutHealth();
+    const interval = setInterval(fetchCheckoutHealth, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
   const {
     activeVisitors, activeCarts, inCheckout,
     today, yesterday, funnel, activityFeed, topEvents,
@@ -149,6 +171,15 @@ export default function AdminDashboard() {
       {/* Stripe connection banner */}
       {!isPlatformOwner && stripeStatus && (!stripeStatus.connected || !stripeStatus.chargesEnabled) && (
         <StripeConnectionBanner connected={stripeStatus.connected} chargesEnabled={stripeStatus.chargesEnabled} />
+      )}
+
+      {/* Checkout health banner */}
+      {checkoutHealth && checkoutHealth.status !== "healthy" && (
+        <CheckoutHealthBanner
+          status={checkoutHealth.status}
+          errors1h={checkoutHealth.errors_1h}
+          lastErrorMessage={checkoutHealth.last_error_message}
+        />
       )}
 
       {/* Welcome banner */}

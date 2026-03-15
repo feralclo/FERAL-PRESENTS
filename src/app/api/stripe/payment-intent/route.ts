@@ -592,9 +592,14 @@ export async function POST(request: NextRequest) {
           automatic_payment_methods: { enabled: true },
         }, { idempotencyKey });
       } catch (piErr) {
-        // If Stripe rejects the currency (e.g. unsupported on connected account),
-        // fall back to base currency so checkout still works
-        if (chargeCurrency !== baseCurrency) {
+        // Only swallow genuine currency-related errors when doing cross-currency.
+        // Everything else (IdempotencyError, AuthenticationError, etc.) must propagate
+        // to the outer catch so it gets logged to Sentry + payment_events + alerts.
+        const isCurrencyError =
+          chargeCurrency !== baseCurrency &&
+          piErr instanceof Error &&
+          piErr.message.toLowerCase().includes("currency");
+        if (isCurrencyError) {
           return null;
         }
         throw piErr;

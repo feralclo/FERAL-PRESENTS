@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { TABLES } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { sendPlatformAlert } from "@/lib/payment-alerts";
+import { sendPlatformAlert, sendCheckoutAlert } from "@/lib/payment-alerts";
 
 /**
  * Payment event types for the monitoring system.
@@ -64,6 +64,15 @@ function deriveSeverity(type: PaymentEventType, errorCode?: string): PaymentEven
       return "critical";
 
     case "client_checkout_error":
+      // Normal card declines stay as warnings; real checkout failures are critical
+      if (
+        ["card_declined", "insufficient_funds", "expired_card", "incorrect_cvc", "processing_error"]
+          .includes(errorCode || "")
+      ) {
+        return "warning";
+      }
+      return "critical";
+
     case "incomplete_payment":
       return "warning";
 
@@ -113,24 +122,42 @@ export async function logPaymentEvent(params: LogPaymentEventParams): Promise<vo
 
     // Send platform alert for critical events (fire-and-forget)
     if (severity === "critical") {
-      sendPlatformAlert({
-        subject: `${params.type} for org ${params.orgId}`,
-        body: [
-          `Type: ${params.type}`,
-          `Org: ${params.orgId}`,
-          params.errorCode ? `Error code: ${params.errorCode}` : null,
-          params.errorMessage ? `Error: ${params.errorMessage}` : null,
-          params.stripePaymentIntentId ? `PaymentIntent: ${params.stripePaymentIntentId}` : null,
-          params.stripeAccountId ? `Account: ${params.stripeAccountId}` : null,
-          params.customerEmail ? `Customer: ${params.customerEmail}` : null,
-          `Time: ${new Date().toISOString()}`,
-        ]
-          .filter(Boolean)
-          .join("\n"),
-        severity: "critical",
-      }).catch((err) => {
-        console.error("[payment-monitor] Alert send failed:", err);
-      });
+      const alertSubject = `${params.type} for org ${params.orgId}`;
+      const alertBody = [
+        `Type: ${params.type}`,
+        `Org: ${params.orgId}`,
+        params.errorCode ? `Error code: ${params.errorCode}` : null,
+        params.errorMessage ? `Error: ${params.errorMessage}` : null,
+        params.stripePaymentIntentId ? `PaymentIntent: ${params.stripePaymentIntentId}` : null,
+        params.stripeAccountId ? `Account: ${params.stripeAccountId}` : null,
+        params.customerEmail ? `Customer: ${params.customerEmail}` : null,
+        params.eventId ? `Event: ${params.eventId}` : null,
+        `Time: ${new Date().toISOString()}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const isCheckoutError = params.type === "checkout_error" || params.type === "client_checkout_error";
+      if (isCheckoutError) {
+        sendCheckoutAlert({
+          subject: alertSubject,
+          body: alertBody,
+          severity: "critical",
+          customerEmail: params.customerEmail,
+          errorMessage: params.errorMessage,
+          eventId: params.eventId,
+        }).catch((err) => {
+          console.error("[payment-monitor] Checkout alert send failed:", err);
+        });
+      } else {
+        sendPlatformAlert({
+          subject: alertSubject,
+          body: alertBody,
+          severity: "critical",
+        }).catch((err) => {
+          console.error("[payment-monitor] Alert send failed:", err);
+        });
+      }
     }
   } catch (err) {
     // Never throw — log to console as fallback

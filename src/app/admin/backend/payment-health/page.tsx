@@ -868,6 +868,7 @@ export default function PaymentHealthPage() {
   const [bulkResolving, setBulkResolving] = useState(false);
   const [eventFilter, setEventFilter] = useState<string>("all");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoEnabledRef = useRef(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -887,6 +888,14 @@ export default function PaymentHealthPage() {
     setLoading(true);
     fetchData();
   }, [fetchData]);
+
+  // Auto-enable refresh when unresolved errors exist (once only — user can toggle off)
+  useEffect(() => {
+    if (data && data.summary.unresolved_count > 0 && !autoEnabledRef.current) {
+      autoEnabledRef.current = true;
+      setAutoRefresh(true);
+    }
+  }, [data]);
 
   useEffect(() => {
     if (autoRefresh) {

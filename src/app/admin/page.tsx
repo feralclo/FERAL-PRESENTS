@@ -78,9 +78,7 @@ function WelcomeBanner({
       <div className="h-full w-1 self-stretch rounded-full bg-gradient-to-b from-primary to-primary/50" />
       <Rocket size={20} className="shrink-0 text-primary" />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">
-          Welcome to Entry!
-        </p>
+        <p className="text-sm font-semibold text-foreground">Welcome to Entry!</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {needsStripe
             ? "Set up payments to start selling tickets."
@@ -126,7 +124,6 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Fetch platform owner flag + Stripe connection status
   useEffect(() => {
     (async () => {
       try {
@@ -166,7 +163,6 @@ export default function AdminDashboard() {
     funnel,
     activityFeed,
     topEvents,
-    timezoneAbbr,
     isLoading,
     presenceHistory,
     saleStreak,
@@ -197,20 +193,20 @@ export default function AdminDashboard() {
       )}
 
       {/* Header */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
             Dashboard
           </h1>
-          <p className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
+          <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
             <LiveIndicator color="success" size="sm" />
-            Live performance overview
+            Mission control
           </p>
         </div>
       </div>
 
       {/* ── REVENUE HERO ── */}
-      <div className="mb-6">
+      <div className="mb-5">
         <RevenueHero
           revenue={today.revenue}
           yesterdayRevenue={yesterday.revenue}
@@ -224,20 +220,27 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* ── PRESENCE CARDS ── */}
-      <div className="mb-6">
-        <PresenceCards
-          visitors={activeVisitors}
-          carts={activeCarts}
-          checkout={inCheckout}
-          history={presenceHistory}
-          isLoading={isLoading}
-        />
-      </div>
+      {/* ── MILESTONES — right under revenue for max impact ── */}
+      {milestones.length > 0 && (
+        <div className="mb-5">
+          <MilestoneBar milestones={milestones} />
+        </div>
+      )}
 
-      {/* ── KPI CARDS ── */}
-      <div className="mb-6">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* ── PRESENCE + KPIs — combined row ── */}
+      <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-7">
+        {/* Presence cards: 3 columns */}
+        <div className="lg:col-span-3">
+          <PresenceCards
+            visitors={activeVisitors}
+            carts={activeCarts}
+            checkout={inCheckout}
+            history={presenceHistory}
+            isLoading={isLoading}
+          />
+        </div>
+        {/* KPI cards: 4 columns */}
+        <div className="lg:col-span-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
           <LiveStatCard
             label="Orders"
             value={isLoading ? "\u00A0" : today.orders.toLocaleString()}
@@ -246,14 +249,14 @@ export default function AdminDashboard() {
             trend={{ value: today.orders - yesterday.orders, format: "number" }}
           />
           <LiveStatCard
-            label="Tickets Sold"
+            label="Tickets"
             value={isLoading ? "\u00A0" : today.ticketsSold.toLocaleString()}
             icon={Ticket}
             detail="vs yesterday"
             trend={{ value: today.ticketsSold - yesterday.ticketsSold, format: "number" }}
           />
           <LiveStatCard
-            label="Avg Order Value"
+            label="Avg Value"
             value={isLoading ? "\u00A0" : fmtMoney(today.avgOrderValue, orgCurrency)}
             icon={DollarSign}
             detail="vs yesterday"
@@ -270,12 +273,12 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── BUYER JOURNEY ── */}
-      <div className="mb-6">
+      <div className="mb-5">
         <BuyerJourney funnel={funnel} />
       </div>
 
       {/* ── EVENT SPOTLIGHT + LIVE FEED ── */}
-      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <EventSpotlight
           events={topEvents}
           currencySymbol={orgCurrencySymbol}
@@ -284,43 +287,16 @@ export default function AdminDashboard() {
         <LiveFeed items={activityFeed} saleStreak={saleStreak} />
       </div>
 
-      {/* ── MILESTONES ── */}
-      {milestones.length > 0 && (
-        <div className="mb-6">
-          <MilestoneBar milestones={milestones} />
-        </div>
-      )}
-
       {/* ── QUICK LINKS ── */}
-      <div className="mt-10">
+      <div className="mt-8">
         <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
           Quick Links
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <QuickLink
-            href="/admin/events/"
-            icon={CalendarDays}
-            title="Events"
-            description="Manage events & tickets"
-          />
-          <QuickLink
-            href="/admin/orders/"
-            icon={BarChart3}
-            title="Orders"
-            description="View & manage orders"
-          />
-          <QuickLink
-            href="/admin/customers/"
-            icon={UsersIcon}
-            title="Customers"
-            description="Customer profiles"
-          />
-          <QuickLink
-            href="/admin/guest-list/"
-            icon={UserCheck}
-            title="Guest List"
-            description="Check-in management"
-          />
+          <QuickLink href="/admin/events/" icon={CalendarDays} title="Events" description="Manage events & tickets" />
+          <QuickLink href="/admin/orders/" icon={BarChart3} title="Orders" description="View & manage orders" />
+          <QuickLink href="/admin/customers/" icon={UsersIcon} title="Customers" description="Customer profiles" />
+          <QuickLink href="/admin/guest-list/" icon={UserCheck} title="Guest List" description="Check-in management" />
         </div>
       </div>
     </div>

@@ -2,10 +2,9 @@
 
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendBadge } from "@/components/ui/trend-badge";
 import { MicroSparkline } from "./MicroSparkline";
 import { useCountUp } from "@/hooks/useCountUp";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ShoppingBag, Ticket, TrendingUp, Clock } from "lucide-react";
 import type { LastSale } from "@/hooks/useDashboardRealtime";
 
 interface RevenueHeroProps {
@@ -56,6 +55,13 @@ function RevenueHero({
     return { hour: peakHour, value: peakVal };
   }, [hourlyRevenue]);
 
+  const stats = [
+    { icon: ShoppingBag, label: "Orders", value: orders.toLocaleString() },
+    { icon: Ticket, label: "Tickets", value: ticketsSold.toLocaleString() },
+    { icon: TrendingUp, label: "Avg", value: `${currencySymbol}${avgOrderValue.toFixed(2)}` },
+    ...(peakInfo.value > 0 ? [{ icon: Clock, label: "Peak", value: `${peakInfo.hour.toString().padStart(2, "0")}:00` }] : []),
+  ];
+
   return (
     <Card
       className={`py-0 gap-0 overflow-hidden transition-all duration-500 ${
@@ -68,7 +74,7 @@ function RevenueHero({
         <div className="flex flex-col lg:flex-row">
           {/* Left: Revenue */}
           <div className="flex-1 p-6 lg:p-8">
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex items-center gap-3 mb-4">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
                 Today&apos;s Revenue
               </p>
@@ -110,27 +116,27 @@ function RevenueHero({
               </div>
             )}
 
-            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px] text-muted-foreground">
-              <span>
-                <span className="font-mono font-bold tabular-nums text-foreground/80">{orders}</span> orders
-              </span>
-              <span>
-                <span className="font-mono font-bold tabular-nums text-foreground/80">{ticketsSold}</span> tickets
-              </span>
-              <span>
-                <span className="font-mono font-bold tabular-nums text-foreground/80">{currencySymbol}{avgOrderValue.toFixed(2)}</span> avg
-              </span>
-              {peakInfo.value > 0 && (
-                <span>
-                  Peak <span className="font-mono font-bold tabular-nums text-foreground/80">{peakInfo.hour.toString().padStart(2, "0")}:00</span>
-                </span>
-              )}
+            {/* Stats row */}
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              {stats.map((stat) => {
+                const SIcon = stat.icon;
+                return (
+                  <div
+                    key={stat.label}
+                    className="flex items-center gap-2 rounded-lg bg-secondary/40 px-3 py-2"
+                  >
+                    <SIcon size={13} strokeWidth={1.5} className="text-muted-foreground/50" />
+                    <span className="text-[11px] text-muted-foreground/60">{stat.label}</span>
+                    <span className="font-mono text-[13px] font-bold tabular-nums text-foreground/80">{stat.value}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Right: Hourly bars — clean and prominent */}
-          <div className="flex flex-col justify-end border-t border-border/20 p-6 lg:w-[300px] lg:border-l lg:border-t-0 lg:p-8">
-            <p className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground/50">
+          {/* Right: Hourly chart */}
+          <div className="flex flex-col justify-end bg-secondary/20 p-6 lg:w-[300px] lg:p-8">
+            <p className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground/50">
               Revenue by hour
             </p>
             <div className="flex-1 flex items-end">
@@ -153,8 +159,9 @@ function RevenueHero({
               )}
             </div>
             {visibleHours.length > 0 && (
-              <div className="mt-1.5 flex justify-between text-[9px] font-mono text-muted-foreground/30 tabular-nums">
+              <div className="mt-2 flex justify-between text-[9px] font-mono text-muted-foreground/30 tabular-nums">
                 <span>00</span>
+                {currentHour > 6 && <span>{Math.floor(currentHour / 2).toString().padStart(2, "0")}</span>}
                 <span>{currentHour.toString().padStart(2, "0")}</span>
               </div>
             )}

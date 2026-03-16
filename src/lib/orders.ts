@@ -102,6 +102,8 @@ export interface CreateOrderParams {
   conversion?: OrderConversion;
   /** Presentment currency the buyer paid in (e.g. "EUR"). When omitted, defaults to event.currency. */
   presentmentCurrency?: string;
+  /** When true, marks this order as a test (stored in metadata for easy filtering). */
+  testOrder?: boolean;
 }
 
 /** A ticket row as created by createOrder(). */
@@ -181,6 +183,7 @@ export async function createOrder(
     discount,
     conversion,
     presentmentCurrency,
+    testOrder,
   } = params;
 
   const email = customer.email.toLowerCase();
@@ -285,6 +288,9 @@ export async function createOrder(
 
     // Build metadata with VAT + discount details
     const orderMetadata: Record<string, unknown> = {};
+    if (testOrder) {
+      orderMetadata.test_order = true;
+    }
     if (vat && vat.amount > 0) {
       orderMetadata.vat_amount = vat.amount;
       orderMetadata.vat_rate = vat.rate;

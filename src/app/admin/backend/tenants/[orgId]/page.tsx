@@ -772,6 +772,28 @@ export default function TenantDetailPage() {
     }
   }, [orgId]);
 
+  const [testCheckoutMsg, setTestCheckoutMsg] = useState("");
+  const handleTestCheckout = useCallback(() => {
+    if (!tenant) return;
+    const firstEvent = tenant.recent_events?.find((e) => e.status === "published") || tenant.recent_events?.[0];
+    if (!firstEvent) {
+      setTestCheckoutMsg("No events found");
+      setTimeout(() => setTestCheckoutMsg(""), 3000);
+      return;
+    }
+    const domain = tenant.primary_domain?.hostname
+      ? `https://${tenant.primary_domain.hostname}`
+      : (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin);
+    const url = `${domain}/event/${firstEvent.slug}/?testorder=1`;
+    navigator.clipboard.writeText(url).then(() => {
+      setTestCheckoutMsg("Copied — open in any browser");
+      setTimeout(() => setTestCheckoutMsg(""), 4000);
+    }).catch(() => {
+      setTestCheckoutMsg("Copy failed");
+      setTimeout(() => setTestCheckoutMsg(""), 3000);
+    });
+  }, [tenant]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -857,9 +879,18 @@ export default function TenantDetailPage() {
               )}
               Login as Tenant
             </Button>
-            {impersonateMsg && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTestCheckout}
+              className="h-7 text-xs shrink-0"
+            >
+              <Zap size={12} className="mr-1" />
+              Test Checkout
+            </Button>
+            {(impersonateMsg || testCheckoutMsg) && (
               <span className="text-xs text-muted-foreground shrink-0">
-                {impersonateMsg}
+                {impersonateMsg || testCheckoutMsg}
               </span>
             )}
           </div>

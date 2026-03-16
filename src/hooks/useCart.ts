@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import { getVisibleTickets } from "@/lib/ticket-visibility";
+import { getTestOrderParam } from "@/lib/test-order";
 import type { TicketTypeRow } from "@/types/events";
 import type { TrafficEventType } from "@/types/analytics";
 
@@ -204,6 +205,9 @@ export function useCart({
     if (presentmentCurrency && presentmentCurrency.toUpperCase() !== currency.toUpperCase()) {
       url += `&currency=${encodeURIComponent(presentmentCurrency.toLowerCase())}`;
     }
+    // Propagate test order mode to checkout
+    const testParam = getTestOrderParam();
+    if (testParam) url += `&${testParam}`;
     return url;
   }, [activeTypes, quantities, merchSizes, eventSlug, currency]);
 

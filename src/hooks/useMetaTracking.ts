@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { marketingKey } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
+import { isTestOrder } from "@/lib/test-order";
 import type { MarketingSettings, MetaCAPIRequest } from "@/types/marketing";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -252,6 +253,7 @@ function firePixelEvent(
   params: Record<string, unknown>,
   eventId: string
 ) {
+  if (isTestOrder()) return false;
   if (!hasMarketingConsent()) {
     console.debug(`[Meta] Consent blocked — skipping pixel ${eventName}`);
     return false;
@@ -306,6 +308,7 @@ function sendCAPI(
   customData?: Record<string, unknown>,
   userData?: CAPIUserData
 ) {
+  if (isTestOrder()) return;
   const eventSourceUrl = window.location.href;
 
   // Fire CAPI async — needs settings for the server route to have the token.

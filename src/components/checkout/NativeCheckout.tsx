@@ -28,6 +28,7 @@ import { getCurrencySymbol, toSmallestUnit, getPaymentErrorMessage, isZeroDecima
 import { convertCurrency, roundPresentmentPrice } from "@/lib/currency/conversion";
 import type { ExchangeRates } from "@/lib/currency/types";
 import { useBranding } from "@/hooks/useBranding";
+import { isTestOrder } from "@/lib/test-order";
 import { useMetaTracking, storeMetaMatchData } from "@/hooks/useMetaTracking";
 import { useTraffic } from "@/hooks/useTraffic";
 import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
@@ -292,6 +293,7 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
   const cartParam = restoreData?.cartParam || searchParams.get("cart");
   const piParam = searchParams.get("pi");
   const presentmentCurrency = searchParams.get("currency")?.toUpperCase() || null;
+  const testOrder = useMemo(() => isTestOrder(), []);
   const { trackPageView } = useMetaTracking();
   const { trackEngagement: trackTrafficEvent } = useTraffic();
   const orgId = useOrgId();
@@ -483,7 +485,7 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
       // Include discount code if available (from recovery email or popup)
       const popupDiscount = sessionStorage.getItem("feral_popup_discount") || "";
       const discountCode = restoreData?.discountCode || popupDiscount;
-      fetch("/api/checkout/capture", {
+      if (!isTestOrder()) fetch("/api/checkout/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -645,6 +647,7 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
       merchData={merchData}
       presentmentCurrency={presentmentCurrency}
       stripeCapabilities={stripeCapabilities}
+      testOrder={testOrder}
     />
   );
 }
@@ -778,6 +781,7 @@ function StripeCheckoutPage({
   stripePromise,
   merchData,
   stripeCapabilities,
+  testOrder,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -795,6 +799,7 @@ function StripeCheckoutPage({
   merchData?: MerchCheckoutData | null;
   presentmentCurrency?: string | null;
   stripeCapabilities: Record<string, string>;
+  testOrder?: boolean;
 }) {
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountInfo | null>(null);
 
@@ -828,7 +833,7 @@ function StripeCheckoutPage({
             amount,
           });
           // Fire capture with validated discount info so abandoned cart gets full type+value
-          if (capturedEmail) {
+          if (capturedEmail && !isTestOrder()) {
             fetch("/api/checkout/capture", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -908,6 +913,11 @@ function StripeCheckoutPage({
   return (
     <div className="midnight-checkout min-h-screen flex flex-col">
       <CheckoutHeader slug={slug} backUrl={merchData ? `/shop/${merchData.collectionSlug}/` : undefined} />
+      {testOrder && (
+        <div className="bg-amber-500/90 text-black text-center py-1.5 px-4 font-mono text-[10px] tracking-[2px] uppercase font-bold">
+          Test Order — No tracking, no emails
+        </div>
+      )}
       <CheckoutTimer active={true} merchMode={isMerch} />
 
       {/* Mobile: always-visible order summary */}
@@ -945,6 +955,7 @@ function StripeCheckoutPage({
                 merchData={merchData}
                 presentmentCurrency={presentmentCurrency}
                 stripeCapabilities={stripeCapabilities}
+                testOrder={testOrder}
               />
             </Elements>
           </div>
@@ -993,6 +1004,7 @@ function SinglePageCheckoutForm({
   merchData,
   presentmentCurrency,
   stripeCapabilities,
+  testOrder,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -1010,6 +1022,7 @@ function SinglePageCheckoutForm({
   merchData?: MerchCheckoutData | null;
   presentmentCurrency?: string | null;
   stripeCapabilities: Record<string, string>;
+  testOrder?: boolean;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -1052,9 +1065,9 @@ function SinglePageCheckoutForm({
       if (!fn && !ln) return;
 
       // Store name for Meta Advanced Matching (enriches all subsequent CAPI events)
-      storeMetaMatchData({ em: capturedEmail || email, fn, ln });
+      if (!isTestOrder()) storeMetaMatchData({ em: capturedEmail || email, fn, ln });
 
-      fetch("/api/checkout/capture", {
+      if (!isTestOrder()) fetch("/api/checkout/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1160,6 +1173,7 @@ function SinglePageCheckoutForm({
               },
               discount_code: discountCode || undefined,
               ...(presentmentCurrency ? { presentment_currency: presentmentCurrency.toLowerCase() } : {}),
+              ...(testOrder ? { test_order: true } : {}),
             };
 
         const res = await fetch(piUrl, {
@@ -1315,6 +1329,7 @@ function SinglePageCheckoutForm({
               },
               discount_code: discountCode || undefined,
               ...(presentmentCurrency ? { presentment_currency: presentmentCurrency.toLowerCase() } : {}),
+              ...(testOrder ? { test_order: true } : {}),
             };
 
         const res = await fetch(piUrl, {
@@ -2040,9 +2055,9 @@ function TestModeCheckout({
       if (!fn && !ln) return;
 
       // Store name for Meta Advanced Matching (enriches all subsequent CAPI events)
-      storeMetaMatchData({ em: capturedEmail || email, fn, ln });
+      if (!isTestOrder()) storeMetaMatchData({ em: capturedEmail || email, fn, ln });
 
-      fetch("/api/checkout/capture", {
+      if (!isTestOrder()) fetch("/api/checkout/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

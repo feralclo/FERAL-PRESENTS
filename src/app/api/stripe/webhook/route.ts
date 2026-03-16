@@ -354,6 +354,8 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
     };
   }
 
+  const isTest = metadata.test_order === "true";
+
   try {
     const result = await createOrder({
       supabase,
@@ -380,46 +382,51 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
         totalCharged: fromSmallestUnit(paymentIntent.amount, event.currency),
       },
       vat: vatInfo,
+      sendEmail: !isTest,
       discountCode: metadata.discount_code || undefined,
       discount: discountInfo,
       conversion: conversionInfo,
       presentmentCurrency: metadata.presentment_currency || undefined,
+      testOrder: isTest,
     });
 
     console.log(
       `Order ${result.order.order_number} created for PI ${paymentIntent.id} (${result.tickets.length} tickets)`
     );
 
-    // ── Server-side traffic event for dashboard live activity (backup) ──
-    // The confirm-order route also inserts this; Supabase will just add a row
-    // (no unique constraint on session_id), so at worst we get a duplicate —
-    // harmless and preferable to missing a purchase.
-    supabase
-      .from(TABLES.TRAFFIC_EVENTS)
-      .insert({
-        org_id: orgId,
-        event_type: "purchase",
-        page_path: `/event/${event.slug}/checkout/`,
-        event_name: event.slug,
-        session_id: `webhook_${result.order.order_number}`,
-      })
-      .then(() => {}, () => {});
+    // Skip all tracking for test orders
+    if (!isTest) {
+      // ── Server-side traffic event for dashboard live activity (backup) ──
+      // The confirm-order route also inserts this; Supabase will just add a row
+      // (no unique constraint on session_id), so at worst we get a duplicate —
+      // harmless and preferable to missing a purchase.
+      supabase
+        .from(TABLES.TRAFFIC_EVENTS)
+        .insert({
+          org_id: orgId,
+          event_type: "purchase",
+          page_path: `/event/${event.slug}/checkout/`,
+          event_name: event.slug,
+          session_id: `webhook_${result.order.order_number}`,
+        })
+        .then(() => {}, () => {});
 
-    // Fire server-side CAPI Purchase event as backup
-    // Uses deterministic event_id for dedup with client pixel + confirm-order CAPI
-    fireWebhookPurchaseEvent(orgId, {
-      orderNumber: result.order.order_number,
-      total: fromSmallestUnit(paymentIntent.amount, event.currency),
-      currency: event.currency || "GBP",
-      ticketTypeIds: items.map((i) => i.ticket_type_id),
-      numItems: items.reduce((sum, i) => sum + i.qty, 0),
-      customerEmail,
-      customerFirstName,
-      customerLastName,
-      customerPhone,
-      customerId: result.order.customer_id,
-      eventSlug: event.slug,
-    }).catch((err) => console.error("[Meta CAPI] Webhook Purchase error:", err));
+      // Fire server-side CAPI Purchase event as backup
+      // Uses deterministic event_id for dedup with client pixel + confirm-order CAPI
+      fireWebhookPurchaseEvent(orgId, {
+        orderNumber: result.order.order_number,
+        total: fromSmallestUnit(paymentIntent.amount, event.currency),
+        currency: event.currency || "GBP",
+        ticketTypeIds: items.map((i) => i.ticket_type_id),
+        numItems: items.reduce((sum, i) => sum + i.qty, 0),
+        customerEmail,
+        customerFirstName,
+        customerLastName,
+        customerPhone,
+        customerId: result.order.customer_id,
+        eventSlug: event.slug,
+      }).catch((err) => console.error("[Meta CAPI] Webhook Purchase error:", err));
+    }
   } catch (err) {
     Sentry.captureException(err);
     console.error("Failed to create order for PI:", paymentIntent.id, err);

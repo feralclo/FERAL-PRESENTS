@@ -38,6 +38,8 @@ function getUtmParams() {
   };
 }
 
+import { isTestOrder } from "@/lib/test-order";
+
 function isDevMode(): boolean {
   if (typeof window === "undefined") return false;
   const params = new URLSearchParams(window.location.search);
@@ -100,7 +102,7 @@ export function useTraffic(pagePath?: string) {
 
   // Track page view on mount
   useEffect(() => {
-    if (isDevMode() || isBot()) return;
+    if (isDevMode() || isTestOrder() || isBot()) return;
 
     const path = pagePath || window.location.pathname;
     if (lastFiredPath.current === path) return;
@@ -122,7 +124,7 @@ export function useTraffic(pagePath?: string) {
   }, [pagePath, orgId]);
 
   const trackEngagement = useCallback((type: TrafficEventType) => {
-    if (isDevMode() || isBot()) return;
+    if (isDevMode() || isTestOrder() || isBot()) return;
     sendTrafficEvent({
       event_type: type,
       page_path: window.location.pathname,
@@ -134,7 +136,7 @@ export function useTraffic(pagePath?: string) {
 
   const trackAddToCart = useCallback(
     (productName: string, price: number, qty: number) => {
-      if (isDevMode() || isBot()) return;
+      if (isDevMode() || isTestOrder() || isBot()) return;
       sendTrafficEvent({
         event_type: "add_to_cart",
         page_path: window.location.pathname,

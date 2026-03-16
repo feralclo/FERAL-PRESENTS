@@ -6,6 +6,7 @@ import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { MidnightDiscountPopup } from "./MidnightDiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
 import { isEditorPreview } from "@/components/event/ThemeEditorBridge";
+import { isTestOrder } from "@/lib/test-order";
 import { useEventTracking } from "@/hooks/useEventTracking";
 import { useCart } from "@/hooks/useCart";
 import { useSettings } from "@/hooks/useSettings";
@@ -63,6 +64,7 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
   });
   const isTicketPreview = previewMode === "tickets";
   const isQueuePreview = previewMode === "queue";
+  const testMode = useMemo(() => isTestOrder(), []);
 
   // Extract release config from settings (needs to be before useCart)
   const ticketGroupMap =
@@ -513,6 +515,15 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
 
   return (
     <>
+      {/* Test order banner */}
+      {testMode && (
+        <div className="fixed top-0 left-0 right-0 z-[1001] bg-amber-500/90 text-black text-center py-2 px-4 font-[family-name:var(--font-mono)] text-[10px] tracking-[2px] uppercase font-bold shadow-lg"
+          style={{ height: "var(--preview-banner-h, 36px)" }}
+        >
+          Test Order Mode — No tracking, no emails
+        </div>
+      )}
+
       {/* Preview mode banner — fixed above header, pushes everything down */}
       {((isTicketPreview && isAnnouncement) || showQueueCompleteBanner) && (
         <div className="fixed top-0 left-0 right-0 z-[1001] bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-center py-2.5 px-4 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] font-medium shadow-lg"
@@ -528,7 +539,7 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
       <header
         className={`header${headerHidden ? " header--hidden" : ""}`}
         id="header"
-        style={(isTicketPreview && isAnnouncement) || showQueueCompleteBanner ? { top: "var(--preview-banner-h, 36px)" } : undefined}
+        style={(isTicketPreview && isAnnouncement) || showQueueCompleteBanner || testMode ? { top: "var(--preview-banner-h, 36px)" } : undefined}
       >
         <VerifiedBanner />
         <Header />

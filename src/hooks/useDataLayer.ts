@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
+import { isTestOrder } from "@/lib/test-order";
 
 declare global {
   interface Window {
@@ -15,6 +16,7 @@ declare global {
 export function useDataLayer() {
   const push = useCallback((event: Record<string, unknown>) => {
     if (typeof window === "undefined") return;
+    if (isTestOrder()) return;
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push(event);
   }, []);

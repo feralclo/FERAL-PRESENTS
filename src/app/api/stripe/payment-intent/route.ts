@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const orgId = getOrgIdFromRequest(request);
     const stripe = getStripe();
     const body = await request.json();
-    const { event_id, items, customer, discount_code, presentment_currency } = body;
+    const { event_id, items, customer, discount_code, presentment_currency, test_order } = body;
 
     if (!event_id || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -516,6 +516,10 @@ export async function POST(request: NextRequest) {
 
     if (typeof customer.marketing_consent === "boolean") {
       metadata.customer_marketing_consent = customer.marketing_consent ? "true" : "false";
+    }
+
+    if (test_order) {
+      metadata.test_order = "true";
     }
 
     // Multi-currency metadata (for order creation)

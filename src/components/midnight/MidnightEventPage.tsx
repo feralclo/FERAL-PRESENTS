@@ -109,6 +109,27 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
     });
   }, [event, tracking]);
 
+  // ── Track "tickets" funnel step when ticket widget scrolls into view ──
+  const ticketWidgetRef = useRef<HTMLDivElement>(null);
+  const ticketViewFired = useRef(false);
+  useEffect(() => {
+    if (isEditorPreview()) return;
+    const el = ticketWidgetRef.current;
+    if (!el || ticketViewFired.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !ticketViewFired.current) {
+          ticketViewFired.current = true;
+          tracking.trackEngagement("tickets");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [tracking]);
+
   // Preload merch images on page load so the modal opens instantly
   useEffect(() => {
     (event.ticket_types || []).forEach((tt) => {
@@ -590,7 +611,7 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
               </div>
 
               {/* Right: Ticket Widget (or Announcement Widget) — on mobile, show first */}
-              <div className="max-lg:order-1">
+              <div className="max-lg:order-1" ref={ticketWidgetRef}>
                 {effectiveIsAnnouncement && ticketsLiveAt && !isTicketPreview && !showQueueCompleteBanner ? (
                   <MidnightAnnouncementWidget
                     eventId={event.id}

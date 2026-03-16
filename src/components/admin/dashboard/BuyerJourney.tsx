@@ -9,6 +9,7 @@ import {
   CreditCard,
   CheckCircle2,
   TrendingUp,
+  ChevronRight,
 } from "lucide-react";
 
 interface FunnelStats {
@@ -31,8 +32,7 @@ const STAGES: {
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   color: string;
   iconColor: string;
-  bg: string;
-  ring: string;
+  glowColor: string;
   barColor: string;
 }[] = [
   {
@@ -43,21 +43,19 @@ const STAGES: {
     icon: Eye,
     color: "text-muted-foreground",
     iconColor: "#8888a0",
-    bg: "bg-muted/30",
-    ring: "ring-border/40",
-    barColor: "bg-muted-foreground/30",
+    glowColor: "rgba(136, 136, 160, 0.15)",
+    barColor: "bg-muted-foreground/25",
   },
   {
     key: "tickets",
     label: "Viewed Tickets",
     shortLabel: "Tickets",
-    tooltip: "Scrolled down to the ticket selection area",
+    tooltip: "Scrolled to the ticket selection area",
     icon: Ticket,
     color: "text-info",
     iconColor: "#38BDF8",
-    bg: "bg-info/8",
-    ring: "ring-info/15",
-    barColor: "bg-info/40",
+    glowColor: "rgba(56, 189, 248, 0.12)",
+    barColor: "bg-info/30",
   },
   {
     key: "add_to_cart",
@@ -67,9 +65,8 @@ const STAGES: {
     icon: ShoppingCart,
     color: "text-warning",
     iconColor: "#FBBF24",
-    bg: "bg-warning/8",
-    ring: "ring-warning/15",
-    barColor: "bg-warning/40",
+    glowColor: "rgba(251, 191, 36, 0.12)",
+    barColor: "bg-warning/30",
   },
   {
     key: "checkout",
@@ -79,9 +76,8 @@ const STAGES: {
     icon: CreditCard,
     color: "text-primary",
     iconColor: "#8B5CF6",
-    bg: "bg-primary/8",
-    ring: "ring-primary/15",
-    barColor: "bg-primary/40",
+    glowColor: "rgba(139, 92, 246, 0.15)",
+    barColor: "bg-primary/25",
   },
   {
     key: "purchase",
@@ -91,9 +87,8 @@ const STAGES: {
     icon: CheckCircle2,
     color: "text-success",
     iconColor: "#34D399",
-    bg: "bg-success/10",
-    ring: "ring-success/20",
-    barColor: "bg-success/50",
+    glowColor: "rgba(52, 211, 153, 0.15)",
+    barColor: "bg-success/30",
   },
 ];
 
@@ -104,12 +99,12 @@ function convRate(from: number, to: number): string {
 
 function BuyerJourney({ funnel }: BuyerJourneyProps) {
   const overallConv = funnel.landing > 0 ? ((funnel.purchase / funnel.landing) * 100).toFixed(1) : "0.0";
-  const maxCount = Math.max(...STAGES.map((s) => funnel[s.key]), 1);
   const [hoveredStage, setHoveredStage] = useState<string | null>(null);
+  const baseCount = Math.max(funnel.landing, 1);
 
   return (
     <Card className="py-0 gap-0">
-      <CardHeader className="px-5 pt-5 pb-4 flex-row items-center justify-between space-y-0">
+      <CardHeader className="px-5 pt-5 pb-3 flex-row items-center justify-between space-y-0">
         <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
           Buyer Journey
         </CardTitle>
@@ -120,10 +115,11 @@ function BuyerJourney({ funnel }: BuyerJourneyProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="px-5 pb-6">
+      <CardContent className="px-5 pb-5">
         {/* ── Desktop: Horizontal flow ── */}
         <div className="hidden md:block">
-          <div className="flex items-center">
+          {/* Stage nodes */}
+          <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr_auto_1fr] items-center gap-0">
             {STAGES.map((stage, i) => {
               const count = funnel[stage.key];
               const Icon = stage.icon;
@@ -131,90 +127,97 @@ function BuyerJourney({ funnel }: BuyerJourneyProps) {
               const rate = i > 0 ? convRate(prevCount, count) : null;
               const isEmpty = count === 0;
               const isHovered = hoveredStage === stage.key;
+              const fillPct = Math.max((count / baseCount) * 100, isEmpty ? 0 : 4);
 
               return (
-                <div key={stage.key} className="flex items-center flex-1 min-w-0">
-                  {/* Connector */}
+                <>
+                  {/* Connector between stages */}
                   {i > 0 && (
-                    <div className="flex-1 flex flex-col items-center justify-center px-2 min-w-[40px]">
-                      {rate && (
-                        <span className="text-[10px] font-mono font-bold tabular-nums text-muted-foreground/50 mb-1">
+                    <div key={`conn-${stage.key}`} className="flex flex-col items-center justify-center px-1 min-w-[36px] self-start pt-[18px]">
+                      <div className="relative flex items-center w-full">
+                        <div className="flex-1 h-px bg-border/30" />
+                        <ChevronRight size={12} strokeWidth={2} className="text-muted-foreground/30 mx-[-2px] shrink-0" />
+                        <div className="flex-1 h-px bg-border/30" />
+                      </div>
+                      {rate ? (
+                        <span className="mt-1.5 text-[10px] font-mono font-semibold tabular-nums text-muted-foreground/50 leading-none">
                           {rate}
                         </span>
+                      ) : (
+                        <span className="mt-1.5 text-[10px] font-mono text-muted-foreground/20 leading-none">—</span>
                       )}
-                      <div className="w-full h-[2px] relative">
-                        <div className="absolute inset-0 bg-border/20 rounded-full" />
-                        {rate && (
-                          <svg width="100%" height="2" className="absolute inset-0 overflow-visible">
-                            <line
-                              x1="0" y1="1" x2="100%" y2="1"
-                              stroke={stage.iconColor}
-                              strokeWidth="2"
-                              strokeDasharray="3 5"
-                              className="flow-dots"
-                              opacity={0.5}
-                            />
-                          </svg>
-                        )}
-                      </div>
                     </div>
                   )}
 
                   {/* Stage node */}
                   <div
-                    className="relative flex flex-col items-center gap-2 shrink-0 cursor-default"
+                    key={stage.key}
+                    className="relative flex flex-col items-center cursor-default"
                     onMouseEnter={() => setHoveredStage(stage.key)}
                     onMouseLeave={() => setHoveredStage(null)}
                   >
                     {/* Tooltip */}
                     {isHovered && (
-                      <div className="absolute -top-11 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap rounded-lg bg-popover border border-border px-3 py-1.5 text-[11px] text-foreground/80 shadow-xl milestone-in">
+                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap rounded-lg bg-popover border border-border px-3 py-1.5 text-[11px] text-foreground/80 shadow-xl milestone-in">
                         {stage.tooltip}
                         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-2 w-2 rotate-45 border-b border-r border-border bg-popover" />
                       </div>
                     )}
 
+                    {/* Icon */}
                     <div
-                      className={`flex h-12 w-12 items-center justify-center rounded-2xl ring-1 transition-all duration-300 ${
-                        isEmpty
-                          ? "bg-muted/10 ring-border/20"
-                          : `${stage.bg} ${stage.ring}`
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 ${
+                        isEmpty ? "bg-muted/10" : ""
                       }`}
                       style={{
-                        transform: isHovered ? "scale(1.08)" : undefined,
-                        boxShadow: !isEmpty && count > 0
-                          ? `0 0 ${Math.max(8, 20 * (count / maxCount))}px ${stage.iconColor}15`
+                        backgroundColor: isEmpty ? undefined : `${stage.iconColor}10`,
+                        boxShadow: !isEmpty
+                          ? `0 0 ${isHovered ? 20 : 12}px ${stage.glowColor}`
                           : undefined,
+                        transform: isHovered ? "scale(1.08)" : undefined,
+                        outline: `1px solid ${isEmpty ? "rgba(255,255,255,0.06)" : `${stage.iconColor}25`}`,
                       }}
                     >
                       <Icon
-                        size={20}
+                        size={18}
                         strokeWidth={1.5}
                         className={isEmpty ? "text-muted-foreground/20" : stage.color}
                       />
                     </div>
-                    <span className={`font-mono text-xl font-bold tabular-nums leading-none ${
-                      isEmpty ? "text-muted-foreground/25" : "text-foreground"
+
+                    {/* Count */}
+                    <span className={`mt-2.5 font-mono text-[22px] font-bold tabular-nums leading-none ${
+                      isEmpty ? "text-muted-foreground/20" : "text-foreground"
                     }`}>
-                      {count.toLocaleString()}
+                      {isEmpty ? "—" : count.toLocaleString()}
                     </span>
-                    <span className={`text-[10px] font-medium uppercase tracking-wider text-center leading-tight ${
-                      isEmpty ? "text-muted-foreground/25" : "text-muted-foreground/60"
+
+                    {/* Label */}
+                    <span className={`mt-1.5 text-[10px] font-medium uppercase tracking-wider text-center leading-tight ${
+                      isEmpty ? "text-muted-foreground/20" : "text-muted-foreground/50"
                     }`}>
                       {stage.shortLabel}
                     </span>
+
+                    {/* Proportional bar */}
+                    <div className="mt-2.5 w-full h-[3px] rounded-full bg-secondary/60 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ease-out ${isEmpty ? "" : stage.barColor}`}
+                        style={{ width: `${fillPct}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
+                </>
               );
             })}
           </div>
         </div>
 
-        {/* ── Mobile: Vertical flow ── */}
-        <div className="md:hidden space-y-1">
+        {/* ── Mobile: Compact vertical flow ── */}
+        <div className="md:hidden space-y-0.5">
           {STAGES.map((stage, i) => {
             const count = funnel[stage.key];
-            const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+            const fillPct = Math.max((count / baseCount) * 100, count > 0 ? 4 : 0);
             const Icon = stage.icon;
             const prevCount = i > 0 ? funnel[STAGES[i - 1].key] : 0;
             const rate = i > 0 ? convRate(prevCount, count) : null;
@@ -222,26 +225,36 @@ function BuyerJourney({ funnel }: BuyerJourneyProps) {
             return (
               <div key={stage.key}>
                 {i > 0 && (
-                  <div className="flex items-center gap-2 py-0.5 pl-3.5">
-                    <div className="w-[1px] h-3 bg-border/20" />
-                    {rate && (
-                      <span className="text-[10px] font-mono font-bold tabular-nums text-muted-foreground/40">{rate}</span>
+                  <div className="flex items-center gap-2 py-1 pl-3.5">
+                    <div className="w-px h-3 bg-border/20" />
+                    {rate ? (
+                      <span className="text-[10px] font-mono font-semibold tabular-nums text-muted-foreground/40">{rate}</span>
+                    ) : (
+                      <span className="text-[10px] font-mono text-muted-foreground/15">—</span>
                     )}
                   </div>
                 )}
-                <div className={`flex items-center gap-3 ${isEmpty ? "opacity-30" : ""}`}>
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${stage.bg} ring-1 ${stage.ring}`}>
+                <div className={`flex items-center gap-3 py-1 ${isEmpty ? "opacity-30" : ""}`}>
+                  <div
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1"
+                    style={{
+                      backgroundColor: isEmpty ? undefined : `${stage.iconColor}10`,
+                      outline: `1px solid ${isEmpty ? "transparent" : `${stage.iconColor}20`}`,
+                    }}
+                  >
                     <Icon size={15} strokeWidth={1.5} className={stage.color} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[12px] font-medium text-foreground">{stage.label}</span>
-                      <span className="font-mono text-[14px] font-bold tabular-nums text-foreground">{count.toLocaleString()}</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[12px] font-medium text-foreground/80">{stage.label}</span>
+                      <span className="font-mono text-[15px] font-bold tabular-nums text-foreground">
+                        {isEmpty ? "—" : count.toLocaleString()}
+                      </span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                    <div className="h-[3px] w-full overflow-hidden rounded-full bg-secondary/60">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ease-out ${stage.barColor}`}
-                        style={{ width: `${Math.max(pct, isEmpty ? 0 : 3)}%` }}
+                        style={{ width: `${fillPct}%` }}
                       />
                     </div>
                   </div>

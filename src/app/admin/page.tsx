@@ -9,13 +9,12 @@ import { StripeConnectionBanner } from "@/components/admin/dashboard/StripeConne
 import { CheckoutHealthBanner } from "@/components/admin/dashboard/CheckoutHealthBanner";
 import { RevenueHero } from "@/components/admin/dashboard/RevenueHero";
 import { PresenceCards } from "@/components/admin/dashboard/PresenceCards";
-import { LiveSessionPulse } from "@/components/admin/dashboard/LiveSessionPulse";
+import { BuyerJourney } from "@/components/admin/dashboard/BuyerJourney";
 import { EventSpotlight } from "@/components/admin/dashboard/EventSpotlight";
 import { LiveFeed } from "@/components/admin/dashboard/LiveFeed";
 import { MilestoneBar } from "@/components/admin/dashboard/MilestoneBar";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
-import { useLiveSessions } from "@/hooks/useLiveSessions";
 import { fmtMoney } from "@/lib/format";
 import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import {
@@ -167,8 +166,6 @@ export default function AdminDashboard() {
     milestones, hourlyRevenue, eventCapacity,
   } = useDashboardRealtime();
 
-  const liveSessions = useLiveSessions();
-
   return (
     <div className="space-y-5">
       {/* Stripe connection banner */}
@@ -222,9 +219,6 @@ export default function AdminDashboard() {
       {/* ── MILESTONES ── */}
       {milestones.length > 0 && <MilestoneBar milestones={milestones} />}
 
-      {/* ── LIVE PULSE ── */}
-      <LiveSessionPulse sessions={liveSessions} funnel={funnel} activityFeed={activityFeed} />
-
       {/* ── PRESENCE CARDS — own row ── */}
       <PresenceCards
         visitors={activeVisitors}
@@ -265,6 +259,9 @@ export default function AdminDashboard() {
           trend={{ value: today.conversionRate - yesterday.conversionRate, format: "percent" }}
         />
       </div>
+
+      {/* ── BUYER JOURNEY ── */}
+      <BuyerJourney funnel={funnel} />
 
       {/* ── EVENT SPOTLIGHT + LIVE FEED — equal columns ── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

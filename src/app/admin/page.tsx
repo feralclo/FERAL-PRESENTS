@@ -29,6 +29,7 @@ import {
   Users as UsersIcon,
   X,
   Rocket,
+  Radar,
 } from "lucide-react";
 
 /* ── Quick link card ── */
@@ -201,6 +202,13 @@ export default function AdminDashboard() {
             Mission control
           </p>
         </div>
+        <Link
+          href="/admin/command/"
+          className="group flex items-center gap-2.5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[2px] text-primary/70 transition-all duration-300 hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_30px_rgba(139,92,246,0.15)]"
+        >
+          <Radar size={15} className="transition-transform duration-300 group-hover:scale-110" />
+          Command
+        </Link>
       </div>
 
       {/* ── REVENUE HERO ── */}

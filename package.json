@@ -16,6 +16,8 @@
   "dependencies": {
     "@mux/mux-node": "^12.8.1",
     "@mux/mux-player-react": "^3.11.4",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
     "@sentry/nextjs": "^10.40.0",
     "@stripe/connect-js": "^3.3.34",
     "@stripe/react-connect-js": "^3.3.33",
@@ -43,6 +45,7 @@
     "stripe": "^20.3.1",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
+    "three": "^0.183.2",
     "tus-js-client": "^4.3.1",
     "web-push": "^3.6.7"
   },
@@ -52,6 +55,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.183.1",
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",

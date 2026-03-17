@@ -200,10 +200,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const isBetaPage = pathname.startsWith("/admin/beta");
   const isOnboardingPage = pathname.startsWith("/admin/onboarding");
   const isEditorPage = pathname.startsWith("/admin/ticketstore/editor");
+  const isCommandRoute = pathname.startsWith("/admin/command");
   const isBackendRoute = pathname.startsWith("/admin/backend");
   const isSettingsRoute = pathname.startsWith("/admin/settings");
   const isUnauthRoute = isLoginPage || isInvitePage || isSignupPage || isBetaPage || isOnboardingPage;
-  const isBypassRoute = isUnauthRoute || isEditorPage || isBackendRoute || isSettingsRoute;
+  const isBypassRoute = isUnauthRoute || isEditorPage || isCommandRoute || isBackendRoute || isSettingsRoute;
 
   // Fetch user email + platform owner flag on mount
   useEffect(() => {
@@ -280,6 +281,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // Editor is full-screen — no sidebar, just the data-admin scope for Tailwind
   if (isEditorPage) return <><CommandPalette open={commandOpen} onClose={closeCommand} isPlatformOwner={isPlatformOwner} />{children}</>;
+
+  // Command view is full-screen immersive — no sidebar, no header, no chrome
+  if (isCommandRoute) return <>{children}</>;
 
   // Backend has its own standalone layout
   if (isBackendRoute) return <><CommandPalette open={commandOpen} onClose={closeCommand} isPlatformOwner={isPlatformOwner} />{children}</>;

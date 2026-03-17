@@ -1,0 +1,255 @@
+/* ════════════════════════════════════════════════════════
+   COMMAND VIEW — Immersive 3D war room
+   ════════════════════════════════════════════════════════ */
+
+.command-root {
+  position: fixed;
+  inset: 0;
+  background: #030306;
+  overflow: hidden;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  color: #e0e8ff;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.command-canvas-wrap {
+  position: absolute;
+  inset: 0;
+}
+
+/* ── HUD ── */
+
+.command-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.command-hud a,
+.command-hud button,
+.command-hud [data-interactive] {
+  pointer-events: auto;
+}
+
+/* ── HUD typography ── */
+
+.hud-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  color: rgba(224, 232, 255, 0.25);
+  line-height: 1;
+}
+
+.hud-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #e0e8ff;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-value-sm {
+  font-size: 18px;
+  font-weight: 700;
+  color: #e0e8ff;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-value-xs {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(224, 232, 255, 0.7);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-success { color: #34D399; }
+.hud-info { color: #38BDF8; }
+.hud-warning { color: #FBBF24; }
+.hud-violet { color: #8B5CF6; }
+.hud-muted-fg { color: #8888a0; }
+
+.hud-muted {
+  font-size: 11px;
+  color: rgba(224, 232, 255, 0.2);
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-separator {
+  width: 48px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.4), transparent);
+  margin: 10px 0;
+}
+
+/* ── Back button ── */
+
+.command-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(224, 232, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(3, 3, 6, 0.6);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s;
+  text-decoration: none;
+}
+
+.command-back:hover {
+  color: rgba(224, 232, 255, 0.85);
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.08);
+}
+
+/* ── Live dot ── */
+
+.command-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34D399;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.7), 0 0 30px rgba(52, 211, 153, 0.2);
+}
+
+/* ── Activity ticker ── */
+
+.command-ticker {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  overflow: hidden;
+  background: linear-gradient(to top, rgba(3, 3, 6, 0.95) 0%, rgba(3, 3, 6, 0.6) 60%, transparent 100%);
+}
+
+.command-ticker-item {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: rgba(224, 232, 255, 0.35);
+  animation: cmd-ticker-in 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.command-ticker-amount {
+  color: #34D399;
+  font-weight: 700;
+}
+
+.command-ticker-dim {
+  color: rgba(224, 232, 255, 0.15);
+}
+
+/* ── Funnel bar (bottom center) ── */
+
+.command-funnel {
+  position: absolute;
+  bottom: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(3, 3, 6, 0.7);
+  backdrop-filter: blur(16px);
+}
+
+/* ── Event district tooltip ── */
+
+.command-district-tip {
+  position: absolute;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(3, 3, 6, 0.9);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  min-width: 150px;
+}
+
+.command-district-name {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(224, 232, 255, 0.85);
+}
+
+.command-district-stats {
+  margin-top: 6px;
+  font-size: 10px;
+  color: rgba(224, 232, 255, 0.3);
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+}
+
+.command-district-bar {
+  margin-top: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.command-district-bar-fill {
+  height: 100%;
+  border-radius: 1px;
+  background: linear-gradient(90deg, #8B5CF6, #34D399);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Animations ── */
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cmd-ticker-in {
+    from { transform: translateX(30px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes cmd-live-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(52, 211, 153, 0.7), 0 0 30px rgba(52, 211, 153, 0.2); }
+    50% { opacity: 0.5; box-shadow: 0 0 18px rgba(52, 211, 153, 0.9), 0 0 50px rgba(52, 211, 153, 0.3); }
+  }
+
+  .command-live-dot {
+    animation: cmd-live-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes cmd-flash {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .command-flash {
+    animation: cmd-flash 0.8s ease-out forwards;
+  }
+}
+
+/* ── Mobile ── */
+
+@media (max-width: 767px) {
+  .hud-value { font-size: 24px; }
+  .hud-value-sm { font-size: 15px; }
+  .command-funnel { gap: 16px; padding: 10px 14px; }
+  .command-ticker { padding: 10px 16px; gap: 14px; }
+  .command-ticker-item { font-size: 10px; }
+}

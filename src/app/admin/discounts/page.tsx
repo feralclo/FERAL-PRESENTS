@@ -39,12 +39,19 @@ import {
   Pencil,
   Copy,
   Check,
+  Zap,
+  X,
 } from "lucide-react";
 import type { Discount, DiscountType, DiscountStatus } from "@/types/discounts";
 import { fmtMoney } from "@/lib/format";
 import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 
 type FilterTab = "all" | DiscountStatus;
+
+interface EventOption {
+  id: string;
+  name: string;
+}
 
 const STATUS_VARIANT: Record<DiscountStatus, "success" | "secondary"> = {
   active: "success",
@@ -70,6 +77,9 @@ export default function DiscountsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterTab>("all");
 
+  // Events for event selector
+  const [events, setEvents] = useState<EventOption[]>([]);
+
   // Create dialog state
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -81,6 +91,8 @@ export default function DiscountsPage() {
   const [newMinOrder, setNewMinOrder] = useState("");
   const [newStartsAt, setNewStartsAt] = useState("");
   const [newExpiresAt, setNewExpiresAt] = useState("");
+  const [newAutoApply, setNewAutoApply] = useState(false);
+  const [newEventIds, setNewEventIds] = useState<string[]>([]);
 
   // Edit dialog state
   const [editDiscount, setEditDiscount] = useState<Discount | null>(null);
@@ -93,6 +105,8 @@ export default function DiscountsPage() {
   const [editStartsAt, setEditStartsAt] = useState("");
   const [editExpiresAt, setEditExpiresAt] = useState("");
   const [editStatus, setEditStatus] = useState<DiscountStatus>("active");
+  const [editAutoApply, setEditAutoApply] = useState(false);
+  const [editEventIds, setEditEventIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Delete dialog
@@ -118,15 +132,27 @@ export default function DiscountsPage() {
     loadDiscounts();
   }, [loadDiscounts]);
 
+  // Load events for selector
+  useEffect(() => {
+    fetch("/api/events")
+      .then((r) => r.json())
+      .then((json) => {
+        const evts = (json.data || json.events || []) as EventOption[];
+        setEvents(evts.map((e) => ({ id: e.id, name: e.name })));
+      })
+      .catch(() => {});
+  }, []);
+
   const handleCreate = async () => {
-    if (!newCode.trim()) return;
+    if (!newAutoApply && !newCode.trim()) return;
+    if (!newValue) return;
     setCreating(true);
     try {
       const res = await fetch("/api/discounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          code: newCode.trim(),
+          code: newCode.trim() || undefined,
           description: newDescription.trim() || undefined,
           type: newType,
           value: Number(newValue) || 0,
@@ -134,6 +160,8 @@ export default function DiscountsPage() {
           min_order_amount: newMinOrder ? Number(newMinOrder) : null,
           starts_at: newStartsAt || null,
           expires_at: newExpiresAt || null,
+          auto_apply: newAutoApply,
+          applicable_event_ids: newEventIds.length > 0 ? newEventIds : null,
         }),
       });
       if (res.ok) {
@@ -148,14 +176,16 @@ export default function DiscountsPage() {
   };
 
   const handleEdit = async () => {
-    if (!editDiscount || !editCode.trim()) return;
+    if (!editDiscount) return;
+    if (!editAutoApply && !editCode.trim()) return;
+    if (!editValue) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/discounts/${editDiscount.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          code: editCode.trim(),
+          code: editCode.trim() || undefined,
           description: editDescription.trim() || null,
           type: editType,
           value: Number(editValue) || 0,
@@ -164,6 +194,8 @@ export default function DiscountsPage() {
           starts_at: editStartsAt || null,
           expires_at: editExpiresAt || null,
           status: editStatus,
+          auto_apply: editAutoApply,
+          applicable_event_ids: editEventIds.length > 0 ? editEventIds : null,
         }),
       });
       if (res.ok) {
@@ -200,6 +232,8 @@ export default function DiscountsPage() {
     setEditStartsAt(d.starts_at ? d.starts_at.slice(0, 16) : "");
     setEditExpiresAt(d.expires_at ? d.expires_at.slice(0, 16) : "");
     setEditStatus(d.status);
+    setEditAutoApply(!!d.auto_apply);
+    setEditEventIds(d.applicable_event_ids || []);
   };
 
   const resetCreateForm = () => {
@@ -211,6 +245,8 @@ export default function DiscountsPage() {
     setNewMinOrder("");
     setNewStartsAt("");
     setNewExpiresAt("");
+    setNewAutoApply(false);
+    setNewEventIds([]);
   };
 
   const copyCode = (code: string, id: string) => {
@@ -321,29 +357,43 @@ export default function DiscountsPage() {
               {filtered.map((d) => (
                 <TableRow key={d.id}>
                   <TableCell>
-                    <Badge variant={STATUS_VARIANT[d.status]}>
-                      {d.status}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant={STATUS_VARIANT[d.status]}>
+                        {d.status}
+                      </Badge>
+                      {d.auto_apply && (
+                        <Badge variant="outline" className="text-[10px] gap-0.5 px-1.5 border-amber-500/30 text-amber-500">
+                          <Zap size={9} />
+                          Auto
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-bold tracking-wider">
-                        {d.code}
-                      </span>
-                      <button
-                        className="text-muted-foreground/40 hover:text-foreground transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyCode(d.code, d.id);
-                        }}
-                        title="Copy code"
-                      >
-                        {copiedId === d.id ? (
-                          <Check size={12} className="text-green-500" />
+                        {d.auto_apply && d.code.startsWith("AUTO-") ? (
+                          <span className="text-muted-foreground/60 font-normal italic tracking-normal">auto-applied</span>
                         ) : (
-                          <Copy size={12} />
+                          d.code
                         )}
-                      </button>
+                      </span>
+                      {!(d.auto_apply && d.code.startsWith("AUTO-")) && (
+                        <button
+                          className="text-muted-foreground/40 hover:text-foreground transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyCode(d.code, d.id);
+                          }}
+                          title="Copy code"
+                        >
+                          {copiedId === d.id ? (
+                            <Check size={12} className="text-green-500" />
+                          ) : (
+                            <Copy size={12} />
+                          )}
+                        </button>
+                      )}
                     </div>
                     {d.description && (
                       <p className="mt-0.5 text-[11px] text-muted-foreground truncate max-w-[200px]">
@@ -395,20 +445,43 @@ export default function DiscountsPage() {
           <DialogHeader>
             <DialogTitle>Create Discount</DialogTitle>
             <DialogDescription>
-              Add a new discount code. Customers enter this at checkout.
+              {newAutoApply
+                ? "Create a discount that's automatically applied on event pages."
+                : "Add a new discount code. Customers enter this at checkout."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Code *</Label>
-              <Input
-                value={newCode}
-                onChange={(e) => setNewCode(e.target.value.toUpperCase())}
-                placeholder="e.g. SUMMER10"
-                className="font-mono tracking-wider uppercase"
-                autoFocus
+            {/* Auto-Apply Toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <Zap size={14} className={newAutoApply ? "text-amber-500" : "text-muted-foreground/40"} />
+                <div>
+                  <Label className="text-sm">Auto-Apply</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Automatically apply to event pages
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={newAutoApply}
+                onCheckedChange={setNewAutoApply}
               />
             </div>
+
+            {/* Code — optional when auto-apply */}
+            {!newAutoApply && (
+              <div className="space-y-2">
+                <Label>Code *</Label>
+                <Input
+                  value={newCode}
+                  onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. SUMMER10"
+                  className="font-mono tracking-wider uppercase"
+                  autoFocus
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Description</Label>
               <Input
@@ -443,6 +516,22 @@ export default function DiscountsPage() {
                 />
               </div>
             </div>
+
+            {/* Event Selector */}
+            <div className="space-y-2">
+              <Label>{newAutoApply ? "Apply To Events" : "Restrict To Events"}</Label>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                {newEventIds.length === 0
+                  ? "All events (no restriction)"
+                  : `${newEventIds.length} event${newEventIds.length !== 1 ? "s" : ""} selected`}
+              </p>
+              <EventSelector
+                events={events}
+                selectedIds={newEventIds}
+                onChange={setNewEventIds}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Max Uses</Label>
@@ -489,7 +578,7 @@ export default function DiscountsPage() {
             </Button>
             <Button
               onClick={handleCreate}
-              disabled={creating || !newCode.trim() || !newValue}
+              disabled={creating || (!newAutoApply && !newCode.trim()) || !newValue}
             >
               {creating && <Loader2 size={14} className="animate-spin" />}
               {creating ? "Creating..." : "Create Discount"}
@@ -504,7 +593,7 @@ export default function DiscountsPage() {
           <DialogHeader>
             <DialogTitle>Edit Discount</DialogTitle>
             <DialogDescription>
-              Update the discount code settings.
+              Update the discount settings.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -517,14 +606,36 @@ export default function DiscountsPage() {
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label>Code *</Label>
-              <Input
-                value={editCode}
-                onChange={(e) => setEditCode(e.target.value.toUpperCase())}
-                className="font-mono tracking-wider uppercase"
+
+            {/* Auto-Apply Toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <Zap size={14} className={editAutoApply ? "text-amber-500" : "text-muted-foreground/40"} />
+                <div>
+                  <Label className="text-sm">Auto-Apply</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Automatically apply to event pages
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={editAutoApply}
+                onCheckedChange={setEditAutoApply}
               />
             </div>
+
+            {/* Code — show for manual codes, hidden for auto-apply with generated code */}
+            {(!editAutoApply || (editDiscount && !editDiscount.code.startsWith("AUTO-"))) && (
+              <div className="space-y-2">
+                <Label>Code {!editAutoApply ? "*" : ""}</Label>
+                <Input
+                  value={editCode}
+                  onChange={(e) => setEditCode(e.target.value.toUpperCase())}
+                  className="font-mono tracking-wider uppercase"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Description</Label>
               <Input
@@ -558,6 +669,22 @@ export default function DiscountsPage() {
                 />
               </div>
             </div>
+
+            {/* Event Selector */}
+            <div className="space-y-2">
+              <Label>{editAutoApply ? "Apply To Events" : "Restrict To Events"}</Label>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                {editEventIds.length === 0
+                  ? "All events (no restriction)"
+                  : `${editEventIds.length} event${editEventIds.length !== 1 ? "s" : ""} selected`}
+              </p>
+              <EventSelector
+                events={events}
+                selectedIds={editEventIds}
+                onChange={setEditEventIds}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Max Uses</Label>
@@ -609,7 +736,7 @@ export default function DiscountsPage() {
             </Button>
             <Button
               onClick={handleEdit}
-              disabled={saving || !editCode.trim() || !editValue}
+              disabled={saving || (!editAutoApply && !editCode.trim()) || !editValue}
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
               {saving ? "Saving..." : "Save Changes"}
@@ -643,6 +770,88 @@ export default function DiscountsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/* ── Event Selector (inline multi-select with pills) ── */
+
+function EventSelector({
+  events,
+  selectedIds,
+  onChange,
+}: {
+  events: EventOption[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const toggle = (id: string) => {
+    onChange(
+      selectedIds.includes(id)
+        ? selectedIds.filter((x) => x !== id)
+        : [...selectedIds, id]
+    );
+  };
+
+  if (events.length === 0) {
+    return (
+      <p className="text-[11px] text-muted-foreground/60 italic">
+        No events found
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* Selected pills */}
+      {selectedIds.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedIds.map((id) => {
+            const evt = events.find((e) => e.id === id);
+            return (
+              <span
+                key={id}
+                className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+              >
+                {evt?.name || id.slice(0, 8)}
+                <button
+                  type="button"
+                  onClick={() => toggle(id)}
+                  className="hover:text-foreground transition-colors"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Dropdown to add events */}
+      <Select
+        value=""
+        onValueChange={(v) => {
+          if (v && !selectedIds.includes(v)) toggle(v);
+        }}
+      >
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue placeholder="Add event..." />
+        </SelectTrigger>
+        <SelectContent>
+          {events
+            .filter((e) => !selectedIds.includes(e.id))
+            .map((e) => (
+              <SelectItem key={e.id} value={e.id} className="text-xs">
+                {e.name}
+              </SelectItem>
+            ))}
+          {events.filter((e) => !selectedIds.includes(e.id)).length === 0 && (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">
+              All events selected
+            </div>
+          )}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

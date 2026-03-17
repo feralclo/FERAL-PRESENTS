@@ -31,6 +31,7 @@ import type { Event, TicketTypeRow } from "@/types/events";
 import type { Artist, EventArtist } from "@/types/artists";
 import type { DiscountDisplay } from "./discount-utils";
 import { getDiscountAmount } from "./discount-utils";
+import { MidnightFlashSaleBanner } from "./MidnightFlashSaleBanner";
 
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
@@ -141,9 +142,35 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
 
   // ── Discount display state ──────────────────────────────────────────
   const [activeDiscount, setActiveDiscount] = useState<DiscountDisplay | null>(null);
+  // Track whether discount came from auto-apply (suppresses popup)
+  const [isAutoDiscount, setIsAutoDiscount] = useState(false);
+  // Flash sale expiry for countdown banner
+  const [flashSaleExpiresAt, setFlashSaleExpiresAt] = useState<string | null>(null);
 
-  // Validate popup discount code from sessionStorage
+  // Check for auto-apply discount (flash sale) on mount
   useEffect(() => {
+    fetch(`/api/discounts/auto?event_id=${encodeURIComponent(event.id)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.discount) {
+          setActiveDiscount({
+            code: data.discount.code,
+            type: data.discount.type,
+            value: data.discount.value,
+          });
+          setIsAutoDiscount(true);
+          setFlashSaleExpiresAt(data.discount.expires_at || null);
+          // Store in sessionStorage so checkout can auto-apply
+          try { sessionStorage.setItem("feral_popup_discount", data.discount.code); } catch {}
+        }
+      })
+      .catch(() => {});
+  }, [event.id]);
+
+  // Validate popup discount code from sessionStorage (only if no auto-discount)
+  useEffect(() => {
+    if (isAutoDiscount) return; // Auto-discount takes priority
+
     function checkDiscount() {
       try {
         const code = sessionStorage.getItem("feral_popup_discount");
@@ -178,7 +205,7 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
     }
     window.addEventListener("feral_popup_email_captured", handlePopupEmail);
     return () => window.removeEventListener("feral_popup_email_captured", handlePopupEmail);
-  }, [event.id, activeDiscount]);
+  }, [event.id, activeDiscount, isAutoDiscount]);
 
   // ── Abandoned cart bridge ──────────────────────────────────────────
   // When popup captures email + cart has items → create abandoned cart
@@ -621,20 +648,41 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
                     onCountdownComplete={() => setAnnouncementComplete(true)}
                   />
                 ) : (
-                  <MidnightTicketWidget
-                    eventSlug={event.slug}
-                    eventId={event.id}
-                    paymentMethod={event.payment_method}
-                    currency={event.currency}
-                    ticketTypes={event.ticket_types || []}
-                    cart={cart}
-                    ticketGroups={ticketGroups}
-                    ticketGroupMap={ticketGroupMap}
-                    ticketGroupReleaseMode={ticketGroupReleaseMode}
-                    onViewMerch={handleViewMerch}
-                    discount={activeDiscount}
-                    onApplyDiscount={setActiveDiscount}
-                  />
+                  <>
+                    {isAutoDiscount && activeDiscount && (
+                      <MidnightFlashSaleBanner
+                        discount={activeDiscount}
+                        expiresAt={flashSaleExpiresAt}
+                        onExpired={() => {
+                          setActiveDiscount(null);
+                          setIsAutoDiscount(false);
+                          setFlashSaleExpiresAt(null);
+                          try { sessionStorage.removeItem("feral_popup_discount"); } catch {}
+                        }}
+                      />
+                    )}
+                    <MidnightTicketWidget
+                      eventSlug={event.slug}
+                      eventId={event.id}
+                      paymentMethod={event.payment_method}
+                      currency={event.currency}
+                      ticketTypes={event.ticket_types || []}
+                      cart={cart}
+                      ticketGroups={ticketGroups}
+                      ticketGroupMap={ticketGroupMap}
+                      ticketGroupReleaseMode={ticketGroupReleaseMode}
+                      onViewMerch={handleViewMerch}
+                      discount={activeDiscount}
+                      onApplyDiscount={(d) => {
+                        setActiveDiscount(d);
+                        // Manual code overrides auto-discount
+                        if (d && isAutoDiscount) {
+                          setIsAutoDiscount(false);
+                          setFlashSaleExpiresAt(null);
+                        }
+                      }}
+                    />
+                  </>
                 )}
               </div>
             </div>
@@ -738,8 +786,8 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
         onNavigate={setSelectedArtistIndex}
       />
 
-      {/* Engagement features */}
-      <MidnightDiscountPopup />
+      {/* Engagement features — suppress popup when auto-discount is active (already discounted) */}
+      {!isAutoDiscount && <MidnightDiscountPopup />}
       <EngagementTracker />
     </>
   );

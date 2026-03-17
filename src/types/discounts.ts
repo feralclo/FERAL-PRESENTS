@@ -21,6 +21,8 @@ export interface Discount {
   starts_at?: string | null;
   /** When the code expires. Null = never. */
   expires_at?: string | null;
+  /** When true, discount is auto-applied on event pages without needing a code. */
+  auto_apply?: boolean;
   status: DiscountStatus;
   created_at: string;
   updated_at: string;

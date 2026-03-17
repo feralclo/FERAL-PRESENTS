@@ -1182,6 +1182,17 @@ html.checkout-active .noise {
   animation: midnight-pulse 2s ease-in-out infinite;
 }
 
+/* Flash sale pulsing dot */
+.midnight-flash-sale-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.4);
+  animation: midnight-pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
 /* ── Urgent CTA — frosted accent glass (screens 1 & 2) ──
    Translucent tinted glass with static depth. No animation.
    3-stop gradient creates dimension (lit top → darker middle →
@@ -1255,6 +1266,7 @@ html.checkout-active .noise {
   [data-theme="midnight"] .midnight-cta-ready,
   [data-theme="midnight"] .midnight-reveal-glow,
   .midnight-popup-pulse,
+  .midnight-flash-sale-dot,
   .midnight-bundle-badge::after {
     animation: none;
   }

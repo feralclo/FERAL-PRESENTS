@@ -122,6 +122,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     if (body.starts_at !== undefined) update.starts_at = body.starts_at || null;
     if (body.expires_at !== undefined) update.expires_at = body.expires_at || null;
     if (body.status != null) update.status = body.status;
+    if (body.auto_apply !== undefined) update.auto_apply = !!body.auto_apply;
 
     const { data, error } = await supabase
       .from(TABLES.DISCOUNTS)

@@ -59,9 +59,17 @@ export async function POST(request: NextRequest) {
       starts_at,
       expires_at,
       status = "active",
+      auto_apply = false,
     } = body;
 
-    if (!code || typeof code !== "string" || !code.trim()) {
+    // Auto-apply discounts auto-generate a code if none provided
+    const resolvedCode = (code && typeof code === "string" && code.trim())
+      ? code.trim()
+      : auto_apply
+        ? `AUTO-${Date.now().toString(36).toUpperCase()}`
+        : "";
+
+    if (!resolvedCode) {
       return NextResponse.json(
         { error: "Missing required field: code" },
         { status: 400 }
@@ -102,7 +110,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.DISCOUNTS)
       .select("id")
       .eq("org_id", orgId)
-      .ilike("code", code.trim())
+      .ilike("code", resolvedCode)
       .single();
 
     if (existing) {
@@ -116,7 +124,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.DISCOUNTS)
       .insert({
         org_id: orgId,
-        code: code.trim().toUpperCase(),
+        code: resolvedCode.toUpperCase(),
         description: description || null,
         type,
         value: Number(value),
@@ -127,6 +135,7 @@ export async function POST(request: NextRequest) {
         starts_at: starts_at || null,
         expires_at: expires_at || null,
         status,
+        auto_apply: !!auto_apply,
       })
       .select()
       .single();

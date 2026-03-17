@@ -41,12 +41,17 @@ import {
   Check,
   Zap,
   X,
+  Tag,
+  ChevronDown,
+  Clock,
+  Calendar,
 } from "lucide-react";
 import type { Discount, DiscountType, DiscountStatus } from "@/types/discounts";
 import { fmtMoney } from "@/lib/format";
 import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 
 type FilterTab = "all" | DiscountStatus;
+type DiscountMode = "code" | "flash";
 
 interface EventOption {
   id: string;
@@ -71,6 +76,40 @@ function formatDate(iso: string | null | undefined): string {
   });
 }
 
+/** Schedule presets for flash sales */
+type SchedulePreset = "24h" | "48h" | "weekend" | "week" | "custom";
+
+function applySchedulePreset(preset: SchedulePreset): { starts_at: string; expires_at: string } {
+  const now = new Date();
+  const starts_at = now.toISOString().slice(0, 16);
+
+  if (preset === "24h") {
+    const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    return { starts_at, expires_at: end.toISOString().slice(0, 16) };
+  }
+  if (preset === "48h") {
+    const end = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    return { starts_at, expires_at: end.toISOString().slice(0, 16) };
+  }
+  if (preset === "weekend") {
+    // Find next Saturday 00:00 → Sunday 23:59
+    const dayOfWeek = now.getDay(); // 0=Sun, 6=Sat
+    const daysToSat = dayOfWeek === 6 ? 0 : (6 - dayOfWeek);
+    const sat = new Date(now);
+    sat.setDate(sat.getDate() + daysToSat);
+    sat.setHours(0, 0, 0, 0);
+    const sunEnd = new Date(sat);
+    sunEnd.setDate(sunEnd.getDate() + 1);
+    sunEnd.setHours(23, 59, 0, 0);
+    return { starts_at: sat.toISOString().slice(0, 16), expires_at: sunEnd.toISOString().slice(0, 16) };
+  }
+  if (preset === "week") {
+    const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return { starts_at, expires_at: end.toISOString().slice(0, 16) };
+  }
+  return { starts_at: "", expires_at: "" };
+}
+
 export default function DiscountsPage() {
   const { currency: orgCurrency, currencySymbol } = useOrgCurrency();
   const [discounts, setDiscounts] = useState<Discount[]>([]);
@@ -83,6 +122,7 @@ export default function DiscountsPage() {
   // Create dialog state
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [newMode, setNewMode] = useState<DiscountMode>("code");
   const [newCode, setNewCode] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newType, setNewType] = useState<DiscountType>("percentage");
@@ -91,8 +131,9 @@ export default function DiscountsPage() {
   const [newMinOrder, setNewMinOrder] = useState("");
   const [newStartsAt, setNewStartsAt] = useState("");
   const [newExpiresAt, setNewExpiresAt] = useState("");
-  const [newAutoApply, setNewAutoApply] = useState(false);
   const [newEventIds, setNewEventIds] = useState<string[]>([]);
+  const [newSchedulePreset, setNewSchedulePreset] = useState<SchedulePreset | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Edit dialog state
   const [editDiscount, setEditDiscount] = useState<Discount | null>(null);
@@ -143,8 +184,10 @@ export default function DiscountsPage() {
       .catch(() => {});
   }, []);
 
+  const isFlash = newMode === "flash";
+
   const handleCreate = async () => {
-    if (!newAutoApply && !newCode.trim()) return;
+    if (!isFlash && !newCode.trim()) return;
     if (!newValue) return;
     setCreating(true);
     try {
@@ -160,7 +203,7 @@ export default function DiscountsPage() {
           min_order_amount: newMinOrder ? Number(newMinOrder) : null,
           starts_at: newStartsAt || null,
           expires_at: newExpiresAt || null,
-          auto_apply: newAutoApply,
+          auto_apply: isFlash,
           applicable_event_ids: newEventIds.length > 0 ? newEventIds : null,
         }),
       });
@@ -237,6 +280,7 @@ export default function DiscountsPage() {
   };
 
   const resetCreateForm = () => {
+    setNewMode("code");
     setNewCode("");
     setNewDescription("");
     setNewType("percentage");
@@ -245,14 +289,24 @@ export default function DiscountsPage() {
     setNewMinOrder("");
     setNewStartsAt("");
     setNewExpiresAt("");
-    setNewAutoApply(false);
     setNewEventIds([]);
+    setNewSchedulePreset(null);
+    setShowAdvanced(false);
   };
 
   const copyCode = (code: string, id: string) => {
     navigator.clipboard.writeText(code);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const selectPreset = (preset: SchedulePreset) => {
+    setNewSchedulePreset(preset);
+    if (preset !== "custom") {
+      const { starts_at, expires_at } = applySchedulePreset(preset);
+      setNewStartsAt(starts_at);
+      setNewExpiresAt(expires_at);
+    }
   };
 
   const filtered =
@@ -441,88 +495,156 @@ export default function DiscountsPage() {
 
       {/* ── Create Dialog ── */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Discount</DialogTitle>
-            <DialogDescription>
-              {newAutoApply
-                ? "Create a discount that's automatically applied on event pages."
-                : "Add a new discount code. Customers enter this at checkout."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            {/* Auto-Apply Toggle */}
-            <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <Zap size={14} className={newAutoApply ? "text-amber-500" : "text-muted-foreground/40"} />
-                <div>
-                  <Label className="text-sm">Auto-Apply</Label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Automatically apply to event pages
-                  </p>
+        <DialogContent className="sm:max-w-[480px] gap-0 p-0 overflow-hidden">
+          {/* Mode selector header */}
+          <div className="border-b border-border/50 p-5 pb-0">
+            <DialogHeader className="pb-4">
+              <DialogTitle className="text-base">Create Discount</DialogTitle>
+              <DialogDescription className="text-xs">
+                {isFlash
+                  ? "Automatically applied on event pages — no code needed."
+                  : "Customers enter this code at checkout."}
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Mode tabs */}
+            <div className="flex gap-0 -mb-px">
+              <button
+                type="button"
+                onClick={() => setNewMode("code")}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+                  !isFlash
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Tag size={13} />
+                Discount Code
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewMode("flash")}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+                  isFlash
+                    ? "border-amber-500 text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Zap size={13} />
+                Flash Sale
+              </button>
+            </div>
+          </div>
+
+          {/* Form body */}
+          <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
+            {/* ── Section 1: What's the discount? ── */}
+            <div>
+              <SectionLabel>Discount</SectionLabel>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Type</Label>
+                  <Select value={newType} onValueChange={(v) => setNewType(v as DiscountType)}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">Percentage (%)</SelectItem>
+                      <SelectItem value="fixed">Fixed ({currencySymbol})</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Value</Label>
+                  <Input
+                    type="number"
+                    value={newValue}
+                    onChange={(e) => setNewValue(e.target.value)}
+                    placeholder={newType === "percentage" ? "e.g. 10" : "e.g. 5.00"}
+                    min="0"
+                    max={newType === "percentage" ? "100" : undefined}
+                    step={newType === "percentage" ? "1" : "0.01"}
+                    className="h-9"
+                    autoFocus
+                  />
                 </div>
               </div>
-              <Switch
-                checked={newAutoApply}
-                onCheckedChange={setNewAutoApply}
-              />
             </div>
 
-            {/* Code — optional when auto-apply */}
-            {!newAutoApply && (
-              <div className="space-y-2">
-                <Label>Code *</Label>
+            {/* ── Section 2: Code (manual mode only) ── */}
+            {!isFlash && (
+              <div>
+                <SectionLabel>Code</SectionLabel>
                 <Input
                   value={newCode}
                   onChange={(e) => setNewCode(e.target.value.toUpperCase())}
                   placeholder="e.g. SUMMER10"
-                  className="font-mono tracking-wider uppercase"
-                  autoFocus
+                  className="mt-2 h-9 font-mono tracking-wider uppercase"
                 />
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Internal note (not shown to customers)"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select value={newType} onValueChange={(v) => setNewType(v as DiscountType)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">Percentage (%)</SelectItem>
-                    <SelectItem value="fixed">Fixed Amount ({currencySymbol})</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Value *</Label>
-                <Input
-                  type="number"
-                  value={newValue}
-                  onChange={(e) => setNewValue(e.target.value)}
-                  placeholder={newType === "percentage" ? "e.g. 10" : "e.g. 5.00"}
-                  min="0"
-                  max={newType === "percentage" ? "100" : undefined}
-                  step={newType === "percentage" ? "1" : "0.01"}
-                />
-              </div>
-            </div>
+            {/* ── Section 3: Schedule (prominent in flash mode) ── */}
+            {isFlash && (
+              <div>
+                <SectionLabel icon={<Clock size={12} />}>Schedule</SectionLabel>
+                {/* Preset pills */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {([
+                    { key: "24h", label: "24 hours" },
+                    { key: "48h", label: "48 hours" },
+                    { key: "weekend", label: "Weekend" },
+                    { key: "week", label: "1 week" },
+                    { key: "custom", label: "Custom" },
+                  ] as const).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => selectPreset(key)}
+                      className={`rounded-lg px-3 py-1.5 text-[11px] font-medium border transition-colors ${
+                        newSchedulePreset === key
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                          : "border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
 
-            {/* Event Selector */}
-            <div className="space-y-2">
-              <Label>{newAutoApply ? "Apply To Events" : "Restrict To Events"}</Label>
-              <p className="text-[11px] text-muted-foreground -mt-1">
+                {/* Custom date pickers */}
+                {newSchedulePreset === "custom" && (
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Starts</Label>
+                      <DateTimePicker value={newStartsAt} onChange={setNewStartsAt} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Ends</Label>
+                      <DateTimePicker value={newExpiresAt} onChange={setNewExpiresAt} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Show computed schedule for presets */}
+                {newSchedulePreset && newSchedulePreset !== "custom" && newStartsAt && newExpiresAt && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {new Date(newStartsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    {" — "}
+                    {new Date(newExpiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* ── Section 4: Events ── */}
+            <div>
+              <SectionLabel icon={<Calendar size={12} />}>
+                {isFlash ? "Apply to" : "Events"}
+              </SectionLabel>
+              <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
                 {newEventIds.length === 0
-                  ? "All events (no restriction)"
+                  ? "All events"
                   : `${newEventIds.length} event${newEventIds.length !== 1 ? "s" : ""} selected`}
               </p>
               <EventSelector
@@ -532,73 +654,113 @@ export default function DiscountsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Max Uses</Label>
-                <Input
-                  type="number"
-                  value={newMaxUses}
-                  onChange={(e) => setNewMaxUses(e.target.value)}
-                  placeholder="Unlimited"
-                  min="1"
-                />
+            {/* ── Section 5: Schedule (code mode — less prominent) ── */}
+            {!isFlash && (
+              <div>
+                <SectionLabel icon={<Clock size={12} />}>Schedule</SectionLabel>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Starts</Label>
+                    <DateTimePicker value={newStartsAt} onChange={setNewStartsAt} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Ends</Label>
+                    <DateTimePicker value={newExpiresAt} onChange={setNewExpiresAt} />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Min Order ({currencySymbol})</Label>
-                <Input
-                  type="number"
-                  value={newMinOrder}
-                  onChange={(e) => setNewMinOrder(e.target.value)}
-                  placeholder="None"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Starts At</Label>
-                <DateTimePicker
-                  value={newStartsAt}
-                  onChange={setNewStartsAt}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Expires At</Label>
-                <DateTimePicker
-                  value={newExpiresAt}
-                  onChange={setNewExpiresAt}
-                />
-              </div>
+            )}
+
+            {/* ── Advanced options (collapsible) ── */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronDown size={12} className={`transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+                Advanced options
+              </button>
+
+              {showAdvanced && (
+                <div className="mt-3 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Description</Label>
+                    <Input
+                      value={newDescription}
+                      onChange={(e) => setNewDescription(e.target.value)}
+                      placeholder="Internal note (not shown to customers)"
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Max uses</Label>
+                      <Input
+                        type="number"
+                        value={newMaxUses}
+                        onChange={(e) => setNewMaxUses(e.target.value)}
+                        placeholder="Unlimited"
+                        min="1"
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Min order ({currencySymbol})</Label>
+                      <Input
+                        type="number"
+                        value={newMinOrder}
+                        onChange={(e) => setNewMinOrder(e.target.value)}
+                        placeholder="None"
+                        min="0"
+                        step="0.01"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>
+
+          {/* Footer */}
+          <div className="border-t border-border/50 p-5 flex items-center justify-end gap-3">
+            <Button variant="outline" size="sm" onClick={() => setShowCreate(false)}>
               Cancel
             </Button>
             <Button
+              size="sm"
               onClick={handleCreate}
-              disabled={creating || (!newAutoApply && !newCode.trim()) || !newValue}
+              disabled={creating || (!isFlash && !newCode.trim()) || !newValue}
             >
               {creating && <Loader2 size={14} className="animate-spin" />}
-              {creating ? "Creating..." : "Create Discount"}
+              {creating ? "Creating..." : isFlash ? "Start Flash Sale" : "Create Code"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* ── Edit Dialog ── */}
       <Dialog open={!!editDiscount} onOpenChange={(open) => !open && setEditDiscount(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Discount</DialogTitle>
-            <DialogDescription>
-              Update the discount settings.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
+        <DialogContent className="sm:max-w-[480px] gap-0 p-0 overflow-hidden">
+          <div className="p-5 pb-4 border-b border-border/50">
+            <DialogHeader>
+              <DialogTitle className="text-base">Edit Discount</DialogTitle>
+              <DialogDescription className="text-xs">
+                {editAutoApply ? "Auto-applied flash sale." : "Manual discount code."}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
+            {/* Active toggle */}
             <div className="flex items-center justify-between">
-              <Label>Active</Label>
+              <div>
+                <Label className="text-sm">Active</Label>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {editStatus === "active" ? "Discount is live" : "Discount is paused"}
+                </p>
+              </div>
               <Switch
                 checked={editStatus === "active"}
                 onCheckedChange={(checked) =>
@@ -607,16 +769,11 @@ export default function DiscountsPage() {
               />
             </div>
 
-            {/* Auto-Apply Toggle */}
+            {/* Auto-apply toggle */}
             <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2.5">
               <div className="flex items-center gap-2">
-                <Zap size={14} className={editAutoApply ? "text-amber-500" : "text-muted-foreground/40"} />
-                <div>
-                  <Label className="text-sm">Auto-Apply</Label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Automatically apply to event pages
-                  </p>
-                </div>
+                <Zap size={13} className={editAutoApply ? "text-amber-500" : "text-muted-foreground/40"} />
+                <Label className="text-sm">Auto-Apply</Label>
               </div>
               <Switch
                 checked={editAutoApply}
@@ -624,58 +781,57 @@ export default function DiscountsPage() {
               />
             </div>
 
-            {/* Code — show for manual codes, hidden for auto-apply with generated code */}
+            {/* Discount value */}
+            <div>
+              <SectionLabel>Discount</SectionLabel>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Type</Label>
+                  <Select value={editType} onValueChange={(v) => setEditType(v as DiscountType)}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">Percentage (%)</SelectItem>
+                      <SelectItem value="fixed">Fixed ({currencySymbol})</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Value</Label>
+                  <Input
+                    type="number"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    min="0"
+                    max={editType === "percentage" ? "100" : undefined}
+                    step={editType === "percentage" ? "1" : "0.01"}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Code */}
             {(!editAutoApply || (editDiscount && !editDiscount.code.startsWith("AUTO-"))) && (
-              <div className="space-y-2">
-                <Label>Code {!editAutoApply ? "*" : ""}</Label>
+              <div>
+                <SectionLabel>Code</SectionLabel>
                 <Input
                   value={editCode}
                   onChange={(e) => setEditCode(e.target.value.toUpperCase())}
-                  className="font-mono tracking-wider uppercase"
+                  className="mt-2 h-9 font-mono tracking-wider uppercase"
                 />
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="Internal note"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select value={editType} onValueChange={(v) => setEditType(v as DiscountType)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">Percentage (%)</SelectItem>
-                    <SelectItem value="fixed">Fixed Amount ({currencySymbol})</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Value *</Label>
-                <Input
-                  type="number"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  min="0"
-                  max={editType === "percentage" ? "100" : undefined}
-                  step={editType === "percentage" ? "1" : "0.01"}
-                />
-              </div>
-            </div>
-
-            {/* Event Selector */}
-            <div className="space-y-2">
-              <Label>{editAutoApply ? "Apply To Events" : "Restrict To Events"}</Label>
-              <p className="text-[11px] text-muted-foreground -mt-1">
+            {/* Events */}
+            <div>
+              <SectionLabel icon={<Calendar size={12} />}>
+                {editAutoApply ? "Apply to" : "Events"}
+              </SectionLabel>
+              <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
                 {editEventIds.length === 0
-                  ? "All events (no restriction)"
+                  ? "All events"
                   : `${editEventIds.length} event${editEventIds.length !== 1 ? "s" : ""} selected`}
               </p>
               <EventSelector
@@ -685,63 +841,80 @@ export default function DiscountsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Max Uses</Label>
-                <Input
-                  type="number"
-                  value={editMaxUses}
-                  onChange={(e) => setEditMaxUses(e.target.value)}
-                  placeholder="Unlimited"
-                  min="1"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Min Order ({currencySymbol})</Label>
-                <Input
-                  type="number"
-                  value={editMinOrder}
-                  onChange={(e) => setEditMinOrder(e.target.value)}
-                  placeholder="None"
-                  min="0"
-                  step="0.01"
-                />
+            {/* Schedule */}
+            <div>
+              <SectionLabel icon={<Clock size={12} />}>Schedule</SectionLabel>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Starts</Label>
+                  <DateTimePicker value={editStartsAt} onChange={setEditStartsAt} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Ends</Label>
+                  <DateTimePicker value={editExpiresAt} onChange={setEditExpiresAt} />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Starts At</Label>
-                <DateTimePicker
-                  value={editStartsAt}
-                  onChange={setEditStartsAt}
+
+            {/* Description + limits */}
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                <Input
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Internal note"
+                  className="h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Expires At</Label>
-                <DateTimePicker
-                  value={editExpiresAt}
-                  onChange={setEditExpiresAt}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Max uses</Label>
+                  <Input
+                    type="number"
+                    value={editMaxUses}
+                    onChange={(e) => setEditMaxUses(e.target.value)}
+                    placeholder="Unlimited"
+                    min="1"
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Min order ({currencySymbol})</Label>
+                  <Input
+                    type="number"
+                    value={editMinOrder}
+                    onChange={(e) => setEditMinOrder(e.target.value)}
+                    placeholder="None"
+                    min="0"
+                    step="0.01"
+                    className="h-9"
+                  />
+                </div>
               </div>
             </div>
+
+            {/* Usage stats */}
             {editDiscount && (
-              <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+              <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                 Used {editDiscount.used_count} time{editDiscount.used_count !== 1 ? "s" : ""}
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDiscount(null)}>
+
+          <div className="border-t border-border/50 p-5 flex items-center justify-end gap-3">
+            <Button variant="outline" size="sm" onClick={() => setEditDiscount(null)}>
               Cancel
             </Button>
             <Button
+              size="sm"
               onClick={handleEdit}
               disabled={saving || (!editAutoApply && !editCode.trim()) || !editValue}
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
               {saving ? "Saving..." : "Save Changes"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -774,6 +947,17 @@ export default function DiscountsPage() {
   );
 }
 
+/* ── Section label with optional icon ── */
+
+function SectionLabel({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.04em] uppercase text-muted-foreground/70">
+      {icon}
+      {children}
+    </div>
+  );
+}
+
 /* ── Event Selector (inline multi-select with pills) ── */
 
 function EventSelector({
@@ -801,9 +985,35 @@ function EventSelector({
     );
   }
 
+  // If few events, show as toggleable chips instead of a dropdown
+  if (events.length <= 8) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {events.map((e) => {
+          const selected = selectedIds.includes(e.id);
+          return (
+            <button
+              key={e.id}
+              type="button"
+              onClick={() => toggle(e.id)}
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-medium border transition-colors ${
+                selected
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+              }`}
+            >
+              {selected && <Check size={10} className="inline mr-1 -mt-px" />}
+              {e.name}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Many events — use dropdown + pills
   return (
     <div className="space-y-2">
-      {/* Selected pills */}
       {selectedIds.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {selectedIds.map((id) => {
@@ -827,7 +1037,6 @@ function EventSelector({
         </div>
       )}
 
-      {/* Dropdown to add events */}
       <Select
         value=""
         onValueChange={(v) => {

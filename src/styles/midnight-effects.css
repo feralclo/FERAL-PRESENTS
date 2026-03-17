@@ -1182,13 +1182,49 @@ html.checkout-active .noise {
   animation: midnight-pulse 2s ease-in-out infinite;
 }
 
-/* Flash sale pulsing dot */
+/* Flash sale banner — urgency strip inside ticket widget */
+.midnight-flash-sale {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    rgba(52, 211, 153, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 50%,
+    rgba(52, 211, 153, 0.04) 100%
+  );
+  border: 1px solid rgba(52, 211, 153, 0.12);
+}
+
+/* Inner padding — generous on mobile for impact */
+.midnight-flash-sale-inner {
+  padding: 16px 20px;
+  text-align: center;
+}
+
+/* Subtle top-edge highlight */
+.midnight-flash-sale::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(52, 211, 153, 0.25),
+    transparent
+  );
+}
+
+/* Pulsing live dot */
 .midnight-flash-sale-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #34d399;
-  box-shadow: 0 0 6px rgba(52, 211, 153, 0.4);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
   animation: midnight-pulse 2s ease-in-out infinite;
   flex-shrink: 0;
 }

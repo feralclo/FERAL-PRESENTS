@@ -31,7 +31,6 @@ import type { Event, TicketTypeRow } from "@/types/events";
 import type { Artist, EventArtist } from "@/types/artists";
 import type { DiscountDisplay } from "./discount-utils";
 import { getDiscountAmount } from "./discount-utils";
-import { MidnightFlashSaleBanner } from "./MidnightFlashSaleBanner";
 
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
@@ -648,41 +647,36 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
                     onCountdownComplete={() => setAnnouncementComplete(true)}
                   />
                 ) : (
-                  <>
-                    {isAutoDiscount && activeDiscount && (
-                      <MidnightFlashSaleBanner
-                        discount={activeDiscount}
-                        expiresAt={flashSaleExpiresAt}
-                        onExpired={() => {
-                          setActiveDiscount(null);
-                          setIsAutoDiscount(false);
-                          setFlashSaleExpiresAt(null);
-                          try { sessionStorage.removeItem("feral_popup_discount"); } catch {}
-                        }}
-                      />
-                    )}
-                    <MidnightTicketWidget
-                      eventSlug={event.slug}
-                      eventId={event.id}
-                      paymentMethod={event.payment_method}
-                      currency={event.currency}
-                      ticketTypes={event.ticket_types || []}
-                      cart={cart}
-                      ticketGroups={ticketGroups}
-                      ticketGroupMap={ticketGroupMap}
-                      ticketGroupReleaseMode={ticketGroupReleaseMode}
-                      onViewMerch={handleViewMerch}
-                      discount={activeDiscount}
-                      onApplyDiscount={(d) => {
-                        setActiveDiscount(d);
-                        // Manual code overrides auto-discount
-                        if (d && isAutoDiscount) {
-                          setIsAutoDiscount(false);
-                          setFlashSaleExpiresAt(null);
-                        }
-                      }}
-                    />
-                  </>
+                  <MidnightTicketWidget
+                    eventSlug={event.slug}
+                    eventId={event.id}
+                    paymentMethod={event.payment_method}
+                    currency={event.currency}
+                    ticketTypes={event.ticket_types || []}
+                    cart={cart}
+                    ticketGroups={ticketGroups}
+                    ticketGroupMap={ticketGroupMap}
+                    ticketGroupReleaseMode={ticketGroupReleaseMode}
+                    onViewMerch={handleViewMerch}
+                    discount={activeDiscount}
+                    onApplyDiscount={(d) => {
+                      setActiveDiscount(d);
+                      // Manual code overrides auto-discount
+                      if (d && isAutoDiscount) {
+                        setIsAutoDiscount(false);
+                        setFlashSaleExpiresAt(null);
+                      }
+                    }}
+                    flashSale={isAutoDiscount && activeDiscount ? {
+                      expiresAt: flashSaleExpiresAt,
+                      onExpired: () => {
+                        setActiveDiscount(null);
+                        setIsAutoDiscount(false);
+                        setFlashSaleExpiresAt(null);
+                        try { sessionStorage.removeItem("feral_popup_discount"); } catch {}
+                      },
+                    } : undefined}
+                  />
                 )}
               </div>
             </div>

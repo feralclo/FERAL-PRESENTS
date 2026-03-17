@@ -30,54 +30,61 @@ export function MidnightFlashSaleBanner({
     }
   }, [countdown.passed, targetDate, onExpired]);
 
-  const label =
+  const valueLabel =
     discount.type === "percentage"
-      ? `${discount.value}% OFF`
-      : `${discount.value} OFF`;
-
-  // Format countdown — show hours:mins:secs if under 24h, otherwise days + hours
-  const timeDisplay = hasCountdown
-    ? countdown.days > 0
-      ? `${countdown.days}d ${pad(countdown.hours)}h ${pad(countdown.mins)}m`
-      : `${pad(countdown.hours)}:${pad(countdown.mins)}:${pad(countdown.secs)}`
-    : null;
+      ? `${discount.value}%`
+      : discount.value.toString();
 
   return (
-    <div className="mb-4 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.03]">
-      <div className="flex items-center justify-between gap-3 px-4 py-3">
-        {/* Left: sale label */}
-        <div className="flex items-center gap-2.5 min-w-0">
+    <div className="midnight-flash-sale mb-6">
+      <div className="midnight-flash-sale-inner">
+        {/* Top row: discount value + label */}
+        <div className="flex items-center justify-center gap-3">
           <span className="midnight-flash-sale-dot" />
-          <div className="min-w-0">
-            <span className="font-[family-name:var(--font-mono)] text-[13px] font-bold tracking-[0.06em] text-foreground">
-              {label}
+          <div className="flex items-baseline gap-2">
+            <span className="font-[family-name:var(--font-mono)] text-[28px] max-[480px]:text-[24px] font-black tracking-[-0.02em] text-foreground leading-none">
+              {valueLabel}
             </span>
-            <span className="ml-2 font-[family-name:var(--font-sans)] text-[11px] text-foreground/40">
-              EVERYTHING
+            <span className="font-[family-name:var(--font-mono)] text-[13px] max-[480px]:text-[11px] font-bold tracking-[0.1em] uppercase text-foreground/60">
+              OFF EVERYTHING
             </span>
           </div>
         </div>
 
-        {/* Right: countdown or "APPLIED" */}
-        {timeDisplay ? (
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="font-[family-name:var(--font-sans)] text-[10px] tracking-[0.08em] text-foreground/30 uppercase">
+        {/* Bottom row: countdown or "DISCOUNT APPLIED" */}
+        {hasCountdown ? (
+          <div className="flex items-center justify-center gap-3 mt-2.5">
+            <span className="font-[family-name:var(--font-sans)] text-[10px] tracking-[0.1em] text-foreground/25 uppercase">
               Ends in
             </span>
-            <span className="font-[family-name:var(--font-mono)] text-[13px] font-bold tabular-nums tracking-[0.04em] text-foreground/70">
-              {timeDisplay}
-            </span>
+            <div className="flex items-center gap-1.5">
+              {countdown.days > 0 && (
+                <CountdownUnit value={countdown.days} label="d" />
+              )}
+              <CountdownUnit value={countdown.hours} label="h" />
+              <span className="font-[family-name:var(--font-mono)] text-[14px] text-foreground/20 font-bold leading-none">:</span>
+              <CountdownUnit value={countdown.mins} label="m" />
+              <span className="font-[family-name:var(--font-mono)] text-[14px] text-foreground/20 font-bold leading-none">:</span>
+              <CountdownUnit value={countdown.secs} label="s" />
+            </div>
           </div>
         ) : (
-          <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.1em] text-foreground/30 uppercase shrink-0">
-            Applied
-          </span>
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.12em] text-foreground/25 uppercase">
+              Discount Applied
+            </span>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
+function CountdownUnit({ value, label }: { value: number; label: string }) {
+  return (
+    <span className="font-[family-name:var(--font-mono)] text-[18px] max-[480px]:text-[16px] font-bold tabular-nums tracking-[0.02em] text-foreground/80 leading-none">
+      {String(value).padStart(2, "0")}
+      <span className="text-[9px] text-foreground/25 ml-0.5 font-medium">{label}</span>
+    </span>
+  );
 }

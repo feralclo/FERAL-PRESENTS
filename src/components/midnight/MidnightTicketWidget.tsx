@@ -27,6 +27,7 @@ import type { TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 import type { DiscountDisplay } from "./discount-utils";
 import { getDiscountAmount } from "./discount-utils";
+import { MidnightFlashSaleBanner } from "./MidnightFlashSaleBanner";
 
 interface MidnightTicketWidgetProps {
   eventSlug: string;
@@ -41,6 +42,10 @@ interface MidnightTicketWidgetProps {
   onViewMerch?: (ticketType: TicketTypeRow) => void;
   discount?: DiscountDisplay | null;
   onApplyDiscount?: (d: DiscountDisplay) => void;
+  flashSale?: {
+    expiresAt: string | null;
+    onExpired: () => void;
+  };
 }
 
 export function MidnightTicketWidget({
@@ -56,6 +61,7 @@ export function MidnightTicketWidget({
   onViewMerch,
   discount,
   onApplyDiscount,
+  flashSale,
 }: MidnightTicketWidgetProps) {
   const { convertPrice, formatPrice: fmtPrice, isConverted, currency: presentmentCurrency } = useCurrencyContext();
   const isStripe = paymentMethod === "stripe";
@@ -270,6 +276,15 @@ export function MidnightTicketWidget({
             <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.12em] uppercase text-foreground/30 mb-6">
               Select your tickets below
             </p>
+
+            {/* Flash sale banner — inside widget so it's below the hero overlap zone on mobile */}
+            {flashSale && discount && (
+              <MidnightFlashSaleBanner
+                discount={discount}
+                expiresAt={flashSale.expiresAt}
+                onExpired={flashSale.onExpired}
+              />
+            )}
 
             {/* Release progression bar */}
             <MidnightTierProgression tickets={progressionTickets} currSymbol={currSymbol} />

@@ -63,13 +63,12 @@ export async function sendTeamInviteEmail(params: {
 
     const branding = (brandingRow?.data as Record<string, string>) || {};
     const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
-    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    // Always use admin host for invite links — tenant domains don't serve /admin routes
+    const adminHost = process.env.NODE_ENV === "production"
+      ? "https://admin.entry.events"
+      : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
-    if (!siteUrl) {
-      console.warn("[team-email] NEXT_PUBLIC_SITE_URL is not set — invite link will be broken");
-    }
-
-    const inviteUrl = `${siteUrl}/admin/invite/${encodeURIComponent(params.inviteToken)}`;
+    const inviteUrl = `${adminHost}/admin/invite/${encodeURIComponent(params.inviteToken)}`;
     const inviterLine = params.invitedByName
       ? `${escapeHtml(params.invitedByName)} has invited you to join the <strong>${orgName}</strong> team on Entry.`
       : `You've been invited to join the <strong>${orgName}</strong> team on Entry.`;

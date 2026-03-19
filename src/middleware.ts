@@ -336,7 +336,7 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(NextResponse.redirect(new URL("https://admin.entry.events/admin/")));
   }
 
-  if (!isAdminHost && (isProtectedAdminPage(pathname) || pathname.startsWith("/admin/login"))) {
+  if (!isAdminHost && pathname.startsWith("/admin")) {
     const adminUrl = new URL(`https://admin.entry.events${pathname}`);
     adminUrl.search = request.nextUrl.search;
     return applySecurityHeaders(NextResponse.redirect(adminUrl, 302));

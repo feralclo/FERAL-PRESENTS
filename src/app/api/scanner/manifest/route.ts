@@ -17,6 +17,12 @@ export async function GET() {
     theme_color: "#08080c",
     icons: [
       {
+        src: "/scanner-icon.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+        purpose: "any",
+      },
+      {
         src: "/scanner-icon-192.png",
         sizes: "192x192",
         type: "image/png",

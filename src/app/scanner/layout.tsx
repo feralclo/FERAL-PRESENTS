@@ -50,6 +50,17 @@ export default function ScannerLayout({ children }: { children: ReactNode }) {
       statusBar.content = "black-translucent";
       document.head.appendChild(statusBar);
     }
+
+    // Apple touch icon (scanner icon, not the main app icon)
+    const existingTouch = document.querySelector('link[rel="apple-touch-icon"][href="/scanner-icon-192.png"]');
+    if (!existingTouch) {
+      // Remove any existing apple-touch-icon first
+      document.querySelectorAll('link[rel="apple-touch-icon"]').forEach((el) => el.remove());
+      const touchIcon = document.createElement("link");
+      touchIcon.rel = "apple-touch-icon";
+      touchIcon.href = "/scanner-icon-192.png";
+      document.head.appendChild(touchIcon);
+    }
   }, []);
 
   // Show install prompt on first visit if not standalone

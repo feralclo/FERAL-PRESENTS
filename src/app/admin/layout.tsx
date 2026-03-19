@@ -36,6 +36,7 @@ import {
   Mic2,
   Shield,
   TrendingUp,
+  Scan,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -45,6 +46,7 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   children?: { href: string; label: string }[];
+  external?: boolean;
 }
 
 interface NavSection {
@@ -65,6 +67,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/admin/events/", label: "All Events", icon: CalendarDays },
       { href: "/admin/artists/", label: "Artists", icon: Mic2 },
       { href: "/admin/guest-list/", label: "Guest List", icon: ClipboardCheck },
+      { href: "/scanner/", label: "Scanner", icon: Scan, external: true },
     ],
   },
   {
@@ -442,6 +445,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       key={item.href}
                       href={item.href}
                       onClick={() => setOpen(false)}
+                      {...(item.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                       className={cn(
                         "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
                         active

@@ -539,7 +539,7 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
           } else {
             // Payment succeeded but order creation failed — webhook will handle it.
             // Show a "Processing" confirmation so the user isn't stuck on the spinner.
-            onComplete({
+            handleOrderComplete({
               id: "",
               org_id: orgId,
               order_number: "Processing...",
@@ -558,7 +558,7 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
           }
         } catch {
           // Network error — same fallback
-          onComplete({
+          handleOrderComplete({
             id: "",
             org_id: orgId,
             order_number: "Processing...",

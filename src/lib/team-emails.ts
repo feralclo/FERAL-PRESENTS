@@ -70,7 +70,7 @@ export async function sendTeamInviteEmail(params: {
     const logoLight = `${adminHost}/api/brand/logo?variant=light`;
     const logoDark = `${adminHost}/api/brand/logo?variant=dark`;
 
-    const inviteUrl = `${adminHost}/admin/invite/${encodeURIComponent(params.inviteToken)}`;
+    const inviteUrl = `${adminHost}/invite/${encodeURIComponent(params.inviteToken)}`;
     const inviterLine = params.invitedByName
       ? `${escapeHtml(params.invitedByName)} has invited you to join the <strong>${orgName}</strong> team on Entry.`
       : `You've been invited to join the <strong>${orgName}</strong> team on Entry.`;

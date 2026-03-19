@@ -21,6 +21,9 @@ function getResendClient(): Resend | null {
 
 /**
  * Send a team invite email. Fire-and-forget — never throws.
+ *
+ * Light background, Entry platform branding (not tenant-branded).
+ * Dark-mode safe — no black backgrounds that invert badly.
  */
 export async function sendTeamInviteEmail(params: {
   email: string;
@@ -60,7 +63,6 @@ export async function sendTeamInviteEmail(params: {
 
     const branding = (brandingRow?.data as Record<string, string>) || {};
     const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
-    const accentColor = branding.accent_color || "#8B5CF6";
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 
     if (!siteUrl) {
@@ -68,60 +70,110 @@ export async function sendTeamInviteEmail(params: {
     }
 
     const inviteUrl = `${siteUrl}/admin/invite/${encodeURIComponent(params.inviteToken)}`;
-    const inviterText = params.invitedByName
-      ? `<strong style="color:#fff">${escapeHtml(params.invitedByName)}</strong> has invited you to join`
-      : "You've been invited to join";
+    const inviterLine = params.invitedByName
+      ? `${escapeHtml(params.invitedByName)} has invited you to join the <strong>${orgName}</strong> team on Entry.`
+      : `You've been invited to join the <strong>${orgName}</strong> team on Entry.`;
 
-    const subject = `You're invited to ${orgName} on Entry`;
+    const subject = `${params.invitedByName || orgName} invited you to Entry`;
     const html = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin: 0; padding: 0; background: #08080c; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <div style="max-width: 560px; margin: 0 auto; padding: 40px 24px;">
-    <!-- Header -->
-    <div style="margin-bottom: 32px;">
-      <span style="font-family: monospace; font-size: 13px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; background: linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-        ENTRY
-      </span>
-      <span style="font-size: 11px; color: #71717a; margin-left: 8px;">
-        × ${orgName}
-      </span>
-    </div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <!-- Outer wrapper -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+        <!-- Card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
 
-    <!-- Body -->
-    <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
-      You're invited.
-    </h1>
-    <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
-      Hey ${escapeHtml(params.firstName)}, ${inviterText} the <strong style="color:#fff">${orgName}</strong> team on Entry.
-    </p>
-    <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-      <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: ${accentColor}; margin: 0 0 8px 0; font-weight: 600;">
-        What you'll get
-      </p>
-      <p style="font-size: 14px; color: #d0d0d8; margin: 0; line-height: 1.8;">
-        Access to the admin dashboard to manage events, orders, and more — depending on the permissions assigned to you.
-      </p>
-    </div>
-    <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
-      Click below to set your password and get started. This invite expires in 7 days.
-    </p>
-    <a href="${inviteUrl}" style="display: inline-block; background: ${accentColor}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none; letter-spacing: 0.5px;">
-      Accept Invite
-    </a>
+          <!-- Purple header bar -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED); padding: 24px 32px; text-align: center;">
+              <span style="font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; letter-spacing: 5px; text-transform: uppercase; color: #ffffff;">
+                ENTRY
+              </span>
+            </td>
+          </tr>
 
-    <!-- Footer -->
-    <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #1e1e2a;">
-      <p style="font-size: 11px; color: #52525b; margin: 0; line-height: 1.6;">
-        Powered by <span style="color: ${accentColor}; font-weight: 600;">Entry</span> — The events platform.
-      </p>
-    </div>
-  </div>
+          <!-- Body -->
+          <tr>
+            <td style="padding: 32px 32px 8px 32px;">
+              <h1 style="font-size: 22px; font-weight: 700; color: #18181b; margin: 0 0 16px 0; line-height: 1.3;">
+                You're invited to join a team
+              </h1>
+              <p style="font-size: 15px; color: #3f3f46; margin: 0 0 24px 0; line-height: 1.6;">
+                Hi ${escapeHtml(params.firstName)},
+              </p>
+              <p style="font-size: 15px; color: #3f3f46; margin: 0 0 24px 0; line-height: 1.6;">
+                ${inviterLine}
+              </p>
+              <p style="font-size: 15px; color: #3f3f46; margin: 0 0 28px 0; line-height: 1.6;">
+                Click the button below to accept and get started.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td style="padding: 0 32px 32px 32px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background-color: #7C3AED; border-radius: 8px;">
+                    <a href="${inviteUrl}" style="display: inline-block; padding: 14px 36px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; letter-spacing: 0.3px;">
+                      Accept Invite
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 0 32px;">
+              <div style="height: 1px; background-color: #e4e4e7;"></div>
+            </td>
+          </tr>
+
+          <!-- Fine print -->
+          <tr>
+            <td style="padding: 20px 32px 28px 32px;">
+              <p style="font-size: 12px; color: #a1a1aa; margin: 0 0 4px 0; line-height: 1.5;">
+                This invite expires in 7 days. You can sign in with Google or set a password.
+              </p>
+              <p style="font-size: 12px; color: #a1a1aa; margin: 0; line-height: 1.5;">
+                If you didn't expect this email, you can safely ignore it.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+        <!-- Footer outside card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
+          <tr>
+            <td style="padding: 20px 32px 0 32px; text-align: center;">
+              <p style="font-size: 11px; color: #a1a1aa; margin: 0;">
+                Sent by <span style="color: #7C3AED; font-weight: 600;">Entry</span> on behalf of ${orgName}
+              </p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 
     await resend.emails.send({
-      from: `${emailSettings.from_name} <${emailSettings.from_email}>`,
+      from: `Entry <${emailSettings.from_email}>`,
       to: [params.email],
       subject,
       html,

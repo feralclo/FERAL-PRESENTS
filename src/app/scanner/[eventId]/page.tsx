@@ -372,7 +372,12 @@ export default function ScannerEventPage() {
               <button
                 key={m.key}
                 type="button"
-                onClick={() => setMode(m.key)}
+                onClick={() => {
+                  setMode(m.key);
+                  setResult(null);
+                  // Clear QR debounce so the same code can be scanned in the new mode
+                  (window as { __scannerClearLast?: () => void }).__scannerClearLast?.();
+                }}
                 className={cn(
                   "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all flex-1 justify-center",
                   active

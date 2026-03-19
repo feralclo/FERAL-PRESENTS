@@ -22,16 +22,17 @@ export async function GET() {
       );
     }
 
-    // Check perm_orders
+    // Check perm_orders (owners bypass — they have implicit full access)
     const { data: orgUser } = await supabase
       .from(TABLES.ORG_USERS)
-      .select("perm_orders")
+      .select("role, perm_orders")
       .eq("auth_user_id", auth.user.id)
       .eq("org_id", orgId)
       .eq("status", "active")
       .single();
 
-    if (!orgUser?.perm_orders) {
+    const isOwner = orgUser?.role === "owner";
+    if (!isOwner && !orgUser?.perm_orders) {
       return NextResponse.json(
         { error: "Scanner access requires order management permission" },
         { status: 403 }

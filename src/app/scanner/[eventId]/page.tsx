@@ -129,7 +129,7 @@ export default function ScannerEventPage() {
   /**
    * Unified scan handler — one scan does everything:
    *
-   * 1. Try entry scan → if valid, approve entry (show merch info if applicable)
+   * 1. Try entry scan → if valid + has merch → also collect merch in same scan
    * 2. If already scanned for entry → check for uncollected merch → auto-collect
    * 3. If merch-only ticket → auto-collect merch
    * 4. If fully done (entry scanned + merch collected) → show "already scanned"
@@ -161,17 +161,41 @@ export default function ScannerEventPage() {
       const scanJson = await scanRes.json();
 
       if (scanRes.ok && scanJson.success) {
-        // Entry approved — also show merch info if they have merch
-        const hasMerch = !!scanJson.ticket?.merch_size;
-        const merchNote = hasMerch ? ` — Merch: ${scanJson.ticket.merch_size}` : "";
-        const resultData: ScanResultData = {
-          status: "valid",
-          message: hasMerch ? "Entry Approved + Has Merch" : "Entry Approved",
-          ticket: scanJson.ticket,
-        };
-        setResult(resultData);
-        playFeedback(true);
-        addToHistory(ticketCode, "valid", `Entry Approved${merchNote}`, scanJson.ticket);
+        // Entry approved — if ticket has merch, also collect it in one go
+        const hasMerch = !!scanJson.ticket?.merch_size && !scanJson.ticket?.merch_collected;
+
+        if (hasMerch) {
+          // Auto-collect merch alongside entry
+          const merchRes = await fetch(`/api/tickets/${encodeURIComponent(ticketCode)}/merch`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ collected_by: "scanner" }),
+          });
+          const merchJson = await merchRes.json();
+          const merchCollected = merchRes.ok && merchJson.success;
+
+          setResult({
+            status: "valid",
+            message: merchCollected
+              ? `Entry Approved + Merch: ${scanJson.ticket.merch_size}`
+              : "Entry Approved",
+            ticket: scanJson.ticket,
+          });
+          playFeedback(true);
+          addToHistory(ticketCode, "valid",
+            merchCollected
+              ? `Entry + Merch: ${scanJson.ticket.merch_size}`
+              : "Entry Approved",
+            scanJson.ticket);
+        } else {
+          setResult({
+            status: "valid",
+            message: "Entry Approved",
+            ticket: scanJson.ticket,
+          });
+          playFeedback(true);
+          addToHistory(ticketCode, "valid", "Entry Approved", scanJson.ticket);
+        }
 
       } else if (scanRes.status === 409) {
         // Already scanned for entry — check if they have uncollected merch

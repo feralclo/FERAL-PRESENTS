@@ -91,12 +91,13 @@ export async function sendTeamInviteEmail(params: {
         <!-- Card -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
 
-          <!-- Purple header bar -->
+          <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED); padding: 24px 32px; text-align: center;">
-              <span style="font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; letter-spacing: 5px; text-transform: uppercase; color: #ffffff;">
+            <td style="padding: 32px 32px 0 32px; text-align: center;">
+              <span style="font-family: 'Courier New', monospace; font-size: 15px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: #8B5CF6;">
                 ENTRY
               </span>
+              <div style="margin-top: 16px; height: 1px; background: linear-gradient(90deg, transparent, #8B5CF6, transparent);"></div>
             </td>
           </tr>
 

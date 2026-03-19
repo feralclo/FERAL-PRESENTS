@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, scannerAssignmentsKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import * as Sentry from "@sentry/nextjs";
 
@@ -25,7 +25,7 @@ export async function GET() {
     // Check perm_orders (owners bypass — they have implicit full access)
     const { data: orgUser } = await supabase
       .from(TABLES.ORG_USERS)
-      .select("role, perm_orders")
+      .select("id, role, perm_orders, perm_events, perm_marketing, perm_finance")
       .eq("auth_user_id", auth.user.id)
       .eq("org_id", orgId)
       .eq("status", "active")
@@ -41,7 +41,7 @@ export async function GET() {
 
     // Fetch events (active + past 7 days)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: events, error } = await supabase
+    let { data: events, error } = await supabase
       .from(TABLES.EVENTS)
       .select("id, name, slug, venue_name, date_start, doors_time, status, cover_image")
       .eq("org_id", orgId)
@@ -51,6 +51,22 @@ export async function GET() {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Check scanner event assignments — scanner-only users may be restricted to specific events
+    const isScannerOnly = !isOwner && orgUser?.perm_orders && !orgUser?.perm_events && !orgUser?.perm_marketing && !orgUser?.perm_finance;
+    if (isScannerOnly && orgUser?.id) {
+      const { data: assignmentRow } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", scannerAssignmentsKey(orgId))
+        .single();
+
+      const assignments = assignmentRow?.data?.assignments || {};
+      const assignedEventIds: string[] | undefined = assignments[orgUser.id];
+      if (assignedEventIds && assignedEventIds.length > 0) {
+        events = (events || []).filter((e) => assignedEventIds.includes(e.id));
+      }
     }
 
     // Get scan stats for each event

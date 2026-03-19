@@ -124,6 +124,10 @@ export default function UsersPage() {
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
 
+  // Scanner event assignment state
+  const [availableEvents, setAvailableEvents] = useState<{id: string, name: string, date_start: string}[]>([]);
+  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [editMember, setEditMember] = useState<OrgUser | null>(null);
@@ -166,6 +170,28 @@ export default function UsersPage() {
     fetchMembers();
   }, [fetchMembers]);
 
+  // Fetch events for scanner assignment when scanner preset is selected
+  useEffect(() => {
+    if (inviteRolePreset !== "scanner") return;
+    (async () => {
+      try {
+        const res = await fetch("/api/scanner/events");
+        if (res.ok) {
+          const json = await res.json();
+          setAvailableEvents(
+            json.events?.map((e: { id: string; name: string; date_start: string }) => ({
+              id: e.id,
+              name: e.name,
+              date_start: e.date_start,
+            })) || []
+          );
+        }
+      } catch {
+        // Silently fail — event list is optional
+      }
+    })();
+  }, [inviteRolePreset]);
+
   // Close actions menu on outside click
   useEffect(() => {
     if (!actionsOpen) return;
@@ -185,14 +211,24 @@ export default function UsersPage() {
         body: JSON.stringify(inviteForm),
       });
 
+      const resJson = await res.json();
       if (!res.ok) {
-        const { error } = await res.json();
-        setInviteError(error || "Failed to send invite");
+        setInviteError(resJson.error || "Failed to send invite");
         return;
+      }
+
+      // Save scanner event assignments if applicable
+      if (inviteRolePreset === "scanner" && selectedEventIds.length > 0 && resJson.data?.id) {
+        fetch("/api/scanner/assignments", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: resJson.data.id, event_ids: selectedEventIds }),
+        }).catch(() => {});
       }
 
       setInviteOpen(false);
       setInviteRolePreset("full");
+      setSelectedEventIds([]);
       setInviteForm({
         email: "",
         first_name: "",
@@ -576,11 +612,46 @@ export default function UsersPage() {
               </div>
 
               {inviteRolePreset === "scanner" && (
-                <div className="rounded-lg border border-primary/15 bg-primary/[0.04] px-3 py-2.5">
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Scanner staff will be redirected straight to the scanner app when they sign in. They won&apos;t see the admin dashboard.
-                  </p>
-                </div>
+                <>
+                  <div className="rounded-lg border border-primary/15 bg-primary/[0.04] px-3 py-2.5">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Scanner staff will be redirected straight to the scanner app when they sign in. They won&apos;t see the admin dashboard.
+                    </p>
+                  </div>
+
+                  {/* Event assignment */}
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Assigned Events</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Select which events this person can scan. Leave empty for all events.
+                    </p>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {availableEvents.map((event) => (
+                        <label
+                          key={event.id}
+                          className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer hover:border-border transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedEventIds.includes(event.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedEventIds((prev) => [...prev, event.id]);
+                              } else {
+                                setSelectedEventIds((prev) => prev.filter((id) => id !== event.id));
+                              }
+                            }}
+                            className="rounded border-border"
+                          />
+                          <span className="text-sm text-foreground">{event.name}</span>
+                        </label>
+                      ))}
+                      {availableEvents.length === 0 && (
+                        <p className="text-xs text-muted-foreground/60 py-2">No events available</p>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
 

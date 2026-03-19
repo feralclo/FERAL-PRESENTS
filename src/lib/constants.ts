@@ -130,6 +130,11 @@ export function merchStoreKey(orgId: string): string {
   return `${orgId}_merch_store`;
 }
 
+/** Generate the scanner event assignments key for a given org */
+export function scannerAssignmentsKey(orgId: string): string {
+  return `${orgId}_scanner_assignments`;
+}
+
 /** Platform-level exchange rates cache key */
 export function exchangeRatesKey(): string {
   return "platform_exchange_rates";

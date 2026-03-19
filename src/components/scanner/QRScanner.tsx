@@ -66,7 +66,7 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
   const startNativeScanner = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
       });
       streamRef.current = stream;
 
@@ -116,7 +116,7 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
       await scanner.start(
         { facingMode: "environment" },
         {
-          fps: 10,
+          fps: 15,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
         },

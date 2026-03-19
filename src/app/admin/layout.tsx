@@ -172,6 +172,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [commandOpen, setCommandOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isPlatformOwner, setIsPlatformOwner] = useState(false);
+  const [scannerOnlyRedirecting, setScannerOnlyRedirecting] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const pathname = usePathname();
   const router = useRouter();
@@ -234,6 +235,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 const hasDashboardPerm =
                   user.perm_events || user.perm_marketing || user.perm_finance || user.perm_reps;
                 if (!hasDashboardPerm && user.perm_orders) {
+                  setScannerOnlyRedirecting(true);
                   window.location.href = "/scanner";
                   return;
                 }
@@ -313,6 +315,23 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // Settings has its own standalone layout
   if (isSettingsRoute) return <><CommandPalette open={commandOpen} onClose={closeCommand} isPlatformOwner={isPlatformOwner} />{children}</>;
+
+  // Block rendering while redirecting scanner-only users
+  if (scannerOnlyRedirecting) {
+    return (
+      <div data-admin className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <span className="font-mono text-[18px] font-bold uppercase tracking-[6px] select-none" style={{
+            background: "linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}>Entry</span>
+          <p className="mt-4 font-mono text-xs text-muted-foreground tracking-wider">Opening scanner...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogout = async () => {
     const supabase = getSupabaseClient();

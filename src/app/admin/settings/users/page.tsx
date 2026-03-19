@@ -35,6 +35,8 @@ import {
   Scroll,
   Coins,
   Settings,
+  Scan,
+  CheckCircle2,
 } from "lucide-react";
 import type { OrgUser } from "@/types/team";
 
@@ -118,6 +120,7 @@ export default function UsersPage() {
     perm_reps_award: false,
     perm_reps_settings: false,
   });
+  const [inviteRolePreset, setInviteRolePreset] = useState<"full" | "scanner" | "custom">("full");
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
 
@@ -189,6 +192,7 @@ export default function UsersPage() {
       }
 
       setInviteOpen(false);
+      setInviteRolePreset("full");
       setInviteForm({
         email: "",
         first_name: "",
@@ -509,6 +513,79 @@ export default function UsersPage() {
 
             <Separator />
 
+            {/* Role Preset Selector */}
+            <div className="space-y-3">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Role</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { key: "full" as const, label: "Full Access", icon: Shield, description: "All permissions" },
+                  { key: "scanner" as const, label: "Scanner Only", icon: Scan, description: "Door staff" },
+                  { key: "custom" as const, label: "Custom", icon: Settings, description: "Pick & choose" },
+                ]).map((preset) => {
+                  const PresetIcon = preset.icon;
+                  const isSelected = inviteRolePreset === preset.key;
+                  return (
+                    <button
+                      key={preset.key}
+                      type="button"
+                      onClick={() => {
+                        setInviteRolePreset(preset.key);
+                        if (preset.key === "full") {
+                          setInviteForm((f) => ({
+                            ...f,
+                            perm_events: true,
+                            perm_orders: true,
+                            perm_marketing: true,
+                            perm_finance: true,
+                            perm_reps: true,
+                            perm_reps_manage: true,
+                            perm_reps_content: true,
+                            perm_reps_award: true,
+                            perm_reps_settings: true,
+                          }));
+                        } else if (preset.key === "scanner") {
+                          setInviteForm((f) => ({
+                            ...f,
+                            perm_events: false,
+                            perm_orders: true,
+                            perm_marketing: false,
+                            perm_finance: false,
+                            perm_reps: false,
+                            perm_reps_manage: false,
+                            perm_reps_content: false,
+                            perm_reps_award: false,
+                            perm_reps_settings: false,
+                          }));
+                        }
+                      }}
+                      className={`relative flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-center transition-all duration-200 ${
+                        isSelected
+                          ? "border-primary bg-primary/8 text-foreground"
+                          : "border-border bg-background/50 text-muted-foreground hover:border-border/80 hover:text-foreground"
+                      }`}
+                    >
+                      {isSelected && (
+                        <CheckCircle2 size={12} className="absolute right-1.5 top-1.5 text-primary" />
+                      )}
+                      <PresetIcon size={16} className={isSelected ? "text-primary" : "text-muted-foreground/60"} />
+                      <span className="text-[12px] font-medium leading-tight">{preset.label}</span>
+                      <span className="text-[10px] text-muted-foreground leading-tight">{preset.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {inviteRolePreset === "scanner" && (
+                <div className="rounded-lg border border-primary/15 bg-primary/[0.04] px-3 py-2.5">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Scanner staff will be redirected straight to the scanner app when they sign in. They won&apos;t see the admin dashboard.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Individual permissions — only shown for Custom preset */}
+            {inviteRolePreset === "custom" && (
             <div className="space-y-3">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Permissions</Label>
               {PERMISSION_CONFIG.map((perm) => {
@@ -581,6 +658,7 @@ export default function UsersPage() {
                 );
               })}
             </div>
+            )}
 
             {inviteError && (
               <p className="text-sm text-destructive">{inviteError}</p>

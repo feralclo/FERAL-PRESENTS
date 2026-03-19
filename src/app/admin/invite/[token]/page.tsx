@@ -145,8 +145,13 @@ function InviteForm() {
 
       setState("success");
 
+      // Scanner-only staff go straight to scanner, not admin dashboard
+      const isScannerOnly = inviteData?.member?.perm_orders &&
+        !inviteData?.member?.perm_events &&
+        !inviteData?.member?.perm_marketing &&
+        !inviteData?.member?.perm_finance;
       setTimeout(() => {
-        router.replace("/admin/");
+        window.location.href = isScannerOnly ? "/scanner" : "/admin/";
       }, 2000);
     } catch {
       setSubmitError("Something went wrong. Please try again.");
@@ -165,10 +170,14 @@ function InviteForm() {
       return;
     }
 
+    const isScannerOnly = inviteData?.member?.perm_orders &&
+      !inviteData?.member?.perm_events &&
+      !inviteData?.member?.perm_marketing &&
+      !inviteData?.member?.perm_finance;
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback/?next=/admin/`,
+        redirectTo: `${window.location.origin}/auth/callback/?next=${isScannerOnly ? '/scanner' : '/admin/'}`,
       },
     });
 
@@ -235,7 +244,12 @@ function InviteForm() {
       )}
 
       {/* Success */}
-      {state === "success" && (
+      {state === "success" && (() => {
+        const isScannerOnly = inviteData?.member?.perm_orders &&
+          !inviteData?.member?.perm_events &&
+          !inviteData?.member?.perm_marketing &&
+          !inviteData?.member?.perm_finance;
+        return (
         <div className="relative w-full max-w-[420px] px-5 text-center">
           <div
             className="transition-all duration-700 ease-out"
@@ -250,7 +264,7 @@ function InviteForm() {
               Welcome to {orgName}!
             </h1>
             <p className="text-sm text-muted-foreground">
-              You&apos;re all set, {firstName}. Taking you to your dashboard...
+              You&apos;re all set, {firstName}. {isScannerOnly ? "Taking you to the scanner..." : "Taking you to your dashboard..."}
             </p>
             <div className="mt-8">
               <div className="mx-auto h-1 w-32 overflow-hidden rounded-full bg-border">
@@ -270,7 +284,8 @@ function InviteForm() {
             }
           `}</style>
         </div>
-      )}
+        );
+      })()}
 
       {/* Valid — the main invite form */}
       {state === "valid" && (

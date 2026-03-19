@@ -118,6 +118,8 @@ export function useDashboardRealtime(): DashboardState {
   const purchaseSessions = useRef<Map<string, number>>(new Map());
   const checkoutSessions = useRef<Map<string, number>>(new Map());
   const feedIdCounter = useRef(0);
+  // Timestamp of last poll — realtime events older than this are already counted
+  const lastPollAt = useRef<string>(new Date().toISOString());
   // Slug → display name map (populated from dashboard API, used for realtime events)
   const eventSlugMap = useRef<Record<string, string>>({});
   // Sale streak tracking
@@ -221,6 +223,8 @@ export function useDashboardRealtime(): DashboardState {
       avgOrderValue: yOrderCount > 0 ? yRevenue / yOrderCount : 0, conversionRate: yConvRate,
     });
     setFunnel(results.funnelData);
+    // Mark poll time — realtime events before this are already in the counts
+    lastPollAt.current = new Date().toISOString();
 
     const now = Date.now();
     const uniqueSessions = new Set<string>(results.recentSessions.map((r) => r.session_id));
@@ -418,6 +422,7 @@ export function useDashboardRealtime(): DashboardState {
           const eventType = row.event_type as string;
           const sessionId = row.session_id as string;
           const eventName = row.event_name as string | undefined;
+          const rowTimestamp = row.timestamp as string | undefined;
           const now = Date.now();
 
           // Update visitor map
@@ -425,9 +430,11 @@ export function useDashboardRealtime(): DashboardState {
             visitorMap.current.set(sessionId, now);
           }
 
-          // Update funnel (checkout_start counts toward checkout stage)
+          // Update funnel — only for events AFTER the last poll to avoid double-counting.
+          // The poll sets absolute counts; realtime increments only for truly new events.
+          const isNewEvent = !rowTimestamp || rowTimestamp > lastPollAt.current;
           const funnelKey = eventType === "checkout_start" ? "checkout" : eventType;
-          if (funnelKey in { landing: 1, tickets: 1, add_to_cart: 1, checkout: 1, purchase: 1 }) {
+          if (isNewEvent && funnelKey in { landing: 1, tickets: 1, add_to_cart: 1, checkout: 1, purchase: 1 }) {
             setFunnel((prev) => ({
               ...prev,
               [funnelKey]: prev[funnelKey as keyof FunnelStats] + 1,

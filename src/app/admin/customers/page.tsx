@@ -44,13 +44,27 @@ function formatDate(d: string) {
   });
 }
 
-function getCustomerTier(totalSpent: number, totalOrders: number): {
+/**
+ * Superfan spend threshold adjusted for currency.
+ * total_spent is in major currency units — ¥200 ≈ £1, so JPY/KRW etc. need
+ * a much higher numeric threshold to represent roughly the same real value.
+ */
+function getSuperfanSpendThreshold(currency: string): number {
+  switch (currency.toUpperCase()) {
+    case "JPY": return 30_000;  // ~£150
+    case "KRW": return 300_000; // ~£175
+    case "VND": return 6_000_000;
+    default: return 200;        // GBP/EUR/USD/AUD etc.
+  }
+}
+
+function getCustomerTier(totalSpent: number, totalOrders: number, currency: string = "GBP"): {
   label: string;
   variant: "warning" | "success" | "secondary" | "info";
   color: string;
   icon: typeof Crown;
 } {
-  if (totalSpent >= 200 || totalOrders >= 5) {
+  if (totalSpent >= getSuperfanSpendThreshold(currency) || totalOrders >= 5) {
     return { label: "Superfan", variant: "warning", color: "#fbbf24", icon: Crown };
   }
   if (totalOrders > 1) {
@@ -285,7 +299,8 @@ export default function CustomersPage() {
                 {customers.map((cust) => {
                   const { label, variant, color, icon: TierIcon } = getCustomerTier(
                     Number(cust.total_spent),
-                    cust.total_orders
+                    cust.total_orders,
+                    orgCurrency,
                   );
                   const hasName = cust.first_name || cust.last_name;
                   const displayName = hasName

@@ -148,42 +148,17 @@ const SEGMENT_CONFIG: Record<CustomerSegment, {
 };
 
 /* ── Journey tier definitions ── */
-const JOURNEY_TIERS: {
-  key: CustomerSegment;
-  label: string;
-  icon: typeof Crown;
-  unlockRequirement: string;
-  xpLabel: string;
-}[] = [
-  {
-    key: "discoverer",
-    label: "Discoverer",
-    icon: Target,
-    unlockRequirement: "Enter your email at checkout",
-    xpLabel: "Entry point",
-  },
-  {
-    key: "new_fan",
-    label: "New Fan",
-    icon: Sparkles,
-    unlockRequirement: "Complete your first purchase",
-    xpLabel: "1 order",
-  },
-  {
-    key: "fan",
-    label: "Fan",
-    icon: Music,
-    unlockRequirement: "Place 2+ orders",
-    xpLabel: "2+ orders",
-  },
-  {
-    key: "superfan",
-    label: "Superfan",
-    icon: Crown,
-    unlockRequirement: "Spend £200+ or place 5+ orders",
-    xpLabel: "£200+ or 5+ orders",
-  },
-];
+function getJourneyTiers(currency: string) {
+  const threshold = getSuperfanSpendThreshold(currency);
+  const sym = currency.toUpperCase() === "GBP" ? "£" : currency.toUpperCase() === "EUR" ? "€" : currency.toUpperCase() === "USD" ? "$" : currency.toUpperCase() === "JPY" ? "¥" : currency.toUpperCase() + " ";
+  const spendLabel = `${sym}${threshold.toLocaleString()}+`;
+  return [
+    { key: "discoverer" as const, label: "Discoverer", icon: Target, unlockRequirement: "Enter your email at checkout", xpLabel: "Entry point" },
+    { key: "new_fan" as const, label: "New Fan", icon: Sparkles, unlockRequirement: "Complete your first purchase", xpLabel: "1 order" },
+    { key: "fan" as const, label: "Fan", icon: Music, unlockRequirement: "Place 2+ orders", xpLabel: "2+ orders" },
+    { key: "superfan" as const, label: "Superfan", icon: Crown, unlockRequirement: `Spend ${spendLabel} or place 5+ orders`, xpLabel: `${spendLabel} or 5+ orders` },
+  ];
+}
 
 /* ── Helpers ── */
 function formatDate(d: string) {
@@ -229,8 +204,22 @@ function getInitials(first?: string, last?: string, nickname?: string): string {
   return "?";
 }
 
-function getSegment(totalSpent: number, totalOrders: number): CustomerSegment {
-  if (totalSpent >= 200 || totalOrders >= 5) return "superfan";
+/**
+ * Superfan spend threshold adjusted for currency.
+ * total_spent is in major currency units — ¥200 ≈ £1, so JPY/KRW etc. need
+ * a much higher numeric threshold to represent roughly the same real value.
+ */
+function getSuperfanSpendThreshold(currency: string): number {
+  switch (currency.toUpperCase()) {
+    case "JPY": return 30_000;
+    case "KRW": return 300_000;
+    case "VND": return 6_000_000;
+    default: return 200;
+  }
+}
+
+function getSegment(totalSpent: number, totalOrders: number, currency: string = "GBP"): CustomerSegment {
+  if (totalSpent >= getSuperfanSpendThreshold(currency) || totalOrders >= 5) return "superfan";
   if (totalOrders > 1) return "fan";
   if (totalOrders === 0) return "discoverer";
   return "new_fan";
@@ -386,7 +375,8 @@ function buildCustomerTimeline(
 function getTierProgress(
   tierKey: CustomerSegment,
   totalOrders: number,
-  totalSpent: number
+  totalSpent: number,
+  superfanThreshold: number = 200,
 ): { unlocked: boolean; progressItems: { label: string; current: number; target: number; unit: string }[] } {
   switch (tierKey) {
     case "discoverer":
@@ -406,13 +396,14 @@ function getTierProgress(
         ],
       };
     case "superfan": {
-      const spendProgress = Math.min(totalSpent, 200);
+      const threshold = superfanThreshold;
+      const spendProgress = Math.min(totalSpent, threshold);
       const orderProgress = Math.min(totalOrders, 5);
-      const unlocked = totalSpent >= 200 || totalOrders >= 5;
+      const unlocked = totalSpent >= threshold || totalOrders >= 5;
       return {
         unlocked,
         progressItems: [
-          { label: "Total spent", current: spendProgress, target: 200, unit: "currency" },
+          { label: "Total spent", current: spendProgress, target: threshold, unit: "currency" },
           { label: "Orders placed", current: orderProgress, target: 5, unit: "orders" },
         ],
       };
@@ -433,7 +424,7 @@ function TierCard({
   totalOrders,
   orgCurrency,
 }: {
-  tier: (typeof JOURNEY_TIERS)[number];
+  tier: { key: CustomerSegment; label: string; icon: typeof Crown; unlockRequirement: string; xpLabel: string };
   config: (typeof SEGMENT_CONFIG)[CustomerSegment];
   isUnlocked: boolean;
   isCurrent: boolean;
@@ -665,6 +656,8 @@ function GamifiedJourney({
   totalSpent: number;
   orgCurrency: string;
 }) {
+  const journeyTiers = getJourneyTiers(orgCurrency);
+  const superfanThreshold = getSuperfanSpendThreshold(orgCurrency);
   const tierOrder: CustomerSegment[] = ["discoverer", "new_fan", "fan", "superfan"];
   const currentIndex = tierOrder.indexOf(segment);
 
@@ -679,12 +672,12 @@ function GamifiedJourney({
       <CardContent className="p-5">
         <TooltipProvider delayDuration={0}>
           <div className="grid grid-cols-4 gap-3">
-            {JOURNEY_TIERS.map((tier, i) => {
+            {journeyTiers.map((tier, i) => {
               const config = SEGMENT_CONFIG[tier.key];
               const isUnlocked = i <= currentIndex;
               const isCurrent = tier.key === segment;
               const isNext = i === currentIndex + 1;
-              const progress = getTierProgress(tier.key, totalOrders, totalSpent);
+              const progress = getTierProgress(tier.key, totalOrders, totalSpent, superfanThreshold);
 
               return (
                 <TierCard
@@ -705,8 +698,8 @@ function GamifiedJourney({
 
         {/* Connecting progress line between tiers */}
         <div className="mt-4 flex items-center gap-1 px-8">
-          {JOURNEY_TIERS.map((tier, i) => {
-            if (i === JOURNEY_TIERS.length - 1) return null;
+          {journeyTiers.map((tier, i) => {
+            if (i === journeyTiers.length - 1) return null;
             const isComplete = i < currentIndex;
             const isActive = i === currentIndex;
             const config = SEGMENT_CONFIG[tier.key];
@@ -1401,7 +1394,8 @@ export default function CustomerProfilePage() {
     : 0;
 
   // Segment
-  const segment = getSegment(totalSpent, customer.total_orders);
+  const superfanThreshold = getSuperfanSpendThreshold(orgCurrency);
+  const segment = getSegment(totalSpent, customer.total_orders, orgCurrency);
   const segmentConfig = SEGMENT_CONFIG[segment];
   const SegmentIcon = segmentConfig.icon;
 

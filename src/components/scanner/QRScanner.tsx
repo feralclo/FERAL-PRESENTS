@@ -166,7 +166,7 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
 
   if (error) {
     return (
-      <div className="scanner-viewfinder aspect-square flex flex-col items-center justify-center gap-4 bg-card border border-border/60 rounded-2xl p-8">
+      <div className="scanner-viewfinder aspect-[4/3] flex flex-col items-center justify-center gap-4 bg-card border border-border/60 rounded-2xl p-8">
         <CameraOff size={48} className="text-muted-foreground/30" />
         <p className="text-sm text-muted-foreground text-center">{error}</p>
         <button
@@ -186,7 +186,7 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
 
   if (!useNative) {
     return (
-      <div className="scanner-viewfinder aspect-square rounded-2xl overflow-hidden bg-black relative">
+      <div className="scanner-viewfinder aspect-[4/3] rounded-2xl overflow-hidden bg-black relative">
         <div id="scanner-fallback-region" className="h-full w-full" />
         <div className="scanner-corners" />
         <div className="scanner-corners-bottom" />
@@ -196,7 +196,7 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
   }
 
   return (
-    <div className="scanner-viewfinder aspect-square rounded-2xl overflow-hidden bg-black relative">
+    <div className="scanner-viewfinder aspect-[4/3] rounded-2xl overflow-hidden bg-black relative">
       <video
         ref={videoRef}
         className="h-full w-full object-cover"

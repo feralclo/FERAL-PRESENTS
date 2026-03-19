@@ -75,21 +75,33 @@ export default function ScannerEventPage() {
   }, [eventId]);
 
   useEffect(() => {
+    // Fetch stats and event name in parallel
     fetchStats();
+    // Try to get event name from stats endpoint first (fast, single event)
+    // Falls back to localStorage cache from event picker
+    try {
+      const cached = sessionStorage.getItem(`scanner_event_${eventId}`);
+      if (cached) setEventName(cached);
+    } catch {}
     (async () => {
       try {
-        const res = await fetch("/api/scanner/events");
+        const res = await fetch(`/api/scanner/events/${eventId}/stats`);
         if (res.ok) {
           const json = await res.json();
-          const event = json.events?.find((e: { id: string }) => e.id === eventId);
-          if (event) setEventName(event.name);
+          if (json.event_name) {
+            setEventName(json.event_name);
+            try { sessionStorage.setItem(`scanner_event_${eventId}`, json.event_name); } catch {}
+          }
         }
       } catch {}
     })();
   }, [eventId, fetchStats]);
 
+  // Poll stats — only when page is visible (saves battery on mobile)
   useEffect(() => {
-    const interval = setInterval(fetchStats, 30000);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchStats();
+    }, 30000);
     return () => clearInterval(interval);
   }, [fetchStats]);
 

@@ -148,7 +148,11 @@ export default function ScannerHomePage() {
               key={event.id}
               event={event}
               isToday={isToday(event.date_start)}
-              onClick={() => router.push(`/scanner/${event.id}`)}
+              onClick={() => {
+                // Cache event name for instant display on scanner page
+                try { sessionStorage.setItem(`scanner_event_${event.id}`, event.name); } catch {}
+                router.push(`/scanner/${event.id}`);
+              }}
             />
           ))}
         </div>

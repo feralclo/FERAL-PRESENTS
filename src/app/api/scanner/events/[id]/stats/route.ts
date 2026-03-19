@@ -27,6 +27,14 @@ export async function GET(
       );
     }
 
+    // Get event name
+    const { data: event } = await supabase
+      .from(TABLES.EVENTS)
+      .select("name")
+      .eq("id", eventId)
+      .eq("org_id", orgId)
+      .single();
+
     // Total tickets + scanned count
     const { data: tickets } = await supabase
       .from(TABLES.TICKETS)
@@ -54,6 +62,7 @@ export async function GET(
     const guest_list_checked_in = guests.filter((g) => g.checked_in).length;
 
     return NextResponse.json({
+      event_name: event?.name || null,
       stats: {
         total_tickets,
         scanned,

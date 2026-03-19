@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import "@/styles/tailwind.css";
 import "@/styles/scanner.css";
 import { useScannerPWA } from "@/hooks/useScannerPWA";
@@ -15,33 +15,9 @@ function isPublic(pathname: string) {
 
 export default function ScannerLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const isPublicPage = isPublic(pathname);
-  const [authChecked, setAuthChecked] = useState(isPublicPage);
   const { shouldShowInstall, platform, iosBrowser, promptInstall, dismissInstall, isStandalone } = useScannerPWA();
   const [showInstallModal, setShowInstallModal] = useState(false);
-
-  // Check auth for protected pages
-  useEffect(() => {
-    if (isPublicPage) {
-      setAuthChecked(true);
-      return;
-    }
-
-    (async () => {
-      try {
-        // Quick auth check via the scanner events endpoint
-        const res = await fetch("/api/scanner/events");
-        if (res.status === 401 || res.status === 403) {
-          router.replace(`/scanner/login?redirect=${encodeURIComponent(pathname)}`);
-          return;
-        }
-        setAuthChecked(true);
-      } catch {
-        router.replace("/scanner/login");
-      }
-    })();
-  }, [isPublicPage, pathname, router]);
 
   // Add manifest link to head
   useEffect(() => {
@@ -82,17 +58,6 @@ export default function ScannerLayout({ children }: { children: ReactNode }) {
     const timer = setTimeout(() => setShowInstallModal(true), 3000);
     return () => clearTimeout(timer);
   }, [shouldShowInstall, isStandalone, isPublicPage]);
-
-  // Loading state
-  if (!authChecked) {
-    return (
-      <div data-admin data-scanner className="min-h-[100dvh] bg-background text-foreground">
-        <div className="flex items-center justify-center min-h-[100dvh]">
-          <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div data-admin data-scanner className="min-h-[100dvh] bg-background text-foreground">

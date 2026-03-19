@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { DEFAULT_PLATFORM_FEE_PERCENT, MIN_PLATFORM_FEE } from "@/lib/stripe/config";
 import { fmtMoney } from "@/lib/format";
 import {
@@ -54,9 +56,37 @@ interface AccountDetails {
 export { StripeConnectPage as ConnectPage };
 
 export default function StripeConnectPage() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+
+  // Platform owner guard — tenants must not see this page
+  useEffect(() => {
+    (async () => {
+      try {
+        const supabase = getSupabaseClient();
+        if (!supabase) { router.replace("/admin/"); return; }
+        const { data } = await supabase.auth.getUser();
+        if (data.user?.app_metadata?.is_platform_owner === true) {
+          setAuthorized(true);
+        } else {
+          router.replace("/admin/");
+        }
+      } catch {
+        router.replace("/admin/");
+      }
+    })();
+  }, [router]);
+
+  if (!authorized) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+      </div>
+    );
+  }
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 

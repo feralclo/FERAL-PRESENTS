@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { saveSettings } from "@/lib/settings";
 import { vatKey } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { DEFAULT_VAT_SETTINGS, validateVatNumber } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
 import {
@@ -62,6 +63,15 @@ export default function FinancePage() {
    ================================================================ */
 
 function PaymentsTab() {
+  const [isPlatformOwner, setIsPlatformOwner] = useState(false);
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.app_metadata?.is_platform_owner === true) setIsPlatformOwner(true);
+    });
+  }, []);
+
   const [status, setStatus] = useState<{
     connected: boolean;
     charges_enabled: boolean;
@@ -174,16 +184,18 @@ function PaymentsTab() {
             </div>
             <ArrowRight size={14} className="text-muted-foreground" />
           </Link>
-          <Link
-            href="/admin/connect/"
-            className="flex items-center justify-between rounded-md border border-border/50 px-4 py-3 text-sm transition-colors hover:bg-muted/30"
-          >
-            <div className="flex items-center gap-3">
-              <Receipt size={16} className="text-muted-foreground" />
-              <span>Stripe Connect</span>
-            </div>
-            <ArrowRight size={14} className="text-muted-foreground" />
-          </Link>
+          {isPlatformOwner && (
+            <Link
+              href="/admin/connect/"
+              className="flex items-center justify-between rounded-md border border-border/50 px-4 py-3 text-sm transition-colors hover:bg-muted/30"
+            >
+              <div className="flex items-center gap-3">
+                <Receipt size={16} className="text-muted-foreground" />
+                <span>Stripe Connect</span>
+              </div>
+              <ArrowRight size={14} className="text-muted-foreground" />
+            </Link>
+          )}
         </CardContent>
       </Card>
     </div>

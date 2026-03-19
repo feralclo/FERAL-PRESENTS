@@ -22,23 +22,27 @@ export async function GET(request: NextRequest) {
   const oauthError = searchParams.get("error");
   const oauthErrorDesc = searchParams.get("error_description");
 
+  // Determine error redirect based on where the user came from
+  const isScanner = next.startsWith("/scanner");
+  const errorLoginPath = isScanner ? "/scanner/login/" : "/admin/login/";
+
   // Handle OAuth denial or error from provider
   if (oauthError) {
     const msg = oauthErrorDesc || oauthError;
     return NextResponse.redirect(
-      `${origin}/admin/login/?error=${encodeURIComponent(msg)}`
+      `${origin}${errorLoginPath}?error=${encodeURIComponent(msg)}`
     );
   }
 
   if (!code) {
     return NextResponse.redirect(
-      `${origin}/admin/login/?error=${encodeURIComponent("No authorization code received")}`
+      `${origin}${errorLoginPath}?error=${encodeURIComponent("No authorization code received")}`
     );
   }
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return NextResponse.redirect(
-      `${origin}/admin/login/?error=${encodeURIComponent("Authentication service unavailable")}`
+      `${origin}${errorLoginPath}?error=${encodeURIComponent("Authentication service unavailable")}`
     );
   }
 
@@ -69,7 +73,7 @@ export async function GET(request: NextRequest) {
   if (exchangeError) {
     console.error("[auth/callback] Code exchange failed:", exchangeError.message);
     return NextResponse.redirect(
-      `${origin}/admin/login/?error=${encodeURIComponent("Sign in failed. Please try again.")}`
+      `${origin}${errorLoginPath}?error=${encodeURIComponent("Sign in failed. Please try again.")}`
     );
   }
 
@@ -80,7 +84,7 @@ export async function GET(request: NextRequest) {
 
   if (!user?.email) {
     return NextResponse.redirect(
-      `${origin}/admin/login/?error=${encodeURIComponent("Could not retrieve your account details.")}`
+      `${origin}${errorLoginPath}?error=${encodeURIComponent("Could not retrieve your account details.")}`
     );
   }
 
@@ -90,7 +94,7 @@ export async function GET(request: NextRequest) {
     console.error("[auth/callback] SUPABASE_SERVICE_ROLE_KEY not configured");
     await supabase.auth.signOut();
     return NextResponse.redirect(
-      `${origin}/admin/login/?error=${encodeURIComponent("Authentication service misconfigured.")}`
+      `${origin}${errorLoginPath}?error=${encodeURIComponent("Authentication service misconfigured.")}`
     );
   }
 
@@ -146,7 +150,7 @@ export async function GET(request: NextRequest) {
     await supabase.auth.signOut();
     // Clear session cookies on the redirect response
     const errorResponse = NextResponse.redirect(
-      `${origin}/admin/login/?error=${encodeURIComponent("You haven't been invited to any organization. Ask your team admin to send you an invite.")}`
+      `${origin}${errorLoginPath}?error=${encodeURIComponent("You haven't been invited to any organization. Ask your team admin to send you an invite.")}`
     );
     // Delete auth cookies
     request.cookies.getAll().forEach((cookie) => {

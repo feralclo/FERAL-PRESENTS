@@ -15,6 +15,13 @@ const SECURITY_HEADERS: Record<string, string> = {
     "camera=(), microphone=(), geolocation=(), payment=*, interest-cohort=()",
 };
 
+/** Scanner routes need camera access for QR scanning */
+const SCANNER_SECURITY_HEADERS: Record<string, string> = {
+  ...SECURITY_HEADERS,
+  "Permissions-Policy":
+    "camera=(self), microphone=(), geolocation=(), payment=*, interest-cohort=()",
+};
+
 /** Headers for editor preview pages (loaded in theme editor iframe). */
 const EDITOR_PREVIEW_HEADERS: Record<string, string> = {
   ...SECURITY_HEADERS,
@@ -148,6 +155,14 @@ function isProtectedAdminPage(pathname: string): boolean {
 }
 
 /**
+ * Scanner page routes that require admin authentication.
+ * Login page is excluded so staff can log in.
+ */
+function isProtectedScannerPage(pathname: string): boolean {
+  return pathname.startsWith("/scanner") && !pathname.startsWith("/scanner/login");
+}
+
+/**
  * Rep portal page routes that require rep authentication.
  * Public pages (login, join, invite) are excluded.
  */
@@ -199,6 +214,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/monitoring", // Sentry tunnel (bypasses ad blockers)
   "/api/merch-store/payment-intent",
   "/api/merch-store/confirm-order",
+  "/api/scanner/manifest", // PWA manifest (public, no auth)
 ];
 
 const PUBLIC_API_EXACT_GETS = [
@@ -283,7 +299,8 @@ function isRepUser(user: { app_metadata?: Record<string, unknown> }): boolean {
  */
 function applySecurityHeaders(response: NextResponse, request?: NextRequest): NextResponse {
   const isEditorPreview = request?.nextUrl.searchParams.get("editor") === "1";
-  const headers = isEditorPreview ? EDITOR_PREVIEW_HEADERS : SECURITY_HEADERS;
+  const isScanner = request?.nextUrl.pathname.startsWith("/scanner");
+  const headers = isEditorPreview ? EDITOR_PREVIEW_HEADERS : isScanner ? SCANNER_SECURITY_HEADERS : SECURITY_HEADERS;
   for (const [key, value] of Object.entries(headers)) {
     response.headers.set(key, value);
   }
@@ -367,6 +384,18 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set("redirect", pathname);
       const redirectResponse = NextResponse.redirect(loginUrl);
       return applySecurityHeaders(redirectResponse);
+    }
+  }
+
+  // ── Scanner pages ──
+  // Require authentication. Door staff are team members with perm_orders.
+  if (isProtectedScannerPage(pathname)) {
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/scanner/login";
+      loginUrl.searchParams.set("redirect", pathname);
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      return applySecurityHeaders(redirectResponse, request);
     }
   }
 
@@ -456,6 +485,7 @@ export const config = {
     "/api/:path*",
     "/auth/:path*",
     "/rep/:path*",
+    "/scanner/:path*",
     "/event/:path*",
     "/events/:path*",
     "/shop/:path*",

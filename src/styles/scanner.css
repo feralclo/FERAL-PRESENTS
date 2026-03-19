@@ -1,0 +1,125 @@
+/* Scanner PWA — minimal styles for camera-optimized QR scanning */
+
+[data-scanner] {
+  --scanner-success: #34D399;
+  --scanner-error: #F43F5E;
+  --scanner-warning: #FBBF24;
+}
+
+/* Viewfinder overlay */
+.scanner-viewfinder {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.scanner-viewfinder video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Scan region corners */
+.scanner-corners {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.scanner-corners::before,
+.scanner-corners::after {
+  content: "";
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-color: #8B5CF6;
+  border-style: solid;
+}
+
+.scanner-corners::before {
+  top: 0;
+  left: 0;
+  border-width: 3px 0 0 3px;
+  border-radius: 4px 0 0 0;
+}
+
+.scanner-corners::after {
+  top: 0;
+  right: 0;
+  border-width: 3px 3px 0 0;
+  border-radius: 0 4px 0 0;
+}
+
+.scanner-corners-bottom::before,
+.scanner-corners-bottom::after {
+  content: "";
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-color: #8B5CF6;
+  border-style: solid;
+}
+
+.scanner-corners-bottom::before {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 3px 3px;
+  border-radius: 0 0 0 4px;
+}
+
+.scanner-corners-bottom::after {
+  bottom: 0;
+  right: 0;
+  border-width: 0 3px 3px 0;
+  border-radius: 0 0 4px 0;
+}
+
+/* Scan line animation */
+.scanner-line {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #8B5CF6, transparent);
+  animation: scanLine 2s ease-in-out infinite;
+  opacity: 0.8;
+}
+
+@keyframes scanLine {
+  0%, 100% { top: 10%; }
+  50% { top: 90%; }
+}
+
+/* Result slide-up animation */
+.scanner-result-enter {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Flash effect on scan */
+.scanner-flash-success {
+  animation: flashSuccess 0.4s ease-out;
+}
+
+.scanner-flash-error {
+  animation: flashError 0.4s ease-out;
+}
+
+@keyframes flashSuccess {
+  0% { box-shadow: inset 0 0 0 4px rgba(52, 211, 153, 0.6); }
+  100% { box-shadow: inset 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+
+@keyframes flashError {
+  0% { box-shadow: inset 0 0 0 4px rgba(244, 63, 94, 0.6); }
+  100% { box-shadow: inset 0 0 0 0 rgba(244, 63, 94, 0); }
+}
+
+/* Stats bar progress fill */
+.scanner-progress-fill {
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}

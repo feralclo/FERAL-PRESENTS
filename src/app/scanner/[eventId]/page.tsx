@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, Volume2, VolumeX, Settings, MapPin, Scan, Package, ClipboardList } from "lucide-react";
 import { QRScanner } from "@/components/scanner/QRScanner";
 import { ScanResult, type ScanStatus } from "@/components/scanner/ScanResult";
@@ -42,7 +43,6 @@ interface Stats {
 
 export default function ScannerEventPage() {
   const { eventId } = useParams<{ eventId: string }>();
-  const router = useRouter();
 
   const [mode, setMode] = useState<ScanMode>("entry");
   const [result, setResult] = useState<ScanResultData | null>(null);
@@ -53,7 +53,7 @@ export default function ScannerEventPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [scanLocation, setScanLocation] = useState("");
   const [showLocationInput, setShowLocationInput] = useState(false);
-  const resultTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+  // No auto-dismiss — results stay on screen until staff taps to dismiss
 
   useEffect(() => {
     try {
@@ -253,7 +253,6 @@ export default function ScannerEventPage() {
     }
 
     setScanning(false);
-    if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
   }, [mode, scanning, scanLocation, eventId, playFeedback, fetchStats]);
 
   const addToHistory = (code: string, status: ScanStatus, message: string, ticket?: ScanResultData["ticket"]) => {
@@ -269,17 +268,8 @@ export default function ScannerEventPage() {
 
   const dismissResult = useCallback(() => {
     setResult(null);
-    if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
     (window as { __scannerClearLast?: () => void }).__scannerClearLast?.();
   }, []);
-
-  useEffect(() => {
-    if (!result) return;
-    if (result.status === "valid" || result.status === "merch_success") {
-      resultTimeoutRef.current = setTimeout(dismissResult, 2000);
-      return () => { if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current); };
-    }
-  }, [result, dismissResult]);
 
   const saveScanLocation = (loc: string) => {
     setScanLocation(loc);
@@ -308,13 +298,13 @@ export default function ScannerEventPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.push("/scanner")}
+          <Link
+            href="/scanner"
+            prefetch={true}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-card text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft size={16} />
-          </button>
+          </Link>
           <div className="min-w-0">
             <h1 className="text-sm font-semibold text-foreground truncate">{eventName || "Event"}</h1>
             {scanLocation && (

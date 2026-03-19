@@ -11,6 +11,9 @@ interface QRScannerProps {
 /**
  * QR Scanner component using BarcodeDetector API (native, fast) with
  * html5-qrcode as fallback for older browsers.
+ *
+ * Uses a ref for the onScan callback to avoid stale closures in the
+ * requestAnimationFrame loop — ensures mode switches take effect immediately.
  */
 export function QRScanner({ onScan, active }: QRScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -24,6 +27,12 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [useNative, setUseNative] = useState(true);
 
+  // Keep a ref to the latest onScan so the RAF loop always calls the current version
+  const onScanRef = useRef(onScan);
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
+
   // Debounce: ignore same code within 3 seconds
   const handleDetection = useCallback((code: string) => {
     const now = Date.now();
@@ -32,10 +41,10 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
     }
     lastScannedRef.current = code;
     lastScannedTimeRef.current = now;
-    onScan(code);
-  }, [onScan]);
+    onScanRef.current(code);
+  }, []);
 
-  // Try native BarcodeDetector first
+  // Start scanner when active
   useEffect(() => {
     if (!active) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,7 +156,7 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
     lastScannedTimeRef.current = 0;
   }, []);
 
-  // Expose clearLastScan on the component instance (used after result dismiss)
+  // Expose clearLastScan globally (used after result dismiss + mode switch)
   useEffect(() => {
     (window as { __scannerClearLast?: () => void }).__scannerClearLast = clearLastScan;
     return () => {

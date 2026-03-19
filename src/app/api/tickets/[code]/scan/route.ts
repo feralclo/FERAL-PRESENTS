@@ -37,7 +37,7 @@ export async function POST(
     const { data: ticket, error } = await supabase
       .from(TABLES.TICKETS)
       .select(
-        "*, ticket_type:ticket_types(name), event:events(name, slug, venue_name, date_start)"
+        "*, ticket_type:ticket_types(name), event:events(name, slug, venue_name, date_start), order:orders(order_number)"
       )
       .eq("ticket_code", code)
       .eq("org_id", orgId)
@@ -83,6 +83,7 @@ export async function POST(
             merch_size: ticket.merch_size,
             ticket_type: ticket.ticket_type,
             event: ticket.event,
+            order: ticket.order,
           },
         },
         { status: 400 }
@@ -104,6 +105,7 @@ export async function POST(
             holder_last_name: ticket.holder_last_name,
             ticket_type: ticket.ticket_type,
             event: ticket.event,
+            order: ticket.order,
           },
         },
         { status: 409 }
@@ -154,6 +156,7 @@ export async function POST(
         merch_collected: ticket.merch_collected || false,
         ticket_type: ticket.ticket_type,
         event: ticket.event,
+        order: ticket.order,
       },
     });
   } catch (err) {

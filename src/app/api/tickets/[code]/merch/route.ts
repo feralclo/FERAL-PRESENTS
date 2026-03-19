@@ -34,7 +34,7 @@ export async function POST(
     const { data: ticket, error } = await supabase
       .from(TABLES.TICKETS)
       .select(
-        "*, ticket_type:ticket_types(name), event:events(name, slug)"
+        "*, ticket_type:ticket_types(name), event:events(name, slug), order:orders(order_number)"
       )
       .eq("ticket_code", code)
       .eq("org_id", orgId)
@@ -113,6 +113,7 @@ export async function POST(
         holder_last_name: ticket.holder_last_name,
         ticket_type: ticket.ticket_type,
         event: ticket.event,
+        order: ticket.order,
       },
     });
   } catch (err) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, XCircle, AlertTriangle, Package, User, Clock, Ticket, X } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Package, User, Clock, Ticket, X, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ScanStatus = "valid" | "already_used" | "merch_only" | "invalid" | "wrong_event" | "no_merch" | "merch_collected" | "merch_success" | "error";
@@ -15,6 +15,7 @@ interface ScanResultProps {
     merch_size?: string;
     ticket_type?: { name?: string };
     event?: { name?: string };
+    order?: { order_number?: string };
   };
   scanned_at?: string;
   scanned_by?: string;
@@ -112,7 +113,17 @@ export function ScanResult({
               </div>
             )}
 
-            {/* Ticket code */}
+            {/* Order number — important for merch desk to match physical items */}
+            {ticket.order?.order_number && (
+              <div className="flex items-center gap-2">
+                <Hash size={15} className="text-muted-foreground shrink-0" />
+                <span className="font-mono text-sm font-semibold text-foreground tracking-wide">
+                  {ticket.order.order_number}
+                </span>
+              </div>
+            )}
+
+            {/* Ticket code — small, for reference */}
             {ticket.ticket_code && (
               <p className="font-mono text-[11px] text-muted-foreground/60 pt-1">
                 {ticket.ticket_code}

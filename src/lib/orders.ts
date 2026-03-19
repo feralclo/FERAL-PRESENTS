@@ -284,7 +284,7 @@ export async function createOrder(
   const MAX_RETRIES = 3;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const orderNumber = await generateOrderNumber(supabase, orgId);
+    const orderNumber = await generateOrderNumber(supabase, orgId, attempt);
 
     // Build metadata with VAT + discount details
     const orderMetadata: Record<string, unknown> = {};

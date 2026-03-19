@@ -536,9 +536,44 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
           const data = await res.json();
           if (res.ok && data.data) {
             handleOrderComplete(data.data);
+          } else {
+            // Payment succeeded but order creation failed — webhook will handle it.
+            // Show a "Processing" confirmation so the user isn't stuck on the spinner.
+            onComplete({
+              id: "",
+              org_id: orgId,
+              order_number: "Processing...",
+              event_id: event.id,
+              customer_id: "",
+              status: "completed",
+              subtotal: 0,
+              fees: 0,
+              total: 0,
+              currency: event.currency,
+              payment_method: "stripe",
+              payment_ref: piParam,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as Order);
           }
         } catch {
-          // Will show checkout form as fallback
+          // Network error — same fallback
+          onComplete({
+            id: "",
+            org_id: orgId,
+            order_number: "Processing...",
+            event_id: event.id,
+            customer_id: "",
+            status: "completed",
+            subtotal: 0,
+            fees: 0,
+            total: 0,
+            currency: event.currency,
+            payment_method: "stripe",
+            payment_ref: piParam,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          } as Order);
         }
       })();
     }

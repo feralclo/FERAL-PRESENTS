@@ -24,44 +24,41 @@ export function generateTicketCode(orgId: string = "ENTRY"): string {
  * Format: {PREFIX}-00001, {PREFIX}-00002, etc.
  * The prefix defaults to the org_id uppercased (e.g., "ACME", "ENTRY").
  *
- * Uses a count-based approach instead of parsing the last order number,
- * which avoids race conditions when concurrent orders are created.
- * If a collision occurs on the unique constraint, retries with the next number.
+ * Finds the highest existing number for this org's prefix and increments.
+ * The `attempt` offset handles retries after unique-constraint collisions
+ * (e.g. concurrent orders or race conditions).
  */
 export async function generateOrderNumber(
   supabase: { from: (table: string) => unknown },
-  orgId: string
+  orgId: string,
+  attempt: number = 0
 ): Promise<string> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any;
+  const prefix = orgId.toUpperCase();
 
-  // Get the count of existing orders to derive the next number
-  const { count } = await sb
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("org_id", orgId);
-
-  // Start from count + 1 (handles the common case)
-  const baseNum = (count || 0) + 1;
-
-  // Also check the highest existing order number in case of gaps
-  const { data } = await sb
+  // Find the highest existing order number matching this org's prefix.
+  // Sort by order_number DESC to get the highest numerically (not by created_at,
+  // which can return a different-prefix order like TEST-00003 that's newer).
+  const { data: rows } = await sb
     .from("orders")
     .select("order_number")
     .eq("org_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
+    .like("order_number", `${prefix}-%`)
+    .order("order_number", { ascending: false })
+    .limit(1);
 
-  let nextNum = baseNum;
-  if (data?.order_number) {
-    const match = data.order_number.match(/(\d+)$/);
+  let nextNum = 1;
+  const latest = rows?.[0]?.order_number;
+  if (latest) {
+    const match = latest.match(/(\d+)$/);
     if (match) {
-      const lastNum = parseInt(match[1], 10) + 1;
-      nextNum = Math.max(nextNum, lastNum);
+      nextNum = parseInt(match[1], 10) + 1;
     }
   }
 
-  const prefix = orgId.toUpperCase();
+  // Add attempt offset so retries don't collide on the same number
+  nextNum += attempt;
+
   return `${prefix}-${String(nextNum).padStart(5, "0")}`;
 }

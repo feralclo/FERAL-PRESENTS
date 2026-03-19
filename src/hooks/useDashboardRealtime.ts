@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import { tzMidnight } from "@/lib/timezone";
 import type { ActivityItem } from "@/components/admin/dashboard/ActivityFeed";
 import type { TopEventRow } from "@/components/admin/dashboard/TopEventsTable";
@@ -84,6 +85,7 @@ function minutesAgo(n: number): string {
 
 export function useDashboardRealtime(): DashboardState {
   const orgId = useOrgId();
+  const { currencySymbol, currency: orgCurrency } = useOrgCurrency();
   const [isLoading, setIsLoading] = useState(true);
   const [activeVisitors, setActiveVisitors] = useState(0);
   const [activeCarts, setActiveCarts] = useState(0);
@@ -621,14 +623,17 @@ export function useDashboardRealtime(): DashboardState {
       }
     }
 
-    // Revenue milestones
-    const revThresholds = [500, 1000, 2000, 5000, 10000];
+    // Revenue milestones — currency-aware thresholds
+    const isZeroDecimal = ["JPY", "KRW", "VND"].includes(orgCurrency.toUpperCase());
+    const revThresholds = isZeroDecimal
+      ? [50_000, 100_000, 200_000, 500_000, 1_000_000]
+      : [500, 1000, 2000, 5000, 10000];
     for (const t of revThresholds) {
       const key = `rev-${t}`;
       if (today.revenue >= t && !seenMilestones.current.has(key)) {
         seenMilestones.current.add(key);
         milestoneIdCounter.current++;
-        const label = t >= 1000 ? `£${t / 1000}k` : `£${t}`;
+        const label = t >= 1000 ? `${currencySymbol}${(t / 1000).toLocaleString()}k` : `${currencySymbol}${t.toLocaleString()}`;
         newMilestones.push({ type: "revenue", message: `${label} today!`, timestamp: new Date(), id: `ms-${milestoneIdCounter.current}` });
       }
     }
@@ -650,7 +655,7 @@ export function useDashboardRealtime(): DashboardState {
     if (newMilestones.length > 0) {
       setMilestones((prev) => [...newMilestones, ...prev].slice(0, 10));
     }
-  }, [saleStreak, today.revenue, topEvents, eventCapacity]);
+  }, [saleStreak, today.revenue, topEvents, eventCapacity, currencySymbol, orgCurrency]);
 
   // Auto-dismiss milestones after 30s
   useEffect(() => {

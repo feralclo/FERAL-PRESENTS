@@ -143,6 +143,7 @@ export default function UsersPage() {
     perm_reps_settings: false,
   });
   const [editSaving, setEditSaving] = useState(false);
+  const [editEventIds, setEditEventIds] = useState<string[]>([]);
 
   // Actions dropdown
   const [actionsOpen, setActionsOpen] = useState<string | null>(null);
@@ -264,8 +265,31 @@ export default function UsersPage() {
       perm_reps_award: member.perm_reps_award,
       perm_reps_settings: member.perm_reps_settings,
     });
+    setEditEventIds([]);
     setEditOpen(true);
     setActionsOpen(null);
+
+    // Load scanner event assignments for this member
+    (async () => {
+      try {
+        const res = await fetch("/api/scanner/assignments");
+        if (res.ok) {
+          const json = await res.json();
+          const assigned = json.assignments?.[member.id] || [];
+          setEditEventIds(assigned);
+        }
+      } catch {}
+      // Also load available events if not already loaded
+      if (availableEvents.length === 0) {
+        try {
+          const res = await fetch("/api/scanner/events");
+          if (res.ok) {
+            const json = await res.json();
+            setAvailableEvents(json.events?.map((e: { id: string; name: string; date_start: string }) => ({ id: e.id, name: e.name, date_start: e.date_start })) || []);
+          }
+        } catch {}
+      }
+    })();
   };
 
   const handleSaveEdit = async () => {
@@ -283,6 +307,17 @@ export default function UsersPage() {
         const { error } = await res.json();
         alert(error || "Failed to update");
         return;
+      }
+
+      // Save scanner event assignments
+      const isScannerOnly = editPerms.perm_orders &&
+        !editPerms.perm_events && !editPerms.perm_marketing && !editPerms.perm_finance;
+      if (isScannerOnly) {
+        fetch("/api/scanner/assignments", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: editMember.id, event_ids: editEventIds }),
+        }).catch(() => {});
       }
 
       setEditOpen(false);
@@ -831,6 +866,33 @@ export default function UsersPage() {
               );
             })}
           </div>
+
+          {/* Scanner event assignment — shown when scanner-only permissions */}
+          {editPerms.perm_orders && !editPerms.perm_events && !editPerms.perm_marketing && !editPerms.perm_finance && (
+            <div className="space-y-2 border-t border-border pt-3">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Scanner Events</Label>
+              <p className="text-[11px] text-muted-foreground">Select which events this person can scan. Leave empty for all events.</p>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {availableEvents.map((event) => (
+                  <label key={event.id} className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer hover:border-border transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={editEventIds.includes(event.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setEditEventIds((prev) => [...prev, event.id]);
+                        else setEditEventIds((prev) => prev.filter((id) => id !== event.id));
+                      }}
+                      className="rounded border-border"
+                    />
+                    <span className="text-sm text-foreground">{event.name}</span>
+                  </label>
+                ))}
+                {availableEvents.length === 0 && (
+                  <p className="text-xs text-muted-foreground/60 py-2">Loading events...</p>
+                )}
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditOpen(false)}>

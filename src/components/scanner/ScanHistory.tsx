@@ -22,6 +22,7 @@ const STATUS_ICONS: Record<string, { icon: typeof CheckCircle2; color: string }>
   merch_success: { icon: CheckCircle2, color: "text-success" },
   already_used: { icon: XCircle, color: "text-destructive" },
   invalid: { icon: XCircle, color: "text-destructive" },
+  wrong_event: { icon: AlertTriangle, color: "text-warning" },
   error: { icon: XCircle, color: "text-destructive" },
   merch_only: { icon: AlertTriangle, color: "text-warning" },
   no_merch: { icon: XCircle, color: "text-destructive" },

@@ -3,7 +3,7 @@
 import { CheckCircle2, XCircle, AlertTriangle, Package, User, Clock, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ScanStatus = "valid" | "already_used" | "merch_only" | "invalid" | "no_merch" | "merch_collected" | "merch_success" | "error";
+export type ScanStatus = "valid" | "already_used" | "merch_only" | "invalid" | "wrong_event" | "no_merch" | "merch_collected" | "merch_success" | "error";
 
 interface ScanResultProps {
   status: ScanStatus;
@@ -34,6 +34,7 @@ const STATUS_CONFIG: Record<ScanStatus, {
   merch_success: { icon: CheckCircle2, bg: "bg-success/10", border: "border-success/30", iconColor: "text-success", textColor: "text-success" },
   already_used: { icon: XCircle, bg: "bg-destructive/10", border: "border-destructive/30", iconColor: "text-destructive", textColor: "text-destructive" },
   invalid: { icon: XCircle, bg: "bg-destructive/10", border: "border-destructive/30", iconColor: "text-destructive", textColor: "text-destructive" },
+  wrong_event: { icon: AlertTriangle, bg: "bg-warning/10", border: "border-warning/30", iconColor: "text-warning", textColor: "text-warning" },
   error: { icon: XCircle, bg: "bg-destructive/10", border: "border-destructive/30", iconColor: "text-destructive", textColor: "text-destructive" },
   merch_only: { icon: AlertTriangle, bg: "bg-warning/10", border: "border-warning/30", iconColor: "text-warning", textColor: "text-warning" },
   no_merch: { icon: XCircle, bg: "bg-destructive/10", border: "border-destructive/30", iconColor: "text-destructive", textColor: "text-destructive" },

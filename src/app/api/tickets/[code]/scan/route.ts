@@ -19,9 +19,10 @@ export async function POST(
 
     const { code } = await params;
     const body = await request.json().catch(() => ({}));
-    const { scanned_by, scan_location } = body as {
+    const { scanned_by, scan_location, event_id } = body as {
       scanned_by?: string;
       scan_location?: string;
+      event_id?: string;
     };
 
     const supabase = await getSupabaseAdmin();
@@ -50,6 +51,18 @@ export async function POST(
           status: "invalid",
         },
         { status: 404 }
+      );
+    }
+
+    // Validate ticket belongs to the expected event (prevents cross-event scanning)
+    if (event_id && ticket.event_id !== event_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "This ticket is for a different event",
+          status: "wrong_event",
+        },
+        { status: 400 }
       );
     }
 

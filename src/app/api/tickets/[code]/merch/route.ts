@@ -20,7 +20,7 @@ export async function POST(
 
     const { code } = await params;
     const body = await request.json().catch(() => ({}));
-    const { collected_by } = body as { collected_by?: string };
+    const { collected_by, event_id } = body as { collected_by?: string; event_id?: string };
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -44,6 +44,14 @@ export async function POST(
       return NextResponse.json(
         { success: false, error: "Ticket not found" },
         { status: 404 }
+      );
+    }
+
+    // Validate ticket belongs to the expected event (prevents cross-event scanning)
+    if (event_id && ticket.event_id !== event_id) {
+      return NextResponse.json(
+        { success: false, error: "This ticket is for a different event" },
+        { status: 400 }
       );
     }
 

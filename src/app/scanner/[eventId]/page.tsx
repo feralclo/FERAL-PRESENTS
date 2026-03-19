@@ -153,13 +153,14 @@ export default function ScannerEventPage() {
     }
 
     try {
-      // Step 1: Try entry scan
+      // Step 1: Try entry scan (event_id prevents cross-event scanning)
       const scanRes = await fetch(`/api/tickets/${encodeURIComponent(ticketCode)}/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scanned_by: "scanner",
           scan_location: scanLocation || undefined,
+          event_id: eventId,
         }),
       });
       const scanJson = await scanRes.json();
@@ -192,7 +193,7 @@ export default function ScannerEventPage() {
           const merchRes = await fetch(`/api/tickets/${encodeURIComponent(ticketCode)}/merch`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ collected_by: "scanner" }),
+            body: JSON.stringify({ collected_by: "scanner", event_id: eventId }),
           });
           const merchJson = await merchRes.json();
 
@@ -246,7 +247,7 @@ export default function ScannerEventPage() {
         const merchRes = await fetch(`/api/tickets/${encodeURIComponent(ticketCode)}/merch`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ collected_by: "scanner" }),
+          body: JSON.stringify({ collected_by: "scanner", event_id: eventId }),
         });
         const merchJson = await merchRes.json();
 
@@ -278,6 +279,14 @@ export default function ScannerEventPage() {
           addToHistory(ticketCode, "merch_only", "Merch Pass — Error", scanJson.ticket);
         }
 
+      } else if (scanJson.status === "wrong_event") {
+        // Ticket belongs to a different event
+        setResult({
+          status: "wrong_event",
+          message: "Wrong Event — This ticket is for a different event",
+        });
+        playFeedback(false);
+        addToHistory(ticketCode, "wrong_event", "Wrong Event");
       } else {
         // Invalid ticket
         setResult({

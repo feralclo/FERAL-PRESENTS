@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Volume2, VolumeX, Settings, MapPin, Scan, ClipboardList } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, Settings, MapPin, Scan, Package, ClipboardList } from "lucide-react";
 import { QRScanner } from "@/components/scanner/QRScanner";
 import { ScanResult, type ScanStatus } from "@/components/scanner/ScanResult";
 import { ManualEntry } from "@/components/scanner/ManualEntry";
@@ -11,7 +11,7 @@ import { ScanHistory, type ScanHistoryEntry } from "@/components/scanner/ScanHis
 import { GuestListSearch } from "@/components/scanner/GuestListSearch";
 import { cn } from "@/lib/utils";
 
-type ViewMode = "scan" | "guest-list";
+type ScanMode = "entry" | "merch" | "guest-list";
 
 interface ScanResultData {
   status: ScanStatus;
@@ -44,7 +44,7 @@ export default function ScannerEventPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const router = useRouter();
 
-  const [viewMode, setViewMode] = useState<ViewMode>("scan");
+  const [mode, setMode] = useState<ScanMode>("entry");
   const [result, setResult] = useState<ScanResultData | null>(null);
   const [scanning, setScanning] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -55,7 +55,6 @@ export default function ScannerEventPage() {
   const [showLocationInput, setShowLocationInput] = useState(false);
   const resultTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  // Load preferences from localStorage
   useEffect(() => {
     try {
       const loc = localStorage.getItem("scanner_location");
@@ -65,7 +64,6 @@ export default function ScannerEventPage() {
     } catch {}
   }, []);
 
-  // Fetch event info + stats
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch(`/api/scanner/events/${eventId}/stats`);
@@ -73,7 +71,7 @@ export default function ScannerEventPage() {
         const json = await res.json();
         setStats(json.stats);
       }
-    } catch { /* silent */ }
+    } catch {}
   }, [eventId]);
 
   useEffect(() => {
@@ -90,13 +88,11 @@ export default function ScannerEventPage() {
     })();
   }, [eventId, fetchStats]);
 
-  // Poll stats every 30s
   useEffect(() => {
     const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
   }, [fetchStats]);
 
-  // Play sound effect
   const playFeedback = useCallback((success: boolean) => {
     if (navigator.vibrate) {
       navigator.vibrate(success ? [200] : [100, 50, 100]);
@@ -123,178 +119,130 @@ export default function ScannerEventPage() {
         oscillator.start(ctx.currentTime);
         oscillator.stop(ctx.currentTime + 0.3);
       }
-    } catch { /* audio not available */ }
+    } catch {}
   }, [soundEnabled]);
 
   /**
-   * Unified scan handler — no mode switching needed:
+   * Mode-aware scan handler. Each mode has ONE job:
    *
-   * 1. Try entry scan → if valid, approve (show merch size as info, don't collect)
-   * 2. If already entered + has uncollected merch → auto-collect merch
-   * 3. If merch-only ticket → auto-collect merch
-   * 4. If fully done (entered + merch collected) → show "already scanned"
+   * ENTRY MODE (Door):
+   *   - Scan → approve entry. Shows merch size as info, never collects.
+   *   - Already scanned → "Already Scanned" (never auto-collects merch)
+   *   - Merch-only ticket → "Merch Pass Only — not an entry ticket"
    *
-   * Door flow: scan → "Entry Approved — Merch: L" (merch NOT collected yet)
-   * Merch desk flow: scan → "Merch Collected — Size L" (auto-collected)
-   * Friend's unscanned ticket at merch desk: scan → entry approved, scan again → merch collected
+   * MERCH MODE (Merch Desk):
+   *   - Scan → collect merch. Doesn't care about entry status.
+   *   - No merch → "No merch on this ticket"
+   *   - Already collected → "Already Collected"
+   *
+   * Same QR code can be scanned once in each mode.
    */
   const handleScan = useCallback(async (code: string) => {
     if (scanning) return;
     setScanning(true);
 
-    // Extract ticket code from URL if a full URL was scanned
     let ticketCode = code;
     try {
       const url = new URL(code);
       const ticketParam = url.searchParams.get("ticket");
       if (ticketParam) ticketCode = ticketParam;
-    } catch {
-      // Not a URL — use raw code
-    }
+    } catch {}
 
     try {
-      // Step 1: Try entry scan (event_id prevents cross-event scanning)
-      const scanRes = await fetch(`/api/tickets/${encodeURIComponent(ticketCode)}/scan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scanned_by: "scanner",
-          scan_location: scanLocation || undefined,
-          event_id: eventId,
-        }),
-      });
-      const scanJson = await scanRes.json();
-
-      if (scanRes.ok && scanJson.success) {
-        // Entry approved — show merch size as info but do NOT mark collected.
-        // Merch collection happens separately at the merch desk (second scan).
-        // This ensures the merch desk can distinguish "not yet handed over"
-        // from "already physically collected".
-        const hasMerch = !!scanJson.ticket?.merch_size;
-        setResult({
-          status: "valid",
-          message: hasMerch
-            ? `Entry Approved — Merch: ${scanJson.ticket.merch_size}`
-            : "Entry Approved",
-          ticket: scanJson.ticket,
+      if (mode === "entry") {
+        // ── ENTRY MODE: scan for door entry only ──
+        const res = await fetch(`/api/tickets/${encodeURIComponent(ticketCode)}/scan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scanned_by: "scanner",
+            scan_location: scanLocation || undefined,
+            event_id: eventId,
+          }),
         });
-        playFeedback(true);
-        addToHistory(ticketCode, "valid",
-          hasMerch ? `Entry — Merch: ${scanJson.ticket.merch_size}` : "Entry Approved",
-          scanJson.ticket);
+        const json = await res.json();
 
-      } else if (scanRes.status === 409) {
-        // Already scanned for entry — check if they have uncollected merch
-        const ticket = scanJson.ticket;
-        const hasMerch = !!ticket?.merch_size;
-
-        if (hasMerch) {
-          // Try to collect merch automatically
-          const merchRes = await fetch(`/api/tickets/${encodeURIComponent(ticketCode)}/merch`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ collected_by: "scanner", event_id: eventId }),
+        if (res.ok && json.success) {
+          const hasMerch = !!json.ticket?.merch_size;
+          setResult({
+            status: "valid",
+            message: hasMerch
+              ? `Entry Approved — Merch: ${json.ticket.merch_size}`
+              : "Entry Approved",
+            ticket: json.ticket,
           });
-          const merchJson = await merchRes.json();
-
-          if (merchRes.ok && merchJson.success) {
-            // Merch collected successfully
-            setResult({
-              status: "merch_success",
-              message: "Merch Collected!",
-              ticket: { ...ticket, merch_size: merchJson.merch_size },
-            });
-            playFeedback(true);
-            addToHistory(ticketCode, "merch_success", `Merch: ${merchJson.merch_size}`, ticket);
-          } else if (merchRes.status === 409) {
-            // Entry done, merch already collected — fully processed
-            setResult({
-              status: "already_used",
-              message: "Already Scanned & Merch Collected",
-              ticket,
-              scanned_at: scanJson.scanned_at,
-              scanned_by: scanJson.scanned_by,
-            });
-            playFeedback(false);
-            addToHistory(ticketCode, "already_used", "Already Scanned & Merch Collected", ticket);
-          } else {
-            // Merch collection failed for some reason — show entry-already-scanned
-            setResult({
-              status: "already_used",
-              message: "Already Scanned",
-              ticket,
-              scanned_at: scanJson.scanned_at,
-              scanned_by: scanJson.scanned_by,
-            });
-            playFeedback(false);
-            addToHistory(ticketCode, "already_used", "Already Scanned", ticket);
-          }
-        } else {
-          // No merch — just already scanned
+          playFeedback(true);
+          addToHistory(ticketCode, "valid",
+            hasMerch ? `Entry — Merch: ${json.ticket.merch_size}` : "Entry Approved",
+            json.ticket);
+        } else if (res.status === 409) {
           setResult({
             status: "already_used",
             message: "Already Scanned",
-            ticket,
-            scanned_at: scanJson.scanned_at,
-            scanned_by: scanJson.scanned_by,
+            ticket: json.ticket,
+            scanned_at: json.scanned_at,
+            scanned_by: json.scanned_by,
           });
           playFeedback(false);
-          addToHistory(ticketCode, "already_used", "Already Scanned", ticket);
+          addToHistory(ticketCode, "already_used", "Already Scanned", json.ticket);
+        } else if (json.status === "merch_only") {
+          setResult({
+            status: "merch_only",
+            message: "Merch Pass Only — Not an entry ticket",
+            ticket: json.ticket,
+          });
+          playFeedback(false);
+          addToHistory(ticketCode, "merch_only", "Merch Pass Only", json.ticket);
+        } else if (json.status === "wrong_event") {
+          setResult({ status: "wrong_event", message: "Wrong Event" });
+          playFeedback(false);
+          addToHistory(ticketCode, "wrong_event", "Wrong Event");
+        } else {
+          setResult({ status: "invalid", message: json.error || "Invalid ticket" });
+          playFeedback(false);
+          addToHistory(ticketCode, "invalid", json.error || "Invalid ticket");
         }
 
-      } else if (scanJson.status === "merch_only") {
-        // Merch-only ticket — auto-collect merch
-        const merchRes = await fetch(`/api/tickets/${encodeURIComponent(ticketCode)}/merch`, {
+      } else if (mode === "merch") {
+        // ── MERCH MODE: collect merch only ──
+        const res = await fetch(`/api/tickets/${encodeURIComponent(ticketCode)}/merch`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ collected_by: "scanner", event_id: eventId }),
         });
-        const merchJson = await merchRes.json();
+        const json = await res.json();
 
-        if (merchRes.ok && merchJson.success) {
+        if (res.ok && json.success) {
           setResult({
             status: "merch_success",
-            message: "Merch Collected!",
-            ticket: { ...scanJson.ticket, merch_size: merchJson.merch_size },
+            message: `Merch Collected — ${json.merch_size}`,
+            ticket: { ...json.ticket, merch_size: json.merch_size },
           });
           playFeedback(true);
-          addToHistory(ticketCode, "merch_success", `Merch Only: ${merchJson.merch_size}`, scanJson.ticket);
-        } else if (merchRes.status === 409) {
+          addToHistory(ticketCode, "merch_success", `Merch: ${json.merch_size}`, json.ticket);
+        } else if (res.status === 409) {
           setResult({
             status: "merch_collected",
-            message: "Merch Already Collected",
-            ticket: scanJson.ticket,
-            collected_at: merchJson.collected_at,
-            collected_by: merchJson.collected_by,
+            message: "Already Collected",
+            ticket: { merch_size: json.merch_size },
+            collected_at: json.collected_at,
+            collected_by: json.collected_by,
           });
           playFeedback(false);
-          addToHistory(ticketCode, "merch_collected", "Merch Already Collected", scanJson.ticket);
+          addToHistory(ticketCode, "merch_collected", "Already Collected");
+        } else if (json.error?.includes("not include")) {
+          setResult({ status: "no_merch", message: "No Merch on This Ticket" });
+          playFeedback(false);
+          addToHistory(ticketCode, "no_merch", "No Merch");
+        } else if (json.error?.includes("different event")) {
+          setResult({ status: "wrong_event", message: "Wrong Event" });
+          playFeedback(false);
+          addToHistory(ticketCode, "wrong_event", "Wrong Event");
         } else {
-          setResult({
-            status: "merch_only",
-            message: "Merch Pass — Collection Failed",
-            ticket: scanJson.ticket,
-          });
+          setResult({ status: "invalid", message: json.error || "Invalid ticket" });
           playFeedback(false);
-          addToHistory(ticketCode, "merch_only", "Merch Pass — Error", scanJson.ticket);
+          addToHistory(ticketCode, "invalid", json.error || "Invalid ticket");
         }
-
-      } else if (scanJson.status === "wrong_event") {
-        // Ticket belongs to a different event
-        setResult({
-          status: "wrong_event",
-          message: "Wrong Event — This ticket is for a different event",
-        });
-        playFeedback(false);
-        addToHistory(ticketCode, "wrong_event", "Wrong Event");
-      } else {
-        // Invalid ticket
-        setResult({
-          status: "invalid",
-          message: scanJson.error || "Invalid ticket",
-        });
-        playFeedback(false);
-        addToHistory(ticketCode, "invalid", scanJson.error || "Invalid ticket");
       }
 
       fetchStats();
@@ -306,18 +254,17 @@ export default function ScannerEventPage() {
 
     setScanning(false);
     if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
-  }, [scanning, scanLocation, playFeedback, fetchStats]);
+  }, [mode, scanning, scanLocation, eventId, playFeedback, fetchStats]);
 
   const addToHistory = (code: string, status: ScanStatus, message: string, ticket?: ScanResultData["ticket"]) => {
-    const entry: ScanHistoryEntry = {
+    setHistory((prev) => [{
       id: `${Date.now()}-${Math.random()}`,
       code,
       status,
       holderName: [ticket?.holder_first_name, ticket?.holder_last_name].filter(Boolean).join(" ") || undefined,
       message,
       timestamp: new Date(),
-    };
-    setHistory((prev) => [entry, ...prev].slice(0, 20));
+    }, ...prev].slice(0, 20));
   };
 
   const dismissResult = useCallback(() => {
@@ -326,14 +273,11 @@ export default function ScannerEventPage() {
     (window as { __scannerClearLast?: () => void }).__scannerClearLast?.();
   }, []);
 
-  // Auto-dismiss success after 2s
   useEffect(() => {
     if (!result) return;
     if (result.status === "valid" || result.status === "merch_success") {
       resultTimeoutRef.current = setTimeout(dismissResult, 2000);
-      return () => {
-        if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
-      };
+      return () => { if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current); };
     }
   }, [result, dismissResult]);
 
@@ -349,7 +293,15 @@ export default function ScannerEventPage() {
     try { localStorage.setItem("scanner_sound", String(next)); } catch {}
   };
 
+  const hasMerch = (stats?.merch_total ?? 0) > 0;
   const hasGuestList = (stats?.guest_list_total ?? 0) > 0;
+
+  // Build available modes
+  const modes: { key: ScanMode; label: string; icon: typeof Scan }[] = [
+    { key: "entry", label: "Entry", icon: Scan },
+  ];
+  if (hasMerch) modes.push({ key: "merch", label: "Merch", icon: Package });
+  if (hasGuestList) modes.push({ key: "guest-list", label: "Guests", icon: ClipboardList });
 
   return (
     <div className="px-4 py-4 max-w-lg mx-auto min-h-[100dvh] flex flex-col">
@@ -413,43 +365,41 @@ export default function ScannerEventPage() {
         </div>
       )}
 
-      {/* Stats bar */}
-      {stats && <div className="mb-4"><ScanStats mode="entry" stats={stats} /></div>}
+      {/* Stats bar — contextual to mode */}
+      {stats && (
+        <div className="mb-4">
+          <ScanStats mode={mode === "guest-list" ? "guest-list" : mode} stats={stats} />
+        </div>
+      )}
 
-      {/* View toggle — only show if event has a guest list */}
-      {hasGuestList && (
+      {/* Mode toggle */}
+      {modes.length > 1 && (
         <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-card/80 backdrop-blur p-1 mb-4">
-          <button
-            type="button"
-            onClick={() => setViewMode("scan")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all flex-1 justify-center",
-              viewMode === "scan"
-                ? "bg-primary/15 text-primary shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Scan size={14} />
-            Scan
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("guest-list")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all flex-1 justify-center",
-              viewMode === "guest-list"
-                ? "bg-primary/15 text-primary shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <ClipboardList size={14} />
-            Guest List
-          </button>
+          {modes.map((m) => {
+            const Icon = m.icon;
+            const active = mode === m.key;
+            return (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setMode(m.key)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all flex-1 justify-center",
+                  active
+                    ? "bg-primary/15 text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon size={14} />
+                {m.label}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {/* Main content */}
-      {viewMode === "guest-list" ? (
+      {mode === "guest-list" ? (
         <GuestListSearch eventId={eventId} onCheckIn={fetchStats} />
       ) : (
         <div className="flex-1 flex flex-col gap-4">

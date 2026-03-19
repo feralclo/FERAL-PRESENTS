@@ -11,6 +11,7 @@ import {
   resolveEventSeoTitle,
   resolveEventSeoDescription,
   buildEventJsonLd,
+  ensureAbsoluteUrl,
 } from "@/lib/seo";
 import { getCanonicalBaseUrl } from "@/lib/seo-server";
 import type { BrandingSettings } from "@/types/settings";
@@ -93,7 +94,8 @@ export async function generateMetadata({
     const title = resolveEventSeoTitle(event, auto.title);
     const description = resolveEventSeoDescription(event, auto.description);
     const canonicalUrl = baseUrl ? `${baseUrl}/event/${slug}/` : undefined;
-    const ogImage = event.hero_image || event.cover_image;
+    const rawOgImage = event.hero_image || event.cover_image;
+    const ogImage = rawOgImage && baseUrl ? ensureAbsoluteUrl(rawOgImage, baseUrl) : rawOgImage;
 
     return {
       title,

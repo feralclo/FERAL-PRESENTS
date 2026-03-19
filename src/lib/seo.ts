@@ -59,7 +59,7 @@ function stripHtml(text: string): string {
 }
 
 /** Ensure a URL is absolute by prepending baseUrl if it's a relative path */
-function ensureAbsoluteUrl(url: string, baseUrl: string): string {
+export function ensureAbsoluteUrl(url: string, baseUrl: string): string {
   if (!url || !baseUrl) return url;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;

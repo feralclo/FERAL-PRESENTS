@@ -209,7 +209,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const isUnauthRoute = isLoginPage || isInvitePage || isSignupPage || isBetaPage || isOnboardingPage;
   const isBypassRoute = isUnauthRoute || isEditorPage || isCommandRoute || isBackendRoute || isSettingsRoute;
 
-  // Fetch user email + platform owner flag on mount
+  // Fetch user email + platform owner flag + permissions on mount
   useEffect(() => {
     if (isUnauthRoute) return;
     (async () => {
@@ -220,6 +220,26 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         if (data.user?.email) setUserEmail(data.user.email);
         if (data.user?.app_metadata?.is_platform_owner === true) {
           setIsPlatformOwner(true);
+        }
+
+        // Scanner-only users: redirect to /scanner instead of admin dashboard.
+        // Check org_users permissions — if they ONLY have perm_orders, they're door staff.
+        if (data.user) {
+          try {
+            const res = await fetch("/api/team/me");
+            if (res.ok) {
+              const json = await res.json();
+              const user = json.data;
+              if (user && user.role !== "owner") {
+                const hasDashboardPerm =
+                  user.perm_events || user.perm_marketing || user.perm_finance || user.perm_reps;
+                if (!hasDashboardPerm && user.perm_orders) {
+                  window.location.href = "/scanner";
+                  return;
+                }
+              }
+            }
+          } catch { /* silent — don't block admin load */ }
         }
       } catch {
         // Auth call can fail during navigation — ignore gracefully

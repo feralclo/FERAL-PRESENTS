@@ -33,11 +33,6 @@ export async function GET() {
 
     const isOwner = orgUser?.role === "owner";
     if (!isOwner && !orgUser?.perm_orders) {
-      console.error("[scanner/events] Permission denied:", {
-        userId: auth.user.id,
-        orgId,
-        orgUser: orgUser ? { role: orgUser.role, perm_orders: orgUser.perm_orders } : null,
-      });
       return NextResponse.json(
         { error: "Scanner access requires order management permission" },
         { status: 403 }

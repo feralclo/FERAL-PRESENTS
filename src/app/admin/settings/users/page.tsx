@@ -47,8 +47,8 @@ const PERMISSION_CONFIG = [
   },
   {
     key: "perm_orders" as const,
-    label: "Orders",
-    description: "View/manage orders, refunds, scan tickets, customers",
+    label: "Orders & Scanning",
+    description: "View/manage orders, refunds, scan tickets, customers. Scanner-only staff are redirected straight to the scanner app.",
     icon: ShoppingCart,
   },
   {

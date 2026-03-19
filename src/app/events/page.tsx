@@ -1,9 +1,9 @@
 import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, brandingKey } from "@/lib/constants";
+import { TABLES, brandingKey, homepageKey } from "@/lib/constants";
 import { getCanonicalBaseUrl } from "@/lib/seo-server";
 import type { Metadata } from "next";
-import type { BrandingSettings } from "@/types/settings";
+import type { BrandingSettings, HomepageSettings } from "@/types/settings";
 import type { ListingEvent } from "@/types/events";
 import { EventsListPage } from "@/components/events/EventsListPage";
 
@@ -20,11 +20,16 @@ export async function generateMetadata(): Promise<Metadata> {
 
   if (supabase) {
     try {
-      const [brandingRes, resolvedBaseUrl] = await Promise.all([
+      const [brandingRes, homepageRes, resolvedBaseUrl] = await Promise.all([
         supabase
           .from(TABLES.SITE_SETTINGS)
           .select("data")
           .eq("key", brandingKey(orgId))
+          .single(),
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", homepageKey(orgId))
           .single(),
         getCanonicalBaseUrl(orgId),
       ]);
@@ -32,8 +37,11 @@ export async function generateMetadata(): Promise<Metadata> {
       const branding = brandingRes.data?.data as BrandingSettings | undefined;
       if (branding?.org_name) orgName = branding.org_name;
       if (branding?.favicon_url) faviconUrl = branding.favicon_url;
-      if (branding?.logo_url) heroImageUrl = branding.logo_url;
       if (branding?.social_links?.twitter) twitterHandle = branding.social_links.twitter;
+
+      // Share image: homepage og_image > homepage hero > logo (last resort)
+      const homepage = homepageRes.data?.data as HomepageSettings | undefined;
+      heroImageUrl = homepage?.og_image_url || homepage?.hero_image_url || branding?.logo_url;
     } catch {
       // Use default
     }

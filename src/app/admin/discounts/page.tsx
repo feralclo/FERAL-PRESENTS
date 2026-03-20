@@ -470,54 +470,45 @@ export default function DiscountsPage() {
                     </div>
                     Discount Created
                   </DialogTitle>
+                  <DialogDescription className="text-xs">
+                    {newType === "percentage" ? `${newValue}%` : `${currencySymbol}${newValue}`} off — share it with your audience
+                  </DialogDescription>
                 </DialogHeader>
               </div>
 
-              <div className="p-5 space-y-4">
-                <div className="text-center py-1">
-                  <span className="text-3xl font-mono font-black tracking-tight text-foreground">
-                    {newType === "percentage" ? `${newValue}%` : `${currencySymbol}${newValue}`}
-                  </span>
-                  <span className="text-sm text-muted-foreground ml-2">off</span>
+              <div className="p-5 space-y-3">
+                {/* Code — full width copy row */}
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Code</p>
+                  <button type="button" className="w-full flex items-center justify-between rounded-lg bg-muted/50 border border-border/50 px-3.5 py-2.5 hover:bg-muted/80 transition-colors group"
+                    onClick={() => { navigator.clipboard.writeText(newCode); setCopiedId("new-code"); setTimeout(() => setCopiedId(null), 2000); }}
+                  >
+                    <span className="font-mono text-sm font-bold tracking-wider text-foreground">{newCode}</span>
+                    <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground group-hover:text-foreground transition-colors">
+                      {copiedId === "new-code" ? <><Check size={12} className="text-green-500" /> Copied</> : <><Copy size={12} /> Copy</>}
+                    </span>
+                  </button>
                 </div>
 
-                <div className="rounded-xl border border-border/50 bg-muted/30 p-4 space-y-3">
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Share this discount</p>
-
-                  {/* Code */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center gap-2 rounded-lg bg-background border border-border/50 px-3 py-2.5">
-                      <Tag size={12} className="text-muted-foreground/40 shrink-0" />
-                      <span className="font-mono text-sm font-bold tracking-wider">{newCode}</span>
+                {/* Shareable URL — full width copy row */}
+                {(() => {
+                  const eventIds = newEventScope === "specific" && newEventIds.length ? newEventIds : null;
+                  const url = buildShareUrl(newCode, eventIds);
+                  if (!url) return null;
+                  return (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Shareable Link</p>
+                      <button type="button" className="w-full flex items-center justify-between rounded-lg bg-muted/50 border border-border/50 px-3.5 py-2.5 hover:bg-muted/80 transition-colors group"
+                        onClick={() => { navigator.clipboard.writeText(url); setCopiedId("new-link"); setTimeout(() => setCopiedId(null), 2000); }}
+                      >
+                        <span className="text-[12px] text-muted-foreground font-mono truncate mr-3">{url}</span>
+                        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground group-hover:text-foreground transition-colors shrink-0">
+                          {copiedId === "new-link" ? <><Check size={12} className="text-green-500" /> Copied</> : <><Link size={12} /> Copy</>}
+                        </span>
+                      </button>
                     </div>
-                    <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1.5"
-                      onClick={() => { navigator.clipboard.writeText(newCode); setCopiedId("new-code"); setTimeout(() => setCopiedId(null), 2000); }}
-                    >
-                      {copiedId === "new-code" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                      Code
-                    </Button>
-                  </div>
-
-                  {/* Shareable URL */}
-                  {(() => {
-                    const eventIds = newEventScope === "specific" && newEventIds.length ? newEventIds : null;
-                    const url = buildShareUrl(newCode, eventIds);
-                    if (!url) return null;
-                    return (
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 rounded-lg bg-background border border-border/50 px-3 py-2.5 overflow-hidden">
-                          <p className="text-[11px] text-muted-foreground truncate font-mono">{url}</p>
-                        </div>
-                        <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1.5"
-                          onClick={() => { navigator.clipboard.writeText(url); setCopiedId("new-link"); setTimeout(() => setCopiedId(null), 2000); }}
-                        >
-                          {copiedId === "new-link" ? <Check size={12} className="text-green-500" /> : <Link size={12} />}
-                          Link
-                        </Button>
-                      </div>
-                    );
-                  })()}
-                </div>
+                  );
+                })()}
 
                 {newExpiresAt && (
                   <div className="flex items-center gap-2 rounded-lg bg-emerald-500/8 border border-emerald-500/15 px-3 py-2">
@@ -700,35 +691,28 @@ export default function DiscountsPage() {
           <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
             {/* ── Share section (code-based discounts only) ── */}
             {editDiscount && !(editAutoApply && editDiscount.code.startsWith("AUTO-")) && (
-              <div className="rounded-xl border border-border/50 bg-muted/30 p-3.5 space-y-2.5">
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Share</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 flex items-center gap-2 rounded-lg bg-background border border-border/50 px-3 py-2">
-                    <Tag size={12} className="text-muted-foreground/40 shrink-0" />
-                    <span className="font-mono text-sm font-bold tracking-wider">{editDiscount.code}</span>
-                  </div>
-                  <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1.5"
-                    onClick={() => copyCode(editDiscount.code, editDiscount.id + "-edit")}
-                  >
-                    {copiedId === editDiscount.id + "-edit" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                    Code
-                  </Button>
-                </div>
+              <div className="space-y-2">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Share</p>
+                <button type="button" className="w-full flex items-center justify-between rounded-lg bg-muted/50 border border-border/50 px-3 py-2 hover:bg-muted/80 transition-colors group"
+                  onClick={() => copyCode(editDiscount.code, editDiscount.id + "-edit")}
+                >
+                  <span className="font-mono text-sm font-bold tracking-wider text-foreground">{editDiscount.code}</span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground group-hover:text-foreground transition-colors">
+                    {copiedId === editDiscount.id + "-edit" ? <><Check size={12} className="text-green-500" /> Copied</> : <><Copy size={12} /> Copy code</>}
+                  </span>
+                </button>
                 {(() => {
                   const url = buildShareUrl(editDiscount.code, editDiscount.applicable_event_ids);
                   if (!url) return null;
                   return (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 rounded-lg bg-background border border-border/50 px-3 py-2 overflow-hidden">
-                        <p className="text-[11px] text-muted-foreground truncate font-mono">{url}</p>
-                      </div>
-                      <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1.5"
-                        onClick={() => copyLink(editDiscount)}
-                      >
-                        {copiedLinkId === editDiscount.id ? <Check size={12} className="text-green-500" /> : <Link size={12} />}
-                        Link
-                      </Button>
-                    </div>
+                    <button type="button" className="w-full flex items-center justify-between rounded-lg bg-muted/50 border border-border/50 px-3 py-2 hover:bg-muted/80 transition-colors group"
+                      onClick={() => copyLink(editDiscount)}
+                    >
+                      <span className="text-[11px] text-muted-foreground font-mono truncate mr-3">{url}</span>
+                      <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground group-hover:text-foreground transition-colors shrink-0">
+                        {copiedLinkId === editDiscount.id ? <><Check size={12} className="text-green-500" /> Copied</> : <><Link size={12} /> Copy link</>}
+                      </span>
+                    </button>
                   );
                 })()}
               </div>
@@ -772,22 +756,15 @@ export default function DiscountsPage() {
               onScopeChange={setEditEventScope} onSelectionChange={setEditEventIds}
             />
 
-            {/* ── Schedule ── */}
-            <div className="space-y-2">
-              <Label className="text-[11px] text-muted-foreground flex items-center gap-1"><Clock size={11} /> Schedule</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Starts</Label><DateTimePicker value={editStartsAt} onChange={setEditStartsAt} /></div>
-                <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Ends</Label><DateTimePicker value={editExpiresAt} onChange={setEditExpiresAt} /></div>
+            {/* ── Timer indicator (shown above more options when end date is set) ── */}
+            {editExpiresAt && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/8 border border-emerald-500/15 px-3 py-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                <p className="text-[11px] text-emerald-400/90">Countdown timer will appear on the event page</p>
               </div>
-              {editExpiresAt && (
-                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/8 border border-emerald-500/15 px-3 py-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <p className="text-[11px] text-emerald-400/90">Countdown timer will appear on the event page</p>
-                </div>
-              )}
-            </div>
+            )}
 
-            {/* ── More options ── */}
+            {/* ── More options (schedule, limits, description) ── */}
             <div>
               <button type="button" onClick={() => setShowAdvanced(!showAdvanced)}
                 className="flex items-center gap-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
@@ -797,6 +774,13 @@ export default function DiscountsPage() {
               </button>
               {showAdvanced && (
                 <div className="mt-3 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-foreground flex items-center gap-1"><Clock size={11} /> Schedule</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Starts</Label><DateTimePicker value={editStartsAt} onChange={setEditStartsAt} /></div>
+                      <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Ends</Label><DateTimePicker value={editExpiresAt} onChange={setEditExpiresAt} /></div>
+                    </div>
+                  </div>
                   <div className="space-y-1.5">
                     <Label className="text-[11px] text-muted-foreground">Description</Label>
                     <Input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Internal note" className="h-9" />

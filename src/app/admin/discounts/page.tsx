@@ -128,6 +128,7 @@ export default function DiscountsPage() {
   const [newEventScope, setNewEventScope] = useState<EventScope>("all");
   const [newSchedulePreset, setNewSchedulePreset] = useState<SchedulePreset | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [newCreated, setNewCreated] = useState(false);
 
   // ── Edit state ──
   const [editDiscount, setEditDiscount] = useState<Discount | null>(null);
@@ -198,9 +199,15 @@ export default function DiscountsPage() {
         }),
       });
       if (res.ok) {
-        setShowCreate(false);
-        resetCreateForm();
         loadDiscounts();
+        if (isFlash) {
+          // Flash sales are auto-applied — no code to share, just close
+          setShowCreate(false);
+          resetCreateForm();
+        } else {
+          // Show success state with code + shareable URL
+          setNewCreated(true);
+        }
       }
     } catch { /* */ }
     setCreating(false);
@@ -266,7 +273,7 @@ export default function DiscountsPage() {
     setNewMode("code"); setNewCode(""); setNewDescription(""); setNewType("percentage");
     setNewValue(""); setNewMaxUses(""); setNewMinOrder(""); setNewStartsAt("");
     setNewExpiresAt(""); setNewEventIds([]); setNewEventScope("all");
-    setNewSchedulePreset(null); setShowAdvanced(false);
+    setNewSchedulePreset(null); setShowAdvanced(false); setNewCreated(false);
   };
 
   const copyCode = (code: string, id: string) => {
@@ -434,210 +441,335 @@ export default function DiscountsPage() {
       )}
 
       {/* ══ Create Dialog ══ */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="sm:max-w-[460px] gap-0 p-0 overflow-hidden">
-          {/* Mode tabs */}
-          <div className="border-b border-border/50 px-5 pt-5 pb-0">
-            <DialogHeader className="pb-3">
-              <DialogTitle className="text-base">New Discount</DialogTitle>
-            </DialogHeader>
-            <div className="flex gap-0 -mb-px">
-              {([
-                { mode: "code" as const, icon: <Tag size={12} />, label: "Discount Code" },
-                { mode: "flash" as const, icon: <Zap size={12} />, label: "Flash Sale" },
-              ]).map(({ mode, icon, label }) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setNewMode(mode)}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-medium border-b-2 transition-colors ${
-                    newMode === mode
-                      ? mode === "flash" ? "border-amber-500 text-foreground" : "border-primary text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {icon} {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
-            {/* Discount type + value */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-[11px] text-muted-foreground">Type</Label>
-                <Select value={newType} onValueChange={(v) => setNewType(v as DiscountType)}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">Percentage (%)</SelectItem>
-                    <SelectItem value="fixed">Fixed ({currencySymbol})</SelectItem>
-                  </SelectContent>
-                </Select>
+      <Dialog open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) resetCreateForm(); }}>
+        <DialogContent className="sm:max-w-[480px] gap-0 p-0 overflow-hidden">
+          {newCreated ? (
+            <>
+              {/* ── Success state ── */}
+              <div className="px-5 pt-5 pb-4 border-b border-border/50">
+                <DialogHeader>
+                  <DialogTitle className="text-base flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-green-500/15 flex items-center justify-center">
+                      <Check size={11} className="text-green-500" />
+                    </div>
+                    Discount Created
+                  </DialogTitle>
+                </DialogHeader>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[11px] text-muted-foreground">Value</Label>
-                <Input
-                  type="number" value={newValue} onChange={(e) => setNewValue(e.target.value)}
-                  placeholder={newType === "percentage" ? "e.g. 50" : "e.g. 5.00"}
-                  min="0" max={newType === "percentage" ? "100" : undefined}
-                  step={newType === "percentage" ? "1" : "0.01"} className="h-9" autoFocus
-                />
-              </div>
-            </div>
 
-            {/* Code (manual only) */}
-            {!isFlash && (
-              <div className="space-y-1.5">
-                <Label className="text-[11px] text-muted-foreground">Code</Label>
-                <Input
-                  value={newCode} onChange={(e) => setNewCode(e.target.value.toUpperCase())}
-                  placeholder="e.g. SUMMER10" className="h-9 font-mono tracking-wider uppercase"
-                />
-              </div>
-            )}
-
-            {/* Schedule (flash sale) */}
-            {isFlash && (
-              <div className="space-y-2">
-                <Label className="text-[11px] text-muted-foreground flex items-center gap-1"><Clock size={11} /> Duration</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {([
-                    { key: "24h", label: "24 hours" }, { key: "48h", label: "48 hours" },
-                    { key: "weekend", label: "Weekend" }, { key: "week", label: "1 week" },
-                    { key: "custom", label: "Custom" },
-                  ] as const).map(({ key, label }) => (
-                    <button key={key} type="button" onClick={() => selectPreset(key)}
-                      className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium border transition-colors ${
-                        newSchedulePreset === key
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
-                          : "border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
-                      }`}
-                    >{label}</button>
-                  ))}
+              <div className="p-5 space-y-4">
+                <div className="text-center py-1">
+                  <span className="text-3xl font-mono font-black tracking-tight text-foreground">
+                    {newType === "percentage" ? `${newValue}%` : `${currencySymbol}${newValue}`}
+                  </span>
+                  <span className="text-sm text-muted-foreground ml-2">off</span>
                 </div>
-                {newSchedulePreset === "custom" && (
-                  <div className="grid grid-cols-2 gap-3 mt-1">
-                    <div className="space-y-1"><Label className="text-[11px] text-muted-foreground">Starts</Label><DateTimePicker value={newStartsAt} onChange={setNewStartsAt} /></div>
-                    <div className="space-y-1"><Label className="text-[11px] text-muted-foreground">Ends</Label><DateTimePicker value={newExpiresAt} onChange={setNewExpiresAt} /></div>
+
+                <div className="rounded-xl border border-border/50 bg-muted/30 p-4 space-y-3">
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Share this discount</p>
+
+                  {/* Code */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center gap-2 rounded-lg bg-background border border-border/50 px-3 py-2.5">
+                      <Tag size={12} className="text-muted-foreground/40 shrink-0" />
+                      <span className="font-mono text-sm font-bold tracking-wider">{newCode}</span>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1.5"
+                      onClick={() => { navigator.clipboard.writeText(newCode); setCopiedId("new-code"); setTimeout(() => setCopiedId(null), 2000); }}
+                    >
+                      {copiedId === "new-code" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                      Code
+                    </Button>
+                  </div>
+
+                  {/* Shareable URL */}
+                  {events.length > 0 && (() => {
+                    const eventId = newEventScope === "specific" && newEventIds.length ? newEventIds[0] : null;
+                    const evt = eventId ? events.find((e) => e.id === eventId) : events[0];
+                    if (!evt) return null;
+                    const base = typeof window !== "undefined" ? window.location.origin.replace(/\/admin\./, "/") : "";
+                    const url = `${base}/event/${evt.slug}?discount=${encodeURIComponent(newCode)}`;
+                    return (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 rounded-lg bg-background border border-border/50 px-3 py-2.5 overflow-hidden">
+                          <p className="text-[11px] text-muted-foreground truncate font-mono">{url}</p>
+                        </div>
+                        <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1.5"
+                          onClick={() => { navigator.clipboard.writeText(url); setCopiedId("new-link"); setTimeout(() => setCopiedId(null), 2000); }}
+                        >
+                          {copiedId === "new-link" ? <Check size={12} className="text-green-500" /> : <Link size={12} />}
+                          Link
+                        </Button>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {newExpiresAt && (
+                  <div className="flex items-center gap-2 rounded-lg bg-emerald-500/8 border border-emerald-500/15 px-3 py-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <p className="text-[11px] text-emerald-400/90">Countdown timer is live on the event page</p>
                   </div>
                 )}
-                {newSchedulePreset && newSchedulePreset !== "custom" && newStartsAt && newExpiresAt && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {new Date(newStartsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                    {" — "}
-                    {new Date(newExpiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                )}
               </div>
-            )}
 
-            {/* Events — clear "All" vs "Specific" choice */}
-            <EventScopeSelector
-              events={events}
-              scope={newEventScope}
-              selectedIds={newEventIds}
-              onScopeChange={setNewEventScope}
-              onSelectionChange={setNewEventIds}
-            />
+              <div className="border-t border-border/50 px-5 py-3.5 flex items-center justify-end">
+                <Button size="sm" onClick={() => { setShowCreate(false); resetCreateForm(); }}>Done</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* ── Create form ── */}
+              <div className="px-5 pt-5 pb-4 border-b border-border/50">
+                <DialogHeader>
+                  <DialogTitle className="text-base">New Discount</DialogTitle>
+                  <DialogDescription className="text-xs">Create a discount code or flash sale for your events</DialogDescription>
+                </DialogHeader>
+              </div>
 
-            {/* Schedule (code mode) */}
-            {!isFlash && (
-              <div className="space-y-1.5">
-                <Label className="text-[11px] text-muted-foreground flex items-center gap-1"><Clock size={11} /> Schedule</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Starts</Label><DateTimePicker value={newStartsAt} onChange={setNewStartsAt} /></div>
-                  <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Ends</Label><DateTimePicker value={newExpiresAt} onChange={setNewExpiresAt} /></div>
+              <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
+                {/* ── Type choice ── */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setNewMode("code")}
+                    className={`rounded-xl p-3 text-left border-2 transition-all ${
+                      !isFlash ? "border-primary bg-primary/5" : "border-border/50 hover:border-border"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Tag size={13} className={!isFlash ? "text-primary" : "text-muted-foreground/50"} />
+                      <span className="text-xs font-semibold">Discount Code</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">Customers enter a code or click a link</p>
+                  </button>
+                  <button type="button" onClick={() => setNewMode("flash")}
+                    className={`rounded-xl p-3 text-left border-2 transition-all ${
+                      isFlash ? "border-amber-500 bg-amber-500/5" : "border-border/50 hover:border-border"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Zap size={13} className={isFlash ? "text-amber-500" : "text-muted-foreground/50"} />
+                      <span className="text-xs font-semibold">Flash Sale</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">Auto-applied with countdown timer</p>
+                  </button>
                 </div>
-              </div>
-            )}
 
-            {/* Advanced */}
-            <div>
-              <button type="button" onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-              >
-                <ChevronDown size={11} className={`transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
-                More options
-              </button>
-              {showAdvanced && (
-                <div className="mt-3 space-y-3">
+                {/* ── The offer ── */}
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-muted-foreground">Discount</Label>
+                  <div className="flex gap-2">
+                    <Input type="number" value={newValue} onChange={(e) => setNewValue(e.target.value)}
+                      placeholder={newType === "percentage" ? "e.g. 20" : "e.g. 5.00"}
+                      min="0" max={newType === "percentage" ? "100" : undefined}
+                      step={newType === "percentage" ? "1" : "0.01"} className="h-10 flex-1 text-base font-mono font-bold" autoFocus
+                    />
+                    <Select value={newType} onValueChange={(v) => setNewType(v as DiscountType)}>
+                      <SelectTrigger className="h-10 w-[110px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">% off</SelectItem>
+                        <SelectItem value="fixed">{currencySymbol} off</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* ── Code (manual only) ── */}
+                {!isFlash && (
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] text-muted-foreground">Description</Label>
-                    <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Internal note" className="h-9" />
+                    <Label className="text-[11px] text-muted-foreground">Code</Label>
+                    <Input value={newCode} onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                      placeholder="e.g. SUMMER20" className="h-9 font-mono tracking-wider uppercase"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] text-muted-foreground">Max uses</Label>
-                      <Input type="number" value={newMaxUses} onChange={(e) => setNewMaxUses(e.target.value)} placeholder="Unlimited" min="1" className="h-9" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] text-muted-foreground">Min order ({currencySymbol})</Label>
-                      <Input type="number" value={newMinOrder} onChange={(e) => setNewMinOrder(e.target.value)} placeholder="None" min="0" step="0.01" className="h-9" />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+                )}
 
-          {/* Footer */}
-          <div className="border-t border-border/50 px-5 py-3.5 flex items-center justify-end gap-3">
-            <Button variant="outline" size="sm" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleCreate} disabled={creating || (!isFlash && !newCode.trim()) || !newValue}>
-              {creating && <Loader2 size={14} className="animate-spin" />}
-              {creating ? "Creating..." : isFlash ? "Start Flash Sale" : "Create Code"}
-            </Button>
-          </div>
+                {/* ── Events ── */}
+                <EventScopeSelector events={events} scope={newEventScope} selectedIds={newEventIds}
+                  onScopeChange={setNewEventScope} onSelectionChange={setNewEventIds}
+                />
+
+                {/* ── Schedule ── */}
+                <div className="space-y-2">
+                  <Label className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <Clock size={11} /> {isFlash ? "Duration" : "Schedule"}
+                  </Label>
+
+                  {isFlash ? (
+                    <>
+                      <div className="flex flex-wrap gap-1.5">
+                        {([
+                          { key: "24h", label: "24 hours" }, { key: "48h", label: "48 hours" },
+                          { key: "weekend", label: "Weekend" }, { key: "week", label: "1 week" },
+                          { key: "custom", label: "Custom" },
+                        ] as const).map(({ key, label }) => (
+                          <button key={key} type="button" onClick={() => selectPreset(key)}
+                            className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium border transition-colors ${
+                              newSchedulePreset === key
+                                ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                                : "border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+                            }`}
+                          >{label}</button>
+                        ))}
+                      </div>
+                      {newSchedulePreset === "custom" && (
+                        <div className="grid grid-cols-2 gap-3 mt-1">
+                          <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Starts</Label><DateTimePicker value={newStartsAt} onChange={setNewStartsAt} /></div>
+                          <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Ends</Label><DateTimePicker value={newExpiresAt} onChange={setNewExpiresAt} /></div>
+                        </div>
+                      )}
+                      {newSchedulePreset && newSchedulePreset !== "custom" && newStartsAt && newExpiresAt && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {new Date(newStartsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          {" — "}
+                          {new Date(newExpiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Starts (optional)</Label><DateTimePicker value={newStartsAt} onChange={setNewStartsAt} /></div>
+                      <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Ends (optional)</Label><DateTimePicker value={newExpiresAt} onChange={setNewExpiresAt} /></div>
+                    </div>
+                  )}
+
+                  {/* Timer indicator */}
+                  {newExpiresAt && (
+                    <div className="flex items-center gap-2 rounded-lg bg-emerald-500/8 border border-emerald-500/15 px-3 py-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <p className="text-[11px] text-emerald-400/90">Countdown timer will appear on the event page</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── More options ── */}
+                <div>
+                  <button type="button" onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="flex items-center gap-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  >
+                    <ChevronDown size={11} className={`transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+                    More options
+                  </button>
+                  {showAdvanced && (
+                    <div className="mt-3 space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] text-muted-foreground">Description</Label>
+                        <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Internal note" className="h-9" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] text-muted-foreground">Max uses</Label>
+                          <Input type="number" value={newMaxUses} onChange={(e) => setNewMaxUses(e.target.value)} placeholder="Unlimited" min="1" className="h-9" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] text-muted-foreground">Min order ({currencySymbol})</Label>
+                          <Input type="number" value={newMinOrder} onChange={(e) => setNewMinOrder(e.target.value)} placeholder="None" min="0" step="0.01" className="h-9" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-border/50 px-5 py-3.5 flex items-center justify-end gap-3">
+                <Button variant="outline" size="sm" onClick={() => { setShowCreate(false); resetCreateForm(); }}>Cancel</Button>
+                <Button size="sm" onClick={handleCreate} disabled={creating || (!isFlash && !newCode.trim()) || !newValue}>
+                  {creating && <Loader2 size={14} className="animate-spin" />}
+                  {creating ? "Creating..." : isFlash ? "Start Flash Sale" : "Create Code"}
+                </Button>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* ══ Edit Dialog ══ */}
       <Dialog open={!!editDiscount} onOpenChange={(open) => !open && setEditDiscount(null)}>
-        <DialogContent className="sm:max-w-[460px] gap-0 p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[480px] gap-0 p-0 overflow-hidden">
           <div className="px-5 pt-5 pb-4 border-b border-border/50">
             <DialogHeader>
-              <DialogTitle className="text-base">Edit Discount</DialogTitle>
-              <DialogDescription className="text-xs">
-                {editAutoApply ? "Auto-applied flash sale" : "Manual discount code"}
-              </DialogDescription>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-base">Edit Discount</DialogTitle>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">{editStatus === "active" ? "Active" : "Inactive"}</span>
+                  <Switch checked={editStatus === "active"} onCheckedChange={(c) => setEditStatus(c ? "active" : "inactive")} />
+                </div>
+              </div>
             </DialogHeader>
           </div>
 
-          <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
-            {/* Active + auto-apply */}
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">Active</Label>
-              <Switch checked={editStatus === "active"} onCheckedChange={(c) => setEditStatus(c ? "active" : "inactive")} />
+          <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
+            {/* ── Share section (code-based discounts only) ── */}
+            {editDiscount && !(editAutoApply && editDiscount.code.startsWith("AUTO-")) && (
+              <div className="rounded-xl border border-border/50 bg-muted/30 p-4 space-y-3">
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Share</p>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center gap-2 rounded-lg bg-background border border-border/50 px-3 py-2">
+                    <Tag size={12} className="text-muted-foreground/40 shrink-0" />
+                    <span className="font-mono text-sm font-bold tracking-wider">{editDiscount.code}</span>
+                  </div>
+                  <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1.5"
+                    onClick={() => copyCode(editDiscount.code, editDiscount.id + "-edit")}
+                  >
+                    {copiedId === editDiscount.id + "-edit" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                    Code
+                  </Button>
+                </div>
+
+                {events.length > 0 && (() => {
+                  const eventId = editDiscount.applicable_event_ids?.length ? editDiscount.applicable_event_ids[0] : null;
+                  const evt = eventId ? events.find((e) => e.id === eventId) : events[0];
+                  if (!evt) return null;
+                  const base = typeof window !== "undefined" ? window.location.origin.replace(/\/admin\./, "/") : "";
+                  const url = `${base}/event/${evt.slug}?discount=${encodeURIComponent(editDiscount.code)}`;
+                  return (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 rounded-lg bg-background border border-border/50 px-3 py-2 overflow-hidden">
+                        <p className="text-[11px] text-muted-foreground truncate font-mono">{url}</p>
+                      </div>
+                      <Button variant="outline" size="sm" className="shrink-0 h-9 gap-1.5"
+                        onClick={() => copyLink(editDiscount)}
+                      >
+                        {copiedLinkId === editDiscount.id ? <Check size={12} className="text-green-500" /> : <Link size={12} />}
+                        Link
+                      </Button>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* ── The offer ── */}
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Discount</Label>
+              <div className="flex gap-2">
+                <Input type="number" value={editValue} onChange={(e) => setEditValue(e.target.value)}
+                  min="0" max={editType === "percentage" ? "100" : undefined}
+                  step={editType === "percentage" ? "1" : "0.01"} className="h-10 flex-1 text-base font-mono font-bold"
+                />
+                <Select value={editType} onValueChange={(v) => setEditType(v as DiscountType)}>
+                  <SelectTrigger className="h-10 w-[110px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">% off</SelectItem>
+                    <SelectItem value="fixed">{currencySymbol} off</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
+
+            {/* ── Auto-apply toggle ── */}
+            <div className="flex items-center justify-between rounded-xl border border-border/50 px-3.5 py-2.5">
               <div className="flex items-center gap-2">
                 <Zap size={13} className={editAutoApply ? "text-amber-500" : "text-muted-foreground/40"} />
-                <Label className="text-sm">Auto-Apply</Label>
+                <div>
+                  <span className="text-sm font-medium">Flash Sale</span>
+                  <p className="text-[10px] text-muted-foreground">Auto-apply without a code</p>
+                </div>
               </div>
               <Switch checked={editAutoApply} onCheckedChange={setEditAutoApply} />
             </div>
 
-            {/* Value */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-[11px] text-muted-foreground">Type</Label>
-                <Select value={editType} onValueChange={(v) => setEditType(v as DiscountType)}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">Percentage (%)</SelectItem>
-                    <SelectItem value="fixed">Fixed ({currencySymbol})</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[11px] text-muted-foreground">Value</Label>
-                <Input type="number" value={editValue} onChange={(e) => setEditValue(e.target.value)}
-                  min="0" max={editType === "percentage" ? "100" : undefined} step={editType === "percentage" ? "1" : "0.01"} className="h-9" />
-              </div>
-            </div>
-
-            {/* Code */}
+            {/* ── Code ── */}
             {(!editAutoApply || (editDiscount && !editDiscount.code.startsWith("AUTO-"))) && (
               <div className="space-y-1.5">
                 <Label className="text-[11px] text-muted-foreground">Code</Label>
@@ -645,25 +777,27 @@ export default function DiscountsPage() {
               </div>
             )}
 
-            {/* Events */}
-            <EventScopeSelector
-              events={events}
-              scope={editEventScope}
-              selectedIds={editEventIds}
-              onScopeChange={setEditEventScope}
-              onSelectionChange={setEditEventIds}
+            {/* ── Events ── */}
+            <EventScopeSelector events={events} scope={editEventScope} selectedIds={editEventIds}
+              onScopeChange={setEditEventScope} onSelectionChange={setEditEventIds}
             />
 
-            {/* Schedule */}
-            <div className="space-y-1.5">
+            {/* ── Schedule ── */}
+            <div className="space-y-2">
               <Label className="text-[11px] text-muted-foreground flex items-center gap-1"><Clock size={11} /> Schedule</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Starts</Label><DateTimePicker value={editStartsAt} onChange={setEditStartsAt} /></div>
                 <div className="space-y-1"><Label className="text-[10px] text-muted-foreground/60">Ends</Label><DateTimePicker value={editExpiresAt} onChange={setEditExpiresAt} /></div>
               </div>
+              {editExpiresAt && (
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/8 border border-emerald-500/15 px-3 py-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <p className="text-[11px] text-emerald-400/90">Countdown timer will appear on the event page</p>
+                </div>
+              )}
             </div>
 
-            {/* Description + limits */}
+            {/* ── Details ── */}
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground">Description</Label>
               <Input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Internal note" className="h-9" />
@@ -680,7 +814,7 @@ export default function DiscountsPage() {
             </div>
 
             {editDiscount && (
-              <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+              <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground tabular-nums">
                 Used {editDiscount.used_count} time{editDiscount.used_count !== 1 ? "s" : ""}
               </div>
             )}

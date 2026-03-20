@@ -111,6 +111,8 @@ export default function DiscountsPage() {
 
   // Live events only (not draft/past/cancelled/archived)
   const [events, setEvents] = useState<EventOption[]>([]);
+  // Tenant's public-facing base URL (from primary domain)
+  const [tenantBaseUrl, setTenantBaseUrl] = useState("");
 
   // ── Create state ──
   const [showCreate, setShowCreate] = useState(false);
@@ -170,6 +172,16 @@ export default function DiscountsPage() {
       .then((json) => {
         const evts = (json.data || []) as EventOption[];
         setEvents(evts.map((e) => ({ id: e.id, name: e.name, slug: e.slug, date_start: e.date_start })));
+      })
+      .catch(() => {});
+    // Fetch tenant's primary domain for shareable URLs
+    fetch("/api/domains")
+      .then((r) => r.json())
+      .then((json) => {
+        const primary = (json.domains || []).find((d: { is_primary: boolean; status: string }) => d.is_primary && d.status === "active");
+        if (primary?.hostname) {
+          setTenantBaseUrl(`https://${primary.hostname}`);
+        }
       })
       .catch(() => {});
   }, []);
@@ -283,13 +295,16 @@ export default function DiscountsPage() {
   };
 
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
-  const copyLink = (d: Discount) => {
-    // Build shareable URL — use first applicable event, or first live event
-    const eventId = d.applicable_event_ids?.length ? d.applicable_event_ids[0] : null;
+  const buildShareUrl = (code: string, eventIds?: string[] | null) => {
+    if (!tenantBaseUrl) return null;
+    const eventId = eventIds?.length ? eventIds[0] : null;
     const evt = eventId ? events.find((e) => e.id === eventId) : events[0];
-    if (!evt) return;
-    const base = window.location.origin.replace(/\/admin\./, "/");
-    const url = `${base}/event/${evt.slug}?discount=${encodeURIComponent(d.code)}`;
+    if (!evt) return null;
+    return `${tenantBaseUrl}/event/${evt.slug}?discount=${encodeURIComponent(code)}`;
+  };
+  const copyLink = (d: Discount) => {
+    const url = buildShareUrl(d.code, d.applicable_event_ids);
+    if (!url) return;
     navigator.clipboard.writeText(url);
     setCopiedLinkId(d.id);
     setTimeout(() => setCopiedLinkId(null), 2000);
@@ -409,7 +424,7 @@ export default function DiscountsPage() {
                           {copiedId === d.id ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                         </button>
                       )}
-                      {events.length > 0 && !(d.auto_apply && d.code.startsWith("AUTO-")) && (
+                      {tenantBaseUrl && !(d.auto_apply && d.code.startsWith("AUTO-")) && (
                         <button
                           className="text-muted-foreground/40 hover:text-foreground transition-colors"
                           onClick={(e) => { e.stopPropagation(); copyLink(d); }}
@@ -484,12 +499,10 @@ export default function DiscountsPage() {
                   </div>
 
                   {/* Shareable URL */}
-                  {events.length > 0 && (() => {
-                    const eventId = newEventScope === "specific" && newEventIds.length ? newEventIds[0] : null;
-                    const evt = eventId ? events.find((e) => e.id === eventId) : events[0];
-                    if (!evt) return null;
-                    const base = typeof window !== "undefined" ? window.location.origin.replace(/\/admin\./, "/") : "";
-                    const url = `${base}/event/${evt.slug}?discount=${encodeURIComponent(newCode)}`;
+                  {(() => {
+                    const eventIds = newEventScope === "specific" && newEventIds.length ? newEventIds : null;
+                    const url = buildShareUrl(newCode, eventIds);
+                    if (!url) return null;
                     return (
                       <div className="flex items-center gap-2">
                         <div className="flex-1 rounded-lg bg-background border border-border/50 px-3 py-2.5 overflow-hidden">
@@ -701,12 +714,9 @@ export default function DiscountsPage() {
                     Code
                   </Button>
                 </div>
-                {events.length > 0 && (() => {
-                  const eventId = editDiscount.applicable_event_ids?.length ? editDiscount.applicable_event_ids[0] : null;
-                  const evt = eventId ? events.find((e) => e.id === eventId) : events[0];
-                  if (!evt) return null;
-                  const base = typeof window !== "undefined" ? window.location.origin.replace(/\/admin\./, "/") : "";
-                  const url = `${base}/event/${evt.slug}?discount=${encodeURIComponent(editDiscount.code)}`;
+                {(() => {
+                  const url = buildShareUrl(editDiscount.code, editDiscount.applicable_event_ids);
+                  if (!url) return null;
                   return (
                     <div className="flex items-center gap-2">
                       <div className="flex-1 rounded-lg bg-background border border-border/50 px-3 py-2 overflow-hidden">

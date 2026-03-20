@@ -672,7 +672,7 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
                       // Show countdown banner if the applied discount has an expiry
                       setFlashSaleExpiresAt(expiresAt || null);
                     }}
-                    flashSale={activeDiscount && flashSaleExpiresAt ? {
+                    flashSale={(isAutoDiscount || flashSaleExpiresAt) && activeDiscount ? {
                       expiresAt: flashSaleExpiresAt,
                       onExpired: () => {
                         setActiveDiscount(null);

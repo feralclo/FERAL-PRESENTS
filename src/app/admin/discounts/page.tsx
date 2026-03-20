@@ -45,6 +45,7 @@ import {
   ChevronDown,
   Clock,
   Search,
+  Link,
 } from "lucide-react";
 import type { Discount, DiscountType, DiscountStatus } from "@/types/discounts";
 import { fmtMoney } from "@/lib/format";
@@ -58,6 +59,7 @@ type EventScope = "all" | "specific";
 interface EventOption {
   id: string;
   name: string;
+  slug: string;
   date_start?: string;
 }
 
@@ -166,7 +168,7 @@ export default function DiscountsPage() {
       .then((r) => r.json())
       .then((json) => {
         const evts = (json.data || []) as EventOption[];
-        setEvents(evts.map((e) => ({ id: e.id, name: e.name, date_start: e.date_start })));
+        setEvents(evts.map((e) => ({ id: e.id, name: e.name, slug: e.slug, date_start: e.date_start })));
       })
       .catch(() => {});
   }, []);
@@ -270,6 +272,19 @@ export default function DiscountsPage() {
   const copyCode = (code: string, id: string) => {
     navigator.clipboard.writeText(code); setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const copyLink = (d: Discount) => {
+    // Build shareable URL — use first applicable event, or first live event
+    const eventId = d.applicable_event_ids?.length ? d.applicable_event_ids[0] : null;
+    const evt = eventId ? events.find((e) => e.id === eventId) : events[0];
+    if (!evt) return;
+    const base = window.location.origin.replace(/\/admin\./, "/");
+    const url = `${base}/event/${evt.slug}?discount=${encodeURIComponent(d.code)}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLinkId(d.id);
+    setTimeout(() => setCopiedLinkId(null), 2000);
   };
 
   const selectPreset = (preset: SchedulePreset) => {
@@ -384,6 +399,15 @@ export default function DiscountsPage() {
                           title="Copy code"
                         >
                           {copiedId === d.id ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                        </button>
+                      )}
+                      {events.length > 0 && !(d.auto_apply && d.code.startsWith("AUTO-")) && (
+                        <button
+                          className="text-muted-foreground/40 hover:text-foreground transition-colors"
+                          onClick={(e) => { e.stopPropagation(); copyLink(d); }}
+                          title="Copy shareable link"
+                        >
+                          {copiedLinkId === d.id ? <Check size={12} className="text-green-500" /> : <Link size={12} />}
                         </button>
                       )}
                     </div>

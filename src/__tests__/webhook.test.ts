@@ -235,6 +235,7 @@ describe("POST /api/stripe/webhook", () => {
     mockCreateOrder.mockResolvedValue(ORDER_RESULT);
     setupFrom();
     delete process.env.STRIPE_WEBHOOK_SECRET;
+    delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
   });
 
   it("creates order on payment_intent.succeeded (happy path)", async () => {
@@ -479,5 +480,6 @@ describe("POST /api/stripe/webhook — signature verification", () => {
     expect(json.error).toMatch(/invalid signature/i);
 
     delete process.env.STRIPE_WEBHOOK_SECRET;
+    delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
   });
 });

@@ -187,6 +187,10 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
                 type: data.discount.type,
                 value: data.discount.value,
               });
+              // Show countdown banner for any discount with expiry
+              if (data.discount.expires_at) {
+                setFlashSaleExpiresAt(data.discount.expires_at);
+              }
             }
           })
           .catch(() => {});
@@ -659,15 +663,16 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
                     ticketGroupReleaseMode={ticketGroupReleaseMode}
                     onViewMerch={handleViewMerch}
                     discount={activeDiscount}
-                    onApplyDiscount={(d) => {
+                    onApplyDiscount={(d, expiresAt) => {
                       setActiveDiscount(d);
                       // Manual code overrides auto-discount
                       if (d && isAutoDiscount) {
                         setIsAutoDiscount(false);
-                        setFlashSaleExpiresAt(null);
                       }
+                      // Show countdown banner if the applied discount has an expiry
+                      setFlashSaleExpiresAt(expiresAt || null);
                     }}
-                    flashSale={isAutoDiscount && activeDiscount ? {
+                    flashSale={activeDiscount && flashSaleExpiresAt ? {
                       expiresAt: flashSaleExpiresAt,
                       onExpired: () => {
                         setActiveDiscount(null);

@@ -36,6 +36,7 @@ export interface DiscountValidation {
     code: string;
     type: DiscountType;
     value: number;
+    expires_at?: string | null;
   };
   error?: string;
 }

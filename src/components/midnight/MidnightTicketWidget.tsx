@@ -41,7 +41,7 @@ interface MidnightTicketWidgetProps {
   ticketGroupReleaseMode?: Record<string, "all" | "sequential">;
   onViewMerch?: (ticketType: TicketTypeRow) => void;
   discount?: DiscountDisplay | null;
-  onApplyDiscount?: (d: DiscountDisplay) => void;
+  onApplyDiscount?: (d: DiscountDisplay, expiresAt?: string | null) => void;
   flashSale?: {
     expiresAt: string | null;
     onExpired: () => void;
@@ -177,11 +177,14 @@ export function MidnightTicketWidget({
         sessionStorage.setItem("feral_popup_discount", data.discount.code);
         setCodeOpen(false);
         setCodeValue("");
-        onApplyDiscount?.({
-          code: data.discount.code,
-          type: data.discount.type,
-          value: data.discount.value,
-        });
+        onApplyDiscount?.(
+          {
+            code: data.discount.code,
+            type: data.discount.type,
+            value: data.discount.value,
+          },
+          data.discount.expires_at || null
+        );
       } else {
         setCodeError(data.error || "Invalid code");
       }

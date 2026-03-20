@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
         code: discount.code,
         type: discount.type,
         value: discount.value,
+        expires_at: discount.expires_at || null,
       },
     });
   } catch (err) {

@@ -236,12 +236,14 @@ export default async function EventPage({
       </>
     );
   }
-  // ?ref=CODE auto-applies a rep's discount code
+  // ?ref=CODE auto-applies a rep's discount code, ?discount=CODE auto-applies any discount
   const refCode = typeof sp.ref === "string" ? sp.ref : undefined;
-  const refScript = refCode ? (
+  const discountCode = typeof sp.discount === "string" ? sp.discount : undefined;
+  const preApplyCode = refCode || discountCode; // ref wins (rep attribution)
+  const refScript = preApplyCode ? (
     <script
       dangerouslySetInnerHTML={{
-        __html: `try{sessionStorage.setItem("feral_popup_discount",${JSON.stringify(refCode)})}catch(e){}`,
+        __html: `try{sessionStorage.setItem("feral_popup_discount",${JSON.stringify(preApplyCode)})}catch(e){}`,
       }}
     />
   ) : null;

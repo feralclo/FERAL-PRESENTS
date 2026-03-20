@@ -2,6 +2,7 @@ import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, brandingKey, homepageKey } from "@/lib/constants";
 import { getCanonicalBaseUrl } from "@/lib/seo-server";
+import { buildEventsListJsonLd } from "@/lib/seo";
 import type { Metadata } from "next";
 import type { BrandingSettings, HomepageSettings } from "@/types/settings";
 import type { ListingEvent } from "@/types/events";
@@ -47,8 +48,8 @@ export async function generateMetadata(): Promise<Metadata> {
     }
   }
 
-  const title = `Events | ${orgName}`;
-  const description = `Browse all upcoming events from ${orgName}. Live music, experiences, and more.`;
+  const title = `Upcoming Events & Tickets | ${orgName}`;
+  const description = `Browse upcoming events and buy tickets from ${orgName}. Live music, club nights, and immersive experiences. Secure your spot now.`;
   const canonicalUrl = baseUrl ? `${baseUrl}/events/` : undefined;
 
   return {
@@ -164,6 +165,12 @@ export default async function EventsPage({
     }
   }
 
+  // ItemList JSON-LD — helps Google understand this is a collection of events
+  const baseUrl = await getCanonicalBaseUrl(orgId);
+  const eventsJsonLd = events.length > 0
+    ? buildEventsListJsonLd({ events, siteUrl: baseUrl })
+    : null;
+
   // ?ref=CODE auto-applies a rep's discount code
   const refCode = typeof sp.ref === "string" ? sp.ref : undefined;
   const refScript = refCode ? (
@@ -176,6 +183,12 @@ export default async function EventsPage({
 
   return (
     <>
+      {eventsJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(eventsJsonLd) }}
+        />
+      )}
       {refScript}
       <EventsListPage events={events} branding={branding} />
     </>

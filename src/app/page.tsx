@@ -95,6 +95,7 @@ export async function generateMetadata(): Promise<Metadata> {
       ...(shareImage ? { images: [{ url: shareImage, alt: orgName }] } : {}),
       ...(twitterHandle ? { creator: twitterHandle.startsWith("@") ? twitterHandle : `@${twitterHandle}` } : {}),
     },
+    robots: { index: true, follow: true },
   };
 }
 

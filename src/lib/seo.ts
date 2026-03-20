@@ -306,6 +306,55 @@ export function buildEventJsonLd({
 }
 
 /**
+ * Build JSON-LD structured data for an events listing page (schema.org/ItemList).
+ * Helps Google understand the page is a curated collection of events with links to each.
+ */
+export function buildEventsListJsonLd({
+  events,
+  siteUrl,
+}: {
+  events: Array<{
+    slug: string;
+    name: string;
+    date_start?: string;
+    venue_name?: string;
+    city?: string;
+    cover_image?: string;
+    hero_image?: string;
+  }>;
+  siteUrl: string;
+}): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: events.map((event, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "Event",
+        name: event.name,
+        url: `${siteUrl}/event/${event.slug}/`,
+        ...(event.date_start ? { startDate: formatJsonLdDate(event.date_start) } : {}),
+        ...(event.venue_name
+          ? {
+              location: {
+                "@type": "Place",
+                name: event.venue_name,
+                ...(event.city
+                  ? { address: { "@type": "PostalAddress", addressLocality: event.city } }
+                  : {}),
+              },
+            }
+          : {}),
+        ...(event.hero_image || event.cover_image
+          ? { image: ensureAbsoluteUrl((event.hero_image || event.cover_image)!, siteUrl) }
+          : {}),
+      },
+    })),
+  };
+}
+
+/**
  * Build JSON-LD structured data for an organization (schema.org/Organization).
  * Used on the homepage to establish brand identity in search results.
  */

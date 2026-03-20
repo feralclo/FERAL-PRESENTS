@@ -60,7 +60,23 @@ const nextConfig: NextConfig = {
   // Security headers for all routes.
   // Additional headers (HSTS in production) are set by middleware for /admin/* and /api/*.
   async headers() {
+    // CDN edge caching for public pages.
+    // Pages use force-dynamic for fresh data, which sets Cache-Control: no-store for browsers.
+    // CDN-Cache-Control overrides this at Vercel's edge — Googlebot and repeat visitors
+    // get near-instant CDN responses while browsers still fetch fresh data.
+    // Cache key includes hostname, so multi-tenant pages are isolated.
+    const cdnCacheHeaders = [
+      { key: "CDN-Cache-Control", value: "public, s-maxage=60, stale-while-revalidate=300" },
+    ];
+
     return [
+      // Public pages: CDN edge caching (60s fresh, 5min stale-while-revalidate)
+      { source: "/", headers: cdnCacheHeaders },
+      { source: "/events/", headers: cdnCacheHeaders },
+      { source: "/event/:slug/", headers: cdnCacheHeaders },
+      { source: "/shop/", headers: cdnCacheHeaders },
+      { source: "/shop/:path*/", headers: cdnCacheHeaders },
+      // Security headers for all routes
       {
         source: "/(.*)",
         headers: [

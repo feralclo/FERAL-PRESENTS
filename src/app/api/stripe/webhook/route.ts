@@ -14,6 +14,45 @@ import type { MetaEventPayload } from "@/types/marketing";
 import * as Sentry from "@sentry/nextjs";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const connectWebhookSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+
+/**
+ * Verify a webhook event against one or more signing secrets.
+ * Account and Connect webhooks share this URL but have different secrets.
+ * Returns the verified event, or null if verification fails.
+ */
+async function verifyWebhookEvent(
+  stripe: Stripe,
+  body: string,
+  request: NextRequest,
+  secrets: string[]
+): Promise<Stripe.Event | null> {
+  // Dev/test with no secrets configured — accept unverified
+  if (secrets.length === 0) {
+    return JSON.parse(body) as Stripe.Event;
+  }
+
+  const signature = request.headers.get("stripe-signature");
+  if (!signature) return null;
+
+  for (const secret of secrets) {
+    try {
+      return stripe.webhooks.constructEvent(body, signature, secret);
+    } catch {
+      // Try next secret
+    }
+  }
+
+  // All secrets failed — log the error
+  logPaymentEvent({
+    orgId: getOrgIdFromRequest(request),
+    type: "webhook_error",
+    severity: "critical",
+    errorCode: "signature_verification_failed",
+    errorMessage: "No webhook secret matched the signature",
+  });
+  return null;
+}
 
 /**
  * POST /api/stripe/webhook
@@ -23,18 +62,20 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
  * - payment_intent.succeeded: Create order + tickets
  * - payment_intent.payment_failed: Log failure
  *
- * For Connect direct charges, webhooks fire on the platform account
- * with the connected account context in the event.
+ * Two Stripe webhook endpoints point to this route:
+ * 1. Account webhook — platform events (subscriptions, platform payments)
+ * 2. Connect webhook — connected account events (tenant direct charges)
+ * Each has its own signing secret; we try both to verify.
  */
 export async function POST(request: NextRequest) {
   try {
     const stripe = getStripe();
     const body = await request.text();
 
-    let event: Stripe.Event;
+    const secrets = [webhookSecret, connectWebhookSecret].filter(Boolean) as string[];
 
     // Verify webhook signature — required in production to prevent forged events
-    if (!webhookSecret) {
+    if (secrets.length === 0) {
       if (process.env.NODE_ENV === "production") {
         console.error("STRIPE_WEBHOOK_SECRET is required in production");
         return NextResponse.json(
@@ -43,32 +84,15 @@ export async function POST(request: NextRequest) {
         );
       }
       // Dev/test only: accept unverified events with warning
-      console.warn("[webhook] No STRIPE_WEBHOOK_SECRET — accepting unverified event (dev only)");
-      event = JSON.parse(body) as Stripe.Event;
-    } else {
-      const signature = request.headers.get("stripe-signature");
-      if (!signature) {
-        return NextResponse.json(
-          { error: "Missing stripe-signature header" },
-          { status: 400 }
-        );
-      }
-      try {
-        event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-      } catch (err) {
-        console.error("Webhook signature verification failed:", err);
-        logPaymentEvent({
-          orgId: getOrgIdFromRequest(request),
-          type: "webhook_error",
-          severity: "critical",
-          errorCode: "signature_verification_failed",
-          errorMessage: err instanceof Error ? err.message : String(err),
-        });
-        return NextResponse.json(
-          { error: "Invalid signature" },
-          { status: 400 }
-        );
-      }
+      console.warn("[webhook] No webhook secrets configured — accepting unverified event (dev only)");
+    }
+
+    const event = await verifyWebhookEvent(stripe, body, request, secrets);
+    if (!event) {
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 400 }
+      );
     }
 
     // Handle the event

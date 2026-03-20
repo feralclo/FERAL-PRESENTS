@@ -724,17 +724,10 @@ export default function DiscountsPage() {
               </div>
             )}
 
-            {/* ── Active + auto-apply ── */}
+            {/* ── Active ── */}
             <div className="flex items-center justify-between">
               <Label className="text-sm">Active</Label>
               <Switch checked={editStatus === "active"} onCheckedChange={(c) => setEditStatus(c ? "active" : "inactive")} />
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
-              <div className="flex items-center gap-2">
-                <Zap size={13} className={editAutoApply ? "text-amber-500" : "text-muted-foreground/40"} />
-                <Label className="text-sm">Auto-Apply</Label>
-              </div>
-              <Switch checked={editAutoApply} onCheckedChange={setEditAutoApply} />
             </div>
 
             {/* ── Value ── */}

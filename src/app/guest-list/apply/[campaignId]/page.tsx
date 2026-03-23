@@ -212,51 +212,45 @@ export default function ApplyPage() {
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="mt-6">
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
-            {/* Name */}
-            <div className="px-4 pt-4 pb-3">
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Full name"
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none placeholder:text-white/25 focus:border-white/25 transition-colors" />
-            </div>
-
-            {/* Email */}
-            <div className="px-4 pb-3">
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="Email address"
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none placeholder:text-white/25 focus:border-white/25 transition-colors" />
-            </div>
-
-            {/* Instagram */}
-            {data?.campaign?.fields?.instagram && (
-              <div className="px-4 pb-3">
-                <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="Instagram @handle"
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none placeholder:text-white/25 focus:border-white/25 transition-colors" />
-              </div>
-            )}
-
-            {/* DOB */}
-            {data?.campaign?.fields?.date_of_birth && (
-              <div className="px-4 pb-3">
-                <input type="date" value={dob} onChange={(e) => setDob(e.target.value)}
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none focus:border-white/25 transition-colors" />
-              </div>
-            )}
-
-            {/* Submit */}
-            <div className="px-4 pb-4 pt-1">
-              <button type="submit" disabled={!name.trim() || !email.trim() || status === "submitting"}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
-                {status === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Apply
-              </button>
-            </div>
+        {/* Form section */}
+        <div className="mt-6">
+          <div className="mb-2">
+            <h3 className="text-[13px] font-bold uppercase tracking-[0.12em] text-white/60">Your Details</h3>
+            <p className="mt-1 text-[11px] text-white/25">Enter your details below to apply for guest list.</p>
           </div>
 
-          <p className="mt-4 text-center text-[10px] text-white/15">
+          <form onSubmit={handleSubmit}>
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+              <div className="p-4 space-y-3">
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Full name"
+                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none placeholder:text-white/25 focus:border-white/25 transition-colors" />
+
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="Email address"
+                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none placeholder:text-white/25 focus:border-white/25 transition-colors" />
+
+                {data?.campaign?.fields?.instagram && (
+                  <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="Instagram @handle"
+                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none placeholder:text-white/25 focus:border-white/25 transition-colors" />
+                )}
+
+                {data?.campaign?.fields?.date_of_birth && (
+                  <input type="date" value={dob} onChange={(e) => setDob(e.target.value)}
+                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none focus:border-white/25 transition-colors" />
+                )}
+
+                <button type="submit" disabled={!name.trim() || !email.trim() || status === "submitting"}
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+                  {status === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Apply for guest list
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <p className="mt-3 text-center text-[10px] text-white/15">
             We'll review your application and get back to you.
           </p>
-        </form>
+        </div>
       </div>
     </div>
   );

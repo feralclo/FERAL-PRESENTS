@@ -226,9 +226,6 @@ export default function AcceptPage() {
             </Suspense>
           </div>
 
-          <p className="mt-5 text-center text-[11px] text-muted-foreground/40">
-            Secure checkout powered by Stripe
-          </p>
         </div>
       </div>
     );

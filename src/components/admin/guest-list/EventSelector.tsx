@@ -1,9 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Calendar, MapPin, Users, AlertCircle, ChevronDown } from "lucide-react";
+import { useMemo } from "react";
+import { Calendar, MapPin, Users, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface EventForSelector {
   id: string;
@@ -32,147 +39,141 @@ function formatShortDate(dateStr: string): string {
   }
 }
 
+function isPast(dateStr: string | null): boolean {
+  if (!dateStr) return false;
+  return new Date(dateStr) < new Date();
+}
+
 export function EventSelector({
   events,
   selectedEventId,
   onSelectEvent,
   guestSummaries,
 }: EventSelectorProps) {
-  const [showPast, setShowPast] = useState(false);
+  // Only non-draft events
+  const activeEvents = useMemo(
+    () => events.filter((e) => e.status !== "draft"),
+    [events]
+  );
 
-  const { upcoming, past } = useMemo(() => {
-    const now = new Date();
-    const up: EventForSelector[] = [];
-    const pa: EventForSelector[] = [];
+  // Events that actually have guest list entries — shown as cards
+  const eventsWithGuests = useMemo(
+    () => activeEvents.filter((e) => (guestSummaries[e.id]?.total_guests || 0) > 0),
+    [activeEvents, guestSummaries]
+  );
 
-    for (const evt of events) {
-      const eventDate = evt.date_start ? new Date(evt.date_start) : null;
-      const isUpcoming = !eventDate || eventDate >= now || evt.status === "live";
-      if (isUpcoming) {
-        up.push(evt);
-      } else {
-        pa.push(evt);
-      }
-    }
+  // Events without guests — available via dropdown only
+  const eventsWithoutGuests = useMemo(
+    () => activeEvents.filter((e) => !guestSummaries[e.id] || guestSummaries[e.id].total_guests === 0),
+    [activeEvents, guestSummaries]
+  );
 
-    return { upcoming: up, past: pa };
-  }, [events]);
+  // Is the selected event one without guests? (show it as context)
+  const selectedIsEmpty = selectedEventId && !eventsWithGuests.find((e) => e.id === selectedEventId);
+  const selectedEvent = activeEvents.find((e) => e.id === selectedEventId);
 
-  const renderCard = (evt: EventForSelector) => {
-    const isSelected = evt.id === selectedEventId;
-    const summary = guestSummaries[evt.id];
-    const totalGuests = summary?.total_guests || 0;
-    const pendingCount = summary?.pending_count || 0;
-
+  if (activeEvents.length === 0) {
     return (
-      <button
-        key={evt.id}
-        type="button"
-        onClick={() => onSelectEvent(evt.id)}
-        className={cn(
-          "flex-shrink-0 w-[220px] rounded-xl border p-4 text-left transition-all",
-          isSelected
-            ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-            : "border-border/60 bg-card/50 hover:border-primary/30"
-        )}
-      >
-        <p className="text-sm font-semibold text-foreground truncate">{evt.name}</p>
-
-        {evt.date_start && (
-          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Calendar className="h-3 w-3 shrink-0" />
-            <span>{formatShortDate(evt.date_start)}</span>
-          </div>
-        )}
-
-        {evt.venue_name && (
-          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <MapPin className="h-3 w-3 shrink-0" />
-            <span className="truncate">{evt.venue_name}</span>
-          </div>
-        )}
-
-        <div className="mt-2.5 flex items-center gap-2">
-          {totalGuests > 0 && (
-            <Badge variant="secondary" className="text-[10px] gap-1 py-0">
-              <Users className="h-2.5 w-2.5" />
-              {totalGuests}
-            </Badge>
-          )}
-          {pendingCount > 0 && (
-            <Badge variant="outline" className="text-[10px] gap-1 py-0 border-warning/30 text-warning">
-              <AlertCircle className="h-2.5 w-2.5" />
-              {pendingCount} pending
-            </Badge>
-          )}
-        </div>
-      </button>
-    );
-  };
-
-  if (events.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-border/60 p-8 text-center">
-        <p className="text-sm text-muted-foreground">No events yet</p>
+      <div className="rounded-xl border border-dashed border-border/60 p-6 text-center">
+        <p className="text-sm text-muted-foreground">No published events</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      {/* Upcoming events — scrollable card row */}
-      {upcoming.length > 0 && (
-        <div>
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
-            {upcoming.length === events.length ? "Events" : "Upcoming"}
-          </p>
-          <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
-            {upcoming.map(renderCard)}
-          </div>
+      {/* Cards for events with guests */}
+      {eventsWithGuests.length > 0 && (
+        <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+          {eventsWithGuests.map((evt) => {
+            const isSelected = evt.id === selectedEventId;
+            const summary = guestSummaries[evt.id];
+            const totalGuests = summary?.total_guests || 0;
+            const pendingCount = summary?.pending_count || 0;
+            const past = isPast(evt.date_start);
+
+            return (
+              <button
+                key={evt.id}
+                type="button"
+                onClick={() => onSelectEvent(evt.id)}
+                className={cn(
+                  "flex-shrink-0 w-[200px] rounded-xl border p-3.5 text-left transition-all",
+                  isSelected
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                    : "border-border/60 bg-card/50 hover:border-primary/30",
+                  past && !isSelected && "opacity-60"
+                )}
+              >
+                <p className="text-sm font-semibold text-foreground truncate">{evt.name}</p>
+                {evt.date_start && (
+                  <p className="mt-1 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <Calendar className="h-3 w-3 shrink-0" />
+                    {formatShortDate(evt.date_start)}
+                    {past && <span className="text-muted-foreground/40">· past</span>}
+                  </p>
+                )}
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge variant="secondary" className="text-[10px] gap-1 py-0">
+                    <Users className="h-2.5 w-2.5" />
+                    {totalGuests}
+                  </Badge>
+                  {pendingCount > 0 && (
+                    <Badge variant="outline" className="text-[10px] gap-1 py-0 border-warning/30 text-warning">
+                      <AlertCircle className="h-2.5 w-2.5" />
+                      {pendingCount}
+                    </Badge>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* Past events — collapsed */}
-      {past.length > 0 && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowPast(!showPast)}
-            className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-          >
-            <ChevronDown className={cn("h-3 w-3 transition-transform", showPast && "rotate-180")} />
-            Past events ({past.length})
-          </button>
-          {showPast && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {past.map((evt) => {
-                const isSelected = evt.id === selectedEventId;
-                const summary = guestSummaries[evt.id];
-                const totalGuests = summary?.total_guests || 0;
+      {/* Compact dropdown for switching to other events (or only selector if no cards) */}
+      <div className="flex items-center gap-3">
+        {eventsWithGuests.length > 0 && (
+          <span className="text-[11px] text-muted-foreground/50 shrink-0">or select</span>
+        )}
+        <Select
+          value={selectedEventId || "__none__"}
+          onValueChange={(v) => onSelectEvent(v === "__none__" ? "" : v)}
+        >
+          <SelectTrigger className={cn("max-w-xs", eventsWithGuests.length === 0 && "max-w-sm")}>
+            <SelectValue placeholder="Select event..." />
+          </SelectTrigger>
+          <SelectContent>
+            {eventsWithGuests.length > 0 && eventsWithoutGuests.length > 0 && (
+              <SelectItem value="__none__" disabled className="text-muted-foreground/50 text-xs">
+                Other events
+              </SelectItem>
+            )}
+            {(eventsWithGuests.length === 0 ? activeEvents : eventsWithoutGuests).map((evt) => (
+              <SelectItem key={evt.id} value={evt.id}>
+                <span className={isPast(evt.date_start) ? "text-muted-foreground" : ""}>
+                  {evt.name}
+                  {evt.date_start && (
+                    <span className="ml-2 text-muted-foreground/50 text-xs">
+                      {formatShortDate(evt.date_start)}
+                    </span>
+                  )}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-                return (
-                  <button
-                    key={evt.id}
-                    type="button"
-                    onClick={() => onSelectEvent(evt.id)}
-                    className={cn(
-                      "rounded-lg border px-3 py-2 text-left transition-all text-xs",
-                      isSelected
-                        ? "border-primary bg-primary/5"
-                        : "border-border/40 bg-card/30 hover:border-border/60"
-                    )}
-                  >
-                    <span className="font-medium text-foreground/80">{evt.name}</span>
-                    {evt.date_start && (
-                      <span className="ml-2 text-muted-foreground/50">{formatShortDate(evt.date_start)}</span>
-                    )}
-                    {totalGuests > 0 && (
-                      <span className="ml-2 text-muted-foreground/40">· {totalGuests} guests</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+      {/* Show selected empty event as a small context line */}
+      {selectedIsEmpty && selectedEvent && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+          <p className="text-sm font-medium text-foreground">{selectedEvent.name}</p>
+          {selectedEvent.date_start && (
+            <span className="text-xs text-muted-foreground">{formatShortDate(selectedEvent.date_start)}</span>
+          )}
+          {selectedEvent.venue_name && (
+            <span className="text-xs text-muted-foreground">· {selectedEvent.venue_name}</span>
           )}
         </div>
       )}

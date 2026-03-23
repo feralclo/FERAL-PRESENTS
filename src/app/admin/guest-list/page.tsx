@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
@@ -18,8 +18,9 @@ export default function GuestListPage() {
   const [selectedEvent, setSelectedEvent] = useState("");
   const [activeTab, setActiveTab] = useState("guests");
   const [guestSummaries, setGuestSummaries] = useState<Record<string, { total_guests: number; pending_count: number }>>({});
+  const autoSelected = useRef(false);
 
-  // Load events
+  // Load events (filter out drafts)
   const loadEvents = useCallback(async () => {
     const supabase = getSupabaseClient();
     if (!supabase) return;
@@ -30,19 +31,9 @@ export default function GuestListPage() {
       .eq("org_id", orgId)
       .order("date_start", { ascending: false });
 
-    const evts = (data || []) as EventForSelector[];
+    const evts = ((data || []) as EventForSelector[]).filter((e) => e.status !== "draft");
     setEvents(evts);
-
-    // Auto-select first upcoming event
-    if (evts.length > 0 && !selectedEvent) {
-      const now = new Date();
-      const upcoming = evts.find((e) => {
-        const d = e.date_start ? new Date(e.date_start) : null;
-        return !d || d >= now || e.status === "live";
-      });
-      setSelectedEvent(upcoming?.id || evts[0].id);
-    }
-  }, [orgId, selectedEvent]);
+  }, [orgId]);
 
   // Load per-event guest summaries
   const loadSummaries = useCallback(async () => {
@@ -59,6 +50,39 @@ export default function GuestListPage() {
     loadEvents();
     loadSummaries();
   }, [loadEvents, loadSummaries]);
+
+  // Auto-select: pick the first event that has guests, or the first upcoming event
+  useEffect(() => {
+    if (autoSelected.current || selectedEvent || events.length === 0) return;
+
+    const now = new Date();
+
+    // Prefer event with guests + pending approvals
+    const withPending = events.find((e) => (guestSummaries[e.id]?.pending_count || 0) > 0);
+    if (withPending) {
+      setSelectedEvent(withPending.id);
+      autoSelected.current = true;
+      return;
+    }
+
+    // Then any event with guests
+    const withGuests = events.find((e) => (guestSummaries[e.id]?.total_guests || 0) > 0);
+    if (withGuests) {
+      setSelectedEvent(withGuests.id);
+      autoSelected.current = true;
+      return;
+    }
+
+    // Then first upcoming event
+    const upcoming = events.find((e) => {
+      if (!e.date_start) return true;
+      return new Date(e.date_start) >= now;
+    });
+    if (upcoming) {
+      setSelectedEvent(upcoming.id);
+      autoSelected.current = true;
+    }
+  }, [events, guestSummaries, selectedEvent]);
 
   return (
     <div className="space-y-6 p-6 lg:p-8">

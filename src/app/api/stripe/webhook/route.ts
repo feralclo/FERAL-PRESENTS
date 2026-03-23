@@ -5,7 +5,8 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, OrderCreationError, type OrderVat, type OrderDiscount } from "@/lib/orders";
-import { issueGuestListTicket } from "@/lib/guest-list";
+// Dynamic import to avoid pulling crypto into test environment
+// import { issueGuestListTicket } from "@/lib/guest-list";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import { updateOrgPlanSettings } from "@/lib/plans";
@@ -590,6 +591,7 @@ async function handleGuestListApplicationPayment(paymentIntent: Stripe.PaymentIn
   }
 
   try {
+    const { issueGuestListTicket } = await import("@/lib/guest-list");
     await issueGuestListTicket(supabase, orgId, guest, event, "webhook");
     console.log(`[webhook] Guest list ticket issued for ${guestListId} via webhook backup`);
   } catch (err) {

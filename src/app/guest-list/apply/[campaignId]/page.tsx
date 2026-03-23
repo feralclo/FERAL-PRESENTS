@@ -131,8 +131,8 @@ export default function ApplyPage() {
           <h1 className="text-lg font-bold text-foreground">Applications closed</h1>
           <p className="mt-2 text-sm text-muted-foreground">Guest list is now full for this event.</p>
           {data?.event && (
-            <div className="mt-6 rounded-xl border border-border/60 bg-card/50 p-4 text-left">
-              <p className="text-sm font-semibold text-foreground">{data.event.name}</p>
+            <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 text-left">
+              <p className="text-[15px] font-semibold text-foreground">{data.event.name}</p>
             </div>
           )}
         </div>
@@ -158,9 +158,9 @@ export default function ApplyPage() {
               : "We'll review your application and let you know."}
           </p>
           {data?.event && (
-            <div className="mt-6 rounded-xl border border-border/60 bg-card/50 p-4 text-left">
-              <p className="text-sm font-semibold text-foreground">{data.event.name}</p>
-              {data.event.venue_name && <p className="mt-1 text-xs text-muted-foreground">{data.event.venue_name}</p>}
+            <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 text-left">
+              <p className="text-[15px] font-semibold text-foreground">{data.event.name}</p>
+              {data.event.venue_name && <p className="mt-1.5 text-[13px] text-muted-foreground">{data.event.venue_name}</p>}
             </div>
           )}
         </div>
@@ -175,7 +175,7 @@ export default function ApplyPage() {
         {logo}
 
         <div className="text-center">
-          <h1 className="text-xl font-bold text-foreground">{data?.campaign?.title || "Apply for guest list"}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{data?.campaign?.title || "Apply for guest list"}</h1>
           {data?.campaign?.description && (
             <p className="mt-2 text-sm text-muted-foreground">{data.campaign.description}</p>
           )}
@@ -183,71 +183,67 @@ export default function ApplyPage() {
 
         {/* Event details */}
         {data?.event && (
-          <div className="mt-5 rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-sm font-semibold text-foreground">{data.event.name}</p>
+          <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5">
+            <p className="text-[15px] font-semibold text-foreground">{data.event.name}</p>
             {data.event.venue_name && (
-              <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-                <MapPin className="h-3 w-3 shrink-0" /><span>{data.event.venue_name}</span>
+              <div className="mt-2.5 flex items-center gap-2.5 text-[13px] text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5 shrink-0 opacity-50" /><span>{data.event.venue_name}</span>
               </div>
             )}
             {data.event.date_start && (
-              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                <Calendar className="h-3 w-3 shrink-0" /><span>{formatDate(data.event.date_start)}</span>
+              <div className="mt-1.5 flex items-center gap-2.5 text-[13px] text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5 shrink-0 opacity-50" /><span>{formatDate(data.event.date_start)}</span>
               </div>
             )}
+            {spotsLeft !== null && spotsLeft > 0 && (
+              <>
+                <div className="mt-4 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+                <p className="mt-3 text-[12px] tracking-wide text-muted-foreground/70">
+                  {spotsLeft} spot{spotsLeft !== 1 ? "s" : ""} remaining
+                </p>
+              </>
+            )}
           </div>
-        )}
-
-        {/* Capacity indicator */}
-        {spotsLeft !== null && (
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            {spotsLeft > 0 ? `${spotsLeft} spot${spotsLeft !== 1 ? "s" : ""} remaining` : "Almost full"}
-          </p>
         )}
 
         {/* Error */}
         {submitError && (
-          <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2">
-            <p className="text-xs text-destructive">{submitError}</p>
+          <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5">
+            <p className="text-[13px] text-destructive">{submitError}</p>
           </div>
         )}
 
         {/* Form section */}
-        <div className="mt-6">
-          <div className="mb-2">
-            <h3 className="text-[13px] font-bold uppercase tracking-[0.12em] text-white/60">Your Details</h3>
-            <p className="mt-1 text-[11px] text-white/25">Enter your details below to apply for guest list.</p>
-          </div>
+        <div className="mt-8">
+          <h3 className="font-mono text-sm tracking-[2.5px] uppercase text-foreground/60 font-bold pb-3 mb-5 border-b border-white/[0.06]">
+            Your Details
+          </h3>
 
-          <form onSubmit={handleSubmit}>
-            <div className="rounded-xl border border-white/[0.12] bg-white/[0.03] overflow-hidden">
-              <div className="p-4 space-y-3">
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Full name"
-                  className="w-full rounded-lg border border-white/[0.15] bg-white/[0.06] px-4 py-3.5 text-[15px] text-white outline-none placeholder:text-white/35 focus:border-white/30 transition-colors" />
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Full name"
+              className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-[15px] text-[15px] text-foreground outline-none placeholder:text-foreground/35 focus:border-white/[0.30] transition-colors" />
 
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="Email address"
-                  className="w-full rounded-lg border border-white/[0.15] bg-white/[0.06] px-4 py-3.5 text-[15px] text-white outline-none placeholder:text-white/35 focus:border-white/30 transition-colors" />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="Email address"
+              className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-[15px] text-[15px] text-foreground outline-none placeholder:text-foreground/35 focus:border-white/[0.30] transition-colors" />
 
-                {data?.campaign?.fields?.instagram && (
-                  <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="Instagram @handle"
-                    className="w-full rounded-lg border border-white/[0.15] bg-white/[0.06] px-4 py-3.5 text-[15px] text-white outline-none placeholder:text-white/35 focus:border-white/30 transition-colors" />
-                )}
+            {data?.campaign?.fields?.instagram && (
+              <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="Instagram @handle"
+                className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-[15px] text-[15px] text-foreground outline-none placeholder:text-foreground/35 focus:border-white/[0.30] transition-colors" />
+            )}
 
-                {data?.campaign?.fields?.date_of_birth && (
-                  <input type="date" value={dob} onChange={(e) => setDob(e.target.value)}
-                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none focus:border-white/25 transition-colors" />
-                )}
+            {data?.campaign?.fields?.date_of_birth && (
+              <input type="date" value={dob} onChange={(e) => setDob(e.target.value)}
+                className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-[15px] text-[15px] text-foreground/90 outline-none focus:border-white/[0.30] transition-colors" />
+            )}
 
-                <button type="submit" disabled={!name.trim() || !email.trim() || status === "submitting"}
-                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
-                  {status === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  Apply for guest list
-                </button>
-              </div>
-            </div>
+            <button type="submit" disabled={!name.trim() || !email.trim() || status === "submitting"}
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+              {status === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Apply for guest list
+            </button>
           </form>
 
-          <p className="mt-3 text-center text-[10px] text-white/15">
+          <p className="mt-4 text-center text-[11px] text-foreground/20">
             We'll review your application and get back to you.
           </p>
         </div>

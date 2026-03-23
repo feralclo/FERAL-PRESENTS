@@ -170,13 +170,13 @@ export default function RsvpPage() {
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">{resultMessage}</p>
           {event && (
-            <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-left">
-              <p className="text-sm font-semibold text-foreground">{event.name}</p>
+            <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 text-left">
+              <p className="text-[15px] font-semibold text-foreground">{event.name}</p>
               {event.venue_name && (
-                <p className="mt-1 text-xs text-muted-foreground">{event.venue_name}</p>
+                <p className="mt-1.5 text-[13px] text-muted-foreground">{event.venue_name}</p>
               )}
               {event.date_start && (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-[13px] text-muted-foreground">
                   {formatDate(event.date_start)}
                   {event.doors_time ? ` · ${formatTime(event.doors_time)}` : ""}
                 </p>
@@ -204,17 +204,17 @@ export default function RsvpPage() {
 
         {/* Event details card */}
         {event && (
-          <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-5">
-            <p className="text-base font-semibold text-foreground">{event.name}</p>
+          <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5">
+            <p className="text-[15px] font-semibold text-foreground">{event.name}</p>
             {event.venue_name && (
-              <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <div className="mt-2.5 flex items-center gap-2.5 text-[13px] text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5 shrink-0 opacity-50" />
                 <span>{event.venue_name}</span>
               </div>
             )}
             {event.date_start && (
-              <div className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-3.5 w-3.5 shrink-0" />
+              <div className="mt-1.5 flex items-center gap-2.5 text-[13px] text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5 shrink-0 opacity-50" />
                 <span>
                   {formatDate(event.date_start)}
                   {event.doors_time ? ` · ${formatTime(event.doors_time)}` : ""}
@@ -222,15 +222,15 @@ export default function RsvpPage() {
               </div>
             )}
             {showAccessLevel && (
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-3.5 flex items-center gap-2">
                 <Shield className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-primary uppercase tracking-[0.15em]">
                   {guest?.access_label}
                 </span>
               </div>
             )}
             {guest?.qty && guest.qty > 1 && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-[12px] text-muted-foreground">
                 +{guest.qty - 1} guest{guest.qty > 2 ? "s" : ""}
               </p>
             )}
@@ -248,7 +248,7 @@ export default function RsvpPage() {
             type="button"
             onClick={() => handleAction("accept")}
             disabled={status === "submitting"}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {status === "submitting" ? (
               <Loader2 className="h-4 w-4 animate-spin" />

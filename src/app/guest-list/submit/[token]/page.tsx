@@ -202,7 +202,7 @@ export default function SubmitGuestListPage() {
           {/* Show all submissions so far */}
           {existingCount > 0 && (
             <div className="mt-8">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-3">
+              <p className="font-mono text-[11px] tracking-[2px] uppercase text-muted-foreground/50 mb-3">
                 Your guest list ({existingCount})
               </p>
               <div className="space-y-2">
@@ -210,15 +210,15 @@ export default function SubmitGuestListPage() {
                   const statusInfo = STATUS_LABELS[s.status] || STATUS_LABELS.pending;
                   const Icon = statusInfo.icon;
                   return (
-                    <div key={i} className="flex items-center gap-3 rounded-lg border border-border/40 bg-card/30 px-3 py-2.5">
+                    <div key={i} className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">{s.email}</p>
+                        <p className="text-[14px] font-medium text-foreground truncate">{s.name}</p>
+                        <p className="text-[11px] text-muted-foreground/70 truncate">{s.email}</p>
                       </div>
                       {s.access_level !== "guest_list" && s.access_level !== "artist" && (
-                        <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">{ACCESS_LEVEL_LABELS[s.access_level] || s.access_level}</span>
+                        <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-wider">{ACCESS_LEVEL_LABELS[s.access_level] || s.access_level}</span>
                       )}
-                      <div className={`flex items-center gap-1 text-[11px] ${statusInfo.color} shrink-0`}>
+                      <div className={`flex items-center gap-1.5 text-[11px] ${statusInfo.color} shrink-0`}>
                         <Icon className="h-3 w-3" />
                         <span>{statusInfo.label}</span>
                       </div>
@@ -251,16 +251,16 @@ export default function SubmitGuestListPage() {
 
         {/* Event details */}
         {data?.event && (
-          <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-sm font-semibold text-foreground">{data.event.name}</p>
+          <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5">
+            <p className="text-[15px] font-semibold text-foreground">{data.event.name}</p>
             {data.event.venue_name && (
-              <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-                <MapPin className="h-3 w-3 shrink-0" /><span>{data.event.venue_name}</span>
+              <div className="mt-2.5 flex items-center gap-2.5 text-[13px] text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5 shrink-0 opacity-50" /><span>{data.event.venue_name}</span>
               </div>
             )}
             {data.event.date_start && (
-              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                <Calendar className="h-3 w-3 shrink-0" /><span>{formatDate(data.event.date_start)}</span>
+              <div className="mt-1.5 flex items-center gap-2.5 text-[13px] text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5 shrink-0 opacity-50" /><span>{formatDate(data.event.date_start)}</span>
               </div>
             )}
           </div>
@@ -268,8 +268,8 @@ export default function SubmitGuestListPage() {
 
         {/* Existing submissions */}
         {existingCount > 0 && (
-          <div className="mt-5">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-2">
+          <div className="mt-6">
+            <p className="font-mono text-[11px] tracking-[2px] uppercase text-muted-foreground/50 mb-3">
               Already submitted ({existingCount})
             </p>
             <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
@@ -277,10 +277,10 @@ export default function SubmitGuestListPage() {
                 const statusInfo = STATUS_LABELS[s.status] || STATUS_LABELS.pending;
                 const Icon = statusInfo.icon;
                 return (
-                  <div key={i} className="flex items-center gap-2 rounded-lg border border-border/30 bg-card/20 px-3 py-2">
-                    <p className="text-xs font-medium text-foreground truncate flex-1">{s.name}</p>
-                    <div className={`flex items-center gap-1 text-[10px] ${statusInfo.color} shrink-0`}>
-                      <Icon className="h-2.5 w-2.5" />
+                  <div key={i} className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">
+                    <p className="text-[13px] font-medium text-foreground truncate flex-1">{s.name}</p>
+                    <div className={`flex items-center gap-1.5 text-[11px] ${statusInfo.color} shrink-0`}>
+                      <Icon className="h-3 w-3" />
                       <span>{statusInfo.label}</span>
                     </div>
                   </div>
@@ -297,7 +297,7 @@ export default function SubmitGuestListPage() {
               const label = ACCESS_LEVEL_LABELS[level] || level;
               const isFull = remaining !== null && remaining === 0;
               return (
-                <span key={level} className={`inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium ${isFull ? "bg-muted/50 text-muted-foreground/40 line-through" : "bg-card border border-border/60 text-muted-foreground"}`}>
+                <span key={level} className={`inline-flex items-center rounded-md px-2.5 py-1 text-[11px] font-medium ${isFull ? "bg-white/[0.02] text-muted-foreground/30 line-through" : "bg-white/[0.03] border border-white/[0.08] text-muted-foreground"}`}>
                   {label}: {remaining === null ? "Unlimited" : `${remaining} left`}
                 </span>
               );
@@ -313,58 +313,60 @@ export default function SubmitGuestListPage() {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="mt-5 space-y-3">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
-            {existingCount > 0 ? "Add more" : "Names"}
-          </p>
-          {rows.map((row, i) => (
-            <div key={row.id} className="flex items-start gap-2">
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">
-                    {existingCount + i + 1}
-                  </span>
-                  <input type="text" value={row.name} onChange={(e) => updateRow(row.id, "name", e.target.value)} placeholder="Full name"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
+        <form onSubmit={handleSubmit} className="mt-6">
+          <h3 className="font-mono text-sm tracking-[2.5px] uppercase text-foreground/60 font-bold pb-3 mb-5 border-b border-white/[0.06]">
+            {existingCount > 0 ? "Add More" : "Names"}
+          </h3>
+          <div className="space-y-4">
+            {rows.map((row, i) => (
+              <div key={row.id} className="flex items-start gap-2">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-muted-foreground">
+                      {existingCount + i + 1}
+                    </span>
+                    <input type="text" value={row.name} onChange={(e) => updateRow(row.id, "name", e.target.value)} placeholder="Full name"
+                      className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-3.5 py-3 text-[14px] text-foreground outline-none placeholder:text-foreground/35 focus:border-white/[0.30] transition-colors" />
+                  </div>
+                  <div className="ml-[34px] flex gap-2">
+                    <input type="email" value={row.email} onChange={(e) => updateRow(row.id, "email", e.target.value)} placeholder="Email" required
+                      className="flex-1 rounded-lg border border-white/[0.10] bg-white/[0.04] px-3.5 py-2.5 text-[14px] text-foreground outline-none placeholder:text-foreground/35 focus:border-white/[0.30] transition-colors" />
+                    {hasQuotas && availableLevels.length > 1 && (
+                      <select value={row.access_level} onChange={(e) => updateRow(row.id, "access_level", e.target.value)}
+                        className="w-[100px] rounded-lg border border-white/[0.10] bg-white/[0.04] px-2.5 py-2.5 text-xs text-foreground outline-none focus:border-white/[0.30] transition-colors">
+                        {availableLevels.map((level) => {
+                          const remaining = data?.quota_remaining?.[level];
+                          const isFull = remaining !== null && remaining !== undefined && remaining <= 0;
+                          return <option key={level} value={level} disabled={isFull}>{ACCESS_LEVEL_LABELS[level] || level}{isFull ? " (Full)" : ""}</option>;
+                        })}
+                      </select>
+                    )}
+                  </div>
                 </div>
-                <div className="ml-8 flex gap-2">
-                  <input type="email" value={row.email} onChange={(e) => updateRow(row.id, "email", e.target.value)} placeholder="Email" required
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
-                  {hasQuotas && availableLevels.length > 1 && (
-                    <select value={row.access_level} onChange={(e) => updateRow(row.id, "access_level", e.target.value)}
-                      className="w-[100px] rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/15">
-                      {availableLevels.map((level) => {
-                        const remaining = data?.quota_remaining?.[level];
-                        const isFull = remaining !== null && remaining !== undefined && remaining <= 0;
-                        return <option key={level} value={level} disabled={isFull}>{ACCESS_LEVEL_LABELS[level] || level}{isFull ? " (Full)" : ""}</option>;
-                      })}
-                    </select>
-                  )}
-                </div>
+                {rows.length > 1 && (
+                  <button type="button" onClick={() => removeRow(row.id)} className="mt-2 p-1.5 text-muted-foreground/30 hover:text-destructive transition-colors">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
               </div>
-              {rows.length > 1 && (
-                <button type="button" onClick={() => removeRow(row.id)} className="mt-1.5 p-1.5 text-muted-foreground/40 hover:text-destructive transition-colors">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
 
           <button type="button" onClick={addRow}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/60 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary">
+            className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/[0.10] py-3 text-[13px] font-medium text-muted-foreground/60 transition-colors hover:border-white/[0.20] hover:text-foreground/60">
             <Plus className="h-3.5 w-3.5" /> Add another
           </button>
 
-          <div className="pt-3">
+          <div className="mt-5">
             <button type="submit" disabled={validRows.length === 0 || pageStatus === "submitting"}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
               {pageStatus === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Submit {validRows.length} name{validRows.length !== 1 ? "s" : ""}
             </button>
           </div>
         </form>
 
-        <p className="mt-6 text-center text-[11px] text-muted-foreground/50">
+        <p className="mt-6 text-center text-[11px] text-foreground/20">
           The promoter will review and confirm each guest.
         </p>
       </div>

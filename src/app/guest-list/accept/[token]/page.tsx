@@ -165,10 +165,10 @@ export default function AcceptPage() {
           <h1 className="mt-5 text-lg font-bold text-foreground">You're in.</h1>
           <p className="mt-2 text-sm text-muted-foreground">Your ticket has been sent to your email.</p>
           {event && (
-            <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-left">
-              <p className="text-sm font-semibold text-foreground">{event.name}</p>
-              {event.venue_name && <p className="mt-1 text-xs text-muted-foreground">{event.venue_name}</p>}
-              {event.date_start && <p className="mt-1 text-xs text-muted-foreground">{formatDate(event.date_start)}</p>}
+            <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 text-left">
+              <p className="text-[15px] font-semibold text-foreground">{event.name}</p>
+              {event.venue_name && <p className="mt-1.5 text-[13px] text-muted-foreground">{event.venue_name}</p>}
+              {event.date_start && <p className="mt-1 text-[13px] text-muted-foreground">{formatDate(event.date_start)}</p>}
             </div>
           )}
         </div>
@@ -191,16 +191,16 @@ export default function AcceptPage() {
           </div>
 
           {event && (
-            <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
-              <p className="text-sm font-semibold text-foreground">{event.name}</p>
+            <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5">
+              <p className="text-[15px] font-semibold text-foreground">{event.name}</p>
               {event.venue_name && (
-                <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3 shrink-0" /><span>{event.venue_name}</span>
+                <div className="mt-2.5 flex items-center gap-2.5 text-[13px] text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 opacity-50" /><span>{event.venue_name}</span>
                 </div>
               )}
               {event.date_start && (
-                <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                  <Calendar className="h-3 w-3 shrink-0" /><span>{formatDate(event.date_start)}</span>
+                <div className="mt-1.5 flex items-center gap-2.5 text-[13px] text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5 shrink-0 opacity-50" /><span>{formatDate(event.date_start)}</span>
                 </div>
               )}
             </div>
@@ -250,24 +250,24 @@ export default function AcceptPage() {
         </div>
 
         {event && (
-          <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-sm font-semibold text-foreground">{event.name}</p>
+          <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5">
+            <p className="text-[15px] font-semibold text-foreground">{event.name}</p>
             {event.venue_name && (
-              <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-                <MapPin className="h-3 w-3 shrink-0" /><span>{event.venue_name}</span>
+              <div className="mt-2.5 flex items-center gap-2.5 text-[13px] text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5 shrink-0 opacity-50" /><span>{event.venue_name}</span>
               </div>
             )}
             {event.date_start && (
-              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                <Calendar className="h-3 w-3 shrink-0" /><span>{formatDate(event.date_start)}</span>
+              <div className="mt-1.5 flex items-center gap-2.5 text-[13px] text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5 shrink-0 opacity-50" /><span>{formatDate(event.date_start)}</span>
               </div>
             )}
           </div>
         )}
 
         {paymentError && (
-          <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2">
-            <p className="text-xs text-destructive">{paymentError}</p>
+          <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5">
+            <p className="text-[13px] text-destructive">{paymentError}</p>
           </div>
         )}
 
@@ -279,7 +279,7 @@ export default function AcceptPage() {
           </button>
         </div>
 
-        <p className="mt-6 text-center text-[11px] text-muted-foreground/40">
+        <p className="mt-6 text-center text-[11px] text-foreground/20">
           If you didn't expect this, you can safely ignore it.
         </p>
       </div>

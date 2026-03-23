@@ -58,13 +58,13 @@ function CardForm({ clientSecret, guestName, guestEmail, formattedPrice, onSucce
       <style>{`
         .guest-list-checkout .StripeElement {
           background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.10);
           border-radius: 8px;
-          padding: 14px 16px;
+          padding: 15px 16px;
           transition: border-color 0.15s ease;
         }
         .guest-list-checkout .StripeElement--focus {
-          border-color: rgba(255, 255, 255, 0.25);
+          border-color: rgba(255, 255, 255, 0.30);
         }
         .guest-list-checkout .StripeElement--invalid {
           border-color: rgba(239, 68, 68, 0.50);
@@ -112,7 +112,7 @@ function CardForm({ clientSecret, guestName, guestEmail, formattedPrice, onSucce
       {/* Contact section */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[13px] font-bold uppercase tracking-[0.12em] text-white/60">Contact</h3>
+          <h3 className="font-mono text-sm tracking-[2.5px] uppercase text-foreground/60 font-bold">Contact</h3>
           <button type="button" onClick={() => setEditing(!editing)}
             className="text-[11px] text-primary/70 hover:text-primary transition-colors">
             {editing ? "Done" : "Change"}
@@ -123,31 +123,31 @@ function CardForm({ clientSecret, guestName, guestEmail, formattedPrice, onSucce
             <div className="p-4 space-y-3">
               <input type="text" value={name} onChange={(e) => setName(e.target.value)}
                 placeholder="Full name"
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[15px] text-white/90 outline-none placeholder:text-white/30 focus:border-white/25" />
+                className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-[15px] text-[15px] text-foreground/90 outline-none placeholder:text-foreground/30 focus:border-white/[0.30] transition-colors" />
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email address"
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[15px] text-white/90 outline-none placeholder:text-white/30 focus:border-white/25" />
+                className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-[15px] text-[15px] text-foreground/90 outline-none placeholder:text-foreground/30 focus:border-white/[0.30] transition-colors" />
             </div>
           ) : (
-            <div className="px-4 py-3 space-y-1">
-              <p className="text-[15px] text-white/90">{name}</p>
-              <p className="text-[15px] text-white/60">{email}</p>
+            <div className="px-4 py-3.5 space-y-1">
+              <p className="text-[15px] text-foreground/90">{name}</p>
+              <p className="text-[15px] text-foreground/50">{email}</p>
             </div>
           )}
         </div>
         <div className="mt-1.5 flex items-center gap-1.5 px-1">
-          <svg className="h-3 w-3 text-white/25 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="h-3 w-3 text-foreground/25 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="2" y="4" width="20" height="16" rx="2" />
             <path d="M22 7l-10 6L2 7" />
           </svg>
-          <p className="text-[11px] text-white/25">Your tickets will be sent to this email</p>
+          <p className="text-[11px] text-foreground/25">Your tickets will be sent to this email</p>
         </div>
       </div>
 
       {/* Payment details */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[13px] font-bold uppercase tracking-[0.12em] text-white/60">Payment Details</h3>
+          <h3 className="font-mono text-sm tracking-[2.5px] uppercase text-foreground/60 font-bold">Payment Details</h3>
           <div className="flex items-center gap-1">
             <Lock className="h-3 w-3 text-white/20" />
             <span className="text-[10px] text-white/20">Encrypted</span>
@@ -158,7 +158,7 @@ function CardForm({ clientSecret, guestName, guestEmail, formattedPrice, onSucce
         <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
           {/* Card type header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-            <span className="text-[13px] font-medium text-white/80">Credit / Debit Card</span>
+            <span className="text-[13px] font-medium text-foreground/80">Credit / Debit Card</span>
             <div className="flex items-center gap-1">
               <span className="inline-flex h-[22px] items-center rounded-[4px] bg-[#1A1F71] px-2 text-[9px] font-bold text-white">VISA</span>
               <span className="inline-flex h-[22px] w-[34px] items-center justify-center rounded-[4px] bg-[#252525]">
@@ -184,7 +184,7 @@ function CardForm({ clientSecret, guestName, guestEmail, formattedPrice, onSucce
         </div>
       </div>
 
-      <p className="text-center text-[10px] text-white/15">
+      <p className="text-center text-[10px] text-foreground/15">
         Secure checkout powered by Stripe
       </p>
     </div>

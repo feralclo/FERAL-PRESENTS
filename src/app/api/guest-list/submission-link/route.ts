@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, guestListSubmissionsKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
-import { generateSubmissionToken } from "@/lib/guest-list";
+import { generateSubmissionToken, sendSubmissionLinkEmail } from "@/lib/guest-list";
 import type { SubmissionLink, SubmissionLinkWithUsage } from "@/types/guest-list";
 import type { AccessLevel } from "@/types/orders";
 import * as Sentry from "@sentry/nextjs";
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
     if (auth.error) return auth.error;
     const orgId = auth.orgId;
 
-    const { event_id, artist_name, quotas } = await request.json();
+    const { event_id, artist_name, quotas, artist_email } = await request.json();
 
     if (!event_id || !artist_name?.trim()) {
       return NextResponse.json({ error: "Missing event_id or artist_name" }, { status: 400 });
@@ -185,10 +185,31 @@ export async function POST(request: NextRequest) {
     await saveLinks(supabase, orgId, links);
 
     const baseUrl = await resolveTenantBaseUrl(supabase, orgId);
+    const submissionUrl = `${baseUrl}/guest-list/submit/${token}`;
+
+    // Send email to artist if email provided (fire-and-forget)
+    if (artist_email?.trim()) {
+      const { data: event } = await supabase
+        .from(TABLES.EVENTS)
+        .select("name, date_start, venue_name")
+        .eq("id", event_id)
+        .eq("org_id", orgId)
+        .single();
+
+      sendSubmissionLinkEmail({
+        orgId,
+        artistName: artist_name.trim(),
+        artistEmail: artist_email.trim(),
+        submissionUrl,
+        eventName: event?.name || "Event",
+        eventDate: event?.date_start || undefined,
+        venueName: event?.venue_name || undefined,
+      }).catch((err) => console.error("[submission-link] Email failed:", err));
+    }
 
     return NextResponse.json({
       token,
-      url: `${baseUrl}/guest-list/submit/${token}`,
+      url: submissionUrl,
       artist_name: artist_name.trim(),
     });
   } catch (err) {

@@ -44,6 +44,7 @@ export function ArtistLinksTab({ selectedEventId, orgId }: ArtistLinksTabProps) 
   // Create form
   const [showCreate, setShowCreate] = useState(false);
   const [createName, setCreateName] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
   const [createQuotas, setCreateQuotas] = useState<SubmissionLinkQuotas>({});
   const [creating, setCreating] = useState(false);
 
@@ -116,10 +117,12 @@ export function ArtistLinksTab({ selectedEventId, orgId }: ArtistLinksTabProps) 
         body: JSON.stringify({
           event_id: selectedEventId,
           artist_name: createName.trim(),
+          artist_email: createEmail.trim() || undefined,
           quotas: Object.keys(cleanQuotas).length > 0 ? cleanQuotas : undefined,
         }),
       });
       setCreateName("");
+      setCreateEmail("");
       setCreateQuotas({});
       setShowCreate(false);
       loadLinks();
@@ -245,9 +248,15 @@ export function ArtistLinksTab({ selectedEventId, orgId }: ArtistLinksTabProps) 
             <p className="text-xs text-muted-foreground mt-1">Generate a link for an artist to submit their guest list</p>
           </CardHeader>
           <CardContent className="p-6 pt-4 space-y-4">
-            <div className="space-y-2">
-              <Label>Artist / DJ Name *</Label>
-              <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. DJ Shadow" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Artist / DJ Name *</Label>
+                <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. DJ Shadow" />
+              </div>
+              <div className="space-y-2">
+                <Label>Email <span className="text-muted-foreground/50 font-normal">(sends link directly)</span></Label>
+                <Input type="email" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="artist@email.com" />
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Quotas per access level <span className="text-muted-foreground/50">(leave empty for unlimited)</span></Label>

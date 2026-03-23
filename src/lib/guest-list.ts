@@ -182,6 +182,17 @@ function formatDate(dateStr: string): string {
   }
 }
 
+/** Resolve relative URL to absolute (for email logo). */
+function resolveLogoUrl(url: string): string {
+  if (url.startsWith("http") || url.startsWith("data:")) return url;
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
+  ).replace(/\/$/, "");
+  return `${siteUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 /** Format time for display. */
 function formatTime(dateStr: string): string {
   try {
@@ -419,11 +430,15 @@ export async function sendGuestListInviteEmail(params: {
     const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
     const accentColor = branding.accent_color || "#7C3AED";
 
-    // Resolve logo for CID inline embedding (same logo as order confirmation)
-    const logoCid = await resolveLogoCid(branding.logo_url || null, params.orgId, supabase);
-    const logoHtml = logoCid
-      ? `<img src="cid:brand-logo" alt="${orgName}" width="120" style="display: block; max-width: 120px; max-height: 48px; width: auto; height: auto; border: 0;" />`
-      : `<span style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: ${accentColor};">${orgName}</span>`;
+    // Resolve logo URL (same approach as order confirmation — direct URL, not CID)
+    const emailLogo = (emailRow?.data as Record<string, string>)?.logo_url || branding.logo_url || null;
+    const logoUrl = emailLogo ? resolveLogoUrl(emailLogo) : null;
+
+    // Email settings for logo dimensions
+    const logoHeight = Math.min(
+      ((emailRow?.data as Record<string, number>)?.logo_height || 48),
+      100
+    );
 
     // Resolve tenant URL for RSVP link
     const tenantUrl = await resolveTenantUrl(params.orgId, supabase);
@@ -441,115 +456,111 @@ export async function sendGuestListInviteEmail(params: {
     // Nonchalant, professional subject
     const subject = `You're on the list — ${params.eventName}`;
 
+    // Event details line (same format as order confirmation)
+    const eventDetailsLine = [dateLine, venueLine].filter(Boolean).join(" · ");
+
     const html = `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <meta name="supported-color-schemes" content="light dark">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
   <title>${escapeHtml(subject)}</title>
-  <style>
-    :root { color-scheme: light dark; }
-    @media (prefers-color-scheme: dark) {
-      .em-bg { background-color: #121218 !important; }
-      .em-card { background-color: #1a1a22 !important; }
-      .em-h { color: #f0f0f5 !important; }
-      .em-p { color: #a0a0b0 !important; }
-      .em-m { color: #707080 !important; }
-      .em-divider { background-color: #2a2a35 !important; }
-      .em-btn { background-color: ${accentColor} !important; }
-      .em-footer { color: #606070 !important; }
-      .em-footer-accent { color: ${accentColor} !important; }
-      .em-detail-bg { background-color: #1e1e28 !important; }
-      .em-detail-border { border-color: #2a2a35 !important; }
-    }
-  </style>
 </head>
-<body class="em-bg" style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="em-bg" style="background-color: #f4f4f5;">
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased; color-scheme: light only;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
     <tr>
-      <td align="center" style="padding: 40px 16px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="em-card" style="max-width: 480px; background-color: #ffffff; border-radius: 12px; overflow: hidden;">
+      <td align="center" style="padding: 32px 16px;">
 
-          <!-- Accent bar -->
+        <!-- Container -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+
+          <!-- Accent Bar -->
           <tr>
-            <td style="height: 3px; background-color: ${accentColor};"></td>
+            <td style="height: 4px; background-color: ${accentColor};"></td>
           </tr>
 
-          <!-- Logo -->
+          <!-- Header (dark bg with logo — matches order confirmation) -->
           <tr>
-            <td style="padding: 28px 32px 0 32px; text-align: center;">
-              ${logoHtml}
-              <div class="em-divider" style="margin-top: 20px; height: 1px; background-color: #e4e4e7;"></div>
+            <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);" : ""}">
+              ${
+                logoUrl
+                  ? `<img src="${escapeHtml(logoUrl)}" alt="${orgName}" height="${logoHeight}" style="width: auto; height: ${logoHeight}px; display: inline-block;">`
+                  : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
+              }
             </td>
           </tr>
 
-          <!-- Body -->
+          <!-- Heading -->
           <tr>
-            <td style="padding: 28px 32px 8px 32px;">
-              <h1 class="em-h" style="font-size: 24px; font-weight: 700; color: #18181b; margin: 0 0 20px 0; line-height: 1.3;">You're on the list.</h1>
-              <p class="em-p" style="font-size: 15px; color: #3f3f46; margin: 0 0 24px 0; line-height: 1.6;">${escapeHtml(firstName)}, you've been added to the guest list for <strong>${eventName}</strong>.</p>
+            <td style="padding: 20px 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; color: #111; letter-spacing: 1px;">
+                You're on the list.
+              </h1>
             </td>
           </tr>
 
-          <!-- Event details card -->
+          <!-- Message -->
           <tr>
-            <td style="padding: 0 32px 24px 32px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="em-detail-bg em-detail-border" style="background-color: #f9f9fb; border: 1px solid #e4e4e7; border-radius: 10px;">
-                <tr>
-                  <td style="padding: 20px 24px;">
-                    <p class="em-h" style="font-size: 16px; font-weight: 700; color: #18181b; margin: 0 0 8px 0;">${eventName}</p>
-                    ${venueLine ? `<p class="em-p" style="font-size: 14px; color: #52525b; margin: 0 0 4px 0;">${venueLine}</p>` : ""}
-                    ${dateLine ? `<p class="em-p" style="font-size: 14px; color: #52525b; margin: 0 0 4px 0;">${dateLine}${timeLine ? ` · ${timeLine}` : ""}</p>` : ""}
-                    ${showAccessLevel ? `<p style="font-size: 13px; font-weight: 600; color: ${accentColor}; margin: 8px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(accessLabel)}</p>` : ""}
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Instruction -->
-          <tr>
-            <td style="padding: 0 32px 8px 32px;">
-              <p class="em-p" style="font-size: 15px; color: #3f3f46; margin: 0 0 24px 0; line-height: 1.6;">Confirm your attendance and we'll send your ticket with a QR code for entry.</p>
-            </td>
-          </tr>
-
-          <!-- CTA -->
-          <tr>
-            <td style="padding: 0 32px 32px 32px;">
-              <table role="presentation" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td class="em-btn" style="background-color: ${accentColor}; border-radius: 8px;">
-                    <a href="${rsvpUrl}" style="display: inline-block; padding: 14px 36px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; letter-spacing: 0.3px;">Confirm attendance</a>
-                  </td>
-                </tr>
-              </table>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                ${escapeHtml(firstName)}, you've been added to the guest list for ${eventName}.
+                <br>Confirm your attendance and we'll send your ticket.
+              </p>
             </td>
           </tr>
 
           <!-- Divider -->
           <tr>
-            <td style="padding: 0 32px;">
-              <div class="em-divider" style="height: 1px; background-color: #e4e4e7;"></div>
+            <td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td>
+          </tr>
+
+          <!-- Event Details -->
+          <tr>
+            <td style="padding: 24px 32px;">
+              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">${eventName}</div>
+              ${eventDetailsLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">${escapeHtml(eventDetailsLine)}</div>` : ""}
+              ${timeLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-top: 2px;">Doors ${timeLine}</div>` : ""}
+              ${showAccessLevel ? `<div style="font-family: 'Courier New', monospace; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: ${accentColor}; margin-top: 10px;">${escapeHtml(accessLabel)}</div>` : ""}
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td style="padding: 28px 32px; text-align: center;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                <tr>
+                  <td style="background-color: ${accentColor}; border-radius: 6px;">
+                    <a href="${rsvpUrl}" style="display: inline-block; padding: 14px 40px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; letter-spacing: 0.3px;">Confirm attendance</a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
           <!-- Fine print -->
           <tr>
-            <td style="padding: 20px 32px 28px 32px;">
-              <p class="em-m" style="font-size: 12px; color: #a1a1aa; margin: 0; line-height: 1.5;">If you didn't expect this, you can safely ignore it.</p>
+            <td style="padding: 0 32px 24px;">
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #aaa; margin: 0; text-align: center;">
+                If you didn't expect this, you can safely ignore it.
+              </p>
             </td>
           </tr>
 
         </table>
 
         <!-- Footer -->
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
           <tr>
-            <td style="padding: 20px 32px 0 32px; text-align: center;">
-              <p class="em-footer" style="font-size: 11px; color: #a1a1aa; margin: 0;">Sent by <span class="em-footer-accent" style="color: ${accentColor}; font-weight: 600;">${orgName}</span></p>
+            <td style="padding: 16px 32px 0; text-align: center;">
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #aaa; margin: 0;">Sent by <span style="color: ${accentColor}; font-weight: 600;">${orgName}</span></p>
             </td>
           </tr>
         </table>
@@ -565,7 +576,6 @@ export async function sendGuestListInviteEmail(params: {
       to: [params.guestEmail],
       subject,
       html,
-      ...(logoCid ? { attachments: [logoCid] } : {}),
     });
 
     console.log(`[guest-list-email] Invite sent to ${params.guestEmail} for ${params.eventName}`);
@@ -581,4 +591,139 @@ export async function sendGuestListInviteEmail(params: {
 /** Generate a crypto-random URL-safe token for DJ submission links. */
 export function generateSubmissionToken(): string {
   return crypto.randomBytes(16).toString("hex");
+}
+
+// ---------------------------------------------------------------------------
+// Submission link email (sent to artist/DJ)
+// ---------------------------------------------------------------------------
+
+/**
+ * Send a submission link email to an artist. Fire-and-forget — never throws.
+ * Same branded design as the guest list invitation email.
+ */
+export async function sendSubmissionLinkEmail(params: {
+  orgId: string;
+  artistName: string;
+  artistEmail: string;
+  submissionUrl: string;
+  eventName: string;
+  eventDate?: string;
+  venueName?: string;
+}): Promise<void> {
+  try {
+    const resend = getResendClient();
+    if (!resend) return;
+
+    const supabase = await getSupabaseAdmin();
+    if (!supabase) return;
+
+    const [{ data: brandingRow }, { data: emailRow }] = await Promise.all([
+      supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${params.orgId}_branding`).single(),
+      supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${params.orgId}_email`).single(),
+    ]);
+
+    const emailSettings: EmailSettings = {
+      ...DEFAULT_EMAIL_SETTINGS,
+      from_email: `${params.orgId}@mail.entry.events`,
+      ...((emailRow?.data as Partial<EmailSettings>) || {}),
+    };
+
+    const branding = (brandingRow?.data as Record<string, string>) || {};
+    const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
+    const accentColor = branding.accent_color || "#7C3AED";
+    const emailLogo = (emailRow?.data as Record<string, string>)?.logo_url || branding.logo_url || null;
+    const logoUrl = emailLogo ? resolveLogoUrl(emailLogo) : null;
+    const logoHeight = Math.min(((emailRow?.data as Record<string, number>)?.logo_height || 48), 100);
+
+    const eventName = escapeHtml(params.eventName);
+    const dateLine = params.eventDate ? formatDate(params.eventDate) : "";
+    const venueLine = params.venueName ? escapeHtml(params.venueName) : "";
+    const eventDetailsLine = [dateLine, venueLine].filter(Boolean).join(" · ");
+
+    const subject = `Submit your guest list — ${params.eventName}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+          <tr><td style="height: 4px; background-color: ${accentColor};"></td></tr>
+          <tr>
+            <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);" : ""}">
+              ${logoUrl
+                ? `<img src="${escapeHtml(logoUrl)}" alt="${orgName}" height="${logoHeight}" style="width: auto; height: ${logoHeight}px; display: inline-block;">`
+                : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
+              }
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; color: #111; letter-spacing: 1px;">Guest list.</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                Submit the names for your guest list for ${eventName}.
+              </p>
+            </td>
+          </tr>
+          <tr><td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td></tr>
+          <tr>
+            <td style="padding: 24px 32px;">
+              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">${eventName}</div>
+              ${eventDetailsLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">${escapeHtml(eventDetailsLine)}</div>` : ""}
+            </td>
+          </tr>
+          <tr><td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td></tr>
+          <tr>
+            <td style="padding: 28px 32px; text-align: center;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                <tr>
+                  <td style="background-color: ${accentColor}; border-radius: 6px;">
+                    <a href="${escapeHtml(params.submissionUrl)}" style="display: inline-block; padding: 14px 40px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">Submit guest list</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #aaa; margin: 0; text-align: center;">The promoter will review and confirm each guest.</p>
+            </td>
+          </tr>
+        </table>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
+          <tr>
+            <td style="padding: 16px 32px 0; text-align: center;">
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #aaa; margin: 0;">Sent by <span style="color: ${accentColor}; font-weight: 600;">${orgName}</span></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    await resend.emails.send({
+      from: `${branding.org_name || "Entry"} <${emailSettings.from_email}>`,
+      to: [params.artistEmail],
+      subject,
+      html,
+    });
+
+    console.log(`[guest-list-email] Submission link sent to ${params.artistEmail}`);
+  } catch (err) {
+    console.error("[guest-list-email] Failed to send submission link:", err);
+  }
 }

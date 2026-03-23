@@ -145,9 +145,8 @@ export async function POST(
     }
 
     // Sync guest list check-in if this is a guest list ticket.
-    // The order's payment_ref starts with "GUEST-LIST-" for guest list orders.
     if (ticketTypeName.startsWith("Guest List")) {
-      supabase
+      void supabase
         .from(TABLES.GUEST_LIST)
         .update({
           checked_in: true,
@@ -156,8 +155,7 @@ export async function POST(
         })
         .eq("order_id", ticket.order_id)
         .eq("org_id", orgId)
-        .then(() => {})
-        .catch(() => {});
+        .then(() => {});
     }
 
     return NextResponse.json({

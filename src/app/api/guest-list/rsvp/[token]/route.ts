@@ -21,7 +21,7 @@ export async function GET(
 
     const { data: guest, error } = await supabase
       .from(TABLES.GUEST_LIST)
-      .select("id, name, email, access_level, status, qty, event:events(id, name, slug, currency, venue_name, date_start, doors_time)")
+      .select("id, org_id, name, email, access_level, status, qty, event:events(id, name, slug, currency, venue_name, date_start, doors_time)")
       .eq("invite_token", token)
       .single();
 

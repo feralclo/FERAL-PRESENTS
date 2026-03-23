@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, Plus, Trash2, CheckCircle2, XCircle, Calendar, MapPin } from "lucide-react";
+import type { AccessLevel } from "@/types/orders";
 
 interface GuestRow {
   id: string;
   name: string;
   email: string;
+  access_level: AccessLevel;
 }
 
 interface SubmissionData {
@@ -23,7 +25,17 @@ interface SubmissionData {
     logo_url: string | null;
     accent_color: string;
   };
+  quotas: Record<string, number | null> | null;
+  quota_remaining: Record<string, number | null> | null;
 }
+
+const ACCESS_LEVEL_LABELS: Record<string, string> = {
+  guest_list: "Guest List",
+  vip: "VIP",
+  backstage: "Backstage",
+  aaa: "AAA",
+  artist: "Artist",
+};
 
 function formatDate(dateStr: string): string {
   try {
@@ -39,16 +51,26 @@ function formatDate(dateStr: string): string {
 }
 
 let nextId = 1;
-function makeRow(): GuestRow {
-  return { id: `row-${nextId++}`, name: "", email: "" };
+function makeRow(defaultLevel: AccessLevel): GuestRow {
+  return { id: `row-${nextId++}`, name: "", email: "", access_level: defaultLevel };
 }
 
 export default function SubmitGuestListPage() {
   const { token } = useParams<{ token: string }>();
   const [pageStatus, setPageStatus] = useState<"loading" | "ready" | "submitting" | "success" | "error">("loading");
   const [data, setData] = useState<SubmissionData | null>(null);
-  const [rows, setRows] = useState<GuestRow[]>([makeRow()]);
+  const [rows, setRows] = useState<GuestRow[]>([]);
   const [submitCount, setSubmitCount] = useState(0);
+  const [submitError, setSubmitError] = useState("");
+
+  // Determine default access level and available levels from quotas
+  const hasQuotas = data?.quotas && Object.keys(data.quotas).length > 0;
+  const availableLevels = hasQuotas
+    ? Object.entries(data!.quotas!).filter(([, quota]) => quota === null || (quota !== undefined && quota > 0)).map(([level]) => level as AccessLevel)
+    : [];
+  const defaultLevel: AccessLevel = availableLevels.length > 0
+    ? (availableLevels.find((l) => (data?.quota_remaining?.[l] ?? 1) > 0) || availableLevels[0])
+    : "guest_list";
 
   useEffect(() => {
     async function load() {
@@ -58,7 +80,15 @@ export default function SubmitGuestListPage() {
           setPageStatus("error");
           return;
         }
-        setData(await res.json());
+        const json = await res.json();
+        setData(json);
+        // Initialize first row with default access level
+        const hasQ = json.quotas && Object.keys(json.quotas).length > 0;
+        const levels = hasQ
+          ? Object.entries(json.quotas).filter(([, q]) => q === null || (q as number) > 0).map(([l]) => l as AccessLevel)
+          : [];
+        const defLevel: AccessLevel = levels.length > 0 ? levels[0] : "guest_list";
+        setRows([makeRow(defLevel)]);
         setPageStatus("ready");
       } catch {
         setPageStatus("error");
@@ -72,7 +102,7 @@ export default function SubmitGuestListPage() {
   };
 
   const addRow = () => {
-    setRows((prev) => [...prev, makeRow()]);
+    setRows((prev) => [...prev, makeRow(defaultLevel)]);
   };
 
   const removeRow = (id: string) => {
@@ -84,7 +114,7 @@ export default function SubmitGuestListPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validRows.length === 0) return;
-
+    setSubmitError("");
     setPageStatus("submitting");
     try {
       const res = await fetch(`/api/guest-list/submit/${token}`, {
@@ -94,6 +124,7 @@ export default function SubmitGuestListPage() {
           guests: validRows.map((r) => ({
             name: r.name.trim(),
             email: r.email.trim() || undefined,
+            access_level: hasQuotas ? r.access_level : undefined,
           })),
         }),
       });
@@ -103,12 +134,25 @@ export default function SubmitGuestListPage() {
         setSubmitCount(json.count || validRows.length);
         setPageStatus("success");
       } else {
+        const json = await res.json();
+        setSubmitError(json.error || "Something went wrong");
         setPageStatus("ready");
       }
     } catch {
+      setSubmitError("Network error — please try again");
       setPageStatus("ready");
     }
   };
+
+  // Logo element
+  const logo = data?.branding?.logo_url ? (
+    <div className="mb-6 flex justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={data.branding.logo_url} alt={data.branding.org_name} className="h-8 w-auto max-w-[140px] object-contain opacity-80" />
+    </div>
+  ) : data?.branding?.org_name ? (
+    <p className="mb-6 text-center font-mono text-xs font-bold tracking-[0.2em] uppercase text-muted-foreground/60">{data.branding.org_name}</p>
+  ) : null;
 
   // Loading
   if (pageStatus === "loading") {
@@ -119,7 +163,7 @@ export default function SubmitGuestListPage() {
     );
   }
 
-  // Error — invalid link
+  // Error
   if (pageStatus === "error") {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
@@ -133,21 +177,6 @@ export default function SubmitGuestListPage() {
       </div>
     );
   }
-
-  const logo = data?.branding?.logo_url ? (
-    <div className="mb-6 flex justify-center">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={data.branding.logo_url}
-        alt={data.branding.org_name}
-        className="h-8 w-auto max-w-[140px] object-contain opacity-80"
-      />
-    </div>
-  ) : data?.branding?.org_name ? (
-    <p className="mb-6 text-center font-mono text-xs font-bold tracking-[0.2em] uppercase text-muted-foreground/60">
-      {data.branding.org_name}
-    </p>
-  ) : null;
 
   // Success
   if (pageStatus === "success") {
@@ -165,9 +194,7 @@ export default function SubmitGuestListPage() {
           {data?.event && (
             <div className="mt-6 rounded-xl border border-border/60 bg-card/50 p-4 text-left">
               <p className="text-sm font-semibold text-foreground">{data.event.name}</p>
-              {data.event.venue_name && (
-                <p className="mt-1 text-xs text-muted-foreground">{data.event.venue_name}</p>
-              )}
+              {data.event.venue_name && <p className="mt-1 text-xs text-muted-foreground">{data.event.venue_name}</p>}
             </div>
           )}
         </div>
@@ -180,6 +207,7 @@ export default function SubmitGuestListPage() {
     <div className="flex min-h-screen justify-center px-4 py-12">
       <div className="w-full max-w-md">
         {logo}
+
         {/* Header */}
         <div className="text-center">
           <h1 className="text-xl font-bold text-foreground">Guest list</h1>
@@ -210,6 +238,35 @@ export default function SubmitGuestListPage() {
           </div>
         )}
 
+        {/* Quota remaining bar */}
+        {hasQuotas && data?.quota_remaining && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {Object.entries(data.quota_remaining).map(([level, remaining]) => {
+              const label = ACCESS_LEVEL_LABELS[level] || level;
+              const isFull = remaining !== null && remaining === 0;
+              return (
+                <span
+                  key={level}
+                  className={`inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium ${
+                    isFull
+                      ? "bg-muted/50 text-muted-foreground/40 line-through"
+                      : "bg-card border border-border/60 text-muted-foreground"
+                  }`}
+                >
+                  {label}: {remaining === null ? "Unlimited" : `${remaining} left`}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Error message */}
+        {submitError && (
+          <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2">
+            <p className="text-xs text-destructive">{submitError}</p>
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="mt-6 space-y-3">
           {rows.map((row, i) => (
@@ -227,13 +284,32 @@ export default function SubmitGuestListPage() {
                     className="w-full rounded-lg border border-border/60 bg-card/50 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
                   />
                 </div>
-                <input
-                  type="email"
-                  value={row.email}
-                  onChange={(e) => updateRow(row.id, "email", e.target.value)}
-                  placeholder="Email (optional)"
-                  className="ml-8 w-[calc(100%-32px)] rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
-                />
+                <div className="ml-8 flex gap-2">
+                  <input
+                    type="email"
+                    value={row.email}
+                    onChange={(e) => updateRow(row.id, "email", e.target.value)}
+                    placeholder="Email (optional)"
+                    className="flex-1 rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+                  />
+                  {hasQuotas && availableLevels.length > 1 && (
+                    <select
+                      value={row.access_level}
+                      onChange={(e) => updateRow(row.id, "access_level", e.target.value)}
+                      className="w-[100px] rounded-lg border border-border/60 bg-card/50 px-2 py-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+                    >
+                      {availableLevels.map((level) => {
+                        const remaining = data?.quota_remaining?.[level];
+                        const isFull = remaining !== null && remaining !== undefined && remaining <= 0;
+                        return (
+                          <option key={level} value={level} disabled={isFull}>
+                            {ACCESS_LEVEL_LABELS[level] || level}{isFull ? " (Full)" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  )}
+                </div>
               </div>
               {rows.length > 1 && (
                 <button
@@ -264,9 +340,7 @@ export default function SubmitGuestListPage() {
               disabled={validRows.length === 0 || pageStatus === "submitting"}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
-              {pageStatus === "submitting" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : null}
+              {pageStatus === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Submit {validRows.length} name{validRows.length !== 1 ? "s" : ""}
             </button>
           </div>

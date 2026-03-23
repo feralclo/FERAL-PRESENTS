@@ -1,32 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, guestListSubmissionsKey } from "@/lib/constants";
+import type { SubmissionLink } from "@/types/guest-list";
+import type { AccessLevel } from "@/types/orders";
 import * as Sentry from "@sentry/nextjs";
-
-interface SubmissionLink {
-  token: string;
-  event_id: string;
-  artist_name: string;
-  created_at: string;
-  active: boolean;
-}
 
 interface SubmittedGuest {
   name: string;
   email?: string;
   phone?: string;
   qty?: number;
+  access_level?: AccessLevel;
 }
 
 /**
- * Resolve submission link token → { event_id, artist_name, org_id }
+ * Resolve submission link token → { link, orgId }
  */
 async function resolveSubmissionToken(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   token: string
 ): Promise<{ link: SubmissionLink; orgId: string } | null> {
-  // Search all org submission settings for the token
   const { data: rows } = await supabase
     .from(TABLES.SITE_SETTINGS)
     .select("key, data")
@@ -38,7 +32,6 @@ async function resolveSubmissionToken(
     const links = (row.data as SubmissionLink[]) || [];
     const link = links.find((l: SubmissionLink) => l.token === token && l.active);
     if (link) {
-      // Extract org_id from key: "{org_id}_guest_list_submissions"
       const orgId = (row.key as string).replace("_guest_list_submissions", "");
       return { link, orgId };
     }
@@ -79,7 +72,7 @@ export async function GET(
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // Fetch branding for page styling
+    // Fetch branding
     const { data: brandingRow } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")
@@ -87,6 +80,33 @@ export async function GET(
       .single();
 
     const branding = (brandingRow?.data as Record<string, string>) || {};
+
+    // Calculate quota remaining if quotas exist
+    let quotaRemaining: Partial<Record<AccessLevel, number | null>> | undefined;
+
+    if (resolved.link.quotas) {
+      // Count existing submissions by access_level
+      const { data: existing } = await supabase
+        .from(TABLES.GUEST_LIST)
+        .select("access_level")
+        .eq("submission_token", token)
+        .eq("org_id", resolved.orgId);
+
+      const usedCounts = new Map<string, number>();
+      for (const row of existing || []) {
+        const level = (row.access_level as string) || "artist";
+        usedCounts.set(level, (usedCounts.get(level) || 0) + 1);
+      }
+
+      quotaRemaining = {};
+      for (const [level, quota] of Object.entries(resolved.link.quotas)) {
+        if (quota === null || quota === undefined) {
+          quotaRemaining[level as AccessLevel] = null;
+        } else {
+          quotaRemaining[level as AccessLevel] = Math.max(0, quota - (usedCounts.get(level) || 0));
+        }
+      }
+    }
 
     return NextResponse.json({
       artist_name: resolved.link.artist_name,
@@ -101,6 +121,8 @@ export async function GET(
         logo_url: branding.logo_url || null,
         accent_color: branding.accent_color || "#8B5CF6",
       },
+      quotas: resolved.link.quotas || null,
+      quota_remaining: quotaRemaining || null,
     });
   } catch (err) {
     Sentry.captureException(err);
@@ -110,7 +132,7 @@ export async function GET(
 
 /**
  * POST /api/guest-list/submit/[token] — Submit guest names (public)
- * Body: { guests: [{ name, email?, phone?, qty? }] }
+ * Body: { guests: [{ name, email?, phone?, qty?, access_level? }] }
  */
 export async function POST(
   request: NextRequest,
@@ -138,29 +160,22 @@ export async function POST(
       return NextResponse.json({ error: "Invalid or expired submission link" }, { status: 404 });
     }
 
-    // Check existing submissions for this token (cap at 100 total per link)
-    const { count: existingCount } = await supabase
-      .from(TABLES.GUEST_LIST)
-      .select("id", { count: "exact", head: true })
-      .eq("submission_token", token)
-      .eq("org_id", resolved.orgId);
-
-    if ((existingCount || 0) + guests.length > 100) {
-      return NextResponse.json(
-        { error: `Maximum 100 guests per submission link. ${existingCount || 0} already submitted.` },
-        { status: 400 }
-      );
-    }
-
-    // Validate each guest has at least a name
+    // Validate guests
     const validGuests: SubmittedGuest[] = [];
     for (const g of guests) {
       if (!g.name?.trim()) continue;
+
+      // Determine access level: use provided level, or default
+      const hasQuotas = resolved.link.quotas && Object.keys(resolved.link.quotas).length > 0;
+      const defaultLevel: AccessLevel = hasQuotas ? "guest_list" : "artist";
+      const level = (g.access_level as AccessLevel) || defaultLevel;
+
       validGuests.push({
         name: g.name.trim(),
         email: g.email?.trim() || undefined,
         phone: g.phone?.trim() || undefined,
         qty: Math.min(Math.max(parseInt(g.qty, 10) || 1, 1), 10),
+        access_level: level,
       });
     }
 
@@ -168,7 +183,63 @@ export async function POST(
       return NextResponse.json({ error: "No valid guests provided" }, { status: 400 });
     }
 
-    // Insert all as pending entries
+    // Check total cap per submission link (100 max)
+    const { count: existingTotal } = await supabase
+      .from(TABLES.GUEST_LIST)
+      .select("id", { count: "exact", head: true })
+      .eq("submission_token", token)
+      .eq("org_id", resolved.orgId);
+
+    if ((existingTotal || 0) + validGuests.length > 100) {
+      return NextResponse.json(
+        { error: `Maximum 100 guests per submission link. ${existingTotal || 0} already submitted.` },
+        { status: 400 }
+      );
+    }
+
+    // Enforce per-access-level quotas
+    if (resolved.link.quotas && Object.keys(resolved.link.quotas).length > 0) {
+      // Count existing by access_level
+      const { data: existingRows } = await supabase
+        .from(TABLES.GUEST_LIST)
+        .select("access_level")
+        .eq("submission_token", token)
+        .eq("org_id", resolved.orgId);
+
+      const usedCounts = new Map<string, number>();
+      for (const row of existingRows || []) {
+        const level = (row.access_level as string) || "artist";
+        usedCounts.set(level, (usedCounts.get(level) || 0) + 1);
+      }
+
+      // Count incoming per level
+      const incomingCounts = new Map<string, number>();
+      for (const g of validGuests) {
+        const level = g.access_level || "guest_list";
+        incomingCounts.set(level, (incomingCounts.get(level) || 0) + 1);
+      }
+
+      // Check each level
+      for (const [level, incoming] of incomingCounts) {
+        const quota = resolved.link.quotas[level as keyof typeof resolved.link.quotas];
+        if (quota === null || quota === undefined) continue; // unlimited
+        const used = usedCounts.get(level) || 0;
+        const remaining = quota - used;
+
+        if (incoming > remaining) {
+          const levelLabel = level === "guest_list" ? "Guest List" : level.toUpperCase();
+          return NextResponse.json(
+            {
+              error: `${levelLabel} quota exceeded: ${quota} allowed, ${remaining} remaining, ${incoming} requested.`,
+              quota_remaining: { [level]: remaining },
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    // Insert entries
     const rows = validGuests.map((g) => ({
       org_id: resolved.orgId,
       event_id: resolved.link.event_id,
@@ -177,7 +248,7 @@ export async function POST(
       phone: g.phone || null,
       qty: g.qty || 1,
       status: "pending",
-      access_level: "artist",
+      access_level: g.access_level || "artist",
       submitted_by: resolved.link.artist_name,
       submission_token: token,
       added_by: resolved.link.artist_name,

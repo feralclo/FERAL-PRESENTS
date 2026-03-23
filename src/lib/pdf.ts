@@ -15,6 +15,8 @@ export interface TicketPDFData {
   merchName?: string;
   /** "merch_preorder" = shop-only merch (QR for collection only, not entry) */
   orderType?: string;
+  /** Artist/person who added the guest (guest list orders). */
+  invitedBy?: string;
 }
 
 /** Parse hex color to [r, g, b] tuple */
@@ -250,6 +252,12 @@ export async function generateTicketsPDF(
       doc.setFontSize(10);
       doc.setTextColor(txR, txG, txB);
       doc.text(t.holderName, centerX, holderY, { align: "center" });
+      // "Guest of [Artist]" line
+      if (t.invitedBy) {
+        doc.setFontSize(8);
+        doc.setTextColor(acR, acG, acB);
+        doc.text(`Guest of ${t.invitedBy}`, centerX, holderY + 5, { align: "center" });
+      }
     }
 
     // Order number

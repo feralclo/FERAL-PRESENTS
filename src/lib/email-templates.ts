@@ -253,6 +253,11 @@ export function buildOrderConfirmationEmail(
                         ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #666;">${escapeHtml(doorsLine)}</div>`
                         : ""
                     }
+                    ${
+                      order.invited_by
+                        ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: ${accent}; margin-top: 8px;">Guest of ${escapeHtml(order.invited_by)}</div>`
+                        : ""
+                    }
                   </td>
                 </tr>
               </table>

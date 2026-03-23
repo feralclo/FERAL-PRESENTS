@@ -238,6 +238,8 @@ export async function sendOrderConfirmationEmail(params: {
   };
   /** "merch_preorder" for shop-only merch orders */
   order_type?: string;
+  /** Artist/person who added the guest (guest list orders). */
+  invited_by?: string;
   /** Cross-currency info (when buyer paid in a different currency than the event base). */
   crossCurrency?: {
     baseCurrency: string;
@@ -278,6 +280,7 @@ export async function sendOrderConfirmationEmail(params: {
       currency_symbol: symbol,
       total: fmtAmt(params.order.total),
       order_type: params.order_type,
+      invited_by: params.invited_by,
       tickets: params.tickets.map((t) => ({
         ticket_code: t.ticket_code,
         ticket_type: t.ticket_type_name,
@@ -398,6 +401,7 @@ export async function sendOrderConfirmationEmail(params: {
       merchSize: t.merch_size,
       merchName: t.merch_name,
       orderType: params.order_type,
+      invitedBy: params.invited_by,
     }));
 
     const pdfSettings = await getPdfTicketSettings(params.orgId);

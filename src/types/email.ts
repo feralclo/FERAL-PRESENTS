@@ -69,6 +69,8 @@ export interface OrderEmailData {
     inclusive: boolean;
     vat_number?: string;
   };
+  /** Artist/person who added the guest (guest list orders only). */
+  invited_by?: string;
   /** Cross-currency info (only present when buyer paid in a different currency). */
   cross_currency?: {
     base_symbol: string;

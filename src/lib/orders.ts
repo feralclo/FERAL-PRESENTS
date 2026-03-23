@@ -104,6 +104,8 @@ export interface CreateOrderParams {
   presentmentCurrency?: string;
   /** When true, marks this order as a test (stored in metadata for easy filtering). */
   testOrder?: boolean;
+  /** Additional metadata to merge into the order (e.g. invited_by for guest list). */
+  extraMetadata?: Record<string, unknown>;
 }
 
 /** A ticket row as created by createOrder(). */
@@ -184,6 +186,7 @@ export async function createOrder(
     conversion,
     presentmentCurrency,
     testOrder,
+    extraMetadata,
   } = params;
 
   const email = customer.email.toLowerCase();
@@ -304,6 +307,9 @@ export async function createOrder(
       if (discount.value != null) orderMetadata.discount_value = discount.value;
     } else if (discountCode) {
       orderMetadata.discount_code = discountCode;
+    }
+    if (extraMetadata) {
+      Object.assign(orderMetadata, extraMetadata);
     }
 
     const { data, error } = await supabase
@@ -530,6 +536,7 @@ export async function createOrder(
           };
         }),
         vat: vat && vat.amount > 0 ? vat : undefined,
+        invited_by: extraMetadata?.invited_by as string | undefined,
         ...(conversion && chargedCurrency !== baseCcy ? {
           crossCurrency: {
             baseCurrency: baseCcy,

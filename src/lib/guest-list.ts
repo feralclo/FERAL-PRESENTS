@@ -354,6 +354,7 @@ export async function issueGuestListTicket(
       ref: `GUEST-LIST-${guest.id}`,
     },
     sendEmail: true,
+    extraMetadata: guest.submitted_by ? { invited_by: guest.submitted_by } : undefined,
   });
 
   // Update guest list entry with order reference

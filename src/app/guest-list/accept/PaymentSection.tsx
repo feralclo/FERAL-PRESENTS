@@ -24,15 +24,6 @@ const CARD_ELEMENT_STYLE = {
   invalid: { color: "#ef4444" },
 };
 
-function LockIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none">
-      <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
-      <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function CardForm({ clientSecret, guestName, guestEmail, onSuccess, onError }: {
   clientSecret: string;
   guestName: string;
@@ -84,75 +75,59 @@ function CardForm({ clientSecret, guestName, guestEmail, onSuccess, onError }: {
         }
       `}</style>
 
-      {/* Pre-filled guest info */}
-      <div className="mb-4 space-y-2">
-        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Name</p>
-          <p className="text-sm text-white/70">{guestName}</p>
-        </div>
-        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Email</p>
-          <p className="text-sm text-white/70">{guestEmail}</p>
-        </div>
+      {/* Security line */}
+      <div className="flex items-center gap-1.5 mb-4">
+        <Lock className="h-3 w-3 text-white/30" />
+        <p className="text-[11px] text-white/30">All transactions are secure and encrypted.</p>
       </div>
 
-      {/* Payment details box */}
-      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-        {/* Header */}
-        <div className="mb-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/80">Payment Details</h3>
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <Lock className="h-3 w-3 text-white/30" />
-            <p className="text-[11px] text-white/30">All transactions are secure and encrypted.</p>
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        {/* Guest name (read-only, pre-filled) */}
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm text-white/60">
+          {guestName}
         </div>
 
-        {/* Credit / Debit Card label with brand icons */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-medium text-white/80">Credit / Debit Card</span>
-          <div className="flex items-center gap-1.5">
-            <span className="inline-flex items-center justify-center rounded bg-[#1A1F71] px-1.5 py-0.5 text-[9px] font-bold text-white">VISA</span>
-            <span className="inline-flex items-center justify-center rounded bg-[#FF5F00] px-1.5 py-0.5 text-[9px] font-bold text-white">MC</span>
-            <span className="inline-flex items-center justify-center rounded bg-[#006FCF] px-1.5 py-0.5 text-[9px] font-bold text-white">AMEX</span>
-          </div>
+        {/* Guest email (read-only, pre-filled) */}
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm text-white/60">
+          {guestEmail}
         </div>
 
-        {/* Card form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          {/* Card Number */}
-          <div className="relative">
-            <CardNumberElement
-              options={{
-                style: CARD_ELEMENT_STYLE,
-                placeholder: "Card number",
-                showIcon: false,
-                disableLink: true,
-              }}
+        {/* Card Number — showIcon: true lets Stripe render the real card brand */}
+        <div className="relative">
+          <CardNumberElement
+            options={{
+              style: CARD_ELEMENT_STYLE,
+              placeholder: "Card number",
+              showIcon: true,
+              disableLink: true,
+            }}
+          />
+        </div>
+
+        {/* Expiry + CVC */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <CardExpiryElement
+              options={{ style: CARD_ELEMENT_STYLE, placeholder: "MM / YY" }}
             />
-            <LockIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-white/25 pointer-events-none z-[1]" />
           </div>
-
-          {/* Expiry + CVC */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <CardExpiryElement
-                options={{ style: CARD_ELEMENT_STYLE, placeholder: "MM / YY" }}
-              />
-            </div>
-            <div>
-              <CardCvcElement
-                options={{ style: CARD_ELEMENT_STYLE, placeholder: "CVC" }}
-              />
-            </div>
+          <div>
+            <CardCvcElement
+              options={{ style: CARD_ELEMENT_STYLE, placeholder: "CVC" }}
+            />
           </div>
+        </div>
 
-          <button type="submit" disabled={!stripe || processing}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
-            {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
-            Secure your spot
-          </button>
-        </form>
-      </div>
+        <button type="submit" disabled={!stripe || processing}
+          className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+          {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
+          Secure your spot
+        </button>
+      </form>
+
+      <p className="mt-3 text-center text-[10px] text-white/20">
+        Secure checkout powered by Stripe
+      </p>
     </div>
   );
 }

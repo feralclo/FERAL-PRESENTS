@@ -170,7 +170,7 @@ export default function RsvpPage() {
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">{resultMessage}</p>
           {event && (
-            <div className="mt-6 rounded-xl border border-border/60 bg-card/50 p-4 text-left">
+            <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-left">
               <p className="text-sm font-semibold text-foreground">{event.name}</p>
               {event.venue_name && (
                 <p className="mt-1 text-xs text-muted-foreground">{event.venue_name}</p>
@@ -204,7 +204,7 @@ export default function RsvpPage() {
 
         {/* Event details card */}
         {event && (
-          <div className="mt-6 rounded-xl border border-border/60 bg-card/50 p-5">
+          <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-5">
             <p className="text-base font-semibold text-foreground">{event.name}</p>
             {event.venue_name && (
               <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">

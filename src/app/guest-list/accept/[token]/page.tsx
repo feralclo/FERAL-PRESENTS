@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useParams } from "next/navigation";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Loader2, CheckCircle2, XCircle, Calendar, MapPin } from "lucide-react";
 
 type PageStatus = "loading" | "ready" | "confirming" | "success" | "error" | "already_done";
@@ -37,47 +35,8 @@ function formatDate(dateStr: string): string {
   } catch { return dateStr; }
 }
 
-// Payment form component (rendered inside Stripe Elements)
-function PaymentForm({ amount, currency, onSuccess, onError }: {
-  amount: string;
-  currency: string;
-  onSuccess: (paymentIntentId: string) => void;
-  onError: (msg: string) => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setProcessing(true);
-    const result = await stripe.confirmPayment({
-      elements,
-      confirmParams: { return_url: window.location.href },
-      redirect: "if_required",
-    });
-
-    if (result.error) {
-      onError(result.error.message || "Payment failed");
-      setProcessing(false);
-    } else if (result.paymentIntent) {
-      onSuccess(result.paymentIntent.id);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement options={{ layout: "tabs" }} />
-      <button type="submit" disabled={!stripe || processing}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
-        {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        Pay {currency}{amount} & confirm
-      </button>
-    </form>
-  );
-}
+// Lazy-load Stripe payment section (only when paid acceptance)
+const PaymentSection = lazy(() => import("../PaymentSection"));
 
 export default function AcceptPage() {
   const { token } = useParams<{ token: string }>();
@@ -224,7 +183,7 @@ export default function AcceptPage() {
           <h1 className="mt-5 text-lg font-bold text-foreground">You're in.</h1>
           <p className="mt-2 text-sm text-muted-foreground">Your ticket has been sent to your email.</p>
           {event && (
-            <div className="mt-6 rounded-xl border border-border/60 bg-card/50 p-4 text-left">
+            <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-left">
               <p className="text-sm font-semibold text-foreground">{event.name}</p>
               {event.venue_name && <p className="mt-1 text-xs text-muted-foreground">{event.venue_name}</p>}
               {event.date_start && <p className="mt-1 text-xs text-muted-foreground">{formatDate(event.date_start)}</p>}
@@ -236,12 +195,6 @@ export default function AcceptPage() {
   }
 
   // Ready — show confirmation or payment form
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const stripePromise = useMemo(() => loadStripe(
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-    stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
-  ), [stripeAccountId]);
-
   return (
     <div className="flex min-h-screen justify-center px-4 py-12">
       <div className="w-full max-w-md">
@@ -250,16 +203,13 @@ export default function AcceptPage() {
         <div className="text-center">
           <h1 className="text-xl font-bold text-foreground">You've been accepted.</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {isPaid
-              ? `Complete your booking to confirm your spot.`
-              : `Confirm your spot and we'll send your ticket.`
-            }
+            Confirm your spot and we'll send your ticket.
           </p>
         </div>
 
         {/* Event details */}
         {event && (
-          <div className="mt-5 rounded-xl border border-border/60 bg-card/50 p-4">
+          <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
             <p className="text-sm font-semibold text-foreground">{event.name}</p>
             {event.venue_name && (
               <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
@@ -271,16 +221,6 @@ export default function AcceptPage() {
                 <Calendar className="h-3 w-3 shrink-0" /><span>{formatDate(event.date_start)}</span>
               </div>
             )}
-            {isPaid && paymentInfo && (
-              <p className="mt-3 font-mono text-lg font-bold text-foreground">{paymentInfo.symbol}{paymentInfo.amount}</p>
-            )}
-          </div>
-        )}
-
-        {/* Applicant info (read-only) */}
-        {data?.guest && (
-          <div className="mt-4 rounded-lg border border-border/30 bg-card/20 px-3 py-2">
-            <p className="text-sm text-foreground">{data.guest.name}</p>
           </div>
         )}
 
@@ -302,28 +242,18 @@ export default function AcceptPage() {
           </div>
         )}
 
-        {/* Paid — Stripe Elements */}
-        {isPaid && clientSecret && paymentInfo && (
+        {/* Paid — lazy-loaded Stripe payment */}
+        {isPaid && clientSecret && (
           <div className="mt-6">
-            <Elements stripe={stripePromise} options={{
-              clientSecret,
-              appearance: {
-                theme: "night",
-                variables: {
-                  colorPrimary: data?.branding?.accent_color || "#8B5CF6",
-                  colorBackground: "#111117",
-                  colorText: "#f0f0f5",
-                  borderRadius: "8px",
-                },
-              },
-            }}>
-              <PaymentForm
-                amount={paymentInfo.amount}
-                currency={paymentInfo.symbol}
+            <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary/60" /></div>}>
+              <PaymentSection
+                clientSecret={clientSecret}
+                stripeAccountId={stripeAccountId}
+                accentColor={data?.branding?.accent_color || "#8B5CF6"}
                 onSuccess={handlePaymentSuccess}
                 onError={(msg) => setPaymentError(msg)}
               />
-            </Elements>
+            </Suspense>
           </div>
         )}
 

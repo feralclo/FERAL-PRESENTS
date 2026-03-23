@@ -251,7 +251,7 @@ export default function SubmitGuestListPage() {
 
         {/* Event details */}
         {data?.event && (
-          <div className="mt-5 rounded-xl border border-border/60 bg-card/50 p-4">
+          <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
             <p className="text-sm font-semibold text-foreground">{data.event.name}</p>
             {data.event.venue_name && (
               <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
@@ -325,14 +325,14 @@ export default function SubmitGuestListPage() {
                     {existingCount + i + 1}
                   </span>
                   <input type="text" value={row.name} onChange={(e) => updateRow(row.id, "name", e.target.value)} placeholder="Full name"
-                    className="w-full rounded-lg border border-border/60 bg-card/50 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
                 </div>
                 <div className="ml-8 flex gap-2">
                   <input type="email" value={row.email} onChange={(e) => updateRow(row.id, "email", e.target.value)} placeholder="Email" required
-                    className="flex-1 rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
+                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
                   {hasQuotas && availableLevels.length > 1 && (
                     <select value={row.access_level} onChange={(e) => updateRow(row.id, "access_level", e.target.value)}
-                      className="w-[100px] rounded-lg border border-border/60 bg-card/50 px-2 py-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/15">
+                      className="w-[100px] rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/15">
                       {availableLevels.map((level) => {
                         const remaining = data?.quota_remaining?.[level];
                         const isFull = remaining !== null && remaining !== undefined && remaining <= 0;

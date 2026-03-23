@@ -217,13 +217,13 @@ export default function ApplyPage() {
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Full name</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Your name"
-              className="w-full rounded-lg border border-border/60 bg-card/50 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/30 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="your@email.com"
-              className="w-full rounded-lg border border-border/60 bg-card/50 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/30 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
           </div>
 
           {data?.campaign?.fields?.instagram && (
@@ -232,7 +232,7 @@ export default function ApplyPage() {
                 <Instagram className="h-3.5 w-3.5" /> Instagram
               </label>
               <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@handle"
-                className="w-full rounded-lg border border-border/60 bg-card/50 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/30 focus:border-primary/50 focus:ring-2 focus:ring-primary/15" />
             </div>
           )}
 

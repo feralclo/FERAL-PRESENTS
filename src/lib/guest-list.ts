@@ -490,7 +490,7 @@ export async function sendGuestListInviteEmail(params: {
               ${
                 logoUrl
                   ? `<img src="${escapeHtml(logoUrl)}" alt="${orgName}" height="${logoHeight}" style="width: auto; height: ${logoHeight}px; display: inline-block;">`
-                  : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
+                  : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
               }
             </td>
           </tr>
@@ -498,7 +498,7 @@ export async function sendGuestListInviteEmail(params: {
           <!-- Heading -->
           <tr>
             <td style="padding: 20px 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; color: #111; letter-spacing: 1px;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #111;">
                 You're on the list.
               </h1>
             </td>
@@ -524,11 +524,11 @@ export async function sendGuestListInviteEmail(params: {
           <!-- Event Details -->
           <tr>
             <td style="padding: 24px 32px;">
-              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">${eventName}</div>
               ${eventDetailsLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">${escapeHtml(eventDetailsLine)}</div>` : ""}
               ${timeLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-top: 2px;">Doors ${timeLine}</div>` : ""}
-              ${showAccessLevel ? `<div style="font-family: 'Courier New', monospace; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: ${accentColor}; margin-top: 10px;">${escapeHtml(accessLabel)}</div>` : ""}
+              ${showAccessLevel ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: ${accentColor}; margin-top: 10px;">${escapeHtml(accessLabel)}</div>` : ""}
             </td>
           </tr>
 
@@ -665,13 +665,13 @@ export async function sendSubmissionLinkEmail(params: {
             <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);" : ""}">
               ${logoUrl
                 ? `<img src="${escapeHtml(logoUrl)}" alt="${orgName}" height="${logoHeight}" style="width: auto; height: ${logoHeight}px; display: inline-block;">`
-                : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
+                : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
               }
             </td>
           </tr>
           <tr>
             <td style="padding: 20px 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; color: #111; letter-spacing: 1px;">Guest list.</h1>
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #111;">Submit your guest list.</h1>
             </td>
           </tr>
           <tr>
@@ -684,7 +684,7 @@ export async function sendSubmissionLinkEmail(params: {
           <tr><td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td></tr>
           <tr>
             <td style="padding: 24px 32px;">
-              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">${eventName}</div>
               ${eventDetailsLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">${escapeHtml(eventDetailsLine)}</div>` : ""}
             </td>
@@ -795,10 +795,8 @@ export async function sendApplicationAcceptanceEmail(params: {
     const priceDisplay = isPaid ? `${symbol}${(params.paymentAmount / 100).toFixed(2)}` : "";
 
     const subject = `You've been accepted — ${params.eventName}`;
-    const ctaText = isPaid ? `Pay ${priceDisplay} & confirm` : "Confirm your spot";
-    const bodyText = isPaid
-      ? `${firstName}, you've been accepted to the guest list for ${eventName}. Complete your booking to confirm your spot.`
-      : `${firstName}, you've been accepted to the guest list for ${eventName}. Confirm your spot and we'll send your ticket.`;
+    const ctaText = "Confirm your spot";
+    const bodyText = `${firstName}, you've been accepted to the guest list for ${eventName}. Confirm your spot and we'll send your ticket.`;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -818,13 +816,13 @@ export async function sendApplicationAcceptanceEmail(params: {
             <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);" : ""}">
               ${logoUrl
                 ? `<img src="${escapeHtml(logoUrl)}" alt="${orgName}" height="${logoHeight}" style="width: auto; height: ${logoHeight}px; display: inline-block;">`
-                : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
+                : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
               }
             </td>
           </tr>
           <tr>
             <td style="padding: 20px 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; color: #111; letter-spacing: 1px;">You've been accepted.</h1>
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #111;">You've been accepted.</h1>
             </td>
           </tr>
           <tr>
@@ -837,10 +835,9 @@ export async function sendApplicationAcceptanceEmail(params: {
           <tr><td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td></tr>
           <tr>
             <td style="padding: 24px 32px;">
-              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">${eventName}</div>
               ${eventDetailsLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">${escapeHtml(eventDetailsLine)}</div>` : ""}
-              ${isPaid ? `<div style="font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; color: #111; margin-top: 12px;">${priceDisplay}</div>` : ""}
             </td>
           </tr>
           <tr><td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td></tr>

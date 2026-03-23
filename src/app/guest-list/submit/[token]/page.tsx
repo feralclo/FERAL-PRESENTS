@@ -109,7 +109,7 @@ export default function SubmitGuestListPage() {
     setRows((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)));
   };
 
-  const validRows = rows.filter((r) => r.name.trim());
+  const validRows = rows.filter((r) => r.name.trim() && r.email.trim());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -289,7 +289,8 @@ export default function SubmitGuestListPage() {
                     type="email"
                     value={row.email}
                     onChange={(e) => updateRow(row.id, "email", e.target.value)}
-                    placeholder="Email (optional)"
+                    placeholder="Email"
+                    required
                     className="flex-1 rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
                   />
                   {hasQuotas && availableLevels.length > 1 && (

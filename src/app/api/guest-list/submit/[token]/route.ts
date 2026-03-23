@@ -162,10 +162,10 @@ export async function POST(
       return NextResponse.json({ error: "Invalid or expired submission link" }, { status: 404 });
     }
 
-    // Validate guests
+    // Validate guests — name and email are required
     const validGuests: SubmittedGuest[] = [];
     for (const g of guests) {
-      if (!g.name?.trim()) continue;
+      if (!g.name?.trim() || !g.email?.trim()) continue;
 
       // Determine access level: use provided level, or default
       const hasQuotas = resolved.link.quotas && Object.keys(resolved.link.quotas).length > 0;

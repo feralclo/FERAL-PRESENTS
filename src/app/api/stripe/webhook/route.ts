@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, OrderCreationError, type OrderVat, type OrderDiscount } from "@/lib/orders";
+import { issueGuestListTicket } from "@/lib/guest-list";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import { updateOrgPlanSettings } from "@/lib/plans";
@@ -233,6 +234,13 @@ export async function POST(request: NextRequest) {
  */
 async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbackOrgId: string) {
   const metadata = paymentIntent.metadata;
+
+  // Guest list application payments — separate flow
+  if (metadata.type === "guest_list_application" && metadata.guest_list_id) {
+    await handleGuestListApplicationPayment(paymentIntent);
+    return;
+  }
+
   const eventId = metadata.event_id;
   const orgId = metadata.org_id || fallbackOrgId;
   const customerEmail = metadata.customer_email;
@@ -532,5 +540,59 @@ async function fireWebhookPurchaseEvent(orgId: string, data: {
     console.error("[Meta CAPI] Webhook Purchase failed:", result.error);
   } else {
     console.log("[Meta CAPI] Webhook Purchase sent:", eventId);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Guest list application payment webhook handler
+// ---------------------------------------------------------------------------
+
+async function handleGuestListApplicationPayment(paymentIntent: Stripe.PaymentIntent) {
+  const metadata = paymentIntent.metadata;
+  const guestListId = metadata.guest_list_id;
+  const orgId = metadata.org_id;
+
+  if (!guestListId || !orgId) {
+    console.error("[webhook] Guest list application missing metadata:", metadata);
+    return;
+  }
+
+  const supabase = await getSupabaseAdmin();
+  if (!supabase) return;
+
+  // Check if ticket already issued (idempotent)
+  const { data: guest } = await supabase
+    .from(TABLES.GUEST_LIST)
+    .select("*, event:events(id, name, slug, currency, venue_name, date_start, doors_time)")
+    .eq("id", guestListId)
+    .eq("org_id", orgId)
+    .single();
+
+  if (!guest) {
+    console.error(`[webhook] Guest list entry not found: ${guestListId}`);
+    return;
+  }
+
+  // Already has a ticket — nothing to do
+  if (guest.order_id) {
+    console.log(`[webhook] Guest list ${guestListId} already has order — skipping`);
+    return;
+  }
+
+  const event = guest.event as {
+    id: string; name: string; slug?: string; currency?: string;
+    venue_name?: string; date_start?: string; doors_time?: string;
+  } | null;
+
+  if (!event) {
+    console.error(`[webhook] Event not found for guest list ${guestListId}`);
+    return;
+  }
+
+  try {
+    await issueGuestListTicket(supabase, orgId, guest, event, "webhook");
+    console.log(`[webhook] Guest list ticket issued for ${guestListId} via webhook backup`);
+  } catch (err) {
+    console.error(`[webhook] Failed to issue guest list ticket for ${guestListId}:`, err);
   }
 }

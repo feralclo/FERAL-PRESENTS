@@ -20,6 +20,7 @@ interface SubmissionData {
   };
   branding: {
     org_name: string;
+    logo_url: string | null;
     accent_color: string;
   };
 }
@@ -133,11 +134,27 @@ export default function SubmitGuestListPage() {
     );
   }
 
+  const logo = data?.branding?.logo_url ? (
+    <div className="mb-6 flex justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={data.branding.logo_url}
+        alt={data.branding.org_name}
+        className="h-8 w-auto max-w-[140px] object-contain opacity-80"
+      />
+    </div>
+  ) : data?.branding?.org_name ? (
+    <p className="mb-6 text-center font-mono text-xs font-bold tracking-[0.2em] uppercase text-muted-foreground/60">
+      {data.branding.org_name}
+    </p>
+  ) : null;
+
   // Success
   if (pageStatus === "success") {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-sm text-center">
+          {logo}
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/10">
             <CheckCircle2 className="h-7 w-7 text-success" />
           </div>
@@ -162,6 +179,7 @@ export default function SubmitGuestListPage() {
   return (
     <div className="flex min-h-screen justify-center px-4 py-12">
       <div className="w-full max-w-md">
+        {logo}
         {/* Header */}
         <div className="text-center">
           <h1 className="text-xl font-bold text-foreground">Guest list</h1>

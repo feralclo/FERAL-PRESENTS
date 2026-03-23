@@ -98,6 +98,7 @@ export async function GET(
       },
       branding: {
         org_name: branding.org_name || resolved.orgId,
+        logo_url: branding.logo_url || null,
         accent_color: branding.accent_color || "#8B5CF6",
       },
     });

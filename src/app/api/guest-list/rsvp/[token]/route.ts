@@ -29,15 +29,29 @@ export async function GET(
       return NextResponse.json({ error: "Invalid or expired invitation" }, { status: 404 });
     }
 
+    // Fetch branding for logo + accent color
+    const orgId = guest.org_id as string;
+    const { data: brandingRow } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", `${orgId}_branding`)
+      .single();
+
+    const brandingData = (brandingRow?.data as Record<string, string>) || {};
+    const branding = {
+      org_name: brandingData.org_name || orgId,
+      logo_url: brandingData.logo_url || null,
+      accent_color: brandingData.accent_color || "#8B5CF6",
+    };
+
+    const accessLabel = ACCESS_LEVELS[guest.access_level as keyof typeof ACCESS_LEVELS]?.label || "Guest List";
+
     // Check if already responded
     if (guest.status === "approved") {
       return NextResponse.json({
-        guest: {
-          name: guest.name,
-          access_level: guest.access_level,
-          access_label: ACCESS_LEVELS[guest.access_level as keyof typeof ACCESS_LEVELS]?.label || "Guest List",
-        },
+        guest: { name: guest.name, access_level: guest.access_level, access_label: accessLabel },
         event: guest.event,
+        branding,
         status: "approved",
         message: "You're confirmed — check your email for your ticket.",
       });
@@ -45,25 +59,18 @@ export async function GET(
 
     if (guest.status === "declined") {
       return NextResponse.json({
-        guest: {
-          name: guest.name,
-          access_level: guest.access_level,
-          access_label: ACCESS_LEVELS[guest.access_level as keyof typeof ACCESS_LEVELS]?.label || "Guest List",
-        },
+        guest: { name: guest.name, access_level: guest.access_level, access_label: accessLabel },
         event: guest.event,
+        branding,
         status: "declined",
         message: "You've declined this invitation.",
       });
     }
 
     return NextResponse.json({
-      guest: {
-        name: guest.name,
-        access_level: guest.access_level,
-        access_label: ACCESS_LEVELS[guest.access_level as keyof typeof ACCESS_LEVELS]?.label || "Guest List",
-        qty: guest.qty,
-      },
+      guest: { name: guest.name, access_level: guest.access_level, access_label: accessLabel, qty: guest.qty },
       event: guest.event,
+      branding,
       status: guest.status,
     });
   } catch (err) {

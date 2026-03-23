@@ -19,6 +19,11 @@ interface RsvpData {
     date_start?: string;
     doors_time?: string;
   } | null;
+  branding?: {
+    org_name: string;
+    logo_url: string | null;
+    accent_color: string;
+  };
   status: string;
   message?: string;
 }
@@ -128,7 +133,23 @@ export default function RsvpPage() {
 
   const event = data?.event;
   const guest = data?.guest;
+  const branding = data?.branding;
   const showAccessLevel = guest?.access_level && guest.access_level !== "guest_list";
+
+  const logo = branding?.logo_url ? (
+    <div className="mb-6 flex justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={branding.logo_url}
+        alt={branding.org_name}
+        className="h-8 w-auto max-w-[140px] object-contain opacity-80"
+      />
+    </div>
+  ) : branding?.org_name ? (
+    <p className="mb-6 text-center font-mono text-xs font-bold tracking-[0.2em] uppercase text-muted-foreground/60">
+      {branding.org_name}
+    </p>
+  ) : null;
 
   // Success states (approved, accepted, declined)
   if (status === "approved" || status === "accepted" || status === "declined") {
@@ -136,6 +157,7 @@ export default function RsvpPage() {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-sm text-center">
+          {logo}
           <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${isPositive ? "bg-success/10" : "bg-muted"}`}>
             {isPositive ? (
               <CheckCircle2 className="h-7 w-7 text-success" />
@@ -170,6 +192,7 @@ export default function RsvpPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
+        {logo}
         {/* Heading */}
         <div className="text-center">
           <h1 className="text-xl font-bold text-foreground">You're on the list.</h1>

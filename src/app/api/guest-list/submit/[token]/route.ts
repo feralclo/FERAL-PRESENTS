@@ -83,20 +83,28 @@ export async function GET(
 
     const branding = (brandingRow?.data as Record<string, string>) || {};
 
+    // Fetch existing submissions for this token (so artist can see their list)
+    const { data: existingSubmissions } = await supabase
+      .from(TABLES.GUEST_LIST)
+      .select("name, email, access_level, status")
+      .eq("submission_token", token)
+      .eq("org_id", resolved.orgId)
+      .order("created_at", { ascending: true });
+
+    const submissions = (existingSubmissions || []).map((s) => ({
+      name: s.name as string,
+      email: s.email as string,
+      access_level: (s.access_level as string) || "guest_list",
+      status: (s.status as string) || "pending",
+    }));
+
     // Calculate quota remaining if quotas exist
     let quotaRemaining: Partial<Record<AccessLevel, number | null>> | undefined;
 
     if (resolved.link.quotas) {
-      // Count existing submissions by access_level
-      const { data: existing } = await supabase
-        .from(TABLES.GUEST_LIST)
-        .select("access_level")
-        .eq("submission_token", token)
-        .eq("org_id", resolved.orgId);
-
       const usedCounts = new Map<string, number>();
-      for (const row of existing || []) {
-        const level = (row.access_level as string) || "artist";
+      for (const row of submissions) {
+        const level = row.access_level || "artist";
         usedCounts.set(level, (usedCounts.get(level) || 0) + 1);
       }
 
@@ -125,6 +133,7 @@ export async function GET(
       },
       quotas: resolved.link.quotas || null,
       quota_remaining: quotaRemaining || null,
+      submissions,
     });
   } catch (err) {
     Sentry.captureException(err);

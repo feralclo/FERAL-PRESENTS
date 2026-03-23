@@ -220,17 +220,17 @@ export default function ApplyPage() {
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+            <div className="rounded-xl border border-white/[0.12] bg-white/[0.03] overflow-hidden">
               <div className="p-4 space-y-3">
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Full name"
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none placeholder:text-white/25 focus:border-white/25 transition-colors" />
+                  className="w-full rounded-lg border border-white/[0.15] bg-white/[0.06] px-4 py-3.5 text-[15px] text-white outline-none placeholder:text-white/35 focus:border-white/30 transition-colors" />
 
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="Email address"
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none placeholder:text-white/25 focus:border-white/25 transition-colors" />
+                  className="w-full rounded-lg border border-white/[0.15] bg-white/[0.06] px-4 py-3.5 text-[15px] text-white outline-none placeholder:text-white/35 focus:border-white/30 transition-colors" />
 
                 {data?.campaign?.fields?.instagram && (
                   <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="Instagram @handle"
-                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 text-[15px] text-white/90 outline-none placeholder:text-white/25 focus:border-white/25 transition-colors" />
+                    className="w-full rounded-lg border border-white/[0.15] bg-white/[0.06] px-4 py-3.5 text-[15px] text-white outline-none placeholder:text-white/35 focus:border-white/30 transition-colors" />
                 )}
 
                 {data?.campaign?.fields?.date_of_birth && (

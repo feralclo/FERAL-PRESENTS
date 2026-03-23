@@ -39,6 +39,7 @@ function CardForm({ clientSecret, guestName, guestEmail, onSuccess, onError }: {
   const [name, setName] = useState(guestName);
   const [email, setEmail] = useState(guestEmail);
   const [expressAvailable, setExpressAvailable] = useState(false);
+  const [expressReady, setExpressReady] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,30 +71,33 @@ function CardForm({ clientSecret, guestName, guestEmail, onSuccess, onError }: {
       `}</style>
 
       {/* Express Checkout — Apple Pay / Google Pay */}
-      <div className={expressAvailable ? "mb-4" : ""}>
-        <ExpressCheckoutElement
-          onConfirm={async (_event: StripeExpressCheckoutElementConfirmEvent) => {
-            if (!stripe || !elements) return;
-            const { error, paymentIntent } = await stripe.confirmPayment({
-              elements,
-              clientSecret,
-              confirmParams: { return_url: window.location.href },
-              redirect: "if_required",
-            });
-            if (error) onError(error.message || "Payment failed");
-            else if (paymentIntent) onSuccess(paymentIntent.id);
-          }}
-          onReady={({ availablePaymentMethods }) => {
-            setExpressAvailable(!!availablePaymentMethods?.applePay || !!availablePaymentMethods?.googlePay);
-          }}
-          options={{
-            paymentMethods: { applePay: "auto", googlePay: "auto", link: "never" },
-            buttonType: { applePay: "plain", googlePay: "plain" },
-            buttonTheme: { applePay: "white-outline", googlePay: "white" },
-            layout: { maxColumns: 2, maxRows: 1 },
-          }}
-        />
-      </div>
+      {expressReady && !expressAvailable ? null : (
+        <div className={expressAvailable ? "mb-4" : ""} style={expressReady ? undefined : { position: "absolute", visibility: "hidden", pointerEvents: "none" }}>
+          <ExpressCheckoutElement
+            onConfirm={async (_event: StripeExpressCheckoutElementConfirmEvent) => {
+              if (!stripe || !elements) return;
+              const { error, paymentIntent } = await stripe.confirmPayment({
+                elements,
+                clientSecret,
+                confirmParams: { return_url: window.location.href },
+                redirect: "if_required",
+              });
+              if (error) onError(error.message || "Payment failed");
+              else if (paymentIntent) onSuccess(paymentIntent.id);
+            }}
+            onReady={({ availablePaymentMethods }) => {
+              setExpressReady(true);
+              setExpressAvailable(!!availablePaymentMethods?.applePay || !!availablePaymentMethods?.googlePay);
+            }}
+            options={{
+              paymentMethods: { applePay: "auto", googlePay: "auto", link: "never" },
+              buttonType: { applePay: "plain", googlePay: "plain" },
+              buttonTheme: { applePay: "white-outline", googlePay: "white" },
+              layout: { maxColumns: 2, maxRows: 1 },
+            }}
+          />
+        </div>
+      )}
 
       {/* Divider */}
       {expressAvailable && (
@@ -206,6 +210,7 @@ export default function PaymentSection({
 
   return (
     <Elements stripe={stripePromise} options={{
+      clientSecret,
       appearance: { theme: "night", variables: { colorPrimary: accentColor || "#8B5CF6" } },
     }}>
       <CardForm clientSecret={clientSecret} guestName={guestName} guestEmail={guestEmail} onSuccess={onSuccess} onError={onError} />

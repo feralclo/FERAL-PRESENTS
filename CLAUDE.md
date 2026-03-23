@@ -7,6 +7,19 @@ Every database query filters by `org_id`. Every feature must work for promoters 
 
 **Status:** Controlled beta (`BETA_MODE = true` in `lib/beta.ts`). Promoters apply via invite codes → onboarding wizard → admin dashboard. Queued workstreams: multi-tenant isolation audit (`AUDIT-PROMPT.md`) and Midnight visual redesign (`MIDNIGHT-REDESIGN-PROMPT.md`).
 
+## Build Standards (CRITICAL)
+
+This platform is scaling to 1000+ tenants. Every feature must be production-grade — no shortcuts, no scaffolds, no "get it working and fix later."
+
+1. **Complete implementations** — if building a feature, implement it fully: error states, loading states, mobile responsiveness, multi-tenant isolation, proper TypeScript types. Don't leave half-finished code.
+2. **Multi-tenant always** — every query filters by `org_id`. Every new table needs `org_id`. Every settings key uses the `{org_id}_` prefix pattern via helpers in `lib/constants.ts`. Mentally test with a non-"feral" org.
+3. **Mobile-first** — 70%+ of ticket buyers are on phones. Build for 375px first, then scale up. Touch targets ≥44px.
+4. **Follow existing patterns** — before creating a new route, hook, or component, find the closest existing equivalent and match its structure exactly. Don't invent new conventions. Check how auth, error handling, and responses are done in similar routes.
+5. **Test what matters** — run `npm test` before committing. Payment/checkout changes need `npm run test:integration`. New hooks need test files.
+6. **No dead code** — don't leave commented-out code, unused imports, or TODO placeholders in committed code.
+7. **Proper error handling** — API routes return appropriate status codes (400 for bad input, 401/403 for auth, 404 for not found, 500 for server errors). Use try/catch and log to Sentry on unexpected errors.
+8. **Use the right Supabase client** — `getSupabaseAdmin()` for data queries, `getSupabaseServer()` for auth only. Wrong client = silent data loss.
+
 ## Stack
 
 | Layer | Tech | Version |
@@ -19,7 +32,7 @@ Every database query filters by `org_id`. Every feature must work for promoters 
 | Hosting | Vercel | — |
 | Analytics | GTM + Meta Pixel + Meta CAPI + Supabase | — |
 | Testing | Vitest + Testing Library | 4.0.18 |
-| UI | Tailwind CSS v4 + shadcn/ui (Radix UI) | 4.1.x |
+| UI | Tailwind CSS v4 + shadcn/ui (Radix UI) | 4.1.18 |
 | Email | Resend (transactional + PDF attachments) | — |
 | Video | Mux (transcoding + streaming) | — |
 | Monitoring | Sentry (@sentry/nextjs) | 10.40.0 |
@@ -45,7 +58,7 @@ src/
 │   │                          # Also: command/ (live city scene), merch-store/, ticketstore/
 │   ├── rep/                   # Rep portal (14 pages): dashboard, sales, quests, rewards,
 │   │                          # points, leaderboard, profile, profile/[id], login, join, invite/[token], verify-email
-│   └── api/                   # ~245 handlers across 182 route files (see API Routes)
+│   └── api/                   # ~262 handlers across 192 route files (see API Routes)
 ├── components/
 │   ├── admin/                 # ImageUpload, ArtistLineupEditor, TierSelector, MerchImageGallery,
 │   │                          # SocialEmbed, event-editor/, dashboard/, reps/, command/
@@ -69,7 +82,7 @@ src/
 │   ├── scanner/               # Scanner PWA: QRScanner, ScanResult, ScanHistory, ScanStats,
 │   │                          # EventCard, GuestListSearch, ManualEntry, ModeToggle, ScannerInstallPrompt
 │   ├── events/                # EventCard, EventsListPage
-│   ├── rep/                   # 18 components (see Rep Portal section)
+│   ├── rep/                   # 19 components (see Rep Portal section)
 │   ├── landing/               # LandingPage, HeroSection, ParticleCanvas, EventsSection,
 │   │                          # AboutSection, ContactSection, GenericAboutSection, HeroGlitchText
 │   ├── layout/                # Header, Footer, Scanlines, CookieConsent, VerifiedBanner, PaymentMethodsStrip
@@ -77,8 +90,8 @@ src/
 │   ├── CurrencyProvider.tsx   # Currency context provider
 │   └── ui/                    # shadcn/ui (28 components)
 ├── hooks/                     # 21 hooks (see Hooks section)
-├── lib/                       # 71 modules (see Architecture sections)
-├── types/                     # TypeScript types per domain (17 files)
+├── lib/                       # 72 modules across 3 subdirs (see Architecture sections)
+├── types/                     # TypeScript types per domain (18 files)
 └── styles/                    # 17 CSS files (see CSS Architecture)
 ```
 
@@ -168,51 +181,28 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 Full gamified ambassador system. Reps sign up, get assigned to events, share discount codes, earn XP + currency (FRL) per sale, compete on leaderboards, complete quests, spend currency in reward shop. Admin manages everything from `/admin/reps/`.
 
 ### Rep Lifecycle
-1. **Signup** — `/rep/join`, Google/email sign-in. `POST /api/rep-portal/signup-google` for existing sessions. Sets `is_rep` in `app_metadata`.
-2. **Onboarding** — `WelcomeOverlay` (3 steps): nickname, photo, install PWA. Shown when `onboarding_completed === false`.
-3. **Pending** — `PendingDashboard`: polls `/api/rep-portal/dashboard` every 10s, auto-refreshes on approval.
-4. **Approval** — Admin PUT `/api/reps/[id]` `status: "active"` → welcome email + push notification + auto-assign all events.
-5. **Active** — Full dashboard: XP gauge, currency, leaderboard, discount code, events, quests, sales, rewards shop.
+Signup (`/rep/join`, Google/email) → Onboarding (`WelcomeOverlay`: nickname, photo, PWA install) → Pending (polls dashboard every 10s) → Admin approves (`PUT /api/reps/[id]` → welcome email + push + auto-assign events) → Active (full dashboard).
 
 ### Rep Auth
-`requireRepAuth()` in `lib/auth.ts` → returns `{ rep }` with `rep.org_id`. Rep routes prefixed `/api/rep-portal/*`. Admin rep management routes prefixed `/api/reps/*` (use `requireAuth()`).
+`requireRepAuth()` → `{ rep }` with `rep.org_id`. Rep routes: `/api/rep-portal/*`. Admin rep routes: `/api/reps/*` (use `requireAuth()`).
 
-### XP & Currency (Dual Economy)
-- **XP (points_balance)** — Earned per sale, quests, manual grants. Drives leveling. Never spent.
-- **FRL (currency_balance)** — Earned per sale alongside XP. Spent in reward shop. Configurable name per org (`currency_name` in rep settings).
-- `awardPoints()` in `lib/rep-points.ts` handles both. Logs to `rep_points_log`. Auto-levels via `xp-levels.ts`.
-- `claim_reward_atomic()` RPC deducts from `currency_balance` (not points_balance).
+### Dual Economy (XP + Currency)
+- **XP (points_balance)** — earned per sale/quests/grants, drives leveling, never spent
+- **FRL (currency_balance)** — earned alongside XP, spent in reward shop. Name configurable per org
+- `awardPoints()` in `lib/rep-points.ts` handles both. `claim_reward_atomic()` RPC deducts `currency_balance`
+- Levels: `lib/xp-levels.ts`. Tiers: `lib/rep-tiers.ts` (Bronze → Mythic)
 
-### Leveling & Tiers
-Levels defined in `lib/xp-levels.ts`. Tiers in `lib/rep-tiers.ts` (Bronze → Silver → Gold → Platinum → Diamond → Mythic). Each tier has a color, ring style for avatars, and display name.
+### Quests & Share Links
+Quest types: `social_share`, `ugc_photo`, `ugc_video`, `referral`, `custom`. Submit via `QuestSubmitSheet`, admin reviews in ReportsTab. Share links: `{tenant_domain}/event/{slug}?ref={CODE}` — auto-applies discount, attribution via `rep-attribution.ts`.
 
-### Quests
-Types: `social_share`, `ugc_photo`, `ugc_video`, `referral`, `custom`. Reps submit via `/rep/quests/` → `QuestSubmitSheet`. Admin reviews in ReportsTab (`/admin/reps/`). Approval awards XP + currency.
-
-### Rep Share Links
-Reps share `{tenant_domain}/event/{slug}?ref={CODE}`. Auto-applies discount + suppresses popup for referred visitors. Attribution tracked via `rep-attribution.ts`. Event-linked share cards on all quest types.
-
-### Push Notifications (Web Push / VAPID)
-`web-push` + VAPID keys. SW at `/rep-sw.js`. `savePushSubscription()` → `rep_push_subscriptions` (upsert). `sendPushToRep()` → `webPush.sendNotification()` (stale subs auto-cleaned). Types (CHECK constraint): `reward_unlocked`, `quest_approved`, `sale_attributed`, `level_up`, `reward_fulfilled`, `manual_grant`, `approved`, `general`. `createNotification()` in `lib/rep-notifications.ts`: DB + push, never throws.
-
-### PWA & Install Flow
-`useRepPWA` hook: SW registration, push subscription, `beforeinstallprompt` capture, platform detection, standalone detection. Install prompts: onboarding step 3, post-onboarding (`rep-onboarding-complete` event), repeat prompt (3rd visit, 7-day cooldown). `PendingInstallBar` replaces nav for pending reps. `NotificationPrompt` in standalone mode if push not granted.
+### Push Notifications
+`web-push` + VAPID. SW at `/rep-sw.js`. `createNotification()` in `lib/rep-notifications.ts`: DB + push, never throws. Types (CHECK constraint): `reward_unlocked`, `quest_approved`, `sale_attributed`, `level_up`, `reward_fulfilled`, `manual_grant`, `approved`, `general`.
 
 ### Rep Components & Lib
-**Components** (`src/components/rep/`): 18 components including WelcomeOverlay, InstallPrompt, RadialGauge, LevelUpOverlay, QuestCard/Detail/Submit sheets, CropModal, and UI helpers.
-**Lib** (`src/lib/rep-*.ts`): 11 modules covering attribution, auto-assign, emails, notifications, points, quest styles, reward fulfillment, social, sounds, tiers, utils.
+**Components** (`src/components/rep/`): 19 components. **Lib** (`src/lib/rep-*.ts`): 11 modules. PWA: `useRepPWA` hook (SW, push, install prompts with 7-day cooldown).
 
-### Admin Reps Management (`/admin/reps/`)
-5 tabs: Dashboard (stats), Reps (CRUD, approve/suspend), Quests (create/manage), Reports (quest submissions review), Rewards (reward shop management), Settings (program config).
-
-### Team Permissions for Reps
-`org_users` has hierarchical permissions: `perm_reps` (parent toggle) + 4 sub-permissions:
-- `perm_reps_manage` — Approve/suspend/delete reps
-- `perm_reps_content` — Manage quests and content
-- `perm_reps_award` — Award/deduct points and currency
-- `perm_reps_settings` — Configure rep program settings
-
-Sub-permissions auto-clear when parent `perm_reps` is disabled.
+### Admin Reps (`/admin/reps/`)
+6 tabs: Dashboard, Reps (CRUD), Quests, Reports (submissions), Rewards (shop), Settings. Team permissions: `perm_reps` (parent) + `perm_reps_manage|content|award|settings` (sub-perms auto-clear when parent disabled).
 
 ---
 
@@ -262,47 +252,13 @@ Multi-currency support with exchange rate conversion. Buyer's currency auto-dete
 
 ## Database (Supabase)
 
-### Tables
-| Table | Purpose |
-|-------|---------|
-| `site_settings` | Key-value config (JSONB): key, data, updated_at |
-| `events` | Event definitions: slug, name, venue_*, date_*, status, payment_method, currency, stripe_account_id, about/details/lineup, cover/hero_image, external_link, tickets_live_at, queue_*, vat_* |
-| `ticket_types` | Pricing/inventory: event_id, name, price, capacity, sold, tier, includes_merch, product_id, status |
-| `products` | Merch catalog: name, type, sizes[], price, images, status, sku |
-| `orders` | Purchases: order_number (FERAL-XXXXX), event_id, customer_id, status, subtotal, fees, total, payment_ref |
-| `order_items` | Line items: order_id, ticket_type_id, qty, unit_price, merch_size |
-| `tickets` | Individual tickets: ticket_code (FERAL-XXXXXXXX), order_id, status, holder_*, scanned_at/by |
-| `customers` | Profiles: email, name, total_orders/spent, marketing_consent |
-| `artists` | Artist profiles: name, description, instagram_handle, image, video_url |
-| `event_artists` | Junction: event_id, artist_id, sort_order |
-| `guest_list` | Guest list entries: event_id, name, email, qty, status, access_level, source (direct/artist/application), invite_token, order_id, application_data (JSONB), payment_amount, checked_in/at |
-| `discounts` | Codes: code, type, value, max_uses, used_count, applicable_event_ids[], rep_id (nullable) |
-| `abandoned_carts` | Recovery: customer_id, event_id, email, items (jsonb), status, cart_token |
-| `traffic_events` | Funnel: event_type, page_path, session_id, referrer, utm_* |
-| `org_users` | Team: auth_user_id, email, role, perm_* (9 flags), status, invite_token |
-| `domains` | Routing: hostname (unique), org_id, is_primary, type, status, verification_* |
-| `popup_events` | Popup tracking: event_type, email, city, country |
-| `payment_events` | Health log (append-only): type, severity, stripe_*, error_*, resolved |
-| `event_interest_signups` | Coming-soon signups: event_id, email, notification_count (0-4), unsubscribe_token |
-| `merch_collections` | Merch store collections: slug, name, description, org_id |
-| `merch_collection_items` | Collection↔Product junction: collection_id, product_id, sort_order |
+### Tables (32 total — all have `org_id`)
 
-**Reps Program** (11 tables):
-| Table | Purpose |
-|-------|---------|
-| `reps` | Rep profiles: email, first_name, last_name, display_name, photo_url, status (pending/active/suspended/deactivated), points_balance, currency_balance, total_sales, total_revenue, level, customer_id, auth_user_id, onboarding_completed |
-| `rep_events` | Rep↔Event assignments: rep_id, event_id, discount_code |
-| `rep_rewards` | Reward shop items: name, description, points_cost, reward_type, metadata (JSONB), status |
-| `rep_milestones` | Achievement definitions: trigger_type, threshold, reward |
-| `rep_points_log` | XP/currency transaction log: rep_id, points, currency, source_type, description |
-| `rep_quests` | Quest definitions: type, title, description, xp_reward, currency_reward, event_id |
-| `rep_quest_submissions` | Quest submissions: rep_id, quest_id, status, media_url, admin_notes |
-| `rep_reward_claims` | Reward claims: rep_id, reward_id, status, metadata (JSONB) |
-| `rep_event_position_rewards` | Leaderboard position rewards per event |
-| `rep_notifications` | In-app notifications: type (CHECK constraint), title, body, link, read |
-| `rep_push_subscriptions` | Web Push subscriptions: endpoint, p256dh, auth, last_used_at |
+**Core:** `site_settings` (key-value JSONB config), `events`, `ticket_types` (event_id, price, capacity, sold), `products` (merch), `orders` (order_number FERAL-XXXXX, payment_ref), `order_items`, `tickets` (ticket_code FERAL-XXXXXXXX, scanned_at/by), `customers`, `artists`, `event_artists` (junction with sort_order), `guest_list` (source: direct/artist/application, access_level, invite_token), `discounts` (applicable_event_ids[], rep_id nullable), `abandoned_carts`, `traffic_events`, `org_users` (perm_* flags), `domains` (hostname unique), `popup_events`, `payment_events` (append-only health log), `event_interest_signups`, `merch_collections`, `merch_collection_items`.
 
-All rep tables have `org_id`. Types: `src/types/reps.ts`.
+**Reps Program (11 tables):** `reps` (points_balance, currency_balance, level, status), `rep_events`, `rep_rewards` (metadata JSONB), `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims` (metadata JSONB), `rep_event_position_rewards`, `rep_notifications` (type CHECK constraint), `rep_push_subscriptions`. Types: `src/types/reps.ts`.
+
+Table names defined in `TABLES` constant in `lib/constants.ts` — always use `TABLES.X` not raw strings.
 
 **RPCs**: `claim_reward_atomic()` (deducts currency_balance), `reverse_rep_attribution()`, `get_rep_program_stats()`, `increment_sold()` (atomic stock reservation, returns boolean), `increment_discount_used()` (atomic discount count, returns integer).
 
@@ -329,41 +285,17 @@ All tables have RLS. Helper `auth_user_org_id()` maps `auth.uid()` → `org_id` 
 MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments, logs). Use MCP directly — NEVER give user SQL to run. **Stripe** has no MCP — tell user to use dashboard. If MCP token expired, tell user to run `/mcp`. Never assume table/column exists unless documented here.
 
 ### Settings Keys
-Stored in `site_settings` as key → JSONB. Helpers in `lib/constants.ts`:
+Stored in `site_settings` as key → JSONB. All helpers in `lib/constants.ts` — **always use helpers, never hardcode keys**.
 
-| Key | Helper | Purpose |
-|-----|--------|---------|
-| `{org_id}_general` | `generalKey()` | Org settings (name, timezone, email) |
-| `{org_id}_branding` | `brandingKey()` | Logo, colors, fonts |
-| `{org_id}_themes` | `themesKey()` | Theme configs |
-| `{org_id}_vat` | `vatKey()` | VAT config |
-| `{org_id}_homepage` | `homepageKey()` | Homepage settings |
-| `{org_id}_reps` | `repsKey()` | Reps program config |
-| `{org_id}_abandoned_cart_automation` | `abandonedCartAutomationKey()` | Cart recovery emails |
-| `{org_id}_announcement_automation` | `announcementAutomationKey()` | Announcement email sequence |
-| `{org_id}_popup` | `popupKey()` | Popup settings |
-| `{org_id}_marketing` | `marketingKey()` | Meta Pixel + CAPI |
-| `{org_id}_email` | `emailKey()` | Email templates |
-| `{org_id}_wallet_passes` | `walletPassesKey()` | Wallet pass config |
-| `{org_id}_events_list` | `eventsListKey()` | Events list config |
-| `{org_id}_stripe_account` | `stripeAccountKey()` | Stripe Connect fallback |
-| `{org_id}_plan` | `planKey()` | Plan + subscription |
-| `{org_id}_onboarding` | `onboardingKey()` | Onboarding wizard |
-| `{org_id}_merch_store` | `merchStoreKey()` | Merch store settings |
-| `{org_id}_pdf_ticket` | — | PDF ticket template |
-| `{org_id}_scanner_assignments` | `scannerAssignmentsKey()` | Scanner event assignments |
-| `media_[key]` | — | Uploaded media storage |
-| `platform_stripe_billing` | `platformBillingKey()` | Pro plan billing IDs |
-| `platform_exchange_rates` | `exchangeRatesKey()` | Currency exchange rates |
-| `platform_payment_digest` | — | AI payment digest |
-| `platform_health_digest` | — | AI platform digest |
-| `platform_beta_applications` | — | Beta applicants |
-| `platform_beta_invite_codes` | — | Invite codes |
-| `entry_platform_xp` | — | Platform XP config |
+**Per-org keys** (pattern: `{org_id}_*`): `generalKey()`, `brandingKey()`, `themesKey()`, `vatKey()`, `homepageKey()`, `repsKey()`, `abandonedCartAutomationKey()`, `announcementAutomationKey()`, `popupKey()`, `marketingKey()`, `emailKey()`, `walletPassesKey()`, `eventsListKey()`, `stripeAccountKey()`, `planKey()`, `onboardingKey()`, `merchStoreKey()`, `scannerAssignmentsKey()`, `guestListSettingsKey()`, `guestListSubmissionsKey()`, `guestListCampaignsKey()`. Also `{org_id}_pdf_ticket` (no helper).
+
+**Platform keys**: `platformBillingKey()`, `exchangeRatesKey()`. Also without helpers: `platform_payment_digest`, `platform_health_digest`, `platform_beta_applications`, `platform_beta_invite_codes`, `entry_platform_xp`.
+
+**Other**: `media_[key]` (uploaded media storage).
 
 ---
 
-## API Routes (~245 handlers, 182 route files)
+## API Routes (~262 handlers, 192 route files)
 
 ### Critical Path (Payment → Order)
 | Method | Route | Purpose |
@@ -378,40 +310,19 @@ Stored in `site_settings` as key → JSONB. Helpers in `lib/constants.ts`:
 ### Orders & Tickets
 `orders` (GET/POST), `orders/[id]` (GET), `orders/[id]/refund|resend-email|rep-info|pdf` (POST/GET), `orders/[id]/wallet/apple|google` (GET), `orders/export` (GET CSV), `tickets/[code]` (GET), `tickets/[code]/scan|merch` (POST)
 
-### Standard CRUD
-Events (`events`, `events/[id]`, `events/[id]/artists`), Artists (`artists`, `artists/[id]`), Merch (`merch`, `merch/[id]`, `merch/[id]/linked-tickets`), Customers (`customers`, `customers/[id]`), Guest List (`guest-list`, `guest-list/[eventId]`, `guest-list/invite`, `guest-list/approve`, `guest-list/rsvp/[token]`, `guest-list/submit/[token]`, `guest-list/submission-link`, `guest-list/campaigns`, `guest-list/apply/[campaignId]`, `guest-list/application-payment`, `guest-list/application-confirm`, `guest-list/event-summary`), Discounts (`discounts`, `discounts/[id]`, `discounts/validate`, `discounts/seed`), Settings (`settings`, `branding`, `themes`)
+### Standard CRUD (admin auth)
+Events (`events`, `events/[id]`, `events/[id]/artists`), Artists (`artists`, `artists/[id]`), Merch (`merch`, `merch/[id]`, `merch/[id]/linked-tickets`), Customers (`customers`), Discounts (`discounts`, `discounts/[id]`, `discounts/validate`, `discounts/auto`, `discounts/seed`), Settings (`settings`, `branding`, `themes`), Guest List (12 routes — see Guest List section), Domains (3 routes), Team (5 routes incl. public `team/accept-invite`)
 
-### Rep Portal Routes (~32 routes, `/api/rep-portal/*`)
-Auth: `auth-check`, `login`, `logout`, `signup-google`, `verify-email`, `magic-login/*`. Dashboard: `dashboard`, `me` (GET/PUT), `settings`, `discount`. Sales: `sales`. Quests: `quests`, `quests/[id]/submit`. Rewards: `rewards`, `rewards/[id]/claim`. Events: `join-event`. Notifications: `notifications`, `notifications/read`. Push: `push-subscribe`, `push-vapid-key`. Points: `points`. Profile: `profile/[id]`. Other: `upload`, `manifest`, `pwa-icon`, `leaderboard`, `download-media`.
+### Rep Routes
+**Portal** (`/api/rep-portal/*`, ~32 routes, `requireRepAuth()`): auth, dashboard, me, settings, discount, sales, quests, rewards, notifications, push, points, profile, leaderboard, upload, PWA manifest.
+**Admin** (`/api/reps/*`, ~35 routes, `requireAuth()`): CRUD, settings, stats, events/assign/summary, quests, submissions, rewards, claims, points, milestones, campaign-events, leaderboard lock/rewards.
 
-### Admin Rep Routes (~26 routes, `/api/reps/*`)
-CRUD: `reps` (GET/POST), `reps/[id]` (GET/PUT/DELETE). Settings: `reps/settings`. Stats: `reps/stats`, `reps/event-leaderboard`. Events: `reps/events`, `reps/events/assign`. Quests: `reps/quests` (CRUD), `reps/quest-submissions`, `reps/quest-submissions/[id]`. Rewards: `reps/rewards` (CRUD), `reps/rewards/[id]`. Points: `reps/award-points`, `reps/points-log`. Milestones: `reps/milestones`. Invite: `reps/invite`.
-
-### Other Routes
-- **Abandoned Carts**: `abandoned-carts` (list+stats), `preview-email`, `send-test`, `cron/abandoned-carts`
-- **Announcements**: `announcement/signup` (public), `signups`, `preview-email`, `cron/announcement-emails`
-- **Account**: `account` (GET/PUT)
-- **Auth** (public): `auth/signup|login|logout|recover|check-slug|check-org|provision-org`
-- **Beta** (public): `beta/apply|verify-code|track-usage`
-- **Billing** (tenant): `billing/checkout|portal|status`
-- **Domains**: `domains`, `domains/[id]`, `domains/[id]/verify`
-- **Email/Wallet**: `email/status|test`, `wallet/status`
-- **Mux Video**: `mux/upload|status`
-- **Popup**: `popup/capture` (public), `popup/leads`
-- **Stripe Connect — Owner**: `stripe/connect` (CRUD), `connect/[id]/onboarding`, `apple-pay-domain|verify`
-- **Stripe Connect — Tenant**: `stripe/connect/my-account`, `my-account/onboarding`
-- **Platform** (owner): `platform/dashboard|tenants|tenants/[orgId]|beta-applications|invite-codes|xp-config|plans`
-- **Platform Health** (owner): `platform/platform-health|platform-digest|sentry|payment-health|payment-health/[id]/resolve|payment-health/resolve-all|payment-digest`
-- **Team**: `team` (GET/POST), `team/[id]`, `team/[id]/resend-invite`, `team/accept-invite` (public)
-- **Uploads**: `upload` (POST base64), `upload-video` (POST signed URL)
-- **Tracking**: `track` (bot-filtered), `meta/capi`, `admin/dashboard`, `admin/orders-stats`
-- **Scanner PWA**: `scanner/events` (GET), `scanner/events/[id]/stats` (GET), `scanner/assignments` (GET/PUT), `scanner/manifest` (GET)
-- **Merch Store**: `merch-store/settings` (GET/POST), `merch-store/collections` (GET/POST), `merch-store/collections/[slug]` (GET/PUT/DELETE), `merch-store/payment-intent` (POST), `merch-store/confirm-order` (POST)
-- **Currency**: `currency/rates` (GET public), `cron/exchange-rates`
-- **Brand**: `brand/logo` (GET public)
-- **Admin**: `admin/live-sessions` (GET), `admin/checkout-health` (GET), `admin/uk-events` (GET)
-- **Platform** (owner, additional): `platform/impersonate/*`, `platform/rep-override-code`
-- **Other**: `media/[key]`, `health`, `unsubscribe`
+### Other Route Categories
+**Payment adjacent**: `abandoned-carts` (3 routes), `billing` (checkout/portal/status), `stripe/connect` (owner + tenant self-service)
+**Public**: `auth/*`, `beta/*`, `announcement/signup`, `popup/capture`, `track`, `meta/capi`, `brand/logo`, `currency/rates`, `health`, `unsubscribe`, `media/[key]`
+**Platform owner**: `platform/*` (dashboard, tenants, beta-applications, invite-codes, xp-config, health, digest, sentry, payment-health, impersonate, rep-override-code)
+**Admin dashboard**: `admin/live-sessions`, `admin/checkout-health`, `admin/orders-stats`, `admin/uk-events`
+**Integrations**: `mux/*`, `email/*`, `wallet/status`, `upload`, `upload-video`, scanner (4 routes), merch-store (5 routes)
 
 ### Vercel Cron Jobs
 | Schedule | Route | Purpose |
@@ -467,21 +378,11 @@ Hooks returning objects/functions as effect deps MUST use `useMemo`. **Stable re
 
 When asked to "check health," "look at errors," or "fix what's broken":
 
-### Step 1: Fetch unresolved issues
-Sentry (EU region): `source .env.local && curl -s -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" "https://sentry.io/api/0/projects/$SENTRY_ORG/$SENTRY_PROJECT/issues/?query=is:unresolved&sort=freq&limit=25"`. Payment health: Supabase MCP → `payment_events WHERE resolved = false`. Dev server: `GET /api/platform/platform-health?period=24h`.
+1. **Fetch**: Sentry unresolved issues (EU region, use `$SENTRY_AUTH_TOKEN` from `.env.local`), `payment_events WHERE resolved = false` via Supabase MCP, `/api/platform/platform-health?period=24h`
+2. **Triage**: **FIX** 500s, React errors, checkout/webhook failures. **RESOLVE** (not bugs): card_declined (normal 2-5%), network timeouts, bot 401s. **IGNORE**: single non-reproducible errors
+3. **Fix → Commit → Resolve**: Sentry PUT `/api/0/issues/ISSUE_ID/` with `{"status":"resolved"}` + comment. Payment events: Supabase MCP UPDATE `resolved=true, resolution_notes='...'`
 
-### Step 2: Triage
-**FIX**: 500s, React errors, checkout/webhook failures. **RESOLVE** (not bugs): card_declined (normal 2-5%), network timeouts, bot 401s. **IGNORE**: single non-reproducible errors.
-
-### Step 3: Fix → Commit → Resolve
-Sentry: `curl -X PUT -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" -H "Content-Type: application/json" -d '{"status":"resolved"}' "https://sentry.io/api/0/issues/ISSUE_ID/"`. Add comment: same URL + `/comments/` with `{"text":"Fixed in commit abc — reason"}`. Payment events: Supabase MCP → `UPDATE payment_events SET resolved=true, resolution_notes='...'`.
-
-### Health monitoring rules
-1. Investigate before resolving — never bulk-resolve. Leave clear notes
-2. **Payment orphans are CRITICAL** — money taken, no ticket. Never ignore
-3. Card declines (2-5%) are normal — not bugs. 1 occurrence = noise, 50 = real bug
-4. Without `org_id` = platform-wide (higher priority). Fix and commit before resolving
-5. For manual Stripe actions — give step-by-step instructions
+**Rules**: Investigate before resolving — never bulk-resolve. **Payment orphans are CRITICAL** (money taken, no ticket). Card declines are normal. Without `org_id` = platform-wide (higher priority). For Stripe actions — give step-by-step instructions.
 
 ---
 
@@ -542,52 +443,24 @@ shadcn/ui + Tailwind + admin tokens. Gaming effects in `rep-effects.css` (class 
 
 ## Guest List Manager
 
-### Overview
-Full guest list management with invitations, access levels, artist submissions, and public applications with optional paid tickets. Admin page at `/admin/guest-list/` with tabs: Guests, Artist Links, Applications, Settings.
-
-### Access Levels
-`guest_list` (default), `vip`, `backstage`, `aaa`, `artist`. Stored on `guest_list.access_level`. Hidden ticket types created per event per level (e.g. "Guest List — VIP"). Scanner shows access level as prominent badge.
+Admin page at `/admin/guest-list/` with tabs: Guests, Artist Links, Applications, Settings. Access levels: `guest_list` (default), `vip`, `backstage`, `aaa`, `artist`. Hidden ticket types auto-created per event per level.
 
 ### Three Guest Sources
-- **Direct** (`source: 'direct'`): Admin adds guest manually, optionally sends invite email
-- **Artist** (`source: 'artist'`): DJ/artist submits via submission link with optional quotas
-- **Application** (`source: 'application'`): Public applies via campaign landing page, admin approves (free or paid)
-
-### Invitation Flow
-Admin adds guest with email → invite email ("You're on the list") → guest RSVPs on `/guest-list/rsvp/[token]` → if auto-approve ON: ticket issued via `issueGuestListTicket()` → `createOrder()`. Copy: nonchalant, professional.
-
-### Artist Submission Links
-Admin generates link with per-access-level quotas → artist visits `/guest-list/submit/[token]` → submits names + emails → entries created as pending → admin approves → invite email sent → RSVP → ticket. Artists can see submission status (pending/invited/confirmed/ticket issued).
-
-### Application Campaigns
-Admin creates campaign (title, price, access level, capacity, fields: Instagram/DOB) → generates landing page at `/guest-list/apply/[campaignId]` → public applies → admin reviews in Applications tab → accepts free (invite email) or paid (acceptance email → payment page → ticket). Campaigns stored in `site_settings` key `{org_id}_guest_list_campaigns`.
+- **Direct** (`source: 'direct'`): Admin adds guest → invite email → RSVP at `/guest-list/rsvp/[token]` → ticket issued via `issueGuestListTicket()`
+- **Artist** (`source: 'artist'`): Submission link with quotas → `/guest-list/submit/[token]` → admin approves → invite → RSVP → ticket
+- **Application** (`source: 'application'`): Campaign landing page at `/guest-list/apply/[campaignId]` → admin reviews → accepts free (invite email) or paid (acceptance → card payment → ticket)
 
 ### Payment (Paid Applications)
-Two-step: "You've been accepted" → "Confirm your spot" → card form (Stripe CardNumberElement/CardExpiryElement/CardCvcElement, same elements as NativeCheckout). PaymentIntent via `/api/guest-list/application-payment` (card only, no Link/Klarna). Confirmation via `/api/guest-list/application-confirm` → `issueGuestListTicket()`. Webhook backup in main Stripe webhook for `metadata.type === "guest_list_application"`.
+Card form (Stripe CardNumberElement/CardExpiryElement/CardCvcElement). PaymentIntent via `/api/guest-list/application-payment` (card only). Confirmation via `/api/guest-list/application-confirm` → `issueGuestListTicket()`. Webhook backup for `metadata.type === "guest_list_application"`.
 
 ### Key Files
-| Purpose | Files |
-|---------|-------|
-| Core lib | `src/lib/guest-list.ts` (ACCESS_LEVELS, ensureGuestListTicketType, issueGuestListTicket, emails) |
-| Types | `src/types/guest-list.ts`, `src/types/orders.ts` (GuestListEntry) |
-| Admin | `src/app/admin/guest-list/page.tsx` (orchestrator), `src/components/admin/guest-list/` (4 tab components) |
-| Public pages | `src/app/guest-list/` (layout, rsvp, submit, apply, accept + PaymentSection) |
-| APIs | `src/app/api/guest-list/` (route, [eventId], invite, approve, rsvp, submit, submission-link, campaigns, apply, application-payment, application-confirm, event-summary) |
-
-### Settings Keys
-- `{org_id}_guest_list_settings` — auto_approve, auto_approve_submissions
-- `{org_id}_guest_list_submissions` — artist submission links array
-- `{org_id}_guest_list_campaigns` — application campaigns array
-
-### Scanner Integration
-Guest list tickets scan identically to paid tickets (same `POST /api/tickets/[code]/scan`). Scan route syncs `guest_list.checked_in` when a guest list ticket QR is scanned. ScanResult shows access level badge. GuestListSearch shows access level per guest.
+Core lib: `src/lib/guest-list.ts`. Types: `src/types/guest-list.ts`, `src/types/orders.ts`. Admin: `src/app/admin/guest-list/page.tsx` + `src/components/admin/guest-list/` (4 tabs). Public: `src/app/guest-list/` (rsvp, submit, apply, accept). Settings keys: `guestListSettingsKey()`, `guestListSubmissionsKey()`, `guestListCampaignsKey()` in `lib/constants.ts`. Scanner: guest list tickets scan identically to paid tickets; scan route syncs `guest_list.checked_in`.
 
 ---
 
 ## Known Gaps
 1. **Google Ads + TikTok tracking** — placeholders only
-2. **Aura theme** — 18 components still in `src/components/aura/`, pending removal
-
+2. **Aura theme** — 18 components still in `src/components/aura/`, deprecated, pending removal
 
 ---
 
@@ -596,5 +469,5 @@ Guest list tickets scan identically to paid tickets (same `POST /api/tickets/[co
 1. **Read this file at session start** — single source of truth
 2. **Update after architecture changes** — new tables, routes, modules
 3. **Delete deprecated references** — no dead code documented
-4. **Keep under 40K characters** — compress verbose sections, don't remove useful info. Current budget: ~38K target
+4. **Keep under 40K characters** — compress verbose sections, don't remove useful info
 5. **This file is the map.** Undocumented = unknown. Wrong docs = wrong assumptions

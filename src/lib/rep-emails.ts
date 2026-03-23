@@ -280,7 +280,7 @@ export async function sendRepInviteEmail(params: {
     const html = wrapEmail(accentColor, safeOrgName, hasLogo, `
           <tr>
             <td style="padding: 0 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
                 You've been selected.
               </h1>
             </td>
@@ -297,10 +297,10 @@ export async function sendRepInviteEmail(params: {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 8px;">
                 <tr>
                   <td style="padding: 20px; text-align: center;">
-                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accentColor}; margin-bottom: 8px;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accentColor}; margin-bottom: 8px;">
                       YOUR DISCOUNT CODE
                     </div>
-                    <div style="font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 3px;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 3px;">
                       ${escapeHtml(params.discountCode || "Awaiting activation")}
                     </div>
                   </td>
@@ -360,7 +360,7 @@ function buildEmail(
         html: wrap(`
           <tr>
             <td style="padding: 0 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
                 Verify your email
               </h1>
             </td>
@@ -442,7 +442,7 @@ function buildEmail(
         html: wrap(`
           <tr>
             <td style="padding: 0 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
                 New Quest Available
               </h1>
             </td>
@@ -463,7 +463,7 @@ function buildEmail(
                       ${escapeHtml(String(ctx.quest_title || "New Quest"))}
                     </div>
                     ${ctx.quest_description ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555; margin-bottom: 12px; line-height: 1.5;">${escapeHtml(String(ctx.quest_description))}</div>` : ""}
-                    <div style="display: inline-block; background-color: ${accent}; color: #fff; font-family: 'Courier New', monospace; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 4px; letter-spacing: 1px;">
+                    <div style="display: inline-block; background-color: ${accent}; color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 4px; letter-spacing: 1px;">
                       +${ctx.points_reward || 0} PTS
                     </div>
                     ${ctx.expires_at ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #999; margin-top: 10px;">Expires: ${escapeHtml(String(ctx.expires_at))}</div>` : ""}
@@ -488,7 +488,7 @@ function buildEmail(
         html: wrap(`
           <tr>
             <td style="padding: 0 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
                 Reward Unlocked
               </h1>
             </td>
@@ -536,7 +536,7 @@ function buildEmail(
         html: wrap(`
           <tr>
             <td style="padding: 0 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
                 Reward Fulfilled
               </h1>
             </td>
@@ -585,7 +585,7 @@ function buildEmail(
         html: wrap(`
           <tr>
             <td style="padding: 0 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
                 Level Up
               </h1>
             </td>
@@ -605,7 +605,7 @@ function buildEmail(
                     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #999; text-decoration: line-through; margin-bottom: 8px;">
                       Level ${oldLevel} &mdash; ${oldLevelName}
                     </div>
-                    <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: 800; color: ${accent}; letter-spacing: 1px;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 28px; font-weight: 800; color: ${accent}; letter-spacing: 1px;">
                       Level ${newLevel} &mdash; ${newLevelName}
                     </div>
                   </td>
@@ -630,7 +630,7 @@ function buildEmail(
         html: wrap(`
           <tr>
             <td style="padding: 0 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
                 Application Update
               </h1>
             </td>
@@ -665,7 +665,7 @@ function buildEmail(
         html: wrap(`
           <tr>
             <td style="padding: 0 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
                 Sale incoming!
               </h1>
             </td>
@@ -682,18 +682,18 @@ function buildEmail(
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f3ff; border: 1px solid #e0d8f8; border-radius: 8px;">
                 <tr>
                   <td style="padding: 20px;" width="50%" align="center">
-                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 6px;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 6px;">
                       TICKETS
                     </div>
-                    <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: 700; color: #111;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 28px; font-weight: 700; color: #111;">
                       ${ctx.ticket_count || 0}
                     </div>
                   </td>
                   <td style="padding: 20px;" width="50%" align="center">
-                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 6px;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 6px;">
                       REVENUE
                     </div>
-                    <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: 700; color: #111;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 28px; font-weight: 700; color: #111;">
                       &pound;${Number(ctx.order_total || 0).toFixed(2)}
                     </div>
                   </td>
@@ -810,7 +810,7 @@ function wrapWelcomeEmail(orgName: string, hasLogo: boolean, body: string): stri
 function wrapEmail(accent: string, orgName: string, hasLogo: boolean, body: string): string {
   const logoHtml = hasLogo
     ? `<img src="cid:brand-logo" alt="${orgName}" height="48" style="height: 48px; width: auto; display: inline-block;">`
-    : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #fff;">${orgName}</div>`;
+    : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #fff;">${orgName}</div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">

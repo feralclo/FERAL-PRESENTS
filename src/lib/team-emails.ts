@@ -111,7 +111,7 @@ export async function sendTeamInviteEmail(params: {
           <tr>
             <td style="padding: 32px 32px 0 32px; text-align: center;">
               <!--[if !mso]><!--><img src="${logoLight}" alt="Entry" width="120" height="28" style="display: inline-block; width: 120px; height: 28px; border: 0;" /><!--<![endif]-->
-              <!--[if mso]><span style="font-family: 'Courier New', monospace; font-size: 15px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: #8B5CF6;">ENTRY</span><![endif]-->
+              <!--[if mso]><span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: #8B5CF6;">ENTRY</span><![endif]-->
               <div class="em-divider" style="margin-top: 16px; height: 1px; background-color: #e4e4e7;"></div>
             </td>
           </tr>

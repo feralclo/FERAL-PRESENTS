@@ -126,11 +126,11 @@ export function buildOrderConfirmationEmail(
           <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #666; margin-bottom: 2px;">
             ${escapeHtml(isMerchPreorder && t.merch_name ? t.merch_name : t.ticket_type)}
           </div>
-          <div style="font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: ${accent}; letter-spacing: 1px;">
+          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 700; color: ${accent}; letter-spacing: 1px;">
             ${escapeHtml(t.ticket_code)}
           </div>${t.merch_size ? `
           <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed #e8e8e8;">
-            <div style="font-family: 'Courier New', monospace; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: ${accent}; margin-bottom: 2px;">
+            <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: ${accent}; margin-bottom: 2px;">
               ${merchLabel}
             </div>
             <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #666;">
@@ -201,7 +201,7 @@ export function buildOrderConfirmationEmail(
               ${
                 logoUrl
                   ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(s.from_name)}"${logoW ? ` width="${logoW}"` : ""} height="${logoH}" style="${logoW ? `width: ${logoW}px` : "width: auto"}; height: ${logoH}px; display: inline-block;">`
-                  : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${escapeHtml(s.from_name)}</div>`
+                  : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${escapeHtml(s.from_name)}</div>`
               }
             </td>
           </tr>
@@ -209,7 +209,7 @@ export function buildOrderConfirmationEmail(
           <!-- Heading -->
           <tr>
             <td style="padding: 20px 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; color: #111; letter-spacing: 1px;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #111; letter-spacing: 1px;">
                 ${escapeHtml(heading)}
               </h1>
             </td>
@@ -237,7 +237,7 @@ export function buildOrderConfirmationEmail(
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">
                       EVENT
                     </div>
                     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">
@@ -277,7 +277,7 @@ export function buildOrderConfirmationEmail(
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 12px;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 12px;">
                       ORDER DETAILS
                     </div>
                   </td>
@@ -289,7 +289,7 @@ export function buildOrderConfirmationEmail(
                         <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #666; padding: 4px 0;">
                           Order
                         </td>
-                        <td style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; color: #111; text-align: right; padding: 4px 0;">
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #111; text-align: right; padding: 4px 0;">
                           ${escapeHtml(order.order_number)}
                         </td>
                       </tr>
@@ -305,7 +305,7 @@ export function buildOrderConfirmationEmail(
                         <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #666; padding: 4px 0; border-top: 1px solid #eee; padding-top: 8px;">
                           Total
                         </td>
-                        <td style="font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; color: #111; text-align: right; padding: 4px 0; border-top: 1px solid #eee; padding-top: 8px;">
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #111; text-align: right; padding: 4px 0; border-top: 1px solid #eee; padding-top: 8px;">
                           ${escapeHtml(order.currency_symbol)}${escapeHtml(order.total)}
                         </td>
                       </tr>${order.vat ? `
@@ -339,7 +339,7 @@ export function buildOrderConfirmationEmail(
           <!-- Tickets / QR Codes -->
           <tr>
             <td style="padding: 24px 32px 16px;">
-              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 12px;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 12px;">
                 ${isMerchPreorder ? "YOUR COLLECTION QR CODES" : "YOUR TICKETS"}
               </div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-bottom: 16px;">
@@ -384,7 +384,7 @@ export function buildOrderConfirmationEmail(
           <!-- Wallet Passes -->
           <tr>
             <td style="padding: 0 32px 8px;">
-              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 12px;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 12px;">
                 ADD TO WALLET
               </div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-bottom: 16px;">
@@ -451,7 +451,7 @@ export function buildOrderConfirmationEmail(
           <!-- Footer -->
           <tr>
             <td style="padding: 24px 32px; background-color: #fafafa; border-top: 1px solid #f0f0f0; text-align: center;">
-              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaa; margin-bottom: 4px;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaa; margin-bottom: 4px;">
                 ${escapeHtml(s.footer_text || s.from_name)}
               </div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #bbb;">
@@ -637,7 +637,7 @@ export function buildAbandonedCartRecoveryEmail(
           </div>` : ""}
         </td>
         <td style="padding: 10px 0;${!isLast ? " border-bottom: 1px solid #f0f0f0;" : ""} text-align: right; vertical-align: top; white-space: nowrap;">
-          <div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; color: #333;">
+          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #333;">
             ${cart.currency_symbol}${fmtMoneyAmt(lineTotal, cart.currency_code)}
           </div>
         </td>
@@ -787,7 +787,7 @@ export function buildAbandonedCartRecoveryEmail(
                         <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #999; padding: 3px 0;">
                           Subtotal
                         </td>
-                        <td style="font-family: 'Courier New', monospace; font-size: 14px; color: #555; text-align: right; padding: 3px 0;">
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555; text-align: right; padding: 3px 0;">
                           ${cart.currency_symbol}${fmtMoneyAmt(subtotalNum, cart.currency_code)}
                         </td>
                       </tr>
@@ -795,7 +795,7 @@ export function buildAbandonedCartRecoveryEmail(
                         <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: ${accent}; padding: 3px 0;">
                           Discount (${escapeHtml(cart.discount_code!)})
                         </td>
-                        <td style="font-family: 'Courier New', monospace; font-size: 14px; color: ${accent}; text-align: right; padding: 3px 0;">
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: ${accent}; text-align: right; padding: 3px 0;">
                           -${cart.currency_symbol}${fmtMoneyAmt(discountAmt, cart.currency_code)}
                         </td>
                       </tr>` : ""}
@@ -803,7 +803,7 @@ export function buildAbandonedCartRecoveryEmail(
                         <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #111; padding: 12px 0 4px;${hasDiscount ? " border-top: 1px solid #eeeeee;" : ""}">
                           Total
                         </td>
-                        <td style="font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; text-align: right; padding: 12px 0 4px;${hasDiscount ? " border-top: 1px solid #eeeeee;" : ""}">
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #111; text-align: right; padding: 12px 0 4px;${hasDiscount ? " border-top: 1px solid #eeeeee;" : ""}">
                           ${cart.currency_symbol}${fmtMoneyAmt(total, cart.currency_code)}
                         </td>
                       </tr>

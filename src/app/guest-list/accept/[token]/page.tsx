@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
@@ -41,7 +41,7 @@ function formatDate(dateStr: string): string {
 function PaymentForm({ amount, currency, onSuccess, onError }: {
   amount: string;
   currency: string;
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId: string) => void;
   onError: (msg: string) => void;
 }) {
   const stripe = useStripe();
@@ -53,17 +53,17 @@ function PaymentForm({ amount, currency, onSuccess, onError }: {
     if (!stripe || !elements) return;
 
     setProcessing(true);
-    const { error } = await stripe.confirmPayment({
+    const result = await stripe.confirmPayment({
       elements,
       confirmParams: { return_url: window.location.href },
       redirect: "if_required",
     });
 
-    if (error) {
-      onError(error.message || "Payment failed");
+    if (result.error) {
+      onError(result.error.message || "Payment failed");
       setProcessing(false);
-    } else {
-      onSuccess();
+    } else if (result.paymentIntent) {
+      onSuccess(result.paymentIntent.id);
     }
   };
 
@@ -150,15 +150,23 @@ export default function AcceptPage() {
     } catch { setStatus("error"); }
   };
 
-  const handlePaymentSuccess = async () => {
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
     // Confirm payment → issue ticket
     try {
-      await fetch("/api/guest-list/application-confirm", {
+      const res = await fetch("/api/guest-list/application-confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payment_intent_id: "from_elements", token }),
+        body: JSON.stringify({ payment_intent_id: paymentIntentId, token }),
       });
-    } catch { /* ticket will be issued by webhook backup */ }
+      if (!res.ok) {
+        const json = await res.json();
+        setPaymentError(json.error || "Failed to issue ticket. Contact the promoter.");
+        return;
+      }
+    } catch {
+      setPaymentError("Network error confirming your ticket. Please contact the promoter.");
+      return;
+    }
     setStatus("success");
   };
 
@@ -228,10 +236,11 @@ export default function AcceptPage() {
   }
 
   // Ready — show confirmation or payment form
-  const stripePromise = loadStripe(
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stripePromise = useMemo(() => loadStripe(
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
     stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
-  );
+  ), [stripeAccountId]);
 
   return (
     <div className="flex min-h-screen justify-center px-4 py-12">

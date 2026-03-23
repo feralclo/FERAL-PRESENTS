@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
+import { getStripe } from "@/lib/stripe/server";
 import { issueGuestListTicket } from "@/lib/guest-list";
 import * as Sentry from "@sentry/nextjs";
 
@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify payment
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-02-24.acacia" as Stripe.LatestApiVersion });
+    const stripe = getStripe();
     const pi = stripeAccountId
-      ? await stripe.paymentIntents.retrieve(payment_intent_id, { }, { stripeAccount: stripeAccountId })
+      ? await stripe.paymentIntents.retrieve(payment_intent_id, undefined, { stripeAccount: stripeAccountId })
       : await stripe.paymentIntents.retrieve(payment_intent_id);
 
     if (pi.status !== "succeeded") {

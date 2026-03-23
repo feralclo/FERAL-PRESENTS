@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
+import { getStripe } from "@/lib/stripe/server";
 import { calculateApplicationFee, getCurrencySymbol } from "@/lib/stripe/config";
 import * as Sentry from "@sentry/nextjs";
 
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       stripeAccountId = (stripeRow?.data as Record<string, string>)?.account_id || null;
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-02-24.acacia" as Stripe.LatestApiVersion });
+    const stripe = getStripe();
 
     // Build PaymentIntent
     const piParams: Stripe.PaymentIntentCreateParams = {

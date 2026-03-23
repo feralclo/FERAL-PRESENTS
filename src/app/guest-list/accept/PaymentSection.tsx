@@ -4,12 +4,14 @@ import { useState, useMemo } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
+  ExpressCheckoutElement,
   CardNumberElement,
   CardExpiryElement,
   CardCvcElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import type { StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js";
 import { Loader2, Lock } from "lucide-react";
 
 const CARD_ELEMENT_STYLE = {
@@ -36,6 +38,7 @@ function CardForm({ clientSecret, guestName, guestEmail, onSuccess, onError }: {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(guestName);
   const [email, setEmail] = useState(guestEmail);
+  const [expressAvailable, setExpressAvailable] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +68,41 @@ function CardForm({ clientSecret, guestName, guestEmail, onSuccess, onError }: {
           border-color: rgba(239, 68, 68, 0.50);
         }
       `}</style>
+
+      {/* Express Checkout — Apple Pay / Google Pay */}
+      <div className={expressAvailable ? "mb-4" : ""}>
+        <ExpressCheckoutElement
+          onConfirm={async (_event: StripeExpressCheckoutElementConfirmEvent) => {
+            if (!stripe || !elements) return;
+            const { error, paymentIntent } = await stripe.confirmPayment({
+              elements,
+              clientSecret,
+              confirmParams: { return_url: window.location.href },
+              redirect: "if_required",
+            });
+            if (error) onError(error.message || "Payment failed");
+            else if (paymentIntent) onSuccess(paymentIntent.id);
+          }}
+          onReady={({ availablePaymentMethods }) => {
+            setExpressAvailable(!!availablePaymentMethods?.applePay || !!availablePaymentMethods?.googlePay);
+          }}
+          options={{
+            paymentMethods: { applePay: "auto", googlePay: "auto", link: "never" },
+            buttonType: { applePay: "plain", googlePay: "plain" },
+            buttonTheme: { applePay: "white-outline", googlePay: "white" },
+            layout: { maxColumns: 2, maxRows: 1 },
+          }}
+        />
+      </div>
+
+      {/* Divider */}
+      {expressAvailable && (
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px bg-white/[0.08]" />
+          <span className="text-[10px] uppercase tracking-wider text-white/20">or pay with card</span>
+          <div className="flex-1 h-px bg-white/[0.08]" />
+        </div>
+      )}
 
       {/* Contact section */}
       <div>

@@ -55,8 +55,9 @@ export async function POST(request: NextRequest) {
     const piParams: Stripe.PaymentIntentCreateParams = {
       amount,
       currency,
-      // Only card (includes Apple Pay / Google Pay) + Klarna. No Revolut Pay etc.
-      payment_method_types: ["card", "klarna"],
+      // Card only — includes Apple Pay / Google Pay on supported devices.
+      // No Link, no Klarna, no Revolut Pay.
+      payment_method_types: ["card"],
       metadata: {
         org_id: orgId,
         guest_list_id: guest.id,

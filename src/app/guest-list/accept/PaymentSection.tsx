@@ -4,17 +4,15 @@ import { useState, useMemo } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
-  ExpressCheckoutElement,
   CardNumberElement,
   CardExpiryElement,
   CardCvcElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import type { StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js";
 import { Loader2 } from "lucide-react";
 
-// Same style as NativeCheckout
+// Same card element style as NativeCheckout (src/components/checkout/NativeCheckout.tsx:212)
 const CARD_ELEMENT_STYLE = {
   base: {
     fontSize: "16px",
@@ -35,7 +33,7 @@ function LockIcon({ className }: { className?: string }) {
   );
 }
 
-function PaymentForm({ clientSecret, onSuccess, onError }: {
+function CardForm({ clientSecret, onSuccess, onError }: {
   clientSecret: string;
   onSuccess: (paymentIntentId: string) => void;
   onError: (msg: string) => void;
@@ -43,28 +41,8 @@ function PaymentForm({ clientSecret, onSuccess, onError }: {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
-  const [expressAvailable, setExpressAvailable] = useState(false);
 
-  // Express Checkout (Apple Pay / Google Pay) confirm handler
-  const handleExpressConfirm = async (_event: StripeExpressCheckoutElementConfirmEvent) => {
-    if (!stripe || !elements) return;
-
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      clientSecret,
-      confirmParams: { return_url: window.location.href },
-      redirect: "if_required",
-    });
-
-    if (error) {
-      onError(error.message || "Payment failed");
-    } else if (paymentIntent) {
-      onSuccess(paymentIntent.id);
-    }
-  };
-
-  // Card form submit handler
-  const handleCardSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
 
@@ -87,7 +65,7 @@ function PaymentForm({ clientSecret, onSuccess, onError }: {
   };
 
   return (
-    <div className="flex flex-col gap-4 guest-list-checkout">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 guest-list-checkout">
       <style>{`
         .guest-list-checkout .StripeElement {
           background: rgba(255, 255, 255, 0.04);
@@ -104,62 +82,39 @@ function PaymentForm({ clientSecret, onSuccess, onError }: {
         }
       `}</style>
 
-      {/* Express Checkout — Apple Pay / Google Pay */}
-      <ExpressCheckoutElement
-        onConfirm={handleExpressConfirm}
-        onReady={({ availablePaymentMethods }) => {
-          setExpressAvailable(!!availablePaymentMethods?.applePay || !!availablePaymentMethods?.googlePay);
-        }}
-        options={{
-          buttonType: { applePay: "plain", googlePay: "plain" },
-          buttonTheme: { applePay: "white-outline", googlePay: "white" },
-          layout: { maxColumns: 2, maxRows: 1 },
-        }}
-      />
+      {/* Card Number */}
+      <div className="relative">
+        <CardNumberElement
+          options={{
+            style: CARD_ELEMENT_STYLE,
+            placeholder: "Card number",
+            showIcon: false,
+            disableLink: true,
+          }}
+        />
+        <LockIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-white/25 pointer-events-none z-[1]" />
+      </div>
 
-      {/* Divider */}
-      {expressAvailable && (
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-[11px] text-muted-foreground/40 uppercase tracking-wider">or pay with card</span>
-          <div className="flex-1 h-px bg-white/10" />
-        </div>
-      )}
-
-      {/* Card form */}
-      <form onSubmit={handleCardSubmit} className="flex flex-col gap-3">
-        <div className="relative">
-          <CardNumberElement
-            options={{
-              style: CARD_ELEMENT_STYLE,
-              placeholder: "Card number",
-              showIcon: false,
-              disableLink: true,
-            }}
+      {/* Expiry + CVC */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <CardExpiryElement
+            options={{ style: CARD_ELEMENT_STYLE, placeholder: "MM / YY" }}
           />
-          <LockIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-white/25 pointer-events-none z-[1]" />
         </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <CardExpiryElement
-              options={{ style: CARD_ELEMENT_STYLE, placeholder: "MM / YY" }}
-            />
-          </div>
-          <div>
-            <CardCvcElement
-              options={{ style: CARD_ELEMENT_STYLE, placeholder: "CVC" }}
-            />
-          </div>
+        <div>
+          <CardCvcElement
+            options={{ style: CARD_ELEMENT_STYLE, placeholder: "CVC" }}
+          />
         </div>
+      </div>
 
-        <button type="submit" disabled={!stripe || processing}
-          className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
-          {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Secure your spot
-        </button>
-      </form>
-    </div>
+      <button type="submit" disabled={!stripe || processing}
+        className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+        {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        Secure your spot
+      </button>
+    </form>
   );
 }
 
@@ -185,16 +140,12 @@ export default function PaymentSection({
 
   return (
     <Elements stripe={stripePromise} options={{
-      clientSecret,
       appearance: {
         theme: "night",
-        variables: {
-          colorPrimary: accentColor || "#8B5CF6",
-          colorBackground: "transparent",
-        },
+        variables: { colorPrimary: accentColor || "#8B5CF6" },
       },
     }}>
-      <PaymentForm clientSecret={clientSecret} onSuccess={onSuccess} onError={onError} />
+      <CardForm clientSecret={clientSecret} onSuccess={onSuccess} onError={onError} />
     </Elements>
   );
 }

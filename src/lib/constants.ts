@@ -145,6 +145,11 @@ export function guestListSubmissionsKey(orgId: string): string {
   return `${orgId}_guest_list_submissions`;
 }
 
+/** Generate the guest list campaigns key for a given org */
+export function guestListCampaignsKey(orgId: string): string {
+  return `${orgId}_guest_list_campaigns`;
+}
+
 /** Platform-level exchange rates cache key */
 export function exchangeRatesKey(): string {
   return "platform_exchange_rates";

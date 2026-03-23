@@ -105,7 +105,9 @@ export function GuestsTab({ selectedEventId, orgId }: GuestsTabProps) {
     const res = await fetch(`/api/guest-list/${selectedEventId}`);
     const json = await res.json();
     if (json.data) {
-      setEntries(json.data);
+      // Filter out application-sourced entries (shown in ApplicationsTab)
+      const filtered = (json.data as GuestListEntry[]).filter((e) => e.source !== "application");
+      setEntries(filtered);
       setSummary(json.summary || { total_entries: 0, total_guests: 0, checked_in: 0, status_counts: {} });
     }
     setLoading(false);

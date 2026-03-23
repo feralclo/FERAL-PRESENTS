@@ -21,7 +21,7 @@ export async function GET(
 
     const { data: guest, error } = await supabase
       .from(TABLES.GUEST_LIST)
-      .select("id, org_id, name, email, access_level, status, qty, event:events(id, name, slug, currency, venue_name, date_start, doors_time)")
+      .select("id, org_id, name, email, access_level, status, qty, payment_amount, event:events(id, name, slug, currency, venue_name, date_start, doors_time)")
       .eq("invite_token", token)
       .single();
 
@@ -46,6 +46,8 @@ export async function GET(
 
     const accessLabel = ACCESS_LEVELS[guest.access_level as keyof typeof ACCESS_LEVELS]?.label || "Guest List";
 
+    const paymentAmount = (guest.payment_amount as number) || 0;
+
     // Check if already responded
     if (guest.status === "approved") {
       return NextResponse.json({
@@ -54,6 +56,7 @@ export async function GET(
         branding,
         status: "approved",
         message: "You're confirmed — check your email for your ticket.",
+        payment_amount: paymentAmount,
       });
     }
 
@@ -64,6 +67,7 @@ export async function GET(
         branding,
         status: "declined",
         message: "You've declined this invitation.",
+        payment_amount: paymentAmount,
       });
     }
 
@@ -72,6 +76,7 @@ export async function GET(
       event: guest.event,
       branding,
       status: guest.status,
+      payment_amount: paymentAmount,
     });
   } catch (err) {
     Sentry.captureException(err);

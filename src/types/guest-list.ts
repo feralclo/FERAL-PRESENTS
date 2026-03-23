@@ -26,3 +26,40 @@ export interface SubmissionLinkWithUsage extends SubmissionLink {
   quota_usage: Partial<Record<AccessLevel, number>>;
   quota_remaining?: Partial<Record<AccessLevel, number | null>>;
 }
+
+// ---------------------------------------------------------------------------
+// Application Campaigns
+// ---------------------------------------------------------------------------
+
+export type GuestListSource = "direct" | "artist" | "application";
+
+/** Data stored in guest_list.application_data JSONB. */
+export interface ApplicationData {
+  campaign_id: string;
+  instagram?: string;
+  date_of_birth?: string;
+}
+
+/** An application campaign stored in site_settings. */
+export interface ApplicationCampaign {
+  id: string;
+  event_id: string;
+  title: string;
+  description?: string;
+  default_price: number;       // major currency units (0 = free, 5 = £5)
+  currency: string;            // "GBP"
+  access_level: AccessLevel;
+  capacity?: number;           // max applications (null = unlimited)
+  fields: {
+    instagram: boolean;
+    date_of_birth: boolean;
+  };
+  active: boolean;
+  created_at: string;
+}
+
+/** A campaign enriched with usage data. */
+export interface ApplicationCampaignWithUsage extends ApplicationCampaign {
+  url: string;
+  applied_count: number;
+}

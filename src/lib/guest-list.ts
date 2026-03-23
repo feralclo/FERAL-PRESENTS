@@ -732,3 +732,157 @@ export async function sendSubmissionLinkEmail(params: {
     console.error("[guest-list-email] Failed to send submission link:", err);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Application acceptance email
+// ---------------------------------------------------------------------------
+
+/**
+ * Send an acceptance email to an applicant. Fire-and-forget — never throws.
+ * Free: "Confirm your spot" → /guest-list/accept/[token]
+ * Paid: "Pay £X & confirm" → same link (page handles payment)
+ */
+export async function sendApplicationAcceptanceEmail(params: {
+  orgId: string;
+  guestName: string;
+  guestEmail: string;
+  inviteToken: string;
+  eventName: string;
+  eventDate?: string;
+  eventTime?: string;
+  venueName?: string;
+  accessLevel: AccessLevel;
+  paymentAmount: number;
+  currency: string;
+}): Promise<void> {
+  try {
+    const resend = getResendClient();
+    if (!resend) return;
+
+    const supabase = await getSupabaseAdmin();
+    if (!supabase) return;
+
+    const [{ data: brandingRow }, { data: emailRow }] = await Promise.all([
+      supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${params.orgId}_branding`).single(),
+      supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${params.orgId}_email`).single(),
+    ]);
+
+    const emailSettings: EmailSettings = {
+      ...DEFAULT_EMAIL_SETTINGS,
+      from_email: `${params.orgId}@mail.entry.events`,
+      ...((emailRow?.data as Partial<EmailSettings>) || {}),
+    };
+
+    const branding = (brandingRow?.data as Record<string, string>) || {};
+    const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
+    const accentColor = branding.accent_color || "#7C3AED";
+    const emailLogo = (emailRow?.data as Record<string, string>)?.logo_url || branding.logo_url || null;
+    const logoUrl = emailLogo ? resolveLogoUrl(emailLogo) : null;
+    const logoHeight = Math.min(((emailRow?.data as Record<string, number>)?.logo_height || 48), 100);
+
+    const tenantUrl = await resolveTenantUrl(params.orgId, supabase);
+    const acceptUrl = `${tenantUrl}/guest-list/accept/${encodeURIComponent(params.inviteToken)}`;
+
+    const firstName = escapeHtml(params.guestName.split(/\s+/)[0]);
+    const eventName = escapeHtml(params.eventName);
+    const dateLine = params.eventDate ? formatDate(params.eventDate) : "";
+    const venueLine = params.venueName ? escapeHtml(params.venueName) : "";
+    const eventDetailsLine = [dateLine, venueLine].filter(Boolean).join(" · ");
+
+    const isPaid = params.paymentAmount > 0;
+    const { getCurrencySymbol } = await import("@/lib/stripe/config");
+    const symbol = getCurrencySymbol(params.currency);
+    const priceDisplay = isPaid ? `${symbol}${(params.paymentAmount / 100).toFixed(2)}` : "";
+
+    const subject = `You've been accepted — ${params.eventName}`;
+    const ctaText = isPaid ? `Pay ${priceDisplay} & confirm` : "Confirm your spot";
+    const bodyText = isPaid
+      ? `${firstName}, you've been accepted to the guest list for ${eventName}. Complete your booking to confirm your spot.`
+      : `${firstName}, you've been accepted to the guest list for ${eventName}. Confirm your spot and we'll send your ticket.`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+          <tr><td style="height: 4px; background-color: ${accentColor};"></td></tr>
+          <tr>
+            <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);" : ""}">
+              ${logoUrl
+                ? `<img src="${escapeHtml(logoUrl)}" alt="${orgName}" height="${logoHeight}" style="width: auto; height: ${logoHeight}px; display: inline-block;">`
+                : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
+              }
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; color: #111; letter-spacing: 1px;">You've been accepted.</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                ${bodyText}
+              </p>
+            </td>
+          </tr>
+          <tr><td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td></tr>
+          <tr>
+            <td style="padding: 24px 32px;">
+              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">${eventName}</div>
+              ${eventDetailsLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">${escapeHtml(eventDetailsLine)}</div>` : ""}
+              ${isPaid ? `<div style="font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; color: #111; margin-top: 12px;">${priceDisplay}</div>` : ""}
+            </td>
+          </tr>
+          <tr><td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td></tr>
+          <tr>
+            <td style="padding: 28px 32px; text-align: center;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                <tr>
+                  <td style="background-color: ${accentColor}; border-radius: 6px;">
+                    <a href="${acceptUrl}" style="display: inline-block; padding: 14px 40px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">${ctaText}</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #aaa; margin: 0; text-align: center;">If you didn't expect this, you can safely ignore it.</p>
+            </td>
+          </tr>
+        </table>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
+          <tr>
+            <td style="padding: 16px 32px 0; text-align: center;">
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #aaa; margin: 0;">Sent by <span style="color: ${accentColor}; font-weight: 600;">${orgName}</span></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    await resend.emails.send({
+      from: `${branding.org_name || "Entry"} <${emailSettings.from_email}>`,
+      to: [params.guestEmail],
+      subject,
+      html,
+    });
+
+    console.log(`[guest-list-email] Acceptance sent to ${params.guestEmail} (${isPaid ? `paid ${priceDisplay}` : "free"})`);
+  } catch (err) {
+    console.error("[guest-list-email] Failed to send acceptance:", err);
+  }
+}

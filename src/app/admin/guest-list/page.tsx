@@ -11,6 +11,7 @@ import { EventSelector, type EventForSelector } from "@/components/admin/guest-l
 import { GuestsTab } from "@/components/admin/guest-list/GuestsTab";
 import { ArtistLinksTab } from "@/components/admin/guest-list/ArtistLinksTab";
 import { SettingsTab } from "@/components/admin/guest-list/SettingsTab";
+import { ApplicationsTab } from "@/components/admin/guest-list/ApplicationsTab";
 
 export default function GuestListPage() {
   const orgId = useOrgId();
@@ -116,6 +117,7 @@ export default function GuestListPage() {
           <TabsList>
             <TabsTrigger value="guests">Guests</TabsTrigger>
             <TabsTrigger value="artist-links">Artist Links</TabsTrigger>
+            <TabsTrigger value="applications">Applications</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
           <TabsContent value="guests" className="mt-5">
@@ -123,6 +125,9 @@ export default function GuestListPage() {
           </TabsContent>
           <TabsContent value="artist-links" className="mt-5">
             <ArtistLinksTab selectedEventId={selectedEvent} orgId={orgId} />
+          </TabsContent>
+          <TabsContent value="applications" className="mt-5">
+            <ApplicationsTab selectedEventId={selectedEvent} orgId={orgId} />
           </TabsContent>
           <TabsContent value="settings" className="mt-5">
             <SettingsTab orgId={orgId} />

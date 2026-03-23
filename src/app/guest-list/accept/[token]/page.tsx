@@ -8,7 +8,7 @@ type PageStatus = "loading" | "ready" | "show_payment" | "confirming" | "success
 
 interface AcceptData {
   guest: { name: string; email?: string; access_level: string; access_label: string; qty?: number };
-  event: { name: string; venue_name?: string; date_start?: string; doors_time?: string } | null;
+  event: { name: string; venue_name?: string; date_start?: string; doors_time?: string; currency?: string } | null;
   branding?: { org_name: string; logo_url: string | null; accent_color: string };
   status: string;
   message?: string;
@@ -19,6 +19,13 @@ function formatDate(dateStr: string): string {
   try {
     return new Date(dateStr).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   } catch { return dateStr; }
+}
+
+function formatFee(amountSmallest: number, currency?: string): string {
+  const symbols: Record<string, string> = { GBP: "\u00A3", EUR: "\u20AC", USD: "$" };
+  const symbol = symbols[(currency || "GBP").toUpperCase()] || (currency || "GBP") + " ";
+  const value = (amountSmallest / 100).toFixed(2);
+  return `${symbol}${value}`;
 }
 
 const PaymentSection = lazy(() => import("../PaymentSection"));
@@ -220,6 +227,7 @@ export default function AcceptPage() {
                 accentColor={data?.branding?.accent_color || "#8B5CF6"}
                 guestName={data?.guest?.name || ""}
                 guestEmail={data?.guest?.email || ""}
+                formattedPrice={paymentInfo ? `${paymentInfo.symbol}${paymentInfo.amount}` : undefined}
                 onSuccess={handlePaymentSuccess}
                 onError={(msg) => setPaymentError(msg)}
               />
@@ -244,7 +252,9 @@ export default function AcceptPage() {
           <h1 className="text-xl font-bold text-foreground">You've been accepted.</h1>
           <p className="mt-3 text-sm text-muted-foreground">
             {data?.guest?.name?.split(/\s+/)[0]}, you're on the guest list for {event?.name || "this event"}.
-            {isPaid ? " Confirm your attendance to secure your spot." : " Confirm below and we'll send your ticket."}
+            {isPaid
+              ? ` A ${formatFee(data!.payment_amount!, event?.currency)} booking fee secures your spot.`
+              : " Confirm below and we'll send your ticket."}
           </p>
         </div>
 
@@ -274,7 +284,7 @@ export default function AcceptPage() {
           <button type="button" onClick={handleConfirmStep} disabled={status === "confirming"}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
             {status === "confirming" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Confirm your spot
+            {isPaid ? `Secure your spot · ${formatFee(data!.payment_amount!, event?.currency)}` : "Confirm your spot"}
           </button>
         </div>
 

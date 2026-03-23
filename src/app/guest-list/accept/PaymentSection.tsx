@@ -25,10 +25,11 @@ const CARD_ELEMENT_STYLE = {
   invalid: { color: "#ef4444" },
 };
 
-function CardForm({ clientSecret, guestName, guestEmail, onSuccess, onError }: {
+function CardForm({ clientSecret, guestName, guestEmail, formattedPrice, onSuccess, onError }: {
   clientSecret: string;
   guestName: string;
   guestEmail: string;
+  formattedPrice?: string;
   onSuccess: (paymentIntentId: string) => void;
   onError: (msg: string) => void;
 }) {
@@ -177,7 +178,7 @@ function CardForm({ clientSecret, guestName, guestEmail, onSuccess, onError }: {
             <button type="submit" disabled={!stripe || processing}
               className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
               {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
-              Secure your spot
+              {formattedPrice ? `Pay ${formattedPrice}` : "Secure your spot"}
             </button>
           </form>
         </div>
@@ -196,12 +197,13 @@ interface PaymentSectionProps {
   accentColor: string;
   guestName: string;
   guestEmail: string;
+  formattedPrice?: string;
   onSuccess: (paymentIntentId: string) => void;
   onError: (msg: string) => void;
 }
 
 export default function PaymentSection({
-  clientSecret, stripeAccountId, accentColor, guestName, guestEmail, onSuccess, onError,
+  clientSecret, stripeAccountId, accentColor, guestName, guestEmail, formattedPrice, onSuccess, onError,
 }: PaymentSectionProps) {
   const stripePromise = useMemo(() => loadStripe(
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
@@ -213,7 +215,7 @@ export default function PaymentSection({
       clientSecret,
       appearance: { theme: "night", variables: { colorPrimary: accentColor || "#8B5CF6" } },
     }}>
-      <CardForm clientSecret={clientSecret} guestName={guestName} guestEmail={guestEmail} onSuccess={onSuccess} onError={onError} />
+      <CardForm clientSecret={clientSecret} guestName={guestName} guestEmail={guestEmail} formattedPrice={formattedPrice} onSuccess={onSuccess} onError={onError} />
     </Elements>
   );
 }

@@ -38,7 +38,7 @@ function PaymentForm({ onSuccess, onError }: {
       <button type="submit" disabled={!stripe || processing}
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
         {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        Confirm & pay
+        Secure your spot
       </button>
     </form>
   );

@@ -505,7 +505,9 @@ export async function sendGuestListInviteEmail(params: {
           <tr>
             <td style="padding: 0 32px 24px; text-align: center;">
               <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
-                ${escapeHtml(firstName)}, you've been added to the guest list for ${eventName}.
+                ${params.addedBy && params.addedBy !== "admin"
+                  ? `${escapeHtml(params.addedBy)} has added you to the guest list for ${eventName}.`
+                  : `${escapeHtml(firstName)}, you've been added to the guest list for ${eventName}.`}
                 <br>Confirm your attendance and we'll send your ticket.
               </p>
             </td>

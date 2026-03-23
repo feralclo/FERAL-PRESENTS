@@ -7,7 +7,7 @@ import { Loader2, CheckCircle2, XCircle, Calendar, MapPin, Shield } from "lucide
 type PageStatus = "loading" | "ready" | "show_payment" | "confirming" | "success" | "error" | "already_done";
 
 interface AcceptData {
-  guest: { name: string; access_level: string; access_label: string; qty?: number };
+  guest: { name: string; email?: string; access_level: string; access_label: string; qty?: number };
   event: { name: string; venue_name?: string; date_start?: string; doors_time?: string } | null;
   branding?: { org_name: string; logo_url: string | null; accent_color: string };
   status: string;
@@ -218,6 +218,8 @@ export default function AcceptPage() {
                 clientSecret={clientSecret}
                 stripeAccountId={stripeAccountId}
                 accentColor={data?.branding?.accent_color || "#8B5CF6"}
+                guestName={data?.guest?.name || ""}
+                guestEmail={data?.guest?.email || ""}
                 onSuccess={handlePaymentSuccess}
                 onError={(msg) => setPaymentError(msg)}
               />

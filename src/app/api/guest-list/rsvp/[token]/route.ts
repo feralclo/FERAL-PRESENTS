@@ -51,7 +51,7 @@ export async function GET(
     // Check if already responded
     if (guest.status === "approved") {
       return NextResponse.json({
-        guest: { name: guest.name, access_level: guest.access_level, access_label: accessLabel },
+        guest: { name: guest.name, email: guest.email, access_level: guest.access_level, access_label: accessLabel },
         event: guest.event,
         branding,
         status: "approved",
@@ -62,7 +62,7 @@ export async function GET(
 
     if (guest.status === "declined") {
       return NextResponse.json({
-        guest: { name: guest.name, access_level: guest.access_level, access_label: accessLabel },
+        guest: { name: guest.name, email: guest.email, access_level: guest.access_level, access_label: accessLabel },
         event: guest.event,
         branding,
         status: "declined",
@@ -72,7 +72,7 @@ export async function GET(
     }
 
     return NextResponse.json({
-      guest: { name: guest.name, access_level: guest.access_level, access_label: accessLabel, qty: guest.qty },
+      guest: { name: guest.name, email: guest.email, access_level: guest.access_level, access_label: accessLabel, qty: guest.qty },
       event: guest.event,
       branding,
       status: guest.status,

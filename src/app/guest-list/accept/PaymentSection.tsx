@@ -10,9 +10,9 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 
-// Same card element style as NativeCheckout (src/components/checkout/NativeCheckout.tsx:212)
+// Same card element style as NativeCheckout
 const CARD_ELEMENT_STYLE = {
   base: {
     fontSize: "16px",
@@ -33,8 +33,10 @@ function LockIcon({ className }: { className?: string }) {
   );
 }
 
-function CardForm({ clientSecret, onSuccess, onError }: {
+function CardForm({ clientSecret, guestName, guestEmail, onSuccess, onError }: {
   clientSecret: string;
+  guestName: string;
+  guestEmail: string;
   onSuccess: (paymentIntentId: string) => void;
   onError: (msg: string) => void;
 }) {
@@ -65,7 +67,7 @@ function CardForm({ clientSecret, onSuccess, onError }: {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 guest-list-checkout">
+    <div className="guest-list-checkout">
       <style>{`
         .guest-list-checkout .StripeElement {
           background: rgba(255, 255, 255, 0.04);
@@ -82,39 +84,76 @@ function CardForm({ clientSecret, onSuccess, onError }: {
         }
       `}</style>
 
-      {/* Card Number */}
-      <div className="relative">
-        <CardNumberElement
-          options={{
-            style: CARD_ELEMENT_STYLE,
-            placeholder: "Card number",
-            showIcon: false,
-            disableLink: true,
-          }}
-        />
-        <LockIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-white/25 pointer-events-none z-[1]" />
-      </div>
-
-      {/* Expiry + CVC */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <CardExpiryElement
-            options={{ style: CARD_ELEMENT_STYLE, placeholder: "MM / YY" }}
-          />
+      {/* Pre-filled guest info */}
+      <div className="mb-4 space-y-2">
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Name</p>
+          <p className="text-sm text-white/70">{guestName}</p>
         </div>
-        <div>
-          <CardCvcElement
-            options={{ style: CARD_ELEMENT_STYLE, placeholder: "CVC" }}
-          />
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Email</p>
+          <p className="text-sm text-white/70">{guestEmail}</p>
         </div>
       </div>
 
-      <button type="submit" disabled={!stripe || processing}
-        className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
-        {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        Secure your spot
-      </button>
-    </form>
+      {/* Payment details box */}
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+        {/* Header */}
+        <div className="mb-4">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/80">Payment Details</h3>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <Lock className="h-3 w-3 text-white/30" />
+            <p className="text-[11px] text-white/30">All transactions are secure and encrypted.</p>
+          </div>
+        </div>
+
+        {/* Credit / Debit Card label with brand icons */}
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-medium text-white/80">Credit / Debit Card</span>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center justify-center rounded bg-[#1A1F71] px-1.5 py-0.5 text-[9px] font-bold text-white">VISA</span>
+            <span className="inline-flex items-center justify-center rounded bg-[#FF5F00] px-1.5 py-0.5 text-[9px] font-bold text-white">MC</span>
+            <span className="inline-flex items-center justify-center rounded bg-[#006FCF] px-1.5 py-0.5 text-[9px] font-bold text-white">AMEX</span>
+          </div>
+        </div>
+
+        {/* Card form */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          {/* Card Number */}
+          <div className="relative">
+            <CardNumberElement
+              options={{
+                style: CARD_ELEMENT_STYLE,
+                placeholder: "Card number",
+                showIcon: false,
+                disableLink: true,
+              }}
+            />
+            <LockIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-white/25 pointer-events-none z-[1]" />
+          </div>
+
+          {/* Expiry + CVC */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <CardExpiryElement
+                options={{ style: CARD_ELEMENT_STYLE, placeholder: "MM / YY" }}
+              />
+            </div>
+            <div>
+              <CardCvcElement
+                options={{ style: CARD_ELEMENT_STYLE, placeholder: "CVC" }}
+              />
+            </div>
+          </div>
+
+          <button type="submit" disabled={!stripe || processing}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+            {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
+            Secure your spot
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -122,6 +161,8 @@ interface PaymentSectionProps {
   clientSecret: string;
   stripeAccountId: string | null;
   accentColor: string;
+  guestName: string;
+  guestEmail: string;
   onSuccess: (paymentIntentId: string) => void;
   onError: (msg: string) => void;
 }
@@ -130,6 +171,8 @@ export default function PaymentSection({
   clientSecret,
   stripeAccountId,
   accentColor,
+  guestName,
+  guestEmail,
   onSuccess,
   onError,
 }: PaymentSectionProps) {
@@ -145,7 +188,13 @@ export default function PaymentSection({
         variables: { colorPrimary: accentColor || "#8B5CF6" },
       },
     }}>
-      <CardForm clientSecret={clientSecret} onSuccess={onSuccess} onError={onError} />
+      <CardForm
+        clientSecret={clientSecret}
+        guestName={guestName}
+        guestEmail={guestEmail}
+        onSuccess={onSuccess}
+        onError={onError}
+      />
     </Elements>
   );
 }

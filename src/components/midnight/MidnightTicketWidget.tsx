@@ -66,6 +66,7 @@ export function MidnightTicketWidget({
   const { convertPrice, formatPrice: fmtPrice, isConverted, currency: presentmentCurrency } = useCurrencyContext();
   const isStripe = paymentMethod === "stripe";
   const [expressError, setExpressError] = useState("");
+  const [expressProcessing, setExpressProcessing] = useState(false);
 
   // Track first item → glow animations
   const hadItemsBefore = useRef(false);
@@ -270,7 +271,16 @@ export function MidnightTicketWidget({
         id="tickets"
       >
         {/* Desktop: glass card. Mobile: transparent — tickets float on page bg */}
-        <Card className="glass rounded-2xl max-lg:rounded-none max-lg:border-0 max-lg:shadow-none max-lg:backdrop-blur-0 max-lg:bg-transparent p-0 gap-0">
+        <Card className="glass rounded-2xl max-lg:rounded-none max-lg:border-0 max-lg:shadow-none max-lg:backdrop-blur-0 max-lg:bg-transparent p-0 gap-0 relative">
+          {/* Processing overlay — shown after Apple/Google Pay sheet closes while order is being created */}
+          {expressProcessing && (
+            <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm rounded-2xl max-lg:rounded-none flex flex-col items-center justify-center gap-4 transition-opacity duration-300">
+              <div className="w-6 h-6 border-2 border-white/[0.08] border-t-white rounded-full animate-spin" />
+              <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[2px] uppercase text-foreground/50">
+                Securing your order...
+              </span>
+            </div>
+          )}
           <CardContent className="p-8 max-lg:p-6 max-[480px]:p-4">
             {/* Section header */}
             <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[-0.01em] mb-1.5">
@@ -407,6 +417,7 @@ export function MidnightTicketWidget({
                         }
                       }}
                       discountCode={discount?.code}
+                      onProcessing={setExpressProcessing}
                     />
                   </div>
                 </div>

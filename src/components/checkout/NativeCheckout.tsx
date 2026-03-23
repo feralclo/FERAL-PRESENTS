@@ -1571,7 +1571,16 @@ function SinglePageCheckoutForm({
 
   return (
     <div className="max-w-[620px] mx-auto py-8 px-6 pb-[max(48px,env(safe-area-inset-bottom))]">
-      <div className="w-full">
+      <div className="w-full relative">
+        {/* Processing overlay — covers entire form during payment */}
+        {processing && (
+          <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-4 transition-opacity duration-300">
+            <div className="w-6 h-6 border-2 border-white/[0.08] border-t-white rounded-full midnight-spinner" />
+            <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[2px] uppercase text-foreground/50">
+              Processing your payment...
+            </span>
+          </div>
+        )}
         {/* ── EXPRESS CHECKOUT ── */}
         <div
           className="mb-1"
@@ -1928,7 +1937,7 @@ function SinglePageCheckoutForm({
             disabled={processing || !isReady || !stripe}
           >
             {processing
-              ? "Processing\u2026"
+              ? <span className="flex items-center justify-center gap-2.5"><span className="w-4 h-4 border-2 border-[#111]/10 border-t-[#111]/70 rounded-full animate-spin" />Processing&hellip;</span>
               : paymentMethod === "klarna"
                 ? "Continue to Klarna"
                 : paymentMethod === "paypay"

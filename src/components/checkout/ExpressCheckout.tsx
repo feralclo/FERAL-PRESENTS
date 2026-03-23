@@ -30,6 +30,8 @@ interface ExpressCheckoutProps {
   onAvailable?: (methods: { applePay: boolean; googlePay: boolean }) => void;
   /** Discount code to apply (validated server-side during payment-intent creation) */
   discountCode?: string;
+  /** Called when processing starts/ends (after wallet sheet closes, before redirect/completion) */
+  onProcessing?: (processing: boolean) => void;
 }
 
 /**
@@ -44,6 +46,7 @@ function ExpressCheckoutInner({
   onError,
   onAvailable,
   discountCode,
+  onProcessing,
 }: ExpressCheckoutProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -72,6 +75,7 @@ function ExpressCheckoutInner({
     async (event: StripeExpressCheckoutElementConfirmEvent) => {
       if (!stripe || !elements) return;
 
+      onProcessing?.(true);
       try {
         // Extract customer info from wallet
         const billingDetails = event.billingDetails;
@@ -82,6 +86,7 @@ function ExpressCheckoutInner({
         const phone = billingDetails?.phone || "";
 
         if (!email) {
+          onProcessing?.(false);
           onError("Email is required.");
           return;
         }
@@ -125,6 +130,7 @@ function ExpressCheckoutInner({
 
         const data = await res.json();
         if (!res.ok) {
+          onProcessing?.(false);
           onError(data.error || "Failed to create payment.");
           return;
         }
@@ -140,6 +146,7 @@ function ExpressCheckoutInner({
         });
 
         if (confirmError) {
+          onProcessing?.(false);
           onError(confirmError.message || "Payment failed.");
           return;
         }
@@ -160,6 +167,7 @@ function ExpressCheckoutInner({
           onSuccess(orderData.data);
         } else if (orderRes.status === 409) {
           // Sold out after payment — customer was charged but tickets gone
+          onProcessing?.(false);
           onError("These tickets just sold out. Your payment will be refunded automatically within 5-10 business days.");
         } else {
           // Transient error — webhook will likely create the order
@@ -181,10 +189,11 @@ function ExpressCheckoutInner({
           } as Order);
         }
       } catch {
+        onProcessing?.(false);
         onError("An error occurred. Please try again.");
       }
     },
-    [stripe, elements, eventId, items, amount, currency, onSuccess, onError, discountCode, trackAddPaymentInfo]
+    [stripe, elements, eventId, items, amount, currency, onSuccess, onError, discountCode, trackAddPaymentInfo, onProcessing]
   );
 
   if (!available) return null;

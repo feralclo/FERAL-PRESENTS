@@ -12,6 +12,8 @@ interface GuestListEntry {
   notes?: string;
   checked_in: boolean;
   checked_in_at?: string;
+  access_level?: string;
+  status?: string;
 }
 
 interface GuestListSearchProps {
@@ -141,7 +143,20 @@ export function GuestListSearch({ eventId, onCheckIn }: GuestListSearchProps) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{guest.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">{guest.name}</p>
+                    {guest.access_level && guest.access_level !== "guest_list" && (
+                      <span className={cn(
+                        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                        guest.access_level === "vip" && "bg-warning/15 text-warning",
+                        guest.access_level === "backstage" && "bg-warning/15 text-warning",
+                        guest.access_level === "aaa" && "bg-destructive/15 text-destructive",
+                        guest.access_level === "artist" && "bg-primary/15 text-primary",
+                      )}>
+                        {guest.access_level === "aaa" ? "AAA" : guest.access_level}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     {guest.qty > 1 && (
                       <span className="text-xs text-muted-foreground">+{guest.qty - 1} guests</span>

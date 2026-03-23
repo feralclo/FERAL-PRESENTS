@@ -135,6 +135,16 @@ export function scannerAssignmentsKey(orgId: string): string {
   return `${orgId}_scanner_assignments`;
 }
 
+/** Generate the guest list settings key for a given org */
+export function guestListSettingsKey(orgId: string): string {
+  return `${orgId}_guest_list_settings`;
+}
+
+/** Generate the guest list submission links key for a given org */
+export function guestListSubmissionsKey(orgId: string): string {
+  return `${orgId}_guest_list_submissions`;
+}
+
 /** Platform-level exchange rates cache key */
 export function exchangeRatesKey(): string {
   return "platform_exchange_rates";

@@ -46,12 +46,20 @@ export async function GET(
       (e: { checked_in: boolean }) => e.checked_in
     ).length;
 
+    // Status counts for filter tabs
+    const statusCounts: Record<string, number> = {};
+    for (const e of entries) {
+      const s = (e as { status?: string }).status || "confirmed";
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    }
+
     return NextResponse.json({
       data: entries,
       summary: {
         total_entries: entries.length,
         total_guests: totalGuests,
         checked_in: checkedIn,
+        status_counts: statusCounts,
       },
     });
   } catch (err) {
@@ -87,10 +95,17 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // If checking in, set timestamp
+    // If checking in, set timestamp and fetch current count from DB
     if (updates.checked_in === true) {
       updates.checked_in_at = new Date().toISOString();
-      updates.checked_in_count = (updates.checked_in_count || 0) + 1;
+      // Get current count from DB rather than trusting client value
+      const { data: current } = await supabase
+        .from(TABLES.GUEST_LIST)
+        .select("checked_in_count")
+        .eq("id", id)
+        .eq("org_id", orgId)
+        .single();
+      updates.checked_in_count = ((current?.checked_in_count as number) || 0) + 1;
     }
 
     const { data, error } = await supabase

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, XCircle, AlertTriangle, Package, User, Clock, Ticket, X, Hash } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Package, User, Clock, Ticket, X, Hash, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ScanStatus = "valid" | "already_used" | "merch_only" | "invalid" | "wrong_event" | "no_merch" | "merch_collected" | "merch_success" | "error";
@@ -102,6 +102,29 @@ export function ScanResult({
                 <span className="text-sm font-medium text-foreground">{ticket.ticket_type.name}</span>
               </div>
             )}
+
+            {/* Guest list access level — BIG and unmissable (same weight as merch size) */}
+            {(() => {
+              const ttName = ticket.ticket_type?.name || "";
+              if (!ttName.startsWith("Guest List")) return null;
+              const level = ttName === "Guest List" ? "Guest List" : ttName.replace("Guest List — ", "");
+              const colorMap: Record<string, string> = {
+                "Guest List": "text-primary bg-primary/15 border-primary/25",
+                VIP: "text-warning bg-warning/15 border-warning/25",
+                Backstage: "text-warning bg-warning/15 border-warning/25",
+                AAA: "text-destructive bg-destructive/15 border-destructive/25",
+                Artist: "text-info bg-info/15 border-info/25",
+              };
+              const colors = colorMap[level] || colorMap["Guest List"];
+              return (
+                <div className="flex items-center gap-2">
+                  <Shield size={15} className="text-warning shrink-0" />
+                  <span className={`inline-flex items-center rounded-lg border px-4 py-1.5 text-base font-bold tracking-wide ${colors}`}>
+                    {level}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Merch size — BIG and unmissable */}
             {ticket.merch_size && (

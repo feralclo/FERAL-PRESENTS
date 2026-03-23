@@ -117,6 +117,22 @@ export interface Customer {
   rep_level?: number;
 }
 
+export type GuestListStatus =
+  | "invited"
+  | "accepted"
+  | "approved"
+  | "declined"
+  | "cancelled"
+  | "confirmed"
+  | "pending";
+
+export type AccessLevel =
+  | "guest_list"
+  | "vip"
+  | "backstage"
+  | "aaa"
+  | "artist";
+
 export interface GuestListEntry {
   id: string;
   org_id: string;
@@ -131,6 +147,19 @@ export interface GuestListEntry {
   checked_in_at?: string;
   checked_in_count: number;
   created_at: string;
+  // Invitation flow
+  status: GuestListStatus;
+  access_level: AccessLevel;
+  invite_token?: string;
+  ticket_id?: string;
+  order_id?: string;
+  invited_at?: string;
+  accepted_at?: string;
+  approved_at?: string;
+  approved_by?: string;
+  // DJ/artist submissions
+  submitted_by?: string;
+  submission_token?: string;
 }
 
 export type AbandonedCartStatus = "pending" | "abandoned" | "recovered" | "expired";

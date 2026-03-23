@@ -181,9 +181,9 @@ export function getPaymentErrorMessage(error: { message?: string; code?: string;
     if (decline === "card_not_supported")
       return "This card type is not supported. Please try a different card.";
     if (decline === "do_not_honor")
-      return "Your bank declined this transaction. Please contact your bank or try a different card.";
+      return "Your bank declined this transaction. Please check your card details or try a different card.";
     if (decline === "try_again_later")
-      return "Your bank couldn't process this right now. Please try again in a moment.";
+      return "Your payment couldn't be processed. Please check your card details and try again, or use a different card.";
     if (decline === "currency_not_supported")
       return "Your card doesn't support this currency. Please try a different card.";
     if (decline === "duplicate_transaction")
@@ -191,7 +191,7 @@ export function getPaymentErrorMessage(error: { message?: string; code?: string;
     if (decline === "fraudulent")
       return "This transaction was declined. Please try a different card.";
     if (decline === "generic_decline")
-      return "Your card was declined. Please contact your bank or try a different card.";
+      return "Your card was declined. Please check your details or try a different card.";
     if (decline === "withdrawal_count_limit_exceeded")
       return "You've exceeded your card's transaction limit. Please try a different card.";
     return "Your card was declined. Please contact your bank or try a different card.";

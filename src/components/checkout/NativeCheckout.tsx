@@ -1090,7 +1090,15 @@ function SinglePageCheckoutForm({
   // Whether any alternative payment methods are available (for radio UI)
   const hasAltPaymentMethod = klarnaAvailable || paypayAvailable;
   const cardRef = useRef<CardFieldsHandle>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   const nameCaptureTimer = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Scroll error into view on mobile when it appears
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [error]);
 
   const captureNameOnBlur = useCallback(() => {
     if (nameCaptureTimer.current) clearTimeout(nameCaptureTimer.current);
@@ -1776,6 +1784,7 @@ function SinglePageCheckoutForm({
                   <CardFields
                     ref={cardRef}
                     onReady={() => setCardReady(true)}
+                    onFieldChange={() => { if (error) setError(""); }}
                   />
 
                   <label htmlFor="checkout-cc-name" className="sr-only">Name on card</label>
@@ -1907,7 +1916,7 @@ function SinglePageCheckoutForm({
 
           {/* Error */}
           {error && (
-            <div className="bg-destructive/[0.08] border border-destructive/20 text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.5px] py-3 px-4 text-center rounded-lg">
+            <div ref={errorRef} className="bg-destructive/[0.08] border border-destructive/20 text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.5px] py-3 px-4 text-center rounded-lg">
               {error}
             </div>
           )}
@@ -1944,14 +1953,15 @@ function SinglePageCheckoutForm({
    CARD FIELDS — Individual Stripe card elements with custom UI
    ================================================================ */
 
-const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
-  function CardFields({ onReady }, ref) {
+const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void; onFieldChange?: () => void }>(
+  function CardFields({ onReady, onFieldChange }, ref) {
     const stripe = useStripe();
     const elements = useElements();
     const [numberReady, setNumberReady] = useState(false);
     const [expiryReady, setExpiryReady] = useState(false);
     const [cvcReady, setCvcReady] = useState(false);
     const readyNotified = useRef(false);
+    const [fieldErrors, setFieldErrors] = useState<{ number?: string; expiry?: string; cvc?: string }>({});
 
     useEffect(() => {
       if (numberReady && expiryReady && cvcReady && !readyNotified.current) {
@@ -1989,17 +1999,26 @@ const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
     return (
       <div className="flex flex-col gap-3">
         {/* Card Number */}
-        <div className="midnight-card-number relative">
-          <CardNumberElement
-            onReady={() => setNumberReady(true)}
-            options={{
-              style: CARD_ELEMENT_STYLE,
-              placeholder: "Card number",
-              showIcon: false,
-              disableLink: true,
-            }}
-          />
-          <LockIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-foreground/35 pointer-events-none z-[1]" />
+        <div>
+          <div className="midnight-card-number relative">
+            <CardNumberElement
+              onReady={() => setNumberReady(true)}
+              onChange={(e) => {
+                setFieldErrors((prev) => ({ ...prev, number: e.error?.message }));
+                onFieldChange?.();
+              }}
+              options={{
+                style: CARD_ELEMENT_STYLE,
+                placeholder: "Card number",
+                showIcon: false,
+                disableLink: true,
+              }}
+            />
+            <LockIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-foreground/35 pointer-events-none z-[1]" />
+          </div>
+          {fieldErrors.number && (
+            <p className="text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.3px] mt-1.5 px-1">{fieldErrors.number}</p>
+          )}
         </div>
 
         {/* Expiry + CVC */}
@@ -2007,39 +2026,55 @@ const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
           <div>
             <CardExpiryElement
               onReady={() => setExpiryReady(true)}
+              onChange={(e) => {
+                setFieldErrors((prev) => ({ ...prev, expiry: e.error?.message }));
+                onFieldChange?.();
+              }}
               options={{
                 style: CARD_ELEMENT_STYLE,
                 placeholder: "Expiration date (MM/YY)",
               }}
             />
+            {fieldErrors.expiry && (
+              <p className="text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.3px] mt-1.5 px-1">{fieldErrors.expiry}</p>
+            )}
           </div>
-          <div className="midnight-card-cvc relative">
-            <CardCvcElement
-              onReady={() => setCvcReady(true)}
-              options={{
-                style: CARD_ELEMENT_STYLE,
-                placeholder: "Security code",
-              }}
-            />
-            <svg
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-foreground/35 pointer-events-none z-[1]"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <path
-                d="M12 2L4 6v5c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinejoin="round"
+          <div>
+            <div className="midnight-card-cvc relative">
+              <CardCvcElement
+                onReady={() => setCvcReady(true)}
+                onChange={(e) => {
+                  setFieldErrors((prev) => ({ ...prev, cvc: e.error?.message }));
+                  onFieldChange?.();
+                }}
+                options={{
+                  style: CARD_ELEMENT_STYLE,
+                  placeholder: "Security code",
+                }}
               />
-              <path
-                d="M9 12l2 2 4-4"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+              <svg
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-foreground/35 pointer-events-none z-[1]"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <path
+                  d="M12 2L4 6v5c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9 12l2 2 4-4"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            {fieldErrors.cvc && (
+              <p className="text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.3px] mt-1.5 px-1">{fieldErrors.cvc}</p>
+            )}
           </div>
         </div>
       </div>

@@ -85,7 +85,7 @@ export default function GuestListPage() {
   }, [events, guestSummaries, selectedEvent]);
 
   return (
-    <div className="space-y-6 p-6 lg:p-8">
+    <div className="space-y-6 p-6 lg:p-8 min-w-0 overflow-x-hidden">
       {/* Header */}
       <div>
         <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">Guest List</h1>

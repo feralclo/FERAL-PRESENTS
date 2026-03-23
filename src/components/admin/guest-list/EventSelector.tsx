@@ -84,7 +84,7 @@ export function EventSelector({
     <div className="space-y-3">
       {/* Cards for events with guests */}
       {eventsWithGuests.length > 0 && (
-        <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+        <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 min-w-0 max-w-full">
           {eventsWithGuests.map((evt) => {
             const isSelected = evt.id === selectedEventId;
             const summary = guestSummaries[evt.id];

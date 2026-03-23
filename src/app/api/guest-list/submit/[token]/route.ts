@@ -1,6 +1,8 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, guestListSubmissionsKey } from "@/lib/constants";
+import { getGuestListSettings, sendGuestListInviteEmail } from "@/lib/guest-list";
 import type { SubmissionLink } from "@/types/guest-list";
 import type { AccessLevel } from "@/types/orders";
 import * as Sentry from "@sentry/nextjs";
@@ -239,33 +241,75 @@ export async function POST(
       }
     }
 
-    // Insert entries
-    const rows = validGuests.map((g) => ({
-      org_id: resolved.orgId,
-      event_id: resolved.link.event_id,
-      name: g.name,
-      email: g.email || null,
-      phone: g.phone || null,
-      qty: g.qty || 1,
-      status: "pending",
-      access_level: g.access_level || "artist",
-      submitted_by: resolved.link.artist_name,
-      submission_token: token,
-      added_by: resolved.link.artist_name,
-    }));
+    // Check auto-invite setting
+    const settings = await getGuestListSettings(supabase, resolved.orgId);
+    const autoInvite = settings.auto_approve_submissions;
 
-    const { error } = await supabase
+    // Insert entries — if auto-invite is on and guest has email, set status to "invited"
+    const rows = validGuests.map((g) => {
+      const hasEmail = !!g.email;
+      const shouldInvite = autoInvite && hasEmail;
+      return {
+        org_id: resolved.orgId,
+        event_id: resolved.link.event_id,
+        name: g.name,
+        email: g.email || null,
+        phone: g.phone || null,
+        qty: g.qty || 1,
+        status: shouldInvite ? "invited" : "pending",
+        access_level: g.access_level || "artist",
+        submitted_by: resolved.link.artist_name,
+        submission_token: token,
+        added_by: resolved.link.artist_name,
+        invite_token: shouldInvite ? crypto.randomUUID() : null,
+        invited_at: shouldInvite ? new Date().toISOString() : null,
+      };
+    });
+
+    const { data: inserted, error } = await supabase
       .from(TABLES.GUEST_LIST)
-      .insert(rows);
+      .insert(rows)
+      .select("id, name, email, access_level, invite_token");
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Send invite emails for auto-invited guests (fire-and-forget)
+    if (autoInvite && inserted) {
+      const { data: event } = await supabase
+        .from(TABLES.EVENTS)
+        .select("name, venue_name, date_start, doors_time")
+        .eq("id", resolved.link.event_id)
+        .eq("org_id", resolved.orgId)
+        .single();
+
+      for (const row of inserted) {
+        if (row.email && row.invite_token) {
+          sendGuestListInviteEmail({
+            orgId: resolved.orgId,
+            guestName: row.name as string,
+            guestEmail: row.email as string,
+            inviteToken: row.invite_token as string,
+            eventName: event?.name || "Event",
+            eventDate: event?.date_start || undefined,
+            eventTime: event?.doors_time || undefined,
+            venueName: event?.venue_name || undefined,
+            accessLevel: (row.access_level as AccessLevel) || "guest_list",
+            addedBy: resolved.link.artist_name,
+          }).catch(() => {});
+        }
+      }
+    }
+
+    const autoInvitedCount = autoInvite ? rows.filter((r) => r.status === "invited").length : 0;
+
     return NextResponse.json({
       success: true,
       count: validGuests.length,
-      message: `${validGuests.length} guest${validGuests.length === 1 ? "" : "s"} submitted for review.`,
+      message: autoInvitedCount > 0
+        ? `${validGuests.length} guest${validGuests.length === 1 ? "" : "s"} submitted. ${autoInvitedCount} invite${autoInvitedCount === 1 ? "" : "s"} sent.`
+        : `${validGuests.length} guest${validGuests.length === 1 ? "" : "s"} submitted for review.`,
     });
   } catch (err) {
     Sentry.captureException(err);

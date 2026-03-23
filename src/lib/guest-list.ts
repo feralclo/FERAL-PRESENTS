@@ -209,10 +209,12 @@ function formatTime(dateStr: string): string {
 
 export interface GuestListSettings {
   auto_approve: boolean;
+  auto_approve_submissions: boolean;
 }
 
 const DEFAULT_GUEST_LIST_SETTINGS: GuestListSettings = {
   auto_approve: true,
+  auto_approve_submissions: false,
 };
 
 export async function getGuestListSettings(

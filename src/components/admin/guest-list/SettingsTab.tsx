@@ -10,10 +10,20 @@ interface SettingsTabProps {
   orgId: string;
 }
 
+interface GuestListSettings {
+  auto_approve: boolean;
+  auto_approve_submissions: boolean;
+}
+
+const DEFAULTS: GuestListSettings = {
+  auto_approve: true,
+  auto_approve_submissions: false,
+};
+
 export function SettingsTab({ orgId }: SettingsTabProps) {
-  const [autoApprove, setAutoApprove] = useState(true);
+  const [settings, setSettings] = useState<GuestListSettings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -21,8 +31,8 @@ export function SettingsTab({ orgId }: SettingsTabProps) {
         const res = await fetch(`/api/settings?key=${orgId}_guest_list_settings`);
         if (res.ok) {
           const json = await res.json();
-          if (json.data?.auto_approve !== undefined) {
-            setAutoApprove(json.data.auto_approve);
+          if (json.data) {
+            setSettings({ ...DEFAULTS, ...json.data });
           }
         }
       } catch { /* use defaults */ }
@@ -31,20 +41,21 @@ export function SettingsTab({ orgId }: SettingsTabProps) {
     load();
   }, [orgId]);
 
-  const handleToggle = async (checked: boolean) => {
-    setAutoApprove(checked);
-    setSaving(true);
+  const handleToggle = async (field: keyof GuestListSettings, checked: boolean) => {
+    const updated = { ...settings, [field]: checked };
+    setSettings(updated);
+    setSaving(field);
     try {
       await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           key: `${orgId}_guest_list_settings`,
-          data: { auto_approve: checked },
+          data: updated,
         }),
       });
     } catch { /* silent */ }
-    setSaving(false);
+    setSaving(null);
   };
 
   if (loading) {
@@ -61,19 +72,36 @@ export function SettingsTab({ orgId }: SettingsTabProps) {
     <div className="space-y-4">
       <Card className="py-0 gap-0">
         <CardHeader className="pb-0 pt-5 px-6">
-          <CardTitle className="text-sm">Guest List Settings</CardTitle>
+          <CardTitle className="text-sm">Approval Settings</CardTitle>
         </CardHeader>
-        <CardContent className="p-6 pt-4">
-          <div className="flex items-center justify-between">
+        <CardContent className="p-6 pt-4 space-y-6">
+          {/* Guest invitations */}
+          <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <Label className="text-sm font-medium">Auto-approve on RSVP</Label>
+              <Label className="text-sm font-medium">Auto-approve guest RSVPs</Label>
               <p className="text-xs text-muted-foreground">
-                When enabled, guests who confirm their RSVP are automatically issued a ticket. When disabled, you'll need to manually approve each guest.
+                When a guest confirms their RSVP, automatically issue their ticket. When off, you'll approve each guest manually.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              {saving && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
-              <Switch checked={autoApprove} onCheckedChange={handleToggle} />
+            <div className="flex items-center gap-2 shrink-0 pt-0.5">
+              {saving === "auto_approve" && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+              <Switch checked={settings.auto_approve} onCheckedChange={(c) => handleToggle("auto_approve", c)} />
+            </div>
+          </div>
+
+          <div className="h-px bg-border/40" />
+
+          {/* Artist submissions */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <Label className="text-sm font-medium">Auto-invite artist submissions</Label>
+              <p className="text-xs text-muted-foreground">
+                When an artist submits names via their link, automatically send invite emails to guests with email addresses. When off, submissions wait for your approval.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 pt-0.5">
+              {saving === "auto_approve_submissions" && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+              <Switch checked={settings.auto_approve_submissions} onCheckedChange={(c) => handleToggle("auto_approve_submissions", c)} />
             </div>
           </div>
         </CardContent>

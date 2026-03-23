@@ -26,6 +26,91 @@ export const ACCESS_LEVELS: Record<
 export type { AccessLevel };
 
 // ---------------------------------------------------------------------------
+// CID Logo Embedding (same pattern as rep-emails.ts)
+// ---------------------------------------------------------------------------
+
+interface CidAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+  contentId: string;
+}
+
+async function fetchLogoBase64(
+  logoUrl: string | null,
+  orgId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any
+): Promise<string | null> {
+  if (!logoUrl) return null;
+  const m = logoUrl.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+  if (!m) return null;
+  const mediaKey = m[1];
+
+  try {
+    const { data: row } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", `media_${mediaKey}`)
+      .single();
+    const d = row?.data as { image?: string } | null;
+    if (d?.image) return d.image;
+  } catch { /* not found */ }
+
+  if (!mediaKey.startsWith(`${orgId}_`)) {
+    try {
+      const { data: row } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", `media_${orgId}_${mediaKey}`)
+        .single();
+      const d = row?.data as { image?: string } | null;
+      if (d?.image) return d.image;
+    } catch { /* not found */ }
+  }
+
+  return null;
+}
+
+function buildCidAttachment(base64: string): CidAttachment | null {
+  const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  return {
+    filename: "logo.png",
+    content: Buffer.from(match[2], "base64"),
+    contentType: match[1],
+    contentId: "brand-logo",
+  };
+}
+
+async function resolveLogoCid(
+  brandingLogoUrl: string | null,
+  orgId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any
+): Promise<CidAttachment | null> {
+  let base64 = await fetchLogoBase64(brandingLogoUrl, orgId, supabase);
+
+  // Fallback: try email settings logo
+  if (!base64) {
+    try {
+      const { data: emailRow } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", `${orgId}_email`)
+        .single();
+      const emailSettings = (emailRow?.data as Record<string, string>) || {};
+      if (emailSettings.logo_url && emailSettings.logo_url !== brandingLogoUrl) {
+        base64 = await fetchLogoBase64(emailSettings.logo_url, orgId, supabase);
+      }
+    } catch { /* no email settings */ }
+  }
+
+  if (!base64) return null;
+  return buildCidAttachment(base64);
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -334,6 +419,12 @@ export async function sendGuestListInviteEmail(params: {
     const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
     const accentColor = branding.accent_color || "#7C3AED";
 
+    // Resolve logo for CID inline embedding (same logo as order confirmation)
+    const logoCid = await resolveLogoCid(branding.logo_url || null, params.orgId, supabase);
+    const logoHtml = logoCid
+      ? `<img src="cid:brand-logo" alt="${orgName}" width="120" style="display: block; max-width: 120px; max-height: 48px; width: auto; height: auto; border: 0;" />`
+      : `<span style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: ${accentColor};">${orgName}</span>`;
+
     // Resolve tenant URL for RSVP link
     const tenantUrl = await resolveTenantUrl(params.orgId, supabase);
     const rsvpUrl = `${tenantUrl}/guest-list/rsvp/${encodeURIComponent(params.inviteToken)}`;
@@ -386,9 +477,17 @@ export async function sendGuestListInviteEmail(params: {
             <td style="height: 3px; background-color: ${accentColor};"></td>
           </tr>
 
+          <!-- Logo -->
+          <tr>
+            <td style="padding: 28px 32px 0 32px; text-align: center;">
+              ${logoHtml}
+              <div class="em-divider" style="margin-top: 20px; height: 1px; background-color: #e4e4e7;"></div>
+            </td>
+          </tr>
+
           <!-- Body -->
           <tr>
-            <td style="padding: 36px 32px 8px 32px;">
+            <td style="padding: 28px 32px 8px 32px;">
               <h1 class="em-h" style="font-size: 24px; font-weight: 700; color: #18181b; margin: 0 0 20px 0; line-height: 1.3;">You're on the list.</h1>
               <p class="em-p" style="font-size: 15px; color: #3f3f46; margin: 0 0 24px 0; line-height: 1.6;">${escapeHtml(firstName)}, you've been added to the guest list for <strong>${eventName}</strong>.</p>
             </td>
@@ -466,6 +565,7 @@ export async function sendGuestListInviteEmail(params: {
       to: [params.guestEmail],
       subject,
       html,
+      ...(logoCid ? { attachments: [logoCid] } : {}),
     });
 
     console.log(`[guest-list-email] Invite sent to ${params.guestEmail} for ${params.eventName}`);

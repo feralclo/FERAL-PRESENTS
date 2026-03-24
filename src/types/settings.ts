@@ -31,6 +31,9 @@ export interface EventSettings {
   /** Enable multi-currency support (geo-detected currency conversion) for this event */
   multi_currency_enabled?: boolean;
 
+  /** Merch booth closing time in HH:MM format (e.g. "22:00"). Shown on email/PDF for merch orders. */
+  merch_collection_cutoff?: string;
+
   // Any additional dynamic fields
   [key: string]: unknown;
 }

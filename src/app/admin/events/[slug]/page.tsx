@@ -396,6 +396,7 @@ export default function EventEditorPage() {
             settings={settings}
             updateSetting={updateSetting}
             artistNames={eventArtists.map((ea) => ea.artist?.name).filter(Boolean) as string[]}
+            hasMerch={ticketTypes.some((tt) => tt.includes_merch || tt.product_id)}
           />
         </TabsContent>
       </Tabs>

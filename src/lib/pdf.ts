@@ -17,6 +17,8 @@ export interface TicketPDFData {
   orderType?: string;
   /** Artist/person who added the guest (guest list orders). */
   invitedBy?: string;
+  /** Merch booth closing time formatted for display (e.g. "10pm"). */
+  merchCollectionCutoff?: string;
 }
 
 /** Parse hex color to [r, g, b] tuple */
@@ -128,7 +130,8 @@ export async function generateTicketsPDF(
     const venueY = eventNameY + 8;
     const dateY = venueY + 6;
     const typeY = dateY + 12;
-    const merchOffset = t.merchSize ? 16 : 0; // Space for merch label + item name + instruction
+    const merchCutoffExtra = (t.merchSize && t.merchCollectionCutoff) ? 6 : 0;
+    const merchOffset = t.merchSize ? 16 + merchCutoffExtra : 0; // Space for merch label + item name + instruction + cutoff
     const qrY = typeY + 10 + merchOffset;
     const qrBottom = qrY + s.qr_size;
     const codeY = qrBottom + 8;
@@ -228,6 +231,17 @@ export async function generateTicketsPDF(
         typeY + (isMerchOnly ? 12 : 17),
         { align: "center" }
       );
+      // Merch collection cutoff time
+      if (t.merchCollectionCutoff) {
+        doc.setFontSize(7);
+        doc.setTextColor(acR, acG, acB);
+        doc.text(
+          `Collect before ${t.merchCollectionCutoff}`,
+          centerX,
+          typeY + (isMerchOnly ? 17 : 22),
+          { align: "center" }
+        );
+      }
     }
 
     // QR Code

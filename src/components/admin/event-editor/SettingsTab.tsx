@@ -39,9 +39,10 @@ interface StripeAccount {
 
 interface SettingsTabProps extends TabWithSettingsProps {
   artistNames?: string[];
+  hasMerch?: boolean;
 }
 
-export function SettingsTab({ event, updateEvent, settings, updateSetting, artistNames = [] }: SettingsTabProps) {
+export function SettingsTab({ event, updateEvent, settings, updateSetting, artistNames = [], hasMerch = false }: SettingsTabProps) {
   const orgId = useOrgId();
   const { timezone } = useOrgTimezone();
   const { currency: orgBaseCurrency } = useOrgCurrency();
@@ -589,6 +590,42 @@ export function SettingsTab({ event, updateEvent, settings, updateSetting, artis
           )}
         </CardContent>
       </Card>
+
+      {/* Merch Collection — only visible when event has merch ticket types */}
+      {hasMerch && (
+        <Card className="py-0 gap-0">
+          <CardHeader className="px-6 pt-5 pb-4">
+            <CardTitle className="text-sm">Merch Collection</CardTitle>
+          </CardHeader>
+          <CardContent className="px-6 pb-6 space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Set a cutoff time for merch collection at the event. This will be shown on the buyer's confirmation email and PDF ticket.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Merch booth closes at</Label>
+                <Input
+                  type="time"
+                  value={(settings.merch_collection_cutoff as string) || ""}
+                  onChange={(e) => updateSetting("merch_collection_cutoff", e.target.value || undefined)}
+                  placeholder="e.g. 22:00"
+                />
+              </div>
+              {settings.merch_collection_cutoff && (
+                <div className="flex items-center text-xs text-muted-foreground pt-6">
+                  Buyers will see: "Collect before {(() => {
+                    const [h, m] = (settings.merch_collection_cutoff as string).split(":").map(Number);
+                    if (isNaN(h)) return settings.merch_collection_cutoff as string;
+                    const period = h >= 12 ? "pm" : "am";
+                    const hour = h % 12 || 12;
+                    return m ? `${hour}:${String(m).padStart(2, "0")}${period}` : `${hour}${period}`;
+                  })()}"
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="py-0 gap-0">
         <CardHeader className="px-6 pt-5 pb-4">

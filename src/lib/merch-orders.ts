@@ -5,6 +5,7 @@ import {
   generateTicketCode,
 } from "@/lib/ticket-utils";
 import { sendOrderConfirmationEmail } from "@/lib/email";
+import { formatCutoffTime } from "@/lib/orders";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -377,6 +378,21 @@ export async function createMerchOrder(
     try {
       const chargedCcy = (presentmentCurrency || event.currency || "GBP").toUpperCase();
       const baseCcy = (event.currency || "GBP").toUpperCase();
+
+      // Fetch merch collection cutoff from event settings
+      let merchCollectionCutoff: string | undefined;
+      if (event.slug) {
+        try {
+          const { data: settingsRow } = await supabase
+            .from(TABLES.SITE_SETTINGS)
+            .select("data")
+            .eq("key", `${orgId}_event_${event.slug}`)
+            .single();
+          const rawCutoff = (settingsRow?.data as Record<string, unknown>)?.merch_collection_cutoff as string | undefined;
+          if (rawCutoff) merchCollectionCutoff = formatCutoffTime(rawCutoff);
+        } catch { /* silent — cutoff is non-critical */ }
+      }
+
       await sendOrderConfirmationEmail({
         orgId,
         order: {
@@ -408,6 +424,7 @@ export async function createMerchOrder(
         })),
         vat: vat && vat.amount > 0 ? vat : undefined,
         order_type: "merch_preorder",
+        merchCollectionCutoff,
         ...(conversion && chargedCcy !== baseCcy ? {
           crossCurrency: {
             baseCurrency: baseCcy,

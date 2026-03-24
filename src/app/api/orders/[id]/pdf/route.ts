@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
 import { getOrgIdFromRequest } from "@/lib/org";
+import { formatCutoffTime } from "@/lib/orders";
 import type { PdfTicketSettings } from "@/types/email";
 import { DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
 import * as Sentry from "@sentry/nextjs";
@@ -30,7 +31,7 @@ export async function GET(
     const { data: order, error } = await supabase
       .from(TABLES.ORDERS)
       .select(
-        "*, event:events(name, venue_name, date_start), tickets:tickets(*, ticket_type:ticket_types(name))"
+        "*, event:events(name, slug, venue_name, date_start), tickets:tickets(*, ticket_type:ticket_types(name))"
       )
       .eq("id", id)
       .eq("org_id", orgId)
@@ -68,6 +69,21 @@ export async function GET(
     const isMerchPreorder = orderType === "merch_preorder";
     const merchItems = (orderMeta.merch_items || []) as { product_name?: string }[];
 
+    // Fetch merch collection cutoff from event settings (if order has merch)
+    const hasMerchTickets = isMerchPreorder || order.tickets.some((t: { merch_size?: string }) => t.merch_size);
+    let merchCollectionCutoff: string | undefined;
+    if (hasMerchTickets && order.event?.slug) {
+      try {
+        const { data: eventSettingsRow } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", `${orgId}_event_${order.event.slug}`)
+          .single();
+        const rawCutoff = (eventSettingsRow?.data as Record<string, unknown>)?.merch_collection_cutoff as string | undefined;
+        if (rawCutoff) merchCollectionCutoff = formatCutoffTime(rawCutoff);
+      } catch { /* silent */ }
+    }
+
     // Build PDF data
     const ticketData: TicketPDFData[] = order.tickets.map(
       (ticket: {
@@ -89,6 +105,7 @@ export async function GET(
         merchSize: ticket.merch_size,
         merchName: isMerchPreorder ? (merchItems[0]?.product_name || undefined) : undefined,
         orderType,
+        merchCollectionCutoff,
       })
     );
 

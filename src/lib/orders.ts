@@ -7,6 +7,19 @@ import {
 import { sendOrderConfirmationEmail } from "@/lib/email";
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Format "HH:MM" → "10pm" or "10:30pm" for customer-facing display. */
+export function formatCutoffTime(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (isNaN(h)) return hhmm;
+  const period = h >= 12 ? "pm" : "am";
+  const hour = h % 12 || 12;
+  return m ? `${hour}:${String(m).padStart(2, "0")}${period}` : `${hour}${period}`;
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -503,6 +516,22 @@ export async function createOrder(
     try {
       const chargedCurrency = (presentmentCurrency || event.currency || "GBP").toUpperCase();
       const baseCcy = (event.currency || "GBP").toUpperCase();
+
+      // Fetch merch collection cutoff if order has merch items
+      const orderHasMerch = allTickets.some((t) => t.merch_size);
+      let merchCollectionCutoff: string | undefined;
+      if (orderHasMerch && event.slug) {
+        try {
+          const { data: settingsRow } = await supabase
+            .from(TABLES.SITE_SETTINGS)
+            .select("data")
+            .eq("key", `${orgId}_event_${event.slug}`)
+            .single();
+          const rawCutoff = (settingsRow?.data as Record<string, unknown>)?.merch_collection_cutoff as string | undefined;
+          if (rawCutoff) merchCollectionCutoff = formatCutoffTime(rawCutoff);
+        } catch { /* silent — cutoff is non-critical */ }
+      }
+
       await sendOrderConfirmationEmail({
         orgId,
         order: {
@@ -537,6 +566,7 @@ export async function createOrder(
         }),
         vat: vat && vat.amount > 0 ? vat : undefined,
         invited_by: extraMetadata?.invited_by as string | undefined,
+        merchCollectionCutoff,
         ...(conversion && chargedCurrency !== baseCcy ? {
           crossCurrency: {
             baseCurrency: baseCcy,

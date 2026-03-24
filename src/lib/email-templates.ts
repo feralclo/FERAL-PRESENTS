@@ -109,6 +109,7 @@ export function buildOrderConfirmationEmail(
   const doorsLine = order.doors_time ? `Doors ${order.doors_time}` : "";
 
   const hasMerch = isMerchPreorder || order.tickets.some((t) => t.merch_size);
+  const merchCutoff = order.merch_collection_cutoff;
 
   // Build ticket rows HTML
   const ticketRowsHtml = order.tickets
@@ -365,7 +366,7 @@ export function buildOrderConfirmationEmail(
           <tr>
             <td style="padding: 0 32px 24px;">
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #888; background: #fafafa; border-radius: 6px; border: 1px solid #f0f0f0; padding: 12px 16px;">
-                <strong style="color: #666;">How to collect your merch</strong> — Present your QR code at the merch stand at the event. This is a merch pre-order only — you will need a separate event ticket to attend.
+                <strong style="color: #666;">How to collect your merch</strong> — Present your QR code at the merch stand at the event.${merchCutoff ? ` <strong style="color: #444;">Merch must be collected before ${merchCutoff}.</strong> Collection will not be available after this time.` : ""} This is a merch pre-order only — you will need a separate event ticket to attend.
               </div>
             </td>
           </tr>
@@ -374,7 +375,7 @@ export function buildOrderConfirmationEmail(
           <tr>
             <td style="padding: 0 32px 24px;">
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #888; background: #fafafa; border-radius: 6px; border: 1px solid #f0f0f0; padding: 12px 16px;">
-                <strong style="color: #666;">Merch collection</strong> — Your ticket includes merch. Present the same QR code at the merch stand to collect your items.
+                <strong style="color: #666;">Merch collection</strong> — Your ticket includes merch. Present the same QR code at the merch stand to collect your items.${merchCutoff ? ` <strong style="color: #444;">Merch must be collected before ${merchCutoff}.</strong>` : ""}
               </div>
             </td>
           </tr>

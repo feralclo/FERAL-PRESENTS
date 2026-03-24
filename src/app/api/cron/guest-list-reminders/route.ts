@@ -10,8 +10,8 @@ export const maxDuration = 300;
 /** Send reminder after 48 hours of no response */
 const REMINDER_DELAY_HOURS = 48;
 
-/** Don't send reminders if the event is less than 24 hours away */
-const EVENT_CUTOFF_HOURS = 24;
+/** Don't send reminders if the event is less than 6 hours away */
+const EVENT_CUTOFF_HOURS = 6;
 
 /** Max guests to process per run (prevent timeout) */
 const BATCH_LIMIT = 200;

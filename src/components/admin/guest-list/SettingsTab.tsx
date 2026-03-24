@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Bell } from "lucide-react";
 
 interface SettingsTabProps {
   orgId: string;
@@ -70,6 +70,23 @@ export function SettingsTab({ orgId }: SettingsTabProps) {
 
   return (
     <div className="space-y-4">
+      {/* Reminder info */}
+      <Card className="py-0 gap-0 border-border/40">
+        <CardContent className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/8">
+              <Bell size={14} className="text-primary/60" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Automatic reminders</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Guests who haven't responded to their invitation will receive a single reminder email after 48 hours. No action needed — this happens automatically.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="py-0 gap-0">
         <CardHeader className="pb-0 pt-5 px-6">
           <CardTitle className="text-sm">Approval Settings</CardTitle>

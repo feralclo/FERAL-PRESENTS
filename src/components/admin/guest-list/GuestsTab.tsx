@@ -33,10 +33,10 @@ import {
   Circle,
   Loader2,
   Send,
-  Shield,
   Ticket,
   Clock,
   Mail,
+  Bell,
 } from "lucide-react";
 import type { GuestListEntry, AccessLevel } from "@/types/orders";
 
@@ -57,11 +57,11 @@ const ACCESS_LEVEL_COLORS: Record<AccessLevel, string> = {
 };
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "outline" | "success" | "destructive" | "secondary" }> = {
-  invited: { label: "Invited", variant: "outline" },
-  accepted: { label: "Accepted", variant: "default" },
-  pending: { label: "Pending", variant: "secondary" },
-  approved: { label: "Approved", variant: "success" },
-  confirmed: { label: "Confirmed", variant: "success" },
+  invited: { label: "Invite Sent", variant: "outline" },
+  accepted: { label: "RSVP'd — Awaiting Approval", variant: "default" },
+  pending: { label: "Awaiting Approval", variant: "secondary" },
+  approved: { label: "Ticket Issued", variant: "success" },
+  confirmed: { label: "Walk-up", variant: "success" },
   declined: { label: "Declined", variant: "destructive" },
   cancelled: { label: "Cancelled", variant: "destructive" },
 };
@@ -250,9 +250,9 @@ export function GuestsTab({ selectedEventId, orgId }: GuestsTabProps) {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Guests" value={String(summary.total_guests)} icon={Users} />
-        <StatCard label="Invited" value={String(sc.invited || 0)} icon={Mail}
-          detail={acceptedCount > 0 ? `${acceptedCount} awaiting approval` : undefined} />
-        <StatCard label="Approved" value={String(approvedCount)} icon={Ticket} detail="Tickets issued" />
+        <StatCard label="Invites Sent" value={String(sc.invited || 0)} icon={Mail}
+          detail={acceptedCount > 0 ? `${acceptedCount} RSVP'd` : undefined} />
+        <StatCard label="Tickets Issued" value={String(approvedCount)} icon={Ticket} />
         <StatCard label="Checked In" value={String(summary.checked_in)} icon={UserCheck}
           detail={summary.total_guests > 0 ? `${((summary.checked_in / summary.total_guests) * 100).toFixed(0)}% rate` : undefined} />
       </div>
@@ -324,10 +324,10 @@ export function GuestsTab({ selectedEventId, orgId }: GuestsTabProps) {
         <Tabs value={statusFilter} onValueChange={setStatusFilter}>
           <TabsList>
             <TabsTrigger value="all">All ({entries.length})</TabsTrigger>
-            {(sc.invited || 0) > 0 && <TabsTrigger value="invited">Invited ({sc.invited})</TabsTrigger>}
-            {(sc.accepted || 0) > 0 && <TabsTrigger value="accepted">Accepted ({sc.accepted})</TabsTrigger>}
-            {(sc.pending || 0) > 0 && <TabsTrigger value="pending">Pending ({sc.pending})</TabsTrigger>}
-            {(sc.approved || 0) > 0 && <TabsTrigger value="approved">Approved ({sc.approved})</TabsTrigger>}
+            {(sc.invited || 0) > 0 && <TabsTrigger value="invited">Invite Sent ({sc.invited})</TabsTrigger>}
+            {(sc.accepted || 0) > 0 && <TabsTrigger value="accepted">RSVP'd ({sc.accepted})</TabsTrigger>}
+            {(sc.pending || 0) > 0 && <TabsTrigger value="pending">Awaiting Approval ({sc.pending})</TabsTrigger>}
+            {(sc.approved || 0) > 0 && <TabsTrigger value="approved">Ticket Issued ({sc.approved})</TabsTrigger>}
             {(sc.confirmed || 0) > 0 && <TabsTrigger value="confirmed">Walk-ups ({sc.confirmed})</TabsTrigger>}
             {(sc.declined || 0) > 0 && <TabsTrigger value="declined">Declined ({sc.declined})</TabsTrigger>}
           </TabsList>
@@ -337,8 +337,8 @@ export function GuestsTab({ selectedEventId, orgId }: GuestsTabProps) {
             const ids = entries.filter((e) => (e.status === "accepted" || e.status === "pending") && e.email).map((e) => e.id);
             if (ids.length > 0) handleApprove(ids);
           }}>
-            <CheckCircle2 size={14} />
-            Approve All ({acceptedCount})
+            <Ticket size={14} />
+            Issue All Tickets ({acceptedCount})
           </Button>
         )}
       </div>
@@ -402,40 +402,47 @@ export function GuestsTab({ selectedEventId, orgId }: GuestsTabProps) {
                     </TableCell>
                     <TableCell className="text-center font-mono tabular-nums text-sm">{entry.qty}</TableCell>
                     <TableCell>
-                      {status === "confirmed" || status === "approved" ? (
-                        <button onClick={() => handleCheckIn(entry)} className="inline-flex items-center gap-1.5 transition-colors duration-200">
-                          {entry.checked_in ? (
-                            <Badge variant="success" className="gap-1 cursor-pointer"><CheckCircle2 size={11} />Checked In</Badge>
-                          ) : (
-                            <Badge variant={statusConfig.variant} className="gap-1 cursor-pointer hover:border-success/40 hover:text-success">
-                              {status === "approved" ? <Ticket size={11} /> : <Circle size={11} />}
-                              {statusConfig.label}
-                            </Badge>
-                          )}
-                        </button>
-                      ) : (
-                        <Badge variant={statusConfig.variant} className="gap-1">
-                          {status === "invited" && <Clock size={11} />}
-                          {status === "accepted" && <CheckCircle2 size={11} />}
-                          {status === "pending" && <Clock size={11} />}
-                          {statusConfig.label}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {status === "confirmed" || status === "approved" ? (
+                          <button onClick={() => handleCheckIn(entry)} className="inline-flex items-center gap-1.5 transition-colors duration-200">
+                            {entry.checked_in ? (
+                              <Badge variant="success" className="gap-1 cursor-pointer"><CheckCircle2 size={11} />Checked In</Badge>
+                            ) : (
+                              <Badge variant={statusConfig.variant} className="gap-1 cursor-pointer hover:border-success/40 hover:text-success">
+                                {status === "approved" ? <Ticket size={11} /> : <Circle size={11} />}
+                                {statusConfig.label}
+                              </Badge>
+                            )}
+                          </button>
+                        ) : (
+                          <Badge variant={statusConfig.variant} className="gap-1">
+                            {status === "invited" && <Mail size={11} />}
+                            {status === "accepted" && <CheckCircle2 size={11} />}
+                            {status === "pending" && <Clock size={11} />}
+                            {statusConfig.label}
+                          </Badge>
+                        )}
+                        {entry.reminder_sent_at && (
+                          <span title="Reminder sent" className="text-muted-foreground/50"><Bell size={11} /></span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {entry.email && (status === "confirmed" || status === "invited") && (
-                          <Button variant="ghost" size="icon-xs" onClick={() => handleSendInvite([entry.id])}
-                            disabled={invitingIds.has(entry.id)} title={status === "invited" ? "Resend invite" : "Send invite"}
-                            className="text-muted-foreground hover:text-primary">
-                            {invitingIds.has(entry.id) ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                          <Button variant="ghost" size="xs" onClick={() => handleSendInvite([entry.id])}
+                            disabled={invitingIds.has(entry.id)}
+                            className="text-muted-foreground hover:text-primary text-[11px] h-7 gap-1 px-2">
+                            {invitingIds.has(entry.id) ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                            {status === "invited" ? "Resend" : "Send Invite"}
                           </Button>
                         )}
                         {entry.email && (status === "accepted" || status === "pending") && (
-                          <Button variant="ghost" size="icon-xs" onClick={() => handleApprove([entry.id])}
-                            disabled={approvingIds.has(entry.id)} title="Approve and issue ticket"
-                            className="text-muted-foreground hover:text-success">
-                            {approvingIds.has(entry.id) ? <Loader2 size={13} className="animate-spin" /> : <Shield size={13} />}
+                          <Button variant="ghost" size="xs" onClick={() => handleApprove([entry.id])}
+                            disabled={approvingIds.has(entry.id)}
+                            className="text-muted-foreground hover:text-success text-[11px] h-7 gap-1 px-2">
+                            {approvingIds.has(entry.id) ? <Loader2 size={12} className="animate-spin" /> : <Ticket size={12} />}
+                            Issue Ticket
                           </Button>
                         )}
                         {confirmDeleteId === entry.id ? (

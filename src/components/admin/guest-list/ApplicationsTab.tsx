@@ -28,7 +28,7 @@ import {
   Check,
   Loader2,
   Link2,
-  Shield,
+  Mail,
   ShieldCheck,
   XCircle,
   Clock,
@@ -365,10 +365,18 @@ export function ApplicationsTab({ selectedEventId, orgId }: ApplicationsTabProps
                     <TableCell>
                       <Badge className={`text-[10px] gap-1 ${STATUS_COLORS[app.status || "pending"] || STATUS_COLORS.pending}`}>
                         {app.status === "pending" && <Clock size={10} />}
-                        {app.status === "invited" && <Shield size={10} />}
+                        {app.status === "invited" && <Mail size={10} />}
                         {(app.status === "approved" || app.status === "accepted") && <CheckCircle2 size={10} />}
                         {app.status === "declined" && <XCircle size={10} />}
-                        {app.status === "pending" ? "Pending" : app.status === "invited" ? (app.payment_amount ? `Accepted (£${((app.payment_amount || 0) / 100).toFixed(0)})` : "Accepted") : app.status || "Pending"}
+                        {app.status === "pending"
+                          ? "Applied"
+                          : app.status === "invited"
+                            ? (app.payment_amount ? `Accepted — Awaiting Payment (£${((app.payment_amount || 0) / 100).toFixed(0)})` : "Accepted — Invite Sent")
+                            : app.status === "approved"
+                              ? "Ticket Issued"
+                              : app.status === "declined"
+                                ? "Declined"
+                                : app.status || "Applied"}
                       </Badge>
                     </TableCell>
                     <TableCell>

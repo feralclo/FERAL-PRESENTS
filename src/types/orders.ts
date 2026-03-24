@@ -160,6 +160,8 @@ export interface GuestListEntry {
   // DJ/artist submissions
   submitted_by?: string;
   submission_token?: string;
+  // Reminder tracking
+  reminder_sent_at?: string;
   // Source tracking + applications
   source?: "direct" | "artist" | "application";
   application_data?: { campaign_id: string; instagram?: string; date_of_birth?: string };

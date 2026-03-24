@@ -16,7 +16,7 @@ export const ACCESS_LEVELS: Record<
   AccessLevel,
   { label: string; shortLabel: string; ticketLabel: string }
 > = {
-  guest_list: { label: "Guest List", shortLabel: "Guest", ticketLabel: "Guest List" },
+  guest_list: { label: "Guest List", shortLabel: "Guest", ticketLabel: "Guest List — General" },
   vip: { label: "VIP", shortLabel: "VIP", ticketLabel: "Guest List — VIP" },
   backstage: { label: "Backstage", shortLabel: "Backstage", ticketLabel: "Guest List — Backstage" },
   aaa: { label: "AAA", shortLabel: "AAA", ticketLabel: "Guest List — AAA" },
@@ -338,6 +338,12 @@ export async function issueGuestListTicket(
   const { firstName, lastName } = splitName(guest.name);
 
   // Create order via shared createOrder() — this generates tickets, sends email
+  // For paid applications, pass the actual payment amount so the order total
+  // reflects what was charged (hidden ticket types have price=0).
+  const totalCharged = guest.payment_amount && guest.payment_amount > 0
+    ? guest.payment_amount / 100 // Convert from pence to pounds (major currency units)
+    : undefined;
+
   const result = await createOrder({
     supabase,
     orgId,
@@ -352,6 +358,7 @@ export async function issueGuestListTicket(
     payment: {
       method: "guest_list",
       ref: `GUEST-LIST-${guest.id}`,
+      ...(totalCharged != null ? { totalCharged } : {}),
     },
     sendEmail: true,
     extraMetadata: guest.submitted_by ? { invited_by: guest.submitted_by } : undefined,
@@ -881,5 +888,193 @@ export async function sendApplicationAcceptanceEmail(params: {
     console.log(`[guest-list-email] Acceptance sent to ${params.guestEmail} (${isPaid ? `paid ${priceDisplay}` : "free"})`);
   } catch (err) {
     console.error("[guest-list-email] Failed to send acceptance:", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Guest list reminder email (sent 48h after invitation if not accepted)
+// ---------------------------------------------------------------------------
+
+/**
+ * Send a reminder email for an unredeemed guest list invitation.
+ * Fire-and-forget — never throws. Same branded design as invite email.
+ *
+ * For direct/artist invites: links to RSVP page.
+ * For application acceptances: links to accept page.
+ */
+export async function sendGuestListReminderEmail(params: {
+  orgId: string;
+  guestName: string;
+  guestEmail: string;
+  inviteToken: string;
+  eventName: string;
+  eventDate?: string;
+  eventTime?: string;
+  venueName?: string;
+  accessLevel: AccessLevel;
+  source: "direct" | "artist" | "application";
+}): Promise<void> {
+  try {
+    const resend = getResendClient();
+    if (!resend) {
+      console.log("[guest-list-reminder] RESEND_API_KEY not configured — skipping");
+      return;
+    }
+
+    const supabase = await getSupabaseAdmin();
+    if (!supabase) return;
+
+    const [{ data: brandingRow }, { data: emailRow }] = await Promise.all([
+      supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${params.orgId}_branding`).single(),
+      supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${params.orgId}_email`).single(),
+    ]);
+
+    const emailSettings: EmailSettings = {
+      ...DEFAULT_EMAIL_SETTINGS,
+      from_email: `${params.orgId}@mail.entry.events`,
+      ...((emailRow?.data as Partial<EmailSettings>) || {}),
+    };
+
+    const branding = (brandingRow?.data as Record<string, string>) || {};
+    const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
+    const accentColor = branding.accent_color || "#7C3AED";
+    const emailLogo = (emailRow?.data as Record<string, string>)?.logo_url || branding.logo_url || null;
+    const logoUrl = emailLogo ? resolveLogoUrl(emailLogo) : null;
+    const logoHeight = Math.min(((emailRow?.data as Record<string, number>)?.logo_height || 48), 100);
+
+    const tenantUrl = await resolveTenantUrl(params.orgId, supabase);
+
+    // Application acceptances go to /accept/, everything else to /rsvp/
+    const actionPath = params.source === "application" ? "accept" : "rsvp";
+    const actionUrl = `${tenantUrl}/guest-list/${actionPath}/${encodeURIComponent(params.inviteToken)}`;
+
+    const eventName = escapeHtml(params.eventName);
+    const venueLine = params.venueName ? escapeHtml(params.venueName) : "";
+    const dateLine = params.eventDate ? formatDate(params.eventDate) : "";
+    const timeLine = params.eventTime ? formatTime(params.eventTime) : "";
+    const eventDetailsLine = [dateLine, venueLine].filter(Boolean).join(" · ");
+
+    const subject = `Your guest list spot is expiring soon — ${params.eventName}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased; color-scheme: light only;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+
+        <!-- Container -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+
+          <!-- Accent Bar -->
+          <tr>
+            <td style="height: 4px; background-color: ${accentColor};"></td>
+          </tr>
+
+          <!-- Header -->
+          <tr>
+            <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);" : ""}">
+              ${
+                logoUrl
+                  ? `<img src="${escapeHtml(logoUrl)}" alt="${orgName}" height="${logoHeight}" style="width: auto; height: ${logoHeight}px; display: inline-block;">`
+                  : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
+              }
+            </td>
+          </tr>
+
+          <!-- Heading -->
+          <tr>
+            <td style="padding: 20px 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #111;">
+                Your spot is expiring soon.
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Message -->
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                You were added to the guest list for ${eventName}. This invitation is only valid for a limited time.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td>
+          </tr>
+
+          <!-- Event Details -->
+          <tr>
+            <td style="padding: 24px 32px;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">${eventName}</div>
+              ${eventDetailsLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">${escapeHtml(eventDetailsLine)}</div>` : ""}
+              ${timeLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-top: 2px;">Doors ${timeLine}</div>` : ""}
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td style="padding: 28px 32px; text-align: center;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                <tr>
+                  <td style="background-color: ${accentColor}; border-radius: 6px;">
+                    <a href="${actionUrl}" style="display: inline-block; padding: 14px 40px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; letter-spacing: 0.3px;">Accept your invitation</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Fine print -->
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #aaa; margin: 0; text-align: center;">
+                If we don't hear from you, your spot will be released.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+        <!-- Footer -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
+          <tr>
+            <td style="padding: 16px 32px 0; text-align: center;">
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #aaa; margin: 0;">Sent by <span style="color: ${accentColor}; font-weight: 600;">${orgName}</span></p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    await resend.emails.send({
+      from: `${branding.org_name || "Entry"} <${emailSettings.from_email}>`,
+      to: [params.guestEmail],
+      subject,
+      html,
+    });
+
+    console.log(`[guest-list-reminder] Reminder sent to ${params.guestEmail} for ${params.eventName}`);
+  } catch (err) {
+    console.error("[guest-list-reminder] Failed to send reminder:", err);
   }
 }

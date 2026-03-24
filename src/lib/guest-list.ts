@@ -1,9 +1,11 @@
 import crypto from "crypto";
 import { Resend } from "resend";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, vatKey } from "@/lib/constants";
 import { guestListSettingsKey } from "@/lib/constants";
 import { createOrder } from "@/lib/orders";
+import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
+import type { VatSettings } from "@/types/settings";
 import type { AccessLevel, GuestListEntry } from "@/types/orders";
 import type { EmailSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS } from "@/types/email";
@@ -344,6 +346,52 @@ export async function issueGuestListTicket(
     ? guest.payment_amount / 100 // Convert from pence to pounds (major currency units)
     : undefined;
 
+  // Calculate VAT for paid guest list applications (same logic as payment-intent route)
+  let vatInfo: { amount: number; rate: number; inclusive: boolean; vat_number?: string } | undefined;
+  if (totalCharged != null && totalCharged > 0) {
+    try {
+      // Check event-level VAT override first, then fall back to org-level
+      const eventRow = await supabase
+        .from(TABLES.EVENTS)
+        .select("vat_registered, vat_rate, vat_prices_include, vat_number")
+        .eq("id", event.id)
+        .single();
+      const evt = eventRow.data;
+
+      let vatSettings: VatSettings | null = null;
+      if (evt?.vat_registered === true) {
+        vatSettings = {
+          vat_registered: true,
+          vat_number: evt.vat_number || "",
+          vat_rate: evt.vat_rate ?? 20,
+          prices_include_vat: evt.vat_prices_include ?? true,
+        };
+      } else if (evt?.vat_registered == null) {
+        // Fall back to org-level
+        const { data: vatRow } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", vatKey(orgId))
+          .single();
+        if (vatRow?.data) {
+          vatSettings = { ...DEFAULT_VAT_SETTINGS, ...(vatRow.data as Partial<VatSettings>) };
+        }
+      }
+
+      if (vatSettings?.vat_registered) {
+        const breakdown = calculateCheckoutVat(totalCharged, vatSettings);
+        if (breakdown && breakdown.vat > 0) {
+          vatInfo = {
+            amount: breakdown.vat,
+            rate: vatSettings.vat_rate,
+            inclusive: vatSettings.prices_include_vat,
+            vat_number: vatSettings.vat_number || undefined,
+          };
+        }
+      }
+    } catch { /* VAT is non-critical — order still creates without it */ }
+  }
+
   const result = await createOrder({
     supabase,
     orgId,
@@ -360,6 +408,7 @@ export async function issueGuestListTicket(
       ref: `GUEST-LIST-${guest.id}`,
       ...(totalCharged != null ? { totalCharged } : {}),
     },
+    vat: vatInfo,
     sendEmail: true,
     extraMetadata: guest.submitted_by ? { invited_by: guest.submitted_by } : undefined,
   });

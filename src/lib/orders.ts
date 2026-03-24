@@ -287,10 +287,16 @@ export async function createOrder(
 
   // When Stripe provides the actual charged amount, derive fees from the
   // difference. For test/admin orders, total = subtotal with zero fees.
+  // For guest list paid applications, the ticket type is price=0 (hidden)
+  // but the payment IS the ticket price, not a fee — so subtotal = total.
+  const isGuestListPayment = payment.method === "guest_list" && payment.totalCharged != null;
   const total = payment.totalCharged ?? subtotal;
-  const fees = payment.totalCharged != null
-    ? Math.max(0, total - subtotal)
-    : 0;
+  const fees = isGuestListPayment
+    ? 0
+    : payment.totalCharged != null
+      ? Math.max(0, total - subtotal)
+      : 0;
+  if (isGuestListPayment) subtotal = total;
 
   // ------------------------------------------------------------------
   // 4. Create order (retry on order_number collision)
@@ -420,6 +426,12 @@ export async function createOrder(
     const tt = ttMap.get(item.ticket_type_id);
     if (!tt) continue;
 
+    // For guest list paid applications, the ticket type price is £0 (hidden)
+    // but the actual unit price should reflect what was charged per ticket.
+    const unitPrice = isGuestListPayment && items.length === 1
+      ? total / item.qty
+      : Number(tt.price);
+
     const { data: orderItem } = await supabase
       .from(TABLES.ORDER_ITEMS)
       .insert({
@@ -427,7 +439,7 @@ export async function createOrder(
         order_id: order.id,
         ticket_type_id: item.ticket_type_id,
         qty: item.qty,
-        unit_price: tt.price,
+        unit_price: unitPrice,
         merch_size: item.merch_size,
       })
       .select("id")

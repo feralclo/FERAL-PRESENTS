@@ -518,7 +518,7 @@ export async function sendGuestListInviteEmail(params: {
                 ${params.addedBy && params.addedBy !== "admin"
                   ? `${escapeHtml(params.addedBy)} has added you to the guest list for ${eventName}.`
                   : `${escapeHtml(firstName)}, you've been added to the guest list for ${eventName}.`}
-                <br>Confirm your attendance and we'll send your ticket.
+                <br>Your spot has been reserved — confirm below to receive your ticket. Unconfirmed spots may be released.
               </p>
             </td>
           </tr>
@@ -803,7 +803,7 @@ export async function sendApplicationAcceptanceEmail(params: {
 
     const subject = `You've been accepted — ${params.eventName}`;
     const ctaText = "Confirm your spot";
-    const bodyText = `${firstName}, you've been accepted to the guest list for ${eventName}. Confirm your spot and we'll send your ticket.`;
+    const bodyText = `${firstName}, you've been accepted to the guest list for ${eventName}. Your spot has been reserved — complete your booking to secure your ticket. Unconfirmed spots may be released.`;
 
     const html = `<!DOCTYPE html>
 <html lang="en">

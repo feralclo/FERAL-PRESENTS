@@ -19,6 +19,8 @@ export interface TicketPDFData {
   invitedBy?: string;
   /** Merch booth closing time formatted for display (e.g. "10pm"). */
   merchCollectionCutoff?: string;
+  /** Whether this is a guest list ticket (requires ID matching). */
+  isGuestList?: boolean;
 }
 
 /** Parse hex color to [r, g, b] tuple */
@@ -285,15 +287,18 @@ export async function generateTicketsPDF(
     doc.setDrawColor(40, 40, 40);
     doc.line(24, bottomDividerY, 124, bottomDividerY);
 
-    // Disclaimer — override for merch-only pre-orders
+    // Disclaimer — override for merch-only pre-orders and guest list tickets
     if (s.show_disclaimer) {
       const isMerchOnly = t.orderType === "merch_preorder";
-      const line1 = isMerchOnly
-        ? "THIS QR CODE IS FOR MERCH COLLECTION ONLY"
-        : s.disclaimer_line1;
-      const line2 = isMerchOnly
-        ? "PRESENT AT THE MERCH STAND — NOT VALID FOR EVENT ENTRY"
-        : s.disclaimer_line2;
+      let line1 = s.disclaimer_line1;
+      let line2 = s.disclaimer_line2;
+      if (isMerchOnly) {
+        line1 = "THIS QR CODE IS FOR MERCH COLLECTION ONLY";
+        line2 = "PRESENT AT THE MERCH STAND — NOT VALID FOR EVENT ENTRY";
+      } else if (t.isGuestList) {
+        line1 = "PHOTO ID REQUIRED — MUST MATCH THE NAME ON THIS TICKET";
+        line2 = "THIS TICKET IS NON-TRANSFERABLE";
+      }
       doc.setFontSize(7);
       doc.setTextColor(secR, secG, secB);
       doc.text(line1, centerX, disclaimerY1, { align: "center" });

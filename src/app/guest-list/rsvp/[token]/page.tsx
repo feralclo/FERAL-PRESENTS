@@ -239,7 +239,7 @@ export default function RsvpPage() {
 
         {/* Instruction */}
         <p className="mt-5 text-center text-sm text-muted-foreground">
-          Confirm and we'll send your ticket with a QR code.
+          Confirm below to receive your ticket. Unconfirmed spots may be released.
         </p>
 
         {/* Actions */}

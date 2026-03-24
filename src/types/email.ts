@@ -71,6 +71,8 @@ export interface OrderEmailData {
   };
   /** Merch booth closing time formatted for display (e.g. "10pm"). */
   merch_collection_cutoff?: string;
+  /** Whether this is a guest list order (requires ID matching). */
+  is_guest_list?: boolean;
   /** Artist/person who added the guest (guest list orders only). */
   invited_by?: string;
   /** Cross-currency info (only present when buyer paid in a different currency). */

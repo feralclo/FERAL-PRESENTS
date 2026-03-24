@@ -566,6 +566,7 @@ export async function createOrder(
         }),
         vat: vat && vat.amount > 0 ? vat : undefined,
         invited_by: extraMetadata?.invited_by as string | undefined,
+        isGuestList: payment.method === "guest_list",
         merchCollectionCutoff,
         ...(conversion && chargedCurrency !== baseCcy ? {
           crossCurrency: {

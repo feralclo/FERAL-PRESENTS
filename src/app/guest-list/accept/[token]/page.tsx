@@ -184,9 +184,9 @@ export default function AcceptPage() {
           {logo}
 
           <div className="text-center">
-            <h1 className="text-xl font-bold text-foreground">Confirm your guest list</h1>
+            <h1 className="text-xl font-bold text-foreground">Almost there.</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              A {paymentInfo.symbol}{paymentInfo.amount} booking fee is required to secure your spot.
+              Complete your {paymentInfo.symbol}{paymentInfo.amount} booking to confirm your spot on the guest list. Unconfirmed spots are released to other applicants.
             </p>
           </div>
 
@@ -245,7 +245,7 @@ export default function AcceptPage() {
           <h1 className="text-xl font-bold text-foreground">You've been accepted.</h1>
           <p className="mt-3 text-sm text-muted-foreground">
             {data?.guest?.name?.split(/\s+/)[0]}, you're on the guest list for {event?.name || "this event"}.
-            {isPaid ? " Confirm your attendance to secure your spot." : " Confirm below and we'll send your ticket."}
+            {isPaid ? " Your spot has been reserved — complete your booking to secure your ticket." : " Confirm below to receive your ticket."} Unconfirmed spots may be released.
           </p>
         </div>
 

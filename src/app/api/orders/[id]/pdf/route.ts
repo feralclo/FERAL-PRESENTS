@@ -106,6 +106,7 @@ export async function GET(
         merchName: isMerchPreorder ? (merchItems[0]?.product_name || undefined) : undefined,
         orderType,
         merchCollectionCutoff,
+        isGuestList: order.payment_method === "guest_list",
       })
     );
 

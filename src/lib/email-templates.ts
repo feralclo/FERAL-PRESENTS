@@ -381,6 +381,17 @@ export function buildOrderConfirmationEmail(
           </tr>
           ` : ""}
 
+          ${order.is_guest_list ? `
+          <!-- Guest list ID notice -->
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #888; background: #fafafa; border-radius: 6px; border: 1px solid #f0f0f0; padding: 12px 16px;">
+                <strong style="color: #666;">ID required</strong> — You must bring valid photo ID matching the name on this ticket. This ticket is non-transferable and cannot be used by anyone else.
+              </div>
+            </td>
+          </tr>
+          ` : ""}
+
           ${walletLinks?.appleWalletUrl || walletLinks?.googleWalletUrl ? `
           <!-- Wallet Passes -->
           <tr>

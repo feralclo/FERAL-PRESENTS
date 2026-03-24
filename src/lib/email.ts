@@ -242,6 +242,8 @@ export async function sendOrderConfirmationEmail(params: {
   invited_by?: string;
   /** Merch booth closing time formatted for display (e.g. "10pm"). */
   merchCollectionCutoff?: string;
+  /** Whether this is a guest list order (requires ID matching). */
+  isGuestList?: boolean;
   /** Cross-currency info (when buyer paid in a different currency than the event base). */
   crossCurrency?: {
     baseCurrency: string;
@@ -283,6 +285,7 @@ export async function sendOrderConfirmationEmail(params: {
       total: fmtAmt(params.order.total),
       order_type: params.order_type,
       merch_collection_cutoff: params.merchCollectionCutoff,
+      is_guest_list: params.isGuestList,
       invited_by: params.invited_by,
       tickets: params.tickets.map((t) => ({
         ticket_code: t.ticket_code,
@@ -405,6 +408,8 @@ export async function sendOrderConfirmationEmail(params: {
       merchName: t.merch_name,
       orderType: params.order_type,
       invitedBy: params.invited_by,
+      merchCollectionCutoff: params.merchCollectionCutoff,
+      isGuestList: params.isGuestList,
     }));
 
     const pdfSettings = await getPdfTicketSettings(params.orgId);

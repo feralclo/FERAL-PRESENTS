@@ -207,7 +207,18 @@ export function buildEventJsonLd({
 }): Record<string, unknown> {
   const eventUrl = `${siteUrl}/event/${event.slug}/`;
   const startDate = formatJsonLdDate(event.date_start);
-  const endDate = event.date_end ? formatJsonLdDate(event.date_end) : undefined;
+
+  // Only include endDate if it's valid and chronologically after startDate.
+  // Invalid endDate (e.g. before startDate) causes structured data errors in
+  // Google Search Console, reducing the page's quality signal and crawl priority.
+  let endDate: string | undefined;
+  if (event.date_end) {
+    const endMs = new Date(event.date_end).getTime();
+    const startMs = new Date(event.date_start).getTime();
+    if (!isNaN(endMs) && !isNaN(startMs) && endMs > startMs) {
+      endDate = formatJsonLdDate(event.date_end);
+    }
+  }
 
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",

@@ -451,6 +451,23 @@ export async function middleware(request: NextRequest) {
     request: { headers: requestHeaders },
   });
 
+  // ── SEO: Override Cache-Control for public crawlable pages ──
+  // Next.js force-dynamic sets "Cache-Control: private, no-cache, no-store" which
+  // tells Google these pages contain user-specific content. For public event/shop
+  // pages, override to "public" so crawlers treat them as indexable public content.
+  // This is critical for Google crawl scheduling — "private" deprioritises pages.
+  const isPublicCrawlablePage =
+    pathname === "/" ||
+    pathname.startsWith("/event/") ||
+    pathname.startsWith("/events") ||
+    pathname.startsWith("/shop/");
+  if (isPublicCrawlablePage) {
+    response.headers.set(
+      "Cache-Control",
+      "public, max-age=0, s-maxage=60, stale-while-revalidate=300"
+    );
+  }
+
   // Copy cookies from the auth-refreshed response (Supabase middleware client may
   // have set refreshed session cookies that we must preserve)
   const authResponse = getResponse();

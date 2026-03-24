@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePathname } from "next/navigation";
 
 const STORAGE_KEY = "feral_cookie_consent";
 const CONSENT_VERSION = 1;
@@ -71,12 +72,17 @@ function getConsent(): ConsentPrefs | null {
 }
 
 export function CookieConsent() {
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
   const [analyticsChecked, setAnalyticsChecked] = useState(true);
   const [marketingChecked, setMarketingChecked] = useState(true);
 
+  // Hide cookie consent on guest list pages (apply, rsvp, submit, accept)
+  const isGuestListPage = pathname?.startsWith("/guest-list");
+
   useEffect(() => {
+    if (isGuestListPage) return;
     pushConsentDefaults();
 
     const existing = getConsent();
@@ -99,7 +105,7 @@ export function CookieConsent() {
     // Show banner after delay
     const timer = setTimeout(() => setVisible(true), 800);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isGuestListPage]);
 
   const hideBanner = useCallback(() => {
     setVisible(false);
@@ -130,7 +136,7 @@ export function CookieConsent() {
     hideBanner();
   }, [analyticsChecked, marketingChecked, hideBanner]);
 
-  if (!visible) return null;
+  if (!visible || isGuestListPage) return null;
 
   return (
     <aside className={`cookie-consent${visible ? " cookie-consent--visible" : ""}`}>

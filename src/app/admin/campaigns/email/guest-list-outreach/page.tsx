@@ -90,10 +90,10 @@ const PRESETS: Preset[] = [
   {
     id: "warm_leads",
     label: "Warm leads",
-    description: "Popup signups + abandoned carts, minus purchasers",
+    description: "Popup signups + abandoned carts, minus purchasers and existing applicants",
     icon: Flame,
     include: ["popup_signups", "abandoned_carts"],
-    exclude: ["purchased"],
+    exclude: ["purchased", "guest_list"],
   },
   {
     id: "cold_audience",
@@ -354,8 +354,8 @@ export default function GuestListOutreachPage() {
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
 
   // Audience filters
-  const [includeFilters, setIncludeFilters] = useState<Set<IncludeFilter>>(new Set(["popup_signups"]));
-  const [excludeFilters, setExcludeFilters] = useState<Set<ExcludeFilter>>(new Set(["purchased"]));
+  const [includeFilters, setIncludeFilters] = useState<Set<IncludeFilter>>(new Set(["popup_signups", "abandoned_carts"]));
+  const [excludeFilters, setExcludeFilters] = useState<Set<ExcludeFilter>>(new Set(["purchased", "guest_list"]));
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
   const [loadingAudience, setLoadingAudience] = useState(false);
   const [downloadingCsv, setDownloadingCsv] = useState(false);

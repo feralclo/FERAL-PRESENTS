@@ -83,94 +83,56 @@ export default function EmailCampaignsPage() {
         </div>
       </div>
 
-      {/* Playbook cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {PLAYBOOKS.map((p) => {
-          const Icon = p.icon;
-          const isLive = p.status === "live";
-
-          const card = (
-            <Card
-              className={`group overflow-hidden transition-all duration-200 ${
-                isLive ? "hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5" : ""
-              }`}
-            >
-              {/* Top accent */}
-              <div
-                className="h-1 w-full transition-all duration-300"
-                style={{
-                  background: isLive
-                    ? "linear-gradient(90deg, rgba(139,92,246,0.6), rgba(139,92,246,0.2))"
-                    : "var(--color-border)",
-                }}
-              />
-
-              <div className="p-5">
-                {/* Icon + badges row */}
-                <div className="flex items-start justify-between mb-3">
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-xl transition-all"
-                    style={{
-                      backgroundColor: isLive ? "rgba(139,92,246,0.1)" : "var(--color-accent)",
-                      boxShadow: isLive ? "0 0 16px rgba(139,92,246,0.1)" : "none",
-                    }}
-                  >
-                    <Icon size={18} className={isLive ? "text-primary" : "text-muted-foreground/50"} />
+      {/* Live playbook — hero card */}
+      {PLAYBOOKS.filter((p) => p.status === "live").map((p) => {
+        const Icon = p.icon;
+        return (
+          <Link key={p.id} href={p.href} className="block group">
+            <Card className="overflow-hidden transition-all duration-200 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5">
+              <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, rgba(139,92,246,0.6), rgba(139,92,246,0.15))" }} />
+              <div className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10" style={{ boxShadow: "0 0 20px rgba(139,92,246,0.12)" }}>
+                    <Icon size={22} className="text-primary" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    {isLive ? (
-                      <Badge variant="default" className="text-[10px] py-0">Ready</Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-[10px] py-0">Coming soon</Badge>
-                    )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5 mb-1">
+                      <h3 className="text-[15px] font-semibold text-foreground">{p.title}</h3>
+                      <span className={`text-[9px] font-bold uppercase tracking-[1px] ${p.tagColor}`}>{p.tag}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{p.description}</p>
+                    <div className="flex items-center gap-1.5 mt-3 text-[12px] font-medium text-primary">
+                      Create campaign
+                      <ChevronRight size={13} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                    </div>
                   </div>
                 </div>
-
-                {/* Title + tag */}
-                <div className="flex items-center gap-2 mb-1.5">
-                  <h3 className="text-sm font-semibold text-foreground">{p.title}</h3>
-                  <span className={`text-[9px] font-bold uppercase tracking-[1px] ${p.tagColor}`}>
-                    {p.tag}
-                  </span>
-                </div>
-
-                {/* Description */}
-                <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                  {p.description}
-                </p>
-
-                {/* CTA row */}
-                {isLive && (
-                  <div className="flex items-center justify-between pt-3 border-t border-border">
-                    <span className="text-[11px] font-medium text-primary">Create campaign</span>
-                    <ChevronRight
-                      size={14}
-                      className="text-primary/50 transition-transform duration-200 group-hover:translate-x-0.5"
-                    />
-                  </div>
-                )}
               </div>
             </Card>
-          );
+          </Link>
+        );
+      })}
 
-          return isLive ? (
-            <Link key={p.id} href={p.href} className="block">
-              {card}
-            </Link>
-          ) : (
-            <div key={p.id} className="opacity-50 cursor-default">
-              {card}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Bottom hint */}
-      <div className="mt-8 text-center">
-        <Sparkles size={16} className="mx-auto mb-2 text-muted-foreground/30" />
-        <p className="text-xs text-muted-foreground/50">
-          More playbooks are being designed. Each one comes with proven copy, beautiful templates, and smart audience targeting.
-        </p>
+      {/* Coming soon — compact list, not heavy cards */}
+      <div className="mt-6">
+        <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground/40 mb-3">Coming soon</p>
+        <div className="space-y-2">
+          {PLAYBOOKS.filter((p) => p.status === "coming-soon").map((p) => {
+            const Icon = p.icon;
+            return (
+              <div key={p.id} className="flex items-center gap-3 rounded-lg border border-border/50 px-4 py-3">
+                <Icon size={15} className="shrink-0 text-muted-foreground/30" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-medium text-foreground/50">{p.title}</span>
+                    <span className={`text-[8px] font-bold uppercase tracking-[1px] opacity-50 ${p.tagColor}`}>{p.tag}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/30 mt-0.5">{p.description}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

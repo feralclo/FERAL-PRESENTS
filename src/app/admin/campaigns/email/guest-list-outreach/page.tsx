@@ -618,68 +618,63 @@ export default function GuestListOutreachPage() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         {/* ── LEFT PANEL ── */}
         <div className="xl:col-span-4 space-y-4">
-          {/* Event — searchable picker */}
-          <Card>
-            <CardContent className="p-5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</Label>
-              {loadingEvents ? (
-                <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 size={14} className="animate-spin" /> Loading events...</div>
-              ) : events.length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">No events found.</p>
-              ) : (
-                <EventPicker
-                  events={events}
-                  selectedId={selectedEventId}
-                  onSelect={setSelectedEventId}
-                />
-              )}
-            </CardContent>
-          </Card>
 
-          {/* Campaign */}
+          {/* ── STEP 1: Event + Campaign (merged) ── */}
           <Card>
-            <CardContent className="p-5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Guest List Campaign</Label>
-              {loadingCampaigns ? (
-                <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 size={14} className="animate-spin" /> Loading...</div>
-              ) : campaigns.length === 0 ? (
-                <div className="mt-3 rounded-lg border border-dashed border-border p-4 text-center">
-                  <AlertCircle size={20} className="mx-auto mb-2 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">No active campaigns for this event.</p>
-                  <Link href="/admin/guest-list/" className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
-                    Create one in Guest List <ExternalLink size={11} />
-                  </Link>
-                </div>
-              ) : (
-                <>
-                  <select
-                    value={selectedCampaignId}
-                    onChange={(e) => setSelectedCampaignId(e.target.value)}
-                    className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    {campaigns.map((c) => (
-                      <option key={c.id} value={c.id}>{c.title}{c.default_price > 0 ? ` (£${c.default_price})` : " (Free)"}</option>
-                    ))}
-                  </select>
-                  {selectedCampaign && (
-                    <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>{selectedCampaign.applied_count} applied{selectedCampaign.capacity ? ` / ${selectedCampaign.capacity} spots` : ""}</span>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {selectedCampaign.default_price > 0 ? `£${selectedCampaign.default_price}` : "Free"}
-                      </Badge>
+            <CardContent className="p-5 space-y-4">
+              <div>
+                <Label className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground/60">1. Choose event</Label>
+                {loadingEvents ? (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 size={14} className="animate-spin" /> Loading events...</div>
+                ) : events.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted-foreground">No events found.</p>
+                ) : (
+                  <EventPicker events={events} selectedId={selectedEventId} onSelect={setSelectedEventId} />
+                )}
+              </div>
+
+              {selectedEventId && (
+                <div>
+                  <Label className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground/60">Guest list campaign</Label>
+                  {loadingCampaigns ? (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 size={12} className="animate-spin" /> Loading...</div>
+                  ) : campaigns.length === 0 ? (
+                    <div className="mt-2 rounded-lg border border-dashed border-border p-3 text-center">
+                      <p className="text-xs text-muted-foreground">No active campaigns for this event.</p>
+                      <Link href="/admin/guest-list/" className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
+                        Create one in Guest List <ExternalLink size={10} />
+                      </Link>
                     </div>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedCampaignId}
+                        onChange={(e) => setSelectedCampaignId(e.target.value)}
+                        className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      >
+                        {campaigns.map((c) => (
+                          <option key={c.id} value={c.id}>{c.title}{c.default_price > 0 ? ` (£${c.default_price})` : " (Free)"}</option>
+                        ))}
+                      </select>
+                      {selectedCampaign && (
+                        <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground/60">
+                          <span>{selectedCampaign.applied_count} applied{selectedCampaign.capacity ? ` / ${selectedCampaign.capacity}` : ""}</span>
+                          <Badge variant="secondary" className="text-[9px] py-0">{selectedCampaign.default_price > 0 ? `£${selectedCampaign.default_price}` : "Free"}</Badge>
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          {/* ── AUDIENCE BUILDER ── */}
+          {/* ── STEP 2: Audience ── */}
           <Card>
             <CardContent className="p-5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Audience</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground/60">2. Pick your audience</Label>
 
-              {/* Presets */}
+              {/* Presets with live count */}
               <div className="mt-3 space-y-1.5">
                 {PRESETS.map((p) => {
                   const Icon = p.icon;
@@ -697,9 +692,19 @@ export default function GuestListOutreachPage() {
                     >
                       <Icon size={14} className={isActive ? "text-primary" : "text-muted-foreground/50"} />
                       <div className="min-w-0 flex-1">
-                        <span className={`text-[12px] font-medium ${isActive ? "text-primary" : "text-foreground/80"}`}>
-                          {p.label}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[12px] font-medium ${isActive ? "text-primary" : "text-foreground/80"}`}>
+                            {p.label}
+                          </span>
+                          {isActive && audienceCount !== null && !loadingAudience && (
+                            <span className="text-[10px] font-semibold text-primary tabular-nums">
+                              {audienceCount.toLocaleString()}
+                            </span>
+                          )}
+                          {isActive && loadingAudience && (
+                            <Loader2 size={10} className="animate-spin text-primary/50" />
+                          )}
+                        </div>
                         <p className="text-[10px] text-muted-foreground/50 mt-0.5">{p.description}</p>
                       </div>
                     </button>
@@ -707,202 +712,132 @@ export default function GuestListOutreachPage() {
                 })}
               </div>
 
-              {/* Fine-tune toggle */}
+              {/* Fine-tune filters (collapsed by default) */}
               <details className="mt-3 group">
-                <summary className="cursor-pointer text-[10px] font-medium text-muted-foreground/50 hover:text-muted-foreground transition-colors select-none">
-                  Fine-tune filters
+                <summary className="cursor-pointer text-[11px] font-medium text-muted-foreground/40 hover:text-muted-foreground transition-colors select-none flex items-center gap-1.5">
+                  <ChevronDown size={11} className="transition-transform group-open:rotate-180" />
+                  Customise filters
                 </summary>
                 <div className="mt-2 rounded-lg border border-border/50 bg-accent/10 p-3 space-y-3">
-
-              {/* Include section */}
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-emerald-400/80 mb-2">Who to target</p>
-                <div className="space-y-1">
-                  {INCLUDE_FILTERS.map((f) => {
-                    const Icon = f.icon;
-                    const checked = includeFilters.has(f.id as IncludeFilter);
-                    const count = filterCounts[f.id];
-                    return (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => toggleInclude(f.id as IncludeFilter)}
-                        className={`flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-all ${
-                          checked
-                            ? "border-emerald-500/30 bg-emerald-500/5"
-                            : "border-transparent hover:bg-accent/30"
-                        }`}
-                      >
-                        <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
-                          checked ? "border-emerald-500 bg-emerald-500" : "border-muted-foreground/30"
-                        }`}>
-                          {checked && <CheckCircle2 size={10} className="text-white" />}
-                        </div>
-                        <Icon size={13} className={checked ? "text-emerald-400" : "text-muted-foreground/50"} />
-                        <span className={`flex-1 text-[12px] ${checked ? "text-foreground font-medium" : "text-foreground/70"}`}>
-                          {f.label}
-                        </span>
-                        {count !== undefined && (
-                          <span className="text-[10px] tabular-nums text-muted-foreground/50">{count.toLocaleString()}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Exclude section */}
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-red-400/80 mb-2">Who to skip</p>
-                <div className="space-y-1">
-                  {EXCLUDE_FILTERS.map((f) => {
-                    const Icon = f.icon;
-                    const checked = excludeFilters.has(f.id as ExcludeFilter);
-                    const count = filterCounts[f.id];
-                    return (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => toggleExclude(f.id as ExcludeFilter)}
-                        className={`flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-all ${
-                          checked
-                            ? "border-red-500/30 bg-red-500/5"
-                            : "border-transparent hover:bg-accent/30"
-                        }`}
-                      >
-                        <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
-                          checked ? "border-red-500 bg-red-500" : "border-muted-foreground/30"
-                        }`}>
-                          {checked && <CheckCircle2 size={10} className="text-white" />}
-                        </div>
-                        <Icon size={13} className={checked ? "text-red-400" : "text-muted-foreground/50"} />
-                        <span className={`flex-1 text-[12px] ${checked ? "text-foreground font-medium" : "text-foreground/70"}`}>
-                          {f.label}
-                        </span>
-                        {count !== undefined && (
-                          <span className="text-[10px] tabular-nums text-muted-foreground/50">{count.toLocaleString()}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-emerald-400/80 mb-2">Who to target</p>
+                    <div className="space-y-1">
+                      {INCLUDE_FILTERS.map((f) => {
+                        const Icon = f.icon;
+                        const checked = includeFilters.has(f.id as IncludeFilter);
+                        const count = filterCounts[f.id];
+                        return (
+                          <button key={f.id} type="button" onClick={() => toggleInclude(f.id as IncludeFilter)}
+                            className={`flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-all ${checked ? "border-emerald-500/30 bg-emerald-500/5" : "border-transparent hover:bg-accent/30"}`}>
+                            <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${checked ? "border-emerald-500 bg-emerald-500" : "border-muted-foreground/30"}`}>
+                              {checked && <CheckCircle2 size={10} className="text-white" />}
+                            </div>
+                            <Icon size={13} className={checked ? "text-emerald-400" : "text-muted-foreground/50"} />
+                            <span className={`flex-1 text-[12px] ${checked ? "text-foreground font-medium" : "text-foreground/70"}`}>{f.label}</span>
+                            {count !== undefined && <span className="text-[10px] tabular-nums text-muted-foreground/50">{count.toLocaleString()}</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-red-400/80 mb-2">Who to skip</p>
+                    <div className="space-y-1">
+                      {EXCLUDE_FILTERS.map((f) => {
+                        const Icon = f.icon;
+                        const checked = excludeFilters.has(f.id as ExcludeFilter);
+                        const count = filterCounts[f.id];
+                        return (
+                          <button key={f.id} type="button" onClick={() => toggleExclude(f.id as ExcludeFilter)}
+                            className={`flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-all ${checked ? "border-red-500/30 bg-red-500/5" : "border-transparent hover:bg-accent/30"}`}>
+                            <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${checked ? "border-red-500 bg-red-500" : "border-muted-foreground/30"}`}>
+                              {checked && <CheckCircle2 size={10} className="text-white" />}
+                            </div>
+                            <Icon size={13} className={checked ? "text-red-400" : "text-muted-foreground/50"} />
+                            <span className={`flex-1 text-[12px] ${checked ? "text-foreground font-medium" : "text-foreground/70"}`}>{f.label}</span>
+                            {count !== undefined && <span className="text-[10px] tabular-nums text-muted-foreground/50">{count.toLocaleString()}</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </details>
 
-              {/* Result count + download */}
-              <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-accent/20 px-3.5 py-2.5">
+              {/* Audience count bar */}
+              <div className="mt-3 flex items-center justify-between rounded-lg border border-border bg-accent/20 px-3.5 py-2">
                 <div className="flex items-center gap-2">
-                  <Users size={13} className="text-muted-foreground" />
+                  <Users size={12} className="text-muted-foreground" />
                   {loadingAudience ? (
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Loader2 size={11} className="animate-spin" /> Counting...
-                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 size={10} className="animate-spin" /> Counting...</span>
                   ) : audienceCount !== null ? (
-                    <span className="text-xs font-medium text-foreground">
-                      {audienceCount.toLocaleString()} {audienceCount === 1 ? "person" : "people"}
-                    </span>
+                    <span className="text-xs font-medium text-foreground">{audienceCount.toLocaleString()} {audienceCount === 1 ? "person" : "people"}</span>
                   ) : (
-                    <span className="text-xs text-muted-foreground">Select filters above</span>
+                    <span className="text-xs text-muted-foreground">Select above</span>
                   )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadCsv}
-                  disabled={!audienceCount || downloadingCsv}
-                  className="gap-1.5 text-xs h-7 px-2.5"
-                >
-                  {downloadingCsv ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
-                  Download CSV
+                <Button variant="outline" size="sm" onClick={handleDownloadCsv} disabled={!audienceCount || downloadingCsv} className="gap-1 text-[10px] h-6 px-2">
+                  {downloadingCsv ? <Loader2 size={9} className="animate-spin" /> : <Download size={9} />}
+                  CSV
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Subject line */}
+          {/* ── STEP 3: Subject + Send ── */}
           <Card>
-            <CardContent className="p-5">
-              <Label htmlFor="subject" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subject Line</Label>
-              <div className="mt-2 flex gap-2">
-                <Input
-                  id="subject"
-                  value={subjectLine}
-                  onChange={(e) => setSubjectLine(e.target.value)}
-                  onBlur={refreshPreview}
-                  placeholder="Guest List — Event Name"
-                  className="flex-1 text-sm"
-                />
-                <Button variant="outline" size="sm" onClick={handleCopySubject} className="shrink-0 gap-1.5 px-3">
-                  {copiedSubject ? <CheckCircle2 size={13} className="text-success" /> : <Copy size={13} />}
-                  <span className="text-xs">{copiedSubject ? "Copied" : "Copy"}</span>
+            <CardContent className="p-5 space-y-4">
+              <div>
+                <Label htmlFor="subject" className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground/60">3. Subject line</Label>
+                <div className="mt-1.5 flex gap-2">
+                  <Input
+                    id="subject"
+                    value={subjectLine}
+                    onChange={(e) => setSubjectLine(e.target.value)}
+                    onBlur={refreshPreview}
+                    placeholder="Guest List — Event Name"
+                    className="flex-1 text-sm"
+                  />
+                  <Button variant="outline" size="sm" onClick={handleCopySubject} className="shrink-0 px-2">
+                    {copiedSubject ? <CheckCircle2 size={12} className="text-success" /> : <Copy size={12} />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Primary: Send */}
+              <Button
+                onClick={handleSendCampaign}
+                disabled={!audienceCount || !selectedEventId || sending}
+                className="w-full gap-2"
+                size="lg"
+              >
+                {sending ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : sendResult ? (
+                  <CheckCircle2 size={15} />
+                ) : (
+                  <Send size={15} />
+                )}
+                {sending
+                  ? "Sending..."
+                  : sendResult
+                    ? `Sent to ${sendResult.sent.toLocaleString()} ${sendResult.sent === 1 ? "person" : "people"}${sendResult.failed > 0 ? ` (${sendResult.failed} failed)` : ""}`
+                    : audienceCount
+                      ? `Send to ${audienceCount.toLocaleString()} ${audienceCount === 1 ? "person" : "people"}`
+                      : "Select an audience above"}
+              </Button>
+
+              {/* Secondary: Copy options */}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleCopyHtml} disabled={!previewUrl || copyingHtml} className="flex-1 gap-1.5 text-[10px]" size="sm">
+                  {copiedHtml ? <CheckCircle2 size={11} className="text-success" /> : <Copy size={11} />}
+                  {copiedHtml ? "Copied" : "Copy HTML"}
+                </Button>
+                <Button variant="outline" onClick={handleCopyUrl} disabled={!selectedCampaign?.url} className="flex-1 gap-1.5 text-[10px]" size="sm">
+                  {copiedUrl ? <CheckCircle2 size={11} className="text-success" /> : <Link2 size={11} />}
+                  {copiedUrl ? "Copied" : "Copy URL"}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Actions */}
-          <div className="space-y-2.5">
-            <Button
-              onClick={handleSendCampaign}
-              disabled={!audienceCount || !selectedEventId || sending}
-              className="w-full gap-2"
-              size="lg"
-            >
-              {sending ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : sendResult ? (
-                <CheckCircle2 size={15} />
-              ) : (
-                <Send size={15} />
-              )}
-              {sending
-                ? "Sending..."
-                : sendResult
-                  ? `Sent to ${sendResult.sent.toLocaleString()} ${sendResult.sent === 1 ? "person" : "people"}${sendResult.failed > 0 ? ` (${sendResult.failed} failed)` : ""}`
-                  : audienceCount
-                    ? `Send to ${audienceCount.toLocaleString()} ${audienceCount === 1 ? "person" : "people"}`
-                    : "Select an audience above"}
-            </Button>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={handleCopyHtml}
-                disabled={!previewUrl || copyingHtml}
-                className="flex-1 gap-1.5 text-xs"
-                size="sm"
-              >
-                {copiedHtml ? <CheckCircle2 size={12} className="text-success" /> : <Copy size={12} />}
-                {copiedHtml ? "Copied" : "Copy HTML"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleCopyUrl}
-                disabled={!selectedCampaign?.url}
-                className="flex-1 gap-1.5 text-xs"
-                size="sm"
-              >
-                {copiedUrl ? <CheckCircle2 size={12} className="text-success" /> : <Link2 size={12} />}
-                {copiedUrl ? "Copied" : "Copy URL"}
-              </Button>
-            </div>
-          </div>
-
-          {/* Instructions */}
-          <Card className="border-dashed">
-            <CardContent className="p-5">
-              <p className="text-xs font-semibold text-muted-foreground mb-2">How to use</p>
-              <ol className="space-y-1.5 text-xs text-muted-foreground/80 list-decimal list-inside">
-                <li>Select your event and guest list campaign</li>
-                <li>Build your audience with include/exclude filters</li>
-                <li>Preview the email on the right</li>
-                <li>Hit send — emails go out via your configured sender</li>
-              </ol>
-              <p className="mt-2 text-[10px] text-muted-foreground/40">
-                Or use Copy HTML / Copy URL to paste into an external email tool.
-              </p>
             </CardContent>
           </Card>
         </div>

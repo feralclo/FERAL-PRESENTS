@@ -14,12 +14,6 @@ import * as Sentry from "@sentry/nextjs";
  * GET /api/campaigns/guest-list-outreach/preview
  *
  * Renders the guest list outreach email HTML for preview and copy.
- *
- * Query params:
- *   event_id  — required, fetch real event data
- *   campaign_id — optional, fetch campaign for price/access level
- *   subject   — optional custom subject line
- *   t         — cache buster
  */
 export async function GET(request: NextRequest) {
   try {
@@ -37,14 +31,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Database unavailable" }, { status: 500 });
     }
 
-    // Parallel fetch: email settings, branding, event, campaigns, tenant domain
-    const [settingsRes, brandingRes, eventRes, campaignsRes, domainRes] = await Promise.all([
+    // ── Fetch event data (separate from other queries for reliability) ──
+    let event: { name: string; venue_name: string | null; venue_city: string | null; date_start: string | null; currency: string | null } | null = null;
+
+    if (eventId) {
+      // Use .select() without .single() to avoid silent failures
+      const { data: rows, error: eventErr } = await supabase
+        .from(TABLES.EVENTS)
+        .select("name, venue_name, venue_city, date_start, currency")
+        .eq("id", eventId)
+        .limit(1);
+
+      if (eventErr) {
+        console.error(`[campaign-preview] Event query error: ${eventErr.message}`);
+      } else if (rows && rows.length > 0) {
+        event = rows[0];
+      } else {
+        // Try without org_id filter in case the issue is org_id mismatch
+        const { data: allRows } = await supabase
+          .from(TABLES.EVENTS)
+          .select("name, org_id")
+          .eq("id", eventId)
+          .limit(1);
+
+        if (allRows && allRows.length > 0) {
+          console.warn(`[campaign-preview] Event found but org_id mismatch: event.org_id=${allRows[0].org_id}, auth.orgId=${orgId}`);
+        } else {
+          console.warn(`[campaign-preview] Event not found at all: id=${eventId}`);
+        }
+      }
+    }
+
+    // ── Fetch branding + campaigns + domain in parallel ──
+    const [settingsRes, brandingRes, campaignsRes, domainRes] = await Promise.all([
       supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", emailKey(orgId)).single(),
       supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", brandingKey(orgId)).single(),
-      eventId
-        ? supabase.from(TABLES.EVENTS).select("name, venue_name, venue_city, date_start, currency")
-            .eq("id", eventId).eq("org_id", orgId).single()
-        : Promise.resolve({ data: null }),
       campaignId
         ? supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", guestListCampaignsKey(orgId)).single()
         : Promise.resolve({ data: null }),
@@ -79,46 +100,27 @@ export async function GET(request: NextRequest) {
       emailSettings.logo_url = `${origin}${emailSettings.logo_url.startsWith("/") ? "" : "/"}${emailSettings.logo_url}`;
     }
 
-    // Resolve event data — fall back gracefully if not found
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const eventResult = eventRes as { data: any; error: any };
-    const event = eventResult.data;
-    // Debug: log every preview request to diagnose the "Event not found" issue
-    console.log(`[campaign-preview] eventId=${eventId}, orgId=${orgId}, eventFound=${!!event}, eventName=${event?.name || "NONE"}, error=${eventResult.error?.message || "none"}, errorCode=${eventResult.error?.code || "none"}`);
-    if (eventId && !event && eventResult.error) {
-      // If .single() failed, try without .single() to see if the issue is 0 or 2+ rows
-      const { data: debugRows, error: debugErr } = await supabase
-        .from(TABLES.EVENTS)
-        .select("id, name")
-        .eq("id", eventId)
-        .eq("org_id", orgId);
-      console.warn(`[campaign-preview] Debug fallback: rows=${debugRows?.length || 0}, err=${debugErr?.message || "none"}`);
-    }
+    // Event data (with fallback)
     const eventName = event?.name || "Your Event Name";
     const venueParts = [event?.venue_name, event?.venue_city].filter(Boolean);
     const venue = venueParts.length > 0 ? venueParts.join(", ") : "Venue";
     const eventDate = event?.date_start
       ? new Date(event.date_start).toLocaleDateString("en-GB", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
+          weekday: "long", day: "numeric", month: "long", year: "numeric",
         })
       : "Date TBC";
     const currency = event?.currency || "GBP";
     const currencySymbol = currency === "EUR" ? "€" : currency === "USD" ? "$" : "£";
 
-    // Resolve campaign data for price
+    // Campaign price
     let campaignPrice: number | undefined;
     if (campaignId && campaignsRes.data?.data) {
       const campaigns = (campaignsRes.data.data as ApplicationCampaign[]) || [];
       const campaign = campaigns.find((c) => c.id === campaignId);
-      if (campaign && campaign.default_price > 0) {
-        campaignPrice = campaign.default_price;
-      }
+      if (campaign && campaign.default_price > 0) campaignPrice = campaign.default_price;
     }
 
-    // Resolve tenant URL for apply link
+    // Tenant URL
     const tenantBase = domainRes.data?.hostname
       ? `https://${domainRes.data.hostname}`
       : (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");

@@ -140,10 +140,12 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ audience: [], count: 0 });
         }
 
+        // Popup captures email on "conversions" event_type (when user enters email)
         const { data } = await supabase
           .from(TABLES.POPUP_EVENTS)
           .select("email")
           .eq("org_id", orgId)
+          .eq("event_type", "conversions")
           .like("page", `%${event.slug}%`)
           .not("email", "is", null)
           .neq("email", "");

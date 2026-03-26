@@ -116,12 +116,12 @@ const PRESETS: Preset[] = [
 /* ═══════════════════════════════════════════════════════════
    EMAIL PREVIEW
    ═══════════════════════════════════════════════════════════ */
-function EmailPreview({ previewUrl }: { previewUrl: string | null }) {
+function EmailPreview({ previewUrl, refreshKey }: { previewUrl: string | null; refreshKey: number }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { setLoading(true); }, [previewUrl]);
+  useEffect(() => { setLoading(true); }, [previewUrl, refreshKey]);
 
   if (!previewUrl) {
     return (
@@ -180,9 +180,9 @@ function EmailPreview({ previewUrl }: { previewUrl: string | null }) {
           style={{ width: previewMode === "mobile" ? "375px" : "100%" }}
         >
           <iframe
-            key={previewUrl}
+            key={`${previewUrl}-${refreshKey}`}
             ref={iframeRef}
-            src={previewUrl}
+            src={previewUrl || undefined}
             title="Email Preview"
             className="h-full w-full border-0"
             sandbox="allow-same-origin"
@@ -903,7 +903,7 @@ export default function GuestListOutreachPage() {
 
         {/* ── RIGHT PANEL ── */}
         <div className="xl:col-span-8" style={{ minHeight: "700px" }}>
-          <EmailPreview previewUrl={previewUrl} />
+          <EmailPreview previewUrl={previewUrl} refreshKey={previewVersion} />
         </div>
       </div>
     </div>

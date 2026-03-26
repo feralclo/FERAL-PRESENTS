@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
-    const venue = [event.venue_name, event.venue_address].filter(Boolean).join(", ");
+    const venue = event.venue_name || "";
     const eventDate = event.date_start
       ? new Date(event.date_start).toLocaleDateString("en-GB", {
           weekday: "long", day: "numeric", month: "long", year: "numeric",

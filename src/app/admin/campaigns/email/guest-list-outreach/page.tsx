@@ -558,11 +558,8 @@ export default function GuestListOutreachPage() {
       });
       const result = await sendRes.json();
       setSendResult({ sent: result.sent || 0, failed: result.failed || 0 });
-      // Auto-clear success state after 5 seconds
-      setTimeout(() => setSendResult(null), 5000);
     } catch {
       setSendResult({ sent: 0, failed: audienceCount });
-      setTimeout(() => setSendResult(null), 5000);
     } finally {
       setSending(false);
     }

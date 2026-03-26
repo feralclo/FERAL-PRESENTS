@@ -31,14 +31,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Database unavailable" }, { status: 500 });
     }
 
-    // ── Fetch event data (separate from other queries for reliability) ──
-    let event: { name: string; venue_name: string | null; venue_address: string | null; date_start: string | null; currency: string | null } | null = null;
+    // ── Fetch event data ──
+    let event: { name: string; venue_name: string | null; date_start: string | null; currency: string | null } | null = null;
 
     if (eventId) {
-      // Use .select() without .single() to avoid silent failures
       const { data: rows, error: eventErr } = await supabase
         .from(TABLES.EVENTS)
-        .select("name, venue_name, venue_address, date_start, currency")
+        .select("name, venue_name, date_start, currency")
         .eq("id", eventId)
         .limit(1);
 
@@ -46,19 +45,6 @@ export async function GET(request: NextRequest) {
         console.error(`[campaign-preview] Event query error: ${eventErr.message}`);
       } else if (rows && rows.length > 0) {
         event = rows[0];
-      } else {
-        // Try without org_id filter in case the issue is org_id mismatch
-        const { data: allRows } = await supabase
-          .from(TABLES.EVENTS)
-          .select("name, org_id")
-          .eq("id", eventId)
-          .limit(1);
-
-        if (allRows && allRows.length > 0) {
-          console.warn(`[campaign-preview] Event found but org_id mismatch: event.org_id=${allRows[0].org_id}, auth.orgId=${orgId}`);
-        } else {
-          console.warn(`[campaign-preview] Event not found at all: id=${eventId}`);
-        }
       }
     }
 
@@ -100,15 +86,14 @@ export async function GET(request: NextRequest) {
       emailSettings.logo_url = `${origin}${emailSettings.logo_url.startsWith("/") ? "" : "/"}${emailSettings.logo_url}`;
     }
 
-    // Event data (with fallback)
+    // Event data (venue_name only — not full address)
     const eventName = event?.name || "Your Event Name";
-    const venueParts = [event?.venue_name, event?.venue_address].filter(Boolean);
-    const venue = venueParts.length > 0 ? venueParts.join(", ") : "Venue";
+    const venue = event?.venue_name || "";
     const eventDate = event?.date_start
       ? new Date(event.date_start).toLocaleDateString("en-GB", {
           weekday: "long", day: "numeric", month: "long", year: "numeric",
         })
-      : "Date TBC";
+      : "";
     const currency = event?.currency || "GBP";
     const currencySymbol = currency === "EUR" ? "€" : currency === "USD" ? "$" : "£";
 

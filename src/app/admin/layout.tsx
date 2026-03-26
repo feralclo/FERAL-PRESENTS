@@ -37,6 +37,7 @@ import {
   Shield,
   TrendingUp,
   Scan,
+  Send,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -118,6 +119,15 @@ const NAV_SECTIONS: NavSection[] = [
         ],
       },
       { href: "/admin/reps/", label: "Reps", icon: UsersRound },
+      {
+        href: "/admin/campaigns/",
+        label: "Campaigns",
+        icon: Send,
+        children: [
+          { href: "/admin/campaigns/", label: "Overview" },
+          { href: "/admin/campaigns/guest-list-outreach/", label: "Guest List Outreach" },
+        ],
+      },
       { href: "/admin/communications/", label: "Communications", icon: Mail },
     ],
   },

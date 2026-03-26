@@ -40,7 +40,7 @@ export function replaceTemplateVars(
  * - Responsive via fluid widths
  */
 /** Resolve relative URLs to absolute (email clients can't use relative URLs). */
-function resolveUrl(url: string | undefined): string | undefined {
+export function resolveUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
   if (url.startsWith("http") || url.startsWith("data:") || url.startsWith("cid:")) return url;
   const siteUrl = (
@@ -1191,7 +1191,7 @@ export function buildAnnouncementEmail(
 }
 
 /** Escape HTML special characters to prevent XSS in email templates */
-function escapeHtml(str: string): string {
+export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

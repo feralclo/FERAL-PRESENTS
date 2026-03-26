@@ -33,6 +33,7 @@ import {
   Snowflake,
   RotateCcw,
   Search,
+  FlaskConical,
   CalendarDays,
   Check,
 } from "lucide-react";
@@ -365,6 +366,9 @@ export default function GuestListOutreachPage() {
   // Send + copy states
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number } | null>(null);
+  const [testEmail, setTestEmail] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState<"sent" | "failed" | null>(null);
   const [copiedHtml, setCopiedHtml] = useState(false);
   const [copyingHtml, setCopyingHtml] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -516,6 +520,30 @@ export default function GuestListOutreachPage() {
     setCopiedSubject(true);
     setTimeout(() => setCopiedSubject(false), 2500);
   }, [subjectLine]);
+
+  const handleSendTest = useCallback(async () => {
+    if (!testEmail || !selectedEventId || sendingTest) return;
+    setSendingTest(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/campaigns/guest-list-outreach/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: selectedEventId,
+          campaign_id: selectedCampaignId || undefined,
+          subject: subjectLine || undefined,
+          recipients: [{ email: testEmail }],
+        }),
+      });
+      const result = await res.json();
+      setTestResult(result.sent > 0 ? "sent" : "failed");
+    } catch {
+      setTestResult("failed");
+    } finally {
+      setSendingTest(false);
+    }
+  }, [testEmail, selectedEventId, selectedCampaignId, subjectLine, sendingTest]);
 
   const handleSendCampaign = useCallback(async () => {
     if (!audienceCount || !selectedEventId || sending) return;
@@ -801,7 +829,42 @@ export default function GuestListOutreachPage() {
                 </div>
               </div>
 
-              {/* Primary: Send */}
+              {/* Test send */}
+              <div className="rounded-lg border border-dashed border-border p-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <FlaskConical size={11} className="text-muted-foreground/50" />
+                  <span className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground/50">Send test</span>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={testEmail}
+                    onChange={(e) => { setTestEmail(e.target.value); setTestResult(null); }}
+                    placeholder="your@email.com"
+                    type="email"
+                    className="flex-1 text-xs h-8"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSendTest}
+                    disabled={!testEmail || !selectedEventId || sendingTest}
+                    className="shrink-0 gap-1.5 h-8 px-3 text-[11px]"
+                  >
+                    {sendingTest ? (
+                      <Loader2 size={11} className="animate-spin" />
+                    ) : testResult === "sent" ? (
+                      <CheckCircle2 size={11} className="text-success" />
+                    ) : testResult === "failed" ? (
+                      <AlertCircle size={11} className="text-destructive" />
+                    ) : (
+                      <Send size={11} />
+                    )}
+                    {sendingTest ? "Sending..." : testResult === "sent" ? "Sent" : testResult === "failed" ? "Failed" : "Send test"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Primary: Send to audience */}
               <Button
                 onClick={handleSendCampaign}
                 disabled={!audienceCount || !selectedEventId || sending}

@@ -79,14 +79,16 @@ export async function GET(request: NextRequest) {
       emailSettings.logo_url = `${origin}${emailSettings.logo_url.startsWith("/") ? "" : "/"}${emailSettings.logo_url}`;
     }
 
-    // Resolve event data — if event_id was provided but not found, 404
-    const event = eventRes.data;
+    // Resolve event data — fall back gracefully if not found
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const eventResult = eventRes as { data: any; error: any };
+    const event = eventResult.data;
     if (eventId && !event) {
-      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+      console.warn(`[campaign-preview] Event not found: id=${eventId}, orgId=${orgId}, error=${eventResult.error?.message || "none"}`);
     }
-    const eventName = event?.name || "Sample Event";
+    const eventName = event?.name || "Your Event Name";
     const venueParts = [event?.venue_name, event?.venue_city].filter(Boolean);
-    const venue = venueParts.length > 0 ? venueParts.join(", ") : "Venue TBC";
+    const venue = venueParts.length > 0 ? venueParts.join(", ") : "Venue";
     const eventDate = event?.date_start
       ? new Date(event.date_start).toLocaleDateString("en-GB", {
           weekday: "long",
@@ -94,7 +96,7 @@ export async function GET(request: NextRequest) {
           month: "long",
           year: "numeric",
         })
-      : "Saturday 15 March 2026";
+      : "Date TBC";
     const currency = event?.currency || "GBP";
     const currencySymbol = currency === "EUR" ? "€" : currency === "USD" ? "$" : "£";
 

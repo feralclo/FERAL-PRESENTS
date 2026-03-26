@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     const [settingsRes, brandingRes, eventRes, campaignsRes, domainRes] = await Promise.all([
       supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", emailKey(orgId)).single(),
       supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", brandingKey(orgId)).single(),
-      supabase.from(TABLES.EVENTS).select("name, venue_name, venue_city, date_start, currency")
+      supabase.from(TABLES.EVENTS).select("name, venue_name, venue_address, date_start, currency")
         .eq("id", event_id).eq("org_id", orgId).single(),
       campaign_id
         ? supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", guestListCampaignsKey(orgId)).single()
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
-    const venue = [event.venue_name, event.venue_city].filter(Boolean).join(", ");
+    const venue = [event.venue_name, event.venue_address].filter(Boolean).join(", ");
     const eventDate = event.date_start
       ? new Date(event.date_start).toLocaleDateString("en-GB", {
           weekday: "long", day: "numeric", month: "long", year: "numeric",

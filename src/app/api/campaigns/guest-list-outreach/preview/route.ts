@@ -32,13 +32,13 @@ export async function GET(request: NextRequest) {
     }
 
     // ── Fetch event data (separate from other queries for reliability) ──
-    let event: { name: string; venue_name: string | null; venue_city: string | null; date_start: string | null; currency: string | null } | null = null;
+    let event: { name: string; venue_name: string | null; venue_address: string | null; date_start: string | null; currency: string | null } | null = null;
 
     if (eventId) {
       // Use .select() without .single() to avoid silent failures
       const { data: rows, error: eventErr } = await supabase
         .from(TABLES.EVENTS)
-        .select("name, venue_name, venue_city, date_start, currency")
+        .select("name, venue_name, venue_address, date_start, currency")
         .eq("id", eventId)
         .limit(1);
 
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     // Event data (with fallback)
     const eventName = event?.name || "Your Event Name";
-    const venueParts = [event?.venue_name, event?.venue_city].filter(Boolean);
+    const venueParts = [event?.venue_name, event?.venue_address].filter(Boolean);
     const venue = venueParts.length > 0 ? venueParts.join(", ") : "Venue";
     const eventDate = event?.date_start
       ? new Date(event.date_start).toLocaleDateString("en-GB", {

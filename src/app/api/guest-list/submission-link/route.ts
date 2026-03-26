@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
     if (artist_email?.trim()) {
       const { data: event } = await supabase
         .from(TABLES.EVENTS)
-        .select("name, date_start, venue_name")
+        .select("name, date_start, doors_time, venue_name")
         .eq("id", event_id)
         .eq("org_id", orgId)
         .single();
@@ -203,7 +203,9 @@ export async function POST(request: NextRequest) {
         submissionUrl,
         eventName: event?.name || "Event",
         eventDate: event?.date_start || undefined,
+        eventTime: event?.doors_time || undefined,
         venueName: event?.venue_name || undefined,
+        quotas: quotas || undefined,
       }).catch((err) => console.error("[submission-link] Email failed:", err));
     }
 

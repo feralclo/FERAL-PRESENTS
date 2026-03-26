@@ -24,6 +24,11 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import {
   Users,
   UserCheck,
   Download,
@@ -37,6 +42,7 @@ import {
   Clock,
   Mail,
   Bell,
+  ArrowUpCircle,
 } from "lucide-react";
 import type { GuestListEntry, AccessLevel } from "@/types/orders";
 
@@ -98,6 +104,8 @@ export function GuestsTab({ selectedEventId, orgId }: GuestsTabProps) {
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
   const [invitingIds, setInvitingIds] = useState<Set<string>>(new Set());
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [upgradingId, setUpgradingId] = useState<string | null>(null);
+  const [upgradePopoverId, setUpgradePopoverId] = useState<string | null>(null);
 
   const loadGuestList = useCallback(async () => {
     if (!selectedEventId) return;
@@ -219,6 +227,24 @@ export function GuestsTab({ selectedEventId, orgId }: GuestsTabProps) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleUpgrade = async (guestId: string, newLevel: AccessLevel) => {
+    setUpgradingId(guestId);
+    setUpgradePopoverId(null);
+    try {
+      const res = await fetch("/api/guest-list/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guest_id: guestId, new_access_level: newLevel }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        console.error("[upgrade] Failed:", err?.error || res.statusText);
+      }
+      loadGuestList();
+    } catch { /* silent */ }
+    setUpgradingId(null);
   };
 
   const filteredEntries = statusFilter === "all"
@@ -444,6 +470,39 @@ export function GuestsTab({ selectedEventId, orgId }: GuestsTabProps) {
                             {approvingIds.has(entry.id) ? <Loader2 size={12} className="animate-spin" /> : <Ticket size={12} />}
                             Issue Ticket
                           </Button>
+                        )}
+                        {(status === "approved" || (status === "confirmed" && entry.order_id)) && (
+                          upgradingId === entry.id ? (
+                            <Button variant="ghost" size="xs" disabled className="text-muted-foreground text-[11px] h-7 gap-1 px-2">
+                              <Loader2 size={12} className="animate-spin" />
+                              Upgrading...
+                            </Button>
+                          ) : (
+                            <Popover open={upgradePopoverId === entry.id} onOpenChange={(open) => setUpgradePopoverId(open ? entry.id : null)}>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" size="xs" className="text-muted-foreground hover:text-primary text-[11px] h-7 gap-1 px-2">
+                                  <ArrowUpCircle size={12} />
+                                  Upgrade
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-48 p-2" align="end">
+                                <div className="space-y-1">
+                                  <p className="text-[11px] font-medium text-muted-foreground px-2 py-1">Upgrade to:</p>
+                                  {ACCESS_LEVEL_OPTIONS.filter((opt) => opt.value !== accessLevel).map((opt) => (
+                                    <button
+                                      key={opt.value}
+                                      onClick={() => handleUpgrade(entry.id, opt.value)}
+                                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted transition-colors"
+                                    >
+                                      <Badge variant="outline" className={`text-[9px] font-bold ${ACCESS_LEVEL_COLORS[opt.value]}`}>
+                                        {opt.label}
+                                      </Badge>
+                                    </button>
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          )
                         )}
                         {confirmDeleteId === entry.id ? (
                           <div className="flex items-center gap-1">

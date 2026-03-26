@@ -669,7 +669,9 @@ export async function sendSubmissionLinkEmail(params: {
   submissionUrl: string;
   eventName: string;
   eventDate?: string;
+  eventTime?: string;
   venueName?: string;
+  quotas?: Partial<Record<AccessLevel, number | null>>;
 }): Promise<void> {
   try {
     const resend = getResendClient();
@@ -696,12 +698,74 @@ export async function sendSubmissionLinkEmail(params: {
     const logoUrl = emailLogo ? resolveLogoUrl(emailLogo) : null;
     const logoHeight = Math.min(((emailRow?.data as Record<string, number>)?.logo_height || 48), 100);
 
+    const firstName = params.artistName.split(/\s+/)[0];
     const eventName = escapeHtml(params.eventName);
     const dateLine = params.eventDate ? formatDate(params.eventDate) : "";
+    const timeLine = params.eventTime ? formatTime(params.eventTime) : "";
     const venueLine = params.venueName ? escapeHtml(params.venueName) : "";
     const eventDetailsLine = [dateLine, venueLine].filter(Boolean).join(" · ");
 
     const subject = `Submit your guest list — ${params.eventName}`;
+
+    // Build quota allocation rows (only for quotas that are set and > 0)
+    const quotaLabels: Record<AccessLevel, string> = {
+      guest_list: "Guest List",
+      vip: "VIP",
+      backstage: "Backstage",
+      aaa: "AAA",
+      artist: "Artist",
+    };
+    const quotaEntries: { label: string; count: number }[] = [];
+    if (params.quotas) {
+      for (const [level, count] of Object.entries(params.quotas)) {
+        if (count != null && count > 0) {
+          quotaEntries.push({ label: quotaLabels[level as AccessLevel] || level, count });
+        }
+      }
+    }
+
+    const totalSpots = quotaEntries.reduce((sum, q) => sum + q.count, 0);
+
+    // Build quota HTML block
+    const quotaHtml = quotaEntries.length > 0
+      ? `<!-- Allocation -->
+          <tr>
+            <td style="padding: 24px 32px 0;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 12px;">YOUR ALLOCATION</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                ${quotaEntries.map((q) => `<tr>
+                  <td style="padding: 6px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9f9fb; border-radius: 8px;">
+                      <tr>
+                        <td style="padding: 12px 16px;">
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #111;">${q.label}</td>
+                              <td align="right" style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; color: ${accentColor};">${q.count} ${q.count === 1 ? "spot" : "spots"}</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>`).join("")}
+                ${totalSpots > 0 ? `<tr>
+                  <td style="padding: 8px 0 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #999;">Total</td>
+                        <td align="right" style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; font-weight: 600; color: #555;">${totalSpots} ${totalSpots === 1 ? "guest" : "guests"}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>` : ""}
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 32px 0;"><div style="height: 1px; background-color: #eee;"></div></td>
+          </tr>`
+      : "";
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -709,60 +773,159 @@ export async function sendSubmissionLinkEmail(params: {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
   <title>${escapeHtml(subject)}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased;">
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased; color-scheme: light only;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
     <tr>
       <td align="center" style="padding: 32px 16px;">
+
+        <!-- Container -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-          <tr><td style="height: 4px; background-color: ${accentColor};"></td></tr>
+
+          <!-- Accent Bar -->
+          <tr>
+            <td style="height: 4px; background-color: ${accentColor};"></td>
+          </tr>
+
+          <!-- Header (dark bg with logo) -->
           <tr>
             <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);" : ""}">
-              ${logoUrl
-                ? `<img src="${escapeHtml(logoUrl)}" alt="${orgName}" height="${logoHeight}" style="width: auto; height: ${logoHeight}px; display: inline-block;">`
-                : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
+              ${
+                logoUrl
+                  ? `<img src="${escapeHtml(logoUrl)}" alt="${orgName}" height="${logoHeight}" style="width: auto; height: ${logoHeight}px; display: inline-block;">`
+                  : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
               }
             </td>
           </tr>
+
+          <!-- Heading -->
           <tr>
-            <td style="padding: 20px 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #111;">Submit your guest list.</h1>
+            <td style="padding: 24px 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #111;">
+                Submit your guest list.
+              </h1>
             </td>
           </tr>
+
+          <!-- Intro -->
           <tr>
-            <td style="padding: 0 32px 24px; text-align: center;">
+            <td style="padding: 0 32px 20px; text-align: center;">
               <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
-                Submit the names for your guest list for ${eventName}.
+                ${escapeHtml(firstName)}, you've been allocated guest list spots for <strong style="color: #111;">${eventName}</strong>. Submit the names of your guests using the link below — the promoter will review and confirm each one.
               </p>
             </td>
           </tr>
-          <tr><td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td></tr>
+
+          <!-- Divider -->
           <tr>
-            <td style="padding: 24px 32px;">
+            <td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td>
+          </tr>
+
+          <!-- Event Details -->
+          <tr>
+            <td style="padding: 20px 32px 0;">
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">${eventName}</div>
               ${eventDetailsLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">${escapeHtml(eventDetailsLine)}</div>` : ""}
+              ${timeLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-top: 2px;">Doors ${timeLine}</div>` : ""}
             </td>
           </tr>
-          <tr><td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td></tr>
+
+          <!-- Divider -->
           <tr>
-            <td style="padding: 28px 32px; text-align: center;">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+            <td style="padding: 20px 32px 0;"><div style="height: 1px; background-color: #eee;"></div></td>
+          </tr>
+
+          ${quotaHtml}
+
+          <!-- How it works -->
+          <tr>
+            <td style="padding: 24px 32px 0;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 14px;">HOW IT WORKS</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background-color: ${accentColor}; border-radius: 6px;">
-                    <a href="${escapeHtml(params.submissionUrl)}" style="display: inline-block; padding: 14px 40px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">Submit guest list</a>
+                  <td style="padding: 0 0 12px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="width: 28px; vertical-align: top;">
+                          <div style="width: 22px; height: 22px; border-radius: 50%; background-color: ${accentColor}; text-align: center; line-height: 22px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 700; color: #fff;">1</div>
+                        </td>
+                        <td style="padding-left: 8px; vertical-align: top;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #111; line-height: 22px;">Click the link below</div>
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-top: 2px;">Opens a form where you can add names and emails.</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 0 12px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="width: 28px; vertical-align: top;">
+                          <div style="width: 22px; height: 22px; border-radius: 50%; background-color: ${accentColor}; text-align: center; line-height: 22px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 700; color: #fff;">2</div>
+                        </td>
+                        <td style="padding-left: 8px; vertical-align: top;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #111; line-height: 22px;">Add your guests</div>
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-top: 2px;">Enter each person's name and select their access level.</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="width: 28px; vertical-align: top;">
+                          <div style="width: 22px; height: 22px; border-radius: 50%; background-color: ${accentColor}; text-align: center; line-height: 22px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 700; color: #fff;">3</div>
+                        </td>
+                        <td style="padding-left: 8px; vertical-align: top;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #111; line-height: 22px;">We'll handle the rest</div>
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-top: 2px;">Each guest is reviewed and sent their own ticket with a QR code.</div>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
+
+          <!-- Divider -->
           <tr>
-            <td style="padding: 0 32px 24px;">
-              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #aaa; margin: 0; text-align: center;">The promoter will review and confirm each guest.</p>
+            <td style="padding: 24px 32px 0;"><div style="height: 1px; background-color: #eee;"></div></td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td style="padding: 28px 32px 0; text-align: center;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                <tr>
+                  <td style="background-color: ${accentColor}; border-radius: 6px;">
+                    <a href="${escapeHtml(params.submissionUrl)}" style="display: inline-block; padding: 14px 48px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; letter-spacing: 0.3px;">Submit guest list</a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
+
+          <!-- Artist access note -->
+          <tr>
+            <td style="padding: 24px 32px 24px;">
+              <div style="background-color: #f9f9fb; border-radius: 8px; padding: 14px 16px;">
+                <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #888; text-align: center;">
+                  <strong style="color: #666;">Note:</strong> This is for your personal guests only. Your own artist access and crew credentials are arranged separately by your artist liaison.
+                </p>
+              </div>
+            </td>
+          </tr>
+
         </table>
+
+        <!-- Footer -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
           <tr>
             <td style="padding: 16px 32px 0; text-align: center;">
@@ -770,6 +933,7 @@ export async function sendSubmissionLinkEmail(params: {
             </td>
           </tr>
         </table>
+
       </td>
     </tr>
   </table>
@@ -1125,5 +1289,284 @@ export async function sendGuestListReminderEmail(params: {
     console.log(`[guest-list-reminder] Reminder sent to ${params.guestEmail} for ${params.eventName}`);
   } catch (err) {
     console.error("[guest-list-reminder] Failed to send reminder:", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Upgrade guest access level
+// ---------------------------------------------------------------------------
+
+/**
+ * Upgrade a guest's access level while keeping the same QR code / ticket_code.
+ *
+ * Updates: guest_list.access_level, tickets.ticket_type_id, order_items.ticket_type_id.
+ * The ticket_code (QR code) stays the same — only the ticket type reference changes.
+ *
+ * Requires the guest to already have a ticket issued (order_id present).
+ */
+export async function upgradeGuestAccessLevel(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  orgId: string,
+  guestId: string,
+  newAccessLevel: AccessLevel,
+  upgradedBy: string = "admin"
+): Promise<{ guest: GuestListEntry; previousLevel: AccessLevel }> {
+  // 1. Fetch guest entry
+  const { data: guest, error: guestErr } = await supabase
+    .from(TABLES.GUEST_LIST)
+    .select("*")
+    .eq("id", guestId)
+    .eq("org_id", orgId)
+    .single();
+
+  if (guestErr || !guest) {
+    throw new Error("Guest not found");
+  }
+
+  const previousLevel: AccessLevel = guest.access_level || "guest_list";
+
+  if (previousLevel === newAccessLevel) {
+    throw new Error("Guest already has this access level");
+  }
+
+  if (!guest.order_id) {
+    throw new Error("Guest does not have a ticket issued yet — cannot upgrade");
+  }
+
+  // 2. Ensure hidden ticket type exists for the NEW access level
+  const newTicketTypeId = await ensureGuestListTicketType(
+    supabase,
+    orgId,
+    guest.event_id,
+    newAccessLevel
+  );
+
+  // 3. Get old hidden ticket type ID
+  const oldTicketTypeName = ACCESS_LEVELS[previousLevel].ticketLabel;
+  const { data: oldTicketType } = await supabase
+    .from(TABLES.TICKET_TYPES)
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("event_id", guest.event_id)
+    .eq("name", oldTicketTypeName)
+    .limit(1)
+    .single();
+
+  // 4. Update tickets → new ticket_type_id (QR code / ticket_code stays the same)
+  if (oldTicketType) {
+    await supabase
+      .from(TABLES.TICKETS)
+      .update({ ticket_type_id: newTicketTypeId })
+      .eq("order_id", guest.order_id)
+      .eq("ticket_type_id", oldTicketType.id);
+  }
+
+  // 5. Update order_items → new ticket_type_id
+  if (oldTicketType) {
+    await supabase
+      .from(TABLES.ORDER_ITEMS)
+      .update({ ticket_type_id: newTicketTypeId })
+      .eq("order_id", guest.order_id)
+      .eq("ticket_type_id", oldTicketType.id);
+  }
+
+  // 6. Update guest_list entry
+  const { error: updateErr } = await supabase
+    .from(TABLES.GUEST_LIST)
+    .update({
+      access_level: newAccessLevel,
+      notes: guest.notes
+        ? `${guest.notes}\nUpgraded from ${ACCESS_LEVELS[previousLevel].label} to ${ACCESS_LEVELS[newAccessLevel].label} by ${upgradedBy} on ${new Date().toISOString().slice(0, 10)}`
+        : `Upgraded from ${ACCESS_LEVELS[previousLevel].label} to ${ACCESS_LEVELS[newAccessLevel].label} by ${upgradedBy} on ${new Date().toISOString().slice(0, 10)}`,
+    })
+    .eq("id", guestId)
+    .eq("org_id", orgId);
+
+  if (updateErr) {
+    throw new Error(`Failed to update guest entry: ${updateErr.message}`);
+  }
+
+  return {
+    guest: { ...guest, access_level: newAccessLevel } as GuestListEntry,
+    previousLevel,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Guest list upgrade notification email
+// ---------------------------------------------------------------------------
+
+/**
+ * Send a polished upgrade notification email. Fire-and-forget — never throws.
+ *
+ * Tenant-branded. Informs the guest their access has been upgraded.
+ * Their existing ticket (same QR code) is still valid — now with the new access level.
+ */
+export async function sendGuestListUpgradeEmail(params: {
+  orgId: string;
+  guestName: string;
+  guestEmail: string;
+  eventName: string;
+  eventDate?: string;
+  eventTime?: string;
+  venueName?: string;
+  previousLevel: AccessLevel;
+  newLevel: AccessLevel;
+}): Promise<void> {
+  try {
+    const resend = getResendClient();
+    if (!resend) {
+      console.log("[guest-list-upgrade] RESEND_API_KEY not configured — skipping");
+      return;
+    }
+
+    const supabase = await getSupabaseAdmin();
+    if (!supabase) return;
+
+    const [{ data: brandingRow }, { data: emailRow }] = await Promise.all([
+      supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${params.orgId}_branding`).single(),
+      supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${params.orgId}_email`).single(),
+    ]);
+
+    const emailSettings: EmailSettings = {
+      ...DEFAULT_EMAIL_SETTINGS,
+      from_email: `${params.orgId}@mail.entry.events`,
+      ...((emailRow?.data as Partial<EmailSettings>) || {}),
+    };
+
+    const branding = (brandingRow?.data as Record<string, string>) || {};
+    const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
+    const accentColor = branding.accent_color || "#7C3AED";
+    const emailLogo = (emailRow?.data as Record<string, string>)?.logo_url || branding.logo_url || null;
+    const logoUrl = emailLogo ? resolveLogoUrl(emailLogo) : null;
+    const logoHeight = Math.min(((emailRow?.data as Record<string, number>)?.logo_height || 48), 100);
+
+    const firstName = params.guestName.split(/\s+/)[0];
+    const eventName = escapeHtml(params.eventName);
+    const newLevelLabel = ACCESS_LEVELS[params.newLevel].label;
+    const venueLine = params.venueName ? escapeHtml(params.venueName) : "";
+    const dateLine = params.eventDate ? formatDate(params.eventDate) : "";
+    const timeLine = params.eventTime ? formatTime(params.eventTime) : "";
+    const eventDetailsLine = [dateLine, venueLine].filter(Boolean).join(" · ");
+
+    const subject = `Your access has been upgraded — ${params.eventName}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased; color-scheme: light only;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+
+        <!-- Container -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+
+          <!-- Accent Bar -->
+          <tr>
+            <td style="height: 4px; background-color: ${accentColor};"></td>
+          </tr>
+
+          <!-- Header (dark bg with logo) -->
+          <tr>
+            <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);" : ""}">
+              ${
+                logoUrl
+                  ? `<img src="${escapeHtml(logoUrl)}" alt="${orgName}" height="${logoHeight}" style="width: auto; height: ${logoHeight}px; display: inline-block;">`
+                  : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${orgName}</div>`
+              }
+            </td>
+          </tr>
+
+          <!-- Heading -->
+          <tr>
+            <td style="padding: 20px 32px 8px; text-align: center;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #111;">
+                You've been upgraded.
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Message -->
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
+                ${escapeHtml(firstName)}, your access for ${eventName} has been upgraded to <strong style="color: #111;">${escapeHtml(newLevelLabel)}</strong>. No action needed — your existing ticket is already updated and ready to go.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td>
+          </tr>
+
+          <!-- New Access Level Badge -->
+          <tr>
+            <td style="padding: 24px 32px 0; text-align: center;">
+              <div style="display: inline-block; padding: 8px 24px; background-color: ${accentColor}; border-radius: 20px;">
+                <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #ffffff;">${escapeHtml(newLevelLabel)}</span>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Event Details -->
+          <tr>
+            <td style="padding: 20px 32px;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">${eventName}</div>
+              ${eventDetailsLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">${escapeHtml(eventDetailsLine)}</div>` : ""}
+              ${timeLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-top: 2px;">Doors ${timeLine}</div>` : ""}
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td>
+          </tr>
+
+          <!-- Info Note -->
+          <tr>
+            <td style="padding: 24px 32px;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #888; text-align: center;">
+                Use the same ticket you already have — your QR code is unchanged and will reflect your new access level at the door.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+        <!-- Footer -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
+          <tr>
+            <td style="padding: 16px 32px 0; text-align: center;">
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #aaa; margin: 0;">Sent by <span style="color: ${accentColor}; font-weight: 600;">${orgName}</span></p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    await resend.emails.send({
+      from: `${branding.org_name || "Entry"} <${emailSettings.from_email}>`,
+      to: [params.guestEmail],
+      subject,
+      html,
+    });
+
+    console.log(`[guest-list-upgrade] Upgrade email sent to ${params.guestEmail} (${params.previousLevel} → ${params.newLevel})`);
+  } catch (err) {
+    console.error("[guest-list-upgrade] Failed to send upgrade email:", err);
   }
 }

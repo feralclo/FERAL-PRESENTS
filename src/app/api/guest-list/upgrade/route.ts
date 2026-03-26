@@ -90,21 +90,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 1. Send the polished upgrade notification email
     if (guest.email) {
-      await sendGuestListUpgradeEmail({
-        orgId,
-        guestName: guest.name,
-        guestEmail: guest.email,
-        eventName: event.name,
-        eventDate: event.date_start || undefined,
-        eventTime: event.doors_time || undefined,
-        venueName: event.venue_name || undefined,
-        previousLevel,
-        newLevel: new_access_level as AccessLevel,
-      });
-
-      // 2. Resend the order confirmation email (with updated PDF showing new access level)
+      // 1. Resend order confirmation with updated PDF (priority — has the ticket)
       if (guest.order_id) {
         try {
           const { data: order } = await supabase
@@ -164,12 +151,27 @@ export async function POST(request: NextRequest) {
                 })),
                 isGuestList: true,
               });
+              console.log(`[guest-list-upgrade] PDF ticket resent to ${customer.email}`);
             }
           }
         } catch (emailErr) {
           console.error("[guest-list-upgrade] Failed to resend order confirmation:", emailErr);
+          Sentry.captureException(emailErr);
         }
       }
+
+      // 2. Send upgrade notification email (fire-and-forget — PDF is the priority)
+      sendGuestListUpgradeEmail({
+        orgId,
+        guestName: guest.name,
+        guestEmail: guest.email,
+        eventName: event.name,
+        eventDate: event.date_start || undefined,
+        eventTime: event.doors_time || undefined,
+        venueName: event.venue_name || undefined,
+        previousLevel,
+        newLevel: new_access_level as AccessLevel,
+      }).catch(() => {});
     }
 
     return NextResponse.json({

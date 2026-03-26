@@ -1450,7 +1450,7 @@ export async function sendGuestListUpgradeEmail(params: {
     const timeLine = params.eventTime ? formatTime(params.eventTime) : "";
     const eventDetailsLine = [dateLine, venueLine].filter(Boolean).join(" · ");
 
-    const subject = `Your access has been upgraded — ${params.eventName}`;
+    const subject = `You've been upgraded — ${params.eventName}`;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -1485,10 +1485,19 @@ export async function sendGuestListUpgradeEmail(params: {
             </td>
           </tr>
 
+          <!-- New Access Level Badge -->
+          <tr>
+            <td style="padding: 28px 32px 0; text-align: center;">
+              <div style="display: inline-block; padding: 10px 32px; background-color: ${accentColor}; border-radius: 24px;">
+                <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #ffffff;">${escapeHtml(newLevelLabel)} ACCESS</span>
+              </div>
+            </td>
+          </tr>
+
           <!-- Heading -->
           <tr>
             <td style="padding: 20px 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #111;">
+              <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 26px; font-weight: 700; color: #111;">
                 You've been upgraded.
               </h1>
             </td>
@@ -1498,7 +1507,7 @@ export async function sendGuestListUpgradeEmail(params: {
           <tr>
             <td style="padding: 0 32px 24px; text-align: center;">
               <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
-                ${escapeHtml(firstName)}, your access for ${eventName} has been upgraded to <strong style="color: #111;">${escapeHtml(newLevelLabel)}</strong>. No action needed — your existing ticket is already updated and ready to go.
+                ${escapeHtml(firstName)}, you now have <strong style="color: #111;">${escapeHtml(newLevelLabel)}</strong> access for ${eventName}. We've sent your updated ticket separately — same QR code, just with your new access level.
               </p>
             </td>
           </tr>
@@ -1506,38 +1515,15 @@ export async function sendGuestListUpgradeEmail(params: {
           <!-- Divider -->
           <tr>
             <td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td>
-          </tr>
-
-          <!-- New Access Level Badge -->
-          <tr>
-            <td style="padding: 24px 32px 0; text-align: center;">
-              <div style="display: inline-block; padding: 8px 24px; background-color: ${accentColor}; border-radius: 20px;">
-                <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #ffffff;">${escapeHtml(newLevelLabel)}</span>
-              </div>
-            </td>
           </tr>
 
           <!-- Event Details -->
           <tr>
-            <td style="padding: 20px 32px;">
+            <td style="padding: 24px 32px;">
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">EVENT</div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">${eventName}</div>
               ${eventDetailsLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">${escapeHtml(eventDetailsLine)}</div>` : ""}
               ${timeLine ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-top: 2px;">Doors ${timeLine}</div>` : ""}
-            </td>
-          </tr>
-
-          <!-- Divider -->
-          <tr>
-            <td style="padding: 0 32px;"><div style="height: 1px; background-color: #eee;"></div></td>
-          </tr>
-
-          <!-- Info Note -->
-          <tr>
-            <td style="padding: 24px 32px;">
-              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #888; text-align: center;">
-                Use the same ticket you already have — your QR code is unchanged and will reflect your new access level at the door.
-              </p>
             </td>
           </tr>
 

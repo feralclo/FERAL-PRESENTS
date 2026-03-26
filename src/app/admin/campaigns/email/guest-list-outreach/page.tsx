@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   ChevronLeft,
+  ChevronDown,
   ClipboardCheck,
   Copy,
   CheckCircle2,
@@ -30,6 +32,9 @@ import {
   Flame,
   Snowflake,
   RotateCcw,
+  Search,
+  CalendarDays,
+  Check,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -186,6 +191,151 @@ function EmailPreview({ previewUrl }: { previewUrl: string | null }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EVENT PICKER — searchable, grouped by upcoming/past
+   ═══════════════════════════════════════════════════════════ */
+function EventPicker({
+  events,
+  selectedId,
+  onSelect,
+}: {
+  events: EventOption[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selected = events.find((e) => e.id === selectedId);
+  const now = Date.now();
+
+  // Filter + group
+  const filtered = events.filter((e) =>
+    e.name.toLowerCase().includes(search.toLowerCase())
+  );
+  const upcoming = filtered.filter(
+    (e) => e.date_start && new Date(e.date_start).getTime() > now
+  );
+  const past = filtered.filter(
+    (e) => !e.date_start || new Date(e.date_start).getTime() <= now
+  );
+
+  function formatShortDate(d: string | null): string {
+    if (!d) return "";
+    return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) setTimeout(() => inputRef.current?.focus(), 50); }}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="mt-2 flex w-full items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-left text-sm text-foreground transition-colors hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <CalendarDays size={13} className="shrink-0 text-muted-foreground/50" />
+            <span className="truncate">{selected?.name || "Select event..."}</span>
+          </div>
+          <ChevronDown size={14} className={`shrink-0 text-muted-foreground/50 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        style={{ maxHeight: "340px" }}
+      >
+        {/* Search */}
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+          <Search size={13} className="shrink-0 text-muted-foreground/40" />
+          <input
+            ref={inputRef}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search events..."
+            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
+          />
+        </div>
+
+        {/* Results */}
+        <div className="overflow-y-auto" style={{ maxHeight: "280px" }}>
+          {filtered.length === 0 && (
+            <p className="px-3 py-4 text-center text-xs text-muted-foreground">No events match your search.</p>
+          )}
+
+          {upcoming.length > 0 && (
+            <div>
+              <p className="px-3 pt-2.5 pb-1 text-[9px] font-bold uppercase tracking-[1.5px] text-primary/60">Upcoming</p>
+              {upcoming.map((ev) => (
+                <EventOption
+                  key={ev.id}
+                  event={ev}
+                  isSelected={ev.id === selectedId}
+                  dateLabel={formatShortDate(ev.date_start)}
+                  onSelect={() => { onSelect(ev.id); setOpen(false); setSearch(""); }}
+                />
+              ))}
+            </div>
+          )}
+
+          {past.length > 0 && (
+            <div>
+              <p className="px-3 pt-2.5 pb-1 text-[9px] font-bold uppercase tracking-[1.5px] text-muted-foreground/40">
+                Past
+              </p>
+              {past.map((ev) => (
+                <EventOption
+                  key={ev.id}
+                  event={ev}
+                  isSelected={ev.id === selectedId}
+                  dateLabel={formatShortDate(ev.date_start)}
+                  onSelect={() => { onSelect(ev.id); setOpen(false); setSearch(""); }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function EventOption({
+  event,
+  isSelected,
+  dateLabel,
+  onSelect,
+}: {
+  event: EventOption;
+  isSelected: boolean;
+  dateLabel: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+        isSelected ? "bg-primary/10" : "hover:bg-accent/40"
+      }`}
+    >
+      <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+        isSelected ? "border-primary bg-primary" : "border-transparent"
+      }`}>
+        {isSelected && <Check size={9} className="text-white" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={`truncate text-[13px] ${isSelected ? "font-medium text-foreground" : "text-foreground/80"}`}>
+          {event.name}
+        </p>
+      </div>
+      {dateLabel && (
+        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/40">{dateLabel}</span>
+      )}
+    </button>
   );
 }
 
@@ -464,7 +614,7 @@ export default function GuestListOutreachPage() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         {/* ── LEFT PANEL ── */}
         <div className="xl:col-span-4 space-y-4">
-          {/* Event */}
+          {/* Event — searchable picker */}
           <Card>
             <CardContent className="p-5">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</Label>
@@ -473,13 +623,11 @@ export default function GuestListOutreachPage() {
               ) : events.length === 0 ? (
                 <p className="mt-2 text-sm text-muted-foreground">No events found.</p>
               ) : (
-                <select
-                  value={selectedEventId}
-                  onChange={(e) => setSelectedEventId(e.target.value)}
-                  className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-                </select>
+                <EventPicker
+                  events={events}
+                  selectedId={selectedEventId}
+                  onSelect={setSelectedEventId}
+                />
               )}
             </CardContent>
           </Card>

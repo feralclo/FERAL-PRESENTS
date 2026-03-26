@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useOrgId } from "@/components/OrgProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +19,12 @@ import {
   Link2,
   ExternalLink,
   AlertCircle,
+  Download,
+  Users,
+  ShoppingCart,
+  Tag,
+  Megaphone,
+  UserX,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -40,6 +45,59 @@ interface CampaignOption {
   applied_count: number;
   capacity?: number;
 }
+
+type SegmentType =
+  | "all_customers"
+  | "non_purchasers"
+  | "abandoned_carts"
+  | "popup_signups"
+  | "interest_signups";
+
+interface SegmentDef {
+  id: SegmentType;
+  label: string;
+  description: string;
+  icon: typeof Users;
+  needsEvent: boolean;
+}
+
+const SEGMENTS: SegmentDef[] = [
+  {
+    id: "non_purchasers",
+    label: "Haven't purchased this event",
+    description: "Customers who have never bought tickets for the selected event",
+    icon: UserX,
+    needsEvent: true,
+  },
+  {
+    id: "abandoned_carts",
+    label: "Abandoned cart for this event",
+    description: "People who added tickets to cart but didn't complete checkout",
+    icon: ShoppingCart,
+    needsEvent: true,
+  },
+  {
+    id: "popup_signups",
+    label: "Popup signups for this event",
+    description: "Email addresses captured by the discount popup on this event page",
+    icon: Tag,
+    needsEvent: true,
+  },
+  {
+    id: "interest_signups",
+    label: "Announcement signups for this event",
+    description: "People who signed up for event announcements or coming-soon notifications",
+    icon: Megaphone,
+    needsEvent: true,
+  },
+  {
+    id: "all_customers",
+    label: "All customers",
+    description: "Every customer with marketing consent across all events",
+    icon: Users,
+    needsEvent: false,
+  },
+];
 
 /* ═══════════════════════════════════════════════════════════
    EMAIL PREVIEW — live rendered iframe
@@ -136,8 +194,6 @@ function EmailPreview({
    GUEST LIST OUTREACH BUILDER
    ═══════════════════════════════════════════════════════════ */
 export default function GuestListOutreachPage() {
-  const orgId = useOrgId();
-
   // State
   const [events, setEvents] = useState<EventOption[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -147,6 +203,12 @@ export default function GuestListOutreachPage() {
   const [previewVersion, setPreviewVersion] = useState(0);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+
+  // Segment state
+  const [selectedSegment, setSelectedSegment] = useState<SegmentType>("non_purchasers");
+  const [segmentCount, setSegmentCount] = useState<number | null>(null);
+  const [loadingSegment, setLoadingSegment] = useState(false);
+  const [downloadingCsv, setDownloadingCsv] = useState(false);
 
   // Copy states
   const [copiedHtml, setCopiedHtml] = useState(false);
@@ -160,10 +222,10 @@ export default function GuestListOutreachPage() {
     fetch("/api/events")
       .then((r) => r.json())
       .then((json) => {
-        const evts = (json.events || json.data || []) as EventOption[];
-        // Filter to published/active events, sort by date descending
+        const evts = (json.data || []) as EventOption[];
+        // Show all non-draft events, sorted by date descending
         const filtered = evts
-          .filter((e) => ["published", "active"].includes(e.status))
+          .filter((e) => e.status !== "draft")
           .sort((a, b) => {
             const da = a.date_start ? new Date(a.date_start).getTime() : 0;
             const db = b.date_start ? new Date(b.date_start).getTime() : 0;
@@ -213,6 +275,29 @@ export default function GuestListOutreachPage() {
     }
   }, [selectedEventId, events]);
 
+  // Fetch segment count when segment or event changes
+  useEffect(() => {
+    const segDef = SEGMENTS.find((s) => s.id === selectedSegment);
+    if (!segDef) return;
+    if (segDef.needsEvent && !selectedEventId) {
+      setSegmentCount(null);
+      return;
+    }
+
+    setLoadingSegment(true);
+    setSegmentCount(null);
+    const params = new URLSearchParams({ segment: selectedSegment });
+    if (selectedEventId) params.set("event_id", selectedEventId);
+
+    fetch(`/api/campaigns/audience?${params.toString()}`)
+      .then((r) => r.json())
+      .then((json) => {
+        setSegmentCount(json.count ?? 0);
+      })
+      .catch(() => setSegmentCount(null))
+      .finally(() => setLoadingSegment(false));
+  }, [selectedSegment, selectedEventId]);
+
   // Preview URL
   const previewUrl = useMemo(() => {
     if (!selectedEventId) return null;
@@ -257,6 +342,32 @@ export default function GuestListOutreachPage() {
     setCopiedSubject(true);
     setTimeout(() => setCopiedSubject(false), 2500);
   }, [subjectLine]);
+
+  const handleDownloadCsv = useCallback(async () => {
+    setDownloadingCsv(true);
+    try {
+      const params = new URLSearchParams({
+        segment: selectedSegment,
+        format: "csv",
+      });
+      if (selectedEventId) params.set("event_id", selectedEventId);
+
+      const res = await fetch(`/api/campaigns/audience?${params.toString()}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${selectedSegment}_audience.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // Download failed
+    } finally {
+      setDownloadingCsv(false);
+    }
+  }, [selectedSegment, selectedEventId]);
 
   const refreshPreview = useCallback(() => {
     setPreviewVersion((v) => v + 1);
@@ -304,7 +415,7 @@ export default function GuestListOutreachPage() {
                 </div>
               ) : events.length === 0 ? (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  No published events found.
+                  No events found.
                 </p>
               ) : (
                 <select
@@ -380,6 +491,86 @@ export default function GuestListOutreachPage() {
             </CardContent>
           </Card>
 
+          {/* Audience segment */}
+          <Card>
+            <CardContent className="p-5">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Audience Segment
+              </Label>
+              <p className="mt-1 text-[11px] text-muted-foreground/60">
+                Choose who to target, then download the list for your email tool.
+              </p>
+
+              <div className="mt-3 space-y-1.5">
+                {SEGMENTS.map((seg) => {
+                  const Icon = seg.icon;
+                  const isSelected = selectedSegment === seg.id;
+                  return (
+                    <button
+                      key={seg.id}
+                      type="button"
+                      onClick={() => setSelectedSegment(seg.id)}
+                      className={`w-full rounded-lg border px-3.5 py-3 text-left transition-all duration-150 ${
+                        isSelected
+                          ? "border-primary/30 bg-primary/5"
+                          : "border-border hover:border-border/80 hover:bg-accent/30"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon
+                          size={14}
+                          className={isSelected ? "text-primary" : "text-muted-foreground/60"}
+                        />
+                        <span
+                          className={`text-[13px] font-medium ${
+                            isSelected ? "text-foreground" : "text-foreground/80"
+                          }`}
+                        >
+                          {seg.label}
+                        </span>
+                      </div>
+                      <p className="mt-1 ml-[26px] text-[11px] text-muted-foreground/60">
+                        {seg.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Segment count + download */}
+              <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-accent/20 px-3.5 py-2.5">
+                <div className="flex items-center gap-2">
+                  <Users size={13} className="text-muted-foreground" />
+                  {loadingSegment ? (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Loader2 size={11} className="animate-spin" /> Counting...
+                    </span>
+                  ) : segmentCount !== null ? (
+                    <span className="text-xs font-medium text-foreground">
+                      {segmentCount.toLocaleString()} {segmentCount === 1 ? "person" : "people"}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadCsv}
+                  disabled={!segmentCount || downloadingCsv}
+                  className="gap-1.5 text-xs h-7 px-2.5"
+                >
+                  {downloadingCsv ? (
+                    <Loader2 size={11} className="animate-spin" />
+                  ) : (
+                    <Download size={11} />
+                  )}
+                  Download CSV
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Subject line */}
           <Card>
             <CardContent className="p-5">
@@ -414,9 +605,6 @@ export default function GuestListOutreachPage() {
                   </span>
                 </Button>
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground/60">
-                Used as the email subject when pasting into your email tool.
-              </p>
             </CardContent>
           </Card>
 
@@ -461,11 +649,11 @@ export default function GuestListOutreachPage() {
                 How to use
               </p>
               <ol className="space-y-1.5 text-xs text-muted-foreground/80 list-decimal list-inside">
-                <li>Select your event and guest list campaign above</li>
-                <li>Copy the subject line for your email</li>
-                <li>Copy the email HTML</li>
-                <li>Paste both into your email tool (ActiveCampaign, Mailchimp, etc.)</li>
-                <li>Send to your chosen audience segment</li>
+                <li>Select your event and guest list campaign</li>
+                <li>Choose an audience segment and download the CSV</li>
+                <li>Copy the subject line and email HTML</li>
+                <li>Import the CSV into your email tool (ActiveCampaign, Mailchimp, etc.)</li>
+                <li>Paste the email HTML and send</li>
               </ol>
             </CardContent>
           </Card>

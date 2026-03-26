@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, emailKey, brandingKey, guestListCampaignsKey } from "@/lib/constants";
+import { TABLES, emailKey, brandingKey, guestListCampaignsKey, campaignSendsKey } from "@/lib/constants";
+import crypto from "crypto";
 import { requireAuth } from "@/lib/auth";
 import { buildGuestListOutreachEmail } from "@/lib/campaign-emails";
 import type { EmailSettings } from "@/types/email";
@@ -129,13 +130,25 @@ export async function POST(request: NextRequest) {
       currencySymbol,
     });
 
+    // Generate send ID for tracking
+    const sendId = crypto.randomUUID();
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    const trackBase = `${siteUrl}/api/campaigns/track`;
+
+    // Inject tracking pixel (before </body>) and wrap CTA link with click tracker
+    const trackPixel = `<img src="${trackBase}?t=open&s=${sendId}" width="1" height="1" style="display:none;" alt="">`;
+    const trackedApplyUrl = `${trackBase}?t=click&s=${sendId}&r=${encodeURIComponent(applyUrl)}`;
+    const trackedHtml = html
+      .replace(applyUrl, trackedApplyUrl)
+      .replace("</body>", `${trackPixel}</body>`);
+
     // Send via Resend using batch API
     const resend = new Resend(apiKey);
     const batchEmails = recipients.map((r: { email: string }) => ({
       from: `${fromName} <${fromEmail}>`,
       to: [r.email],
       subject,
-      html,
+      html: trackedHtml,
       text,
     }));
 
@@ -146,7 +159,6 @@ export async function POST(request: NextRequest) {
       const batch = batchEmails.slice(i, i + 100);
       try {
         const result = await resend.batch.send(batch);
-        // Resend batch returns data array — count actual successes
         if (result.data && Array.isArray(result.data)) {
           sent += result.data.length;
           failed += batch.length - result.data.length;
@@ -160,9 +172,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[campaign-send] Sent ${sent} emails for ${event.name} (${failed} failed)`);
+    // Store send record for analytics
+    const sendRecord = {
+      id: sendId,
+      type: "guest_list_outreach",
+      event_id: event_id,
+      event_name: event.name,
+      campaign_id: campaign_id || null,
+      sent_at: new Date().toISOString(),
+      sent_count: sent,
+      opens: 0,
+      clicks: 0,
+    };
 
-    return NextResponse.json({ sent, failed, total: recipients.length });
+    const sendsKey = campaignSendsKey(orgId);
+    const { data: existingSends } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", sendsKey)
+      .single();
+
+    const sends = ((existingSends?.data as unknown[]) || []) as typeof sendRecord[];
+    sends.unshift(sendRecord); // newest first
+    // Keep last 50 sends
+    if (sends.length > 50) sends.length = 50;
+
+    await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .upsert({ key: sendsKey, data: sends }, { onConflict: "key" });
+
+    console.log(`[campaign-send] Sent ${sent} emails for ${event.name} (${failed} failed), sendId=${sendId}`);
+
+    return NextResponse.json({ sent, failed, total: recipients.length, sendId });
   } catch (err) {
     Sentry.captureException(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

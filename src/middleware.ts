@@ -221,6 +221,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/merch-store/confirm-order",
   "/api/scanner/manifest", // PWA manifest (public, no auth)
   "/api/brand/", // Brand assets (logo SVG, public)
+  "/api/campaigns/track", // Email open/click tracking pixels (public)
 ];
 
 const PUBLIC_API_EXACT_GETS = [

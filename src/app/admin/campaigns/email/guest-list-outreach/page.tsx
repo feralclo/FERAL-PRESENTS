@@ -34,6 +34,9 @@ import {
   RotateCcw,
   Search,
   FlaskConical,
+  BarChart3,
+  MousePointerClick,
+  Eye,
   CalendarDays,
   Check,
 } from "lucide-react";
@@ -363,6 +366,10 @@ export default function GuestListOutreachPage() {
   const [activePreset, setActivePreset] = useState<string | null>("warm_leads");
   const [filterCounts, setFilterCounts] = useState<Record<string, number>>({});
 
+  // Send history
+  interface SendRecord { id: string; event_name: string; sent_at: string; sent_count: number; opens: number; clicks: number }
+  const [sendHistory, setSendHistory] = useState<SendRecord[]>([]);
+
   // Send + copy states
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number } | null>(null);
@@ -438,6 +445,15 @@ export default function GuestListOutreachPage() {
       setFilterCounts(counts);
     });
   }, [selectedEventId]);
+
+  // Fetch send history for this event
+  useEffect(() => {
+    if (!selectedEventId) { setSendHistory([]); return; }
+    fetch(`/api/campaigns/sends?event_id=${selectedEventId}`)
+      .then((r) => r.json())
+      .then((j) => setSendHistory(j.sends || []))
+      .catch(() => setSendHistory([]));
+  }, [selectedEventId, sendResult]);
 
   // Fetch combo audience count when filters change
   useEffect(() => {
@@ -900,6 +916,58 @@ export default function GuestListOutreachPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* ── CAMPAIGN STATS ── */}
+          {sendHistory.length > 0 && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <BarChart3 size={13} className="text-primary" />
+                  <Label className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground/60">Campaign performance</Label>
+                </div>
+                <div className="space-y-3">
+                  {sendHistory.map((send) => {
+                    const openRate = send.sent_count > 0 ? Math.round((send.opens / send.sent_count) * 100) : 0;
+                    const clickRate = send.sent_count > 0 ? Math.round((send.clicks / send.sent_count) * 100) : 0;
+                    const sentDate = new Date(send.sent_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+                    return (
+                      <div key={send.id} className="rounded-lg border border-border p-3">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <span className="text-[11px] font-medium text-foreground">{send.event_name}</span>
+                          <span className="text-[10px] text-muted-foreground/50">{sentDate}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="rounded-md bg-accent/30 px-2.5 py-2 text-center">
+                            <div className="flex items-center justify-center gap-1 mb-0.5">
+                              <Send size={9} className="text-primary" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">Sent</span>
+                            </div>
+                            <span className="text-sm font-semibold text-foreground tabular-nums">{send.sent_count}</span>
+                          </div>
+                          <div className="rounded-md bg-accent/30 px-2.5 py-2 text-center">
+                            <div className="flex items-center justify-center gap-1 mb-0.5">
+                              <Eye size={9} className="text-blue-400" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">Opens</span>
+                            </div>
+                            <span className="text-sm font-semibold text-foreground tabular-nums">{openRate}%</span>
+                            <span className="block text-[9px] text-muted-foreground/40 tabular-nums">{send.opens}</span>
+                          </div>
+                          <div className="rounded-md bg-accent/30 px-2.5 py-2 text-center">
+                            <div className="flex items-center justify-center gap-1 mb-0.5">
+                              <MousePointerClick size={9} className="text-emerald-400" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">Clicks</span>
+                            </div>
+                            <span className="text-sm font-semibold text-foreground tabular-nums">{clickRate}%</span>
+                            <span className="block text-[9px] text-muted-foreground/40 tabular-nums">{send.clicks}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* ── RIGHT PANEL ── */}

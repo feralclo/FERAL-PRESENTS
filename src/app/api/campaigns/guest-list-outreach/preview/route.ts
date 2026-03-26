@@ -83,8 +83,16 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const eventResult = eventRes as { data: any; error: any };
     const event = eventResult.data;
-    if (eventId && !event) {
-      console.warn(`[campaign-preview] Event not found: id=${eventId}, orgId=${orgId}, error=${eventResult.error?.message || "none"}`);
+    // Debug: log every preview request to diagnose the "Event not found" issue
+    console.log(`[campaign-preview] eventId=${eventId}, orgId=${orgId}, eventFound=${!!event}, eventName=${event?.name || "NONE"}, error=${eventResult.error?.message || "none"}, errorCode=${eventResult.error?.code || "none"}`);
+    if (eventId && !event && eventResult.error) {
+      // If .single() failed, try without .single() to see if the issue is 0 or 2+ rows
+      const { data: debugRows, error: debugErr } = await supabase
+        .from(TABLES.EVENTS)
+        .select("id, name")
+        .eq("id", eventId)
+        .eq("org_id", orgId);
+      console.warn(`[campaign-preview] Debug fallback: rows=${debugRows?.length || 0}, err=${debugErr?.message || "none"}`);
     }
     const eventName = event?.name || "Your Event Name";
     const venueParts = [event?.venue_name, event?.venue_city].filter(Boolean);

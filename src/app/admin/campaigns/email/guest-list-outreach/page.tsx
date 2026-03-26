@@ -175,6 +175,7 @@ function EmailPreview({ previewUrl }: { previewUrl: string | null }) {
           style={{ width: previewMode === "mobile" ? "375px" : "100%" }}
         >
           <iframe
+            key={previewUrl}
             ref={iframeRef}
             src={previewUrl}
             title="Email Preview"
@@ -256,10 +257,14 @@ export default function GuestListOutreachPage() {
       .finally(() => setLoadingCampaigns(false));
   }, [selectedEventId]);
 
-  // Update subject when event changes
+  // Update subject + refresh preview when event changes
   useEffect(() => {
     const ev = events.find((e) => e.id === selectedEventId);
-    if (ev) setSubjectLine(`Guest List — ${ev.name}`);
+    if (ev) {
+      setSubjectLine(`Guest List — ${ev.name}`);
+      setPreviewVersion((v) => v + 1);
+      setSendResult(null);
+    }
   }, [selectedEventId, events]);
 
   // Fetch individual filter counts when event changes

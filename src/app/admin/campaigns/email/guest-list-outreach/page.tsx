@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   ChevronLeft,
   ChevronDown,
@@ -376,6 +377,8 @@ export default function GuestListOutreachPage() {
   const [testEmail, setTestEmail] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<"sent" | "failed" | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [copiedHtml, setCopiedHtml] = useState(false);
   const [copyingHtml, setCopyingHtml] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -561,13 +564,9 @@ export default function GuestListOutreachPage() {
     }
   }, [testEmail, selectedEventId, selectedCampaignId, subjectLine, sendingTest]);
 
-  const handleSendCampaign = useCallback(async () => {
+  const executeSend = useCallback(async () => {
     if (!audienceCount || !selectedEventId || sending) return;
-    const confirmed = window.confirm(
-      `Send this email to ${audienceCount.toLocaleString()} ${audienceCount === 1 ? "person" : "people"}?`
-    );
-    if (!confirmed) return;
-
+    setShowConfirmDialog(false);
     setSending(true);
     setSendResult(null);
     try {
@@ -602,12 +601,18 @@ export default function GuestListOutreachPage() {
       });
       const result = await sendRes.json();
       setSendResult({ sent: result.sent || 0, failed: result.failed || 0 });
+      if (result.sent > 0) setShowSuccessDialog(true);
     } catch {
       setSendResult({ sent: 0, failed: audienceCount });
     } finally {
       setSending(false);
     }
   }, [audienceCount, selectedEventId, selectedCampaignId, subjectLine, includeFilters, excludeFilters, sending]);
+
+  const handleSendCampaign = useCallback(() => {
+    if (!audienceCount || !selectedEventId) return;
+    setShowConfirmDialog(true);
+  }, [audienceCount, selectedEventId]);
 
   const handleDownloadCsv = useCallback(async () => {
     setDownloadingCsv(true);
@@ -975,6 +980,65 @@ export default function GuestListOutreachPage() {
           <EmailPreview previewUrl={previewUrl} refreshKey={previewVersion} />
         </div>
       </div>
+
+      {/* ── CONFIRM SEND DIALOG ── */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader className="items-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-2">
+              <Send size={20} className="text-primary" />
+            </div>
+            <DialogTitle>Send campaign</DialogTitle>
+            <DialogDescription>
+              This will send the guest list outreach email to{" "}
+              <span className="font-semibold text-foreground">{audienceCount?.toLocaleString()}</span>{" "}
+              {audienceCount === 1 ? "person" : "people"}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={executeSend} disabled={sending} className="gap-2">
+              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {sending ? "Sending..." : "Send now"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── SUCCESS DIALOG ── */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader className="items-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 mb-2">
+              <CheckCircle2 size={28} className="text-primary" />
+            </div>
+            <DialogTitle>Campaign sent</DialogTitle>
+            <DialogDescription>
+              {sendResult && (
+                <>
+                  Successfully sent to{" "}
+                  <span className="font-semibold text-foreground">{sendResult.sent.toLocaleString()}</span>{" "}
+                  {sendResult.sent === 1 ? "person" : "people"}.
+                  {sendResult.failed > 0 && (
+                    <span className="block mt-1 text-destructive">{sendResult.failed} failed to send.</span>
+                  )}
+                  <span className="block mt-2 text-muted-foreground/60">
+                    Open and click-through stats will appear below as recipients engage.
+                  </span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center mt-2">
+            <Button onClick={() => setShowSuccessDialog(false)} className="gap-2">
+              <BarChart3 size={14} />
+              View performance
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

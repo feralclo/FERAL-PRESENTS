@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,10 @@ import {
   Gift,
   Sparkles,
   Mail,
+  BarChart3,
+  Send,
+  Eye,
+  MousePointerClick,
 } from "lucide-react";
 
 const PLAYBOOKS = [
@@ -133,6 +138,70 @@ export default function EmailCampaignsPage() {
             );
           })}
         </div>
+      </div>
+      {/* Recent campaigns */}
+      <RecentCampaigns />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RECENT CAMPAIGNS — sent history with stats
+   ═══════════════════════════════════════════════════════════ */
+function RecentCampaigns() {
+  interface SendRecord { id: string; type: string; event_name: string; sent_at: string; sent_count: number; opens: number; clicks: number }
+  const [sends, setSends] = useState<SendRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/campaigns/sends")
+      .then((r) => r.json())
+      .then((j) => setSends(j.sends || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading || sends.length === 0) return null;
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-3">
+        <BarChart3 size={13} className="text-primary" />
+        <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground/60">Recent campaigns</p>
+      </div>
+      <div className="space-y-2">
+        {sends.slice(0, 10).map((send) => {
+          const openRate = send.sent_count > 0 ? Math.round((send.opens / send.sent_count) * 100) : 0;
+          const clickRate = send.sent_count > 0 ? Math.round((send.clicks / send.sent_count) * 100) : 0;
+          const sentDate = new Date(send.sent_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+          return (
+            <Card key={send.id} className="overflow-hidden">
+              <div className="px-4 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ClipboardCheck size={12} className="shrink-0 text-primary/60" />
+                    <span className="text-[13px] font-medium text-foreground truncate">{send.event_name}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground/40 shrink-0 ml-2">{sentDate}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1.5">
+                    <Send size={10} className="text-muted-foreground/40" />
+                    <span className="text-[11px] tabular-nums text-muted-foreground">{send.sent_count}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Eye size={10} className="text-blue-400/60" />
+                    <span className="text-[11px] tabular-nums text-muted-foreground">{openRate}%</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <MousePointerClick size={10} className="text-emerald-400/60" />
+                    <span className="text-[11px] tabular-nums text-muted-foreground">{clickRate}%</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

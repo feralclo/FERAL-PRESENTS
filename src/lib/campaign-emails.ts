@@ -52,14 +52,9 @@ export function buildGuestListOutreachEmail(
   const eventName = escapeHtml(opts.eventName);
 
   // Price line (only for paid campaigns)
-  const priceLine =
-    opts.price && opts.price > 0
-      ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
-                            <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: ${accent};">
-                              From ${escapeHtml(opts.currencySymbol || "£")}${opts.price}
-                            </div>
-                          </div>`
-      : "";
+  // Price intentionally not shown in outreach email — let them feel the
+  // exclusivity of being accepted before seeing the cost (shown on payment page)
+  const priceLine = "";
 
   const html = `<!DOCTYPE html>
 <html lang="en">

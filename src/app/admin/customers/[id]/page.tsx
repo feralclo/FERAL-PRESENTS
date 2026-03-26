@@ -57,6 +57,7 @@ import {
   CircleDot,
   X,
   MapPin,
+  Tag,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -1286,6 +1287,223 @@ function AbandonedCartsSection({ carts, orgCurrency }: { carts: AbandonedCart[];
 }
 
 /* ════════════════════════════════════════════════════════════
+   EVENT ENGAGEMENT — per-event funnel aggregation
+   ════════════════════════════════════════════════════════════ */
+
+interface EventEngagement {
+  eventName: string;
+  eventSlug: string;
+  steps: {
+    discovered: string | null;
+    interested: string | null;
+    cartAdded: string | null;
+    purchased: string | null;
+    attended: string | null;
+  };
+  lastInteraction: string;
+}
+
+function buildEventEngagement(
+  orders: CustomerOrder[],
+  tickets: CustomerTicket[],
+  abandonedCarts: AbandonedCart[],
+  eventInterests: EventInterestSignup[],
+  popupSignups: { page: string; timestamp: string }[],
+): EventEngagement[] {
+  const map = new Map<string, EventEngagement>();
+
+  function getOrCreate(slug: string, name: string): EventEngagement {
+    if (!map.has(slug)) {
+      map.set(slug, {
+        eventName: name,
+        eventSlug: slug,
+        steps: { discovered: null, interested: null, cartAdded: null, purchased: null, attended: null },
+        lastInteraction: "",
+      });
+    }
+    return map.get(slug)!;
+  }
+
+  function updateLast(entry: EventEngagement, date: string) {
+    if (!entry.lastInteraction || date > entry.lastInteraction) entry.lastInteraction = date;
+  }
+
+  // Popup signups — extract slug from page path (e.g., "/event/liverpool-27-march/")
+  for (const p of popupSignups) {
+    const match = p.page?.match(/\/event\/([^/]+)/);
+    if (!match) continue;
+    const slug = match[1];
+    const entry = getOrCreate(slug, slug);
+    if (!entry.steps.discovered || p.timestamp < entry.steps.discovered) {
+      entry.steps.discovered = p.timestamp;
+    }
+    updateLast(entry, p.timestamp);
+  }
+
+  // Interest signups
+  for (const s of eventInterests) {
+    if (!s.event?.slug) continue;
+    const entry = getOrCreate(s.event.slug, s.event.name || s.event.slug);
+    if (!entry.steps.interested) entry.steps.interested = s.signed_up_at;
+    updateLast(entry, s.signed_up_at);
+  }
+
+  // Abandoned carts
+  for (const c of abandonedCarts) {
+    const ev = c.event as { name: string; slug: string; date_start: string } | null;
+    if (!ev?.slug) continue;
+    const entry = getOrCreate(ev.slug, ev.name || ev.slug);
+    if (!entry.steps.cartAdded || c.created_at < entry.steps.cartAdded) {
+      entry.steps.cartAdded = c.created_at;
+    }
+    updateLast(entry, c.created_at);
+  }
+
+  // Orders
+  for (const o of orders) {
+    if (!o.event?.slug) continue;
+    const entry = getOrCreate(o.event.slug, o.event.name || o.event.slug);
+    if (o.status === "completed" || o.status === "confirmed") {
+      if (!entry.steps.purchased || o.created_at < entry.steps.purchased) {
+        entry.steps.purchased = o.created_at;
+      }
+    }
+    updateLast(entry, o.created_at);
+  }
+
+  // Tickets scanned = attended
+  for (const t of tickets) {
+    if (!t.event?.slug || !t.scanned_at) continue;
+    const entry = getOrCreate(t.event.slug, t.event.name || t.event.slug);
+    if (!entry.steps.attended || t.scanned_at < entry.steps.attended) {
+      entry.steps.attended = t.scanned_at;
+    }
+    updateLast(entry, t.scanned_at);
+  }
+
+  // Resolve proper event names for popup-only entries (slug used as placeholder)
+  for (const [, entry] of map) {
+    if (entry.eventName === entry.eventSlug) {
+      // Try to find a real name from other data
+      const fromOrder = orders.find((o) => o.event?.slug === entry.eventSlug);
+      const fromCart = abandonedCarts.find((c) => (c.event as { slug: string } | null)?.slug === entry.eventSlug);
+      entry.eventName = fromOrder?.event?.name || (fromCart?.event as { name: string } | null)?.name || entry.eventSlug;
+    }
+  }
+
+  return [...map.values()].sort((a, b) => (b.lastInteraction || "").localeCompare(a.lastInteraction || ""));
+}
+
+const FUNNEL_STEPS = [
+  { key: "discovered" as const, label: "Discovered", icon: Tag, color: "#a855f7" },
+  { key: "interested" as const, label: "Interested", icon: Star, color: "#60a5fa" },
+  { key: "cartAdded" as const, label: "Cart", icon: ShoppingCart, color: "#fbbf24" },
+  { key: "purchased" as const, label: "Purchased", icon: ShoppingBag, color: "#34d399" },
+  { key: "attended" as const, label: "Attended", icon: ScanLine, color: "#22d3ee" },
+];
+
+function EventEngagementSection({
+  engagements,
+}: {
+  engagements: EventEngagement[];
+}) {
+  if (engagements.length === 0) return null;
+
+  return (
+    <div className="mt-6">
+      <Card>
+        <CardHeader className="border-b border-border pb-4">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Zap size={15} className="text-primary" />
+            Event Engagement ({engagements.length} {engagements.length === 1 ? "event" : "events"})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="divide-y divide-border p-0">
+          {engagements.map((eng) => {
+            // Find the last completed step index
+            const completedSteps = FUNNEL_STEPS.filter((s) => eng.steps[s.key]);
+            return (
+              <div key={eng.eventSlug} className="px-5 py-4">
+                {/* Event name */}
+                <p className="text-sm font-medium text-foreground mb-3">{eng.eventName}</p>
+
+                {/* Funnel steps */}
+                <div className="flex items-center gap-1">
+                  {FUNNEL_STEPS.map((step, i) => {
+                    const date = eng.steps[step.key];
+                    const isCompleted = !!date;
+                    const StepIcon = step.icon;
+                    // Connector line before each step (except first)
+                    return (
+                      <div key={step.key} className="flex items-center">
+                        {i > 0 && (
+                          <div
+                            className="h-px w-4 mx-0.5 transition-colors"
+                            style={{
+                              backgroundColor: isCompleted
+                                ? step.color
+                                : "var(--color-border)",
+                            }}
+                          />
+                        )}
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className="flex h-7 w-7 items-center justify-center rounded-full border transition-all"
+                                style={
+                                  isCompleted
+                                    ? {
+                                        borderColor: step.color,
+                                        backgroundColor: `${step.color}15`,
+                                        boxShadow: `0 0 8px ${step.color}30`,
+                                      }
+                                    : {
+                                        borderColor: "var(--color-border)",
+                                        backgroundColor: "transparent",
+                                      }
+                                }
+                              >
+                                <StepIcon
+                                  size={12}
+                                  style={{ color: isCompleted ? step.color : "var(--color-muted-foreground)" }}
+                                  className={isCompleted ? "" : "opacity-30"}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              <p className="font-medium">{step.label}</p>
+                              {date && (
+                                <p className="text-muted-foreground">
+                                  {new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                </p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Date summary */}
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
+                  {completedSteps.map((step) => (
+                    <span key={step.key} className="text-[10px] text-muted-foreground/60">
+                      {step.label} · {new Date(eng.steps[step.key]!).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
    CUSTOMER PROFILE PAGE
    ════════════════════════════════════════════════════════════ */
 export default function CustomerProfilePage() {
@@ -1299,6 +1517,7 @@ export default function CustomerProfilePage() {
   const [tickets, setTickets] = useState<CustomerTicket[]>([]);
   const [abandonedCarts, setAbandonedCarts] = useState<AbandonedCart[]>([]);
   const [eventInterests, setEventInterests] = useState<EventInterestSignup[]>([]);
+  const [popupSignups, setPopupSignups] = useState<{ page: string; timestamp: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadCustomer = useCallback(async () => {
@@ -1343,6 +1562,18 @@ export default function CustomerProfilePage() {
     if (ticketsResult.data) setTickets(ticketsResult.data as unknown as CustomerTicket[]);
     if (cartsResult.data) setAbandonedCarts(cartsResult.data as unknown as AbandonedCart[]);
     if (interestsResult.data) setEventInterests(interestsResult.data as unknown as EventInterestSignup[]);
+
+    // Fetch popup signups by email (needs customer email from first fetch)
+    if (customerResult.data?.email) {
+      const { data: popups } = await supabase
+        .from(TABLES.POPUP_EVENTS)
+        .select("page, timestamp")
+        .eq("org_id", orgId)
+        .eq("event_type", "conversions")
+        .eq("email", customerResult.data.email)
+        .order("timestamp", { ascending: false });
+      if (popups) setPopupSignups(popups as { page: string; timestamp: string }[]);
+    }
 
     setLoading(false);
   }, [customerId, orgId]);
@@ -1574,49 +1805,10 @@ export default function CustomerProfilePage() {
         />
       </div>
 
-      {/* Event Interests (if any) */}
-      {eventInterests.length > 0 && (
-        <div className="mt-6">
-          <Card>
-            <CardHeader className="border-b border-border pb-4">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Star size={15} className="text-muted-foreground" />
-                Event Interests ({eventInterests.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 p-4">
-              {eventInterests.map((signup) => (
-                <div
-                  key={signup.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-3 py-2.5"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {signup.event?.name || "Unknown event"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Signed up {new Date(signup.signed_up_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge
-                      variant="secondary"
-                      className="text-[9px] font-semibold tabular-nums"
-                    >
-                      Step {signup.notification_count}/4
-                    </Badge>
-                    {signup.unsubscribed_at && (
-                      <Badge variant="destructive" className="text-[9px] font-semibold">
-                        Unsub
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Event Engagement — per-event funnel */}
+      <EventEngagementSection
+        engagements={buildEventEngagement(orders, tickets, abandonedCarts, eventInterests, popupSignups)}
+      />
 
       {/* Abandoned Carts (if any) */}
       {abandonedCarts.length > 0 && (

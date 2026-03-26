@@ -24,7 +24,11 @@ import {
   ShoppingCart,
   Tag,
   Megaphone,
-  UserX,
+  ShoppingBag,
+  ClipboardList,
+  Flame,
+  Snowflake,
+  RotateCcw,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -46,74 +50,72 @@ interface CampaignOption {
   capacity?: number;
 }
 
-type SegmentType =
-  | "all_customers"
-  | "non_purchasers"
-  | "abandoned_carts"
-  | "popup_signups"
-  | "interest_signups";
+type IncludeFilter = "popup_signups" | "abandoned_carts" | "interest_signups" | "all_customers";
+type ExcludeFilter = "purchased" | "guest_list";
 
-interface SegmentDef {
-  id: SegmentType;
+interface FilterDef {
+  id: string;
   label: string;
-  description: string;
   icon: typeof Users;
-  needsEvent: boolean;
 }
 
-const SEGMENTS: SegmentDef[] = [
+const INCLUDE_FILTERS: FilterDef[] = [
+  { id: "popup_signups", label: "Popup signups for this event", icon: Tag },
+  { id: "abandoned_carts", label: "Abandoned carts for this event", icon: ShoppingCart },
+  { id: "interest_signups", label: "Announcement signups", icon: Megaphone },
+  { id: "all_customers", label: "All customers (marketing consent)", icon: Users },
+];
+
+const EXCLUDE_FILTERS: FilterDef[] = [
+  { id: "purchased", label: "Already purchased for this event", icon: ShoppingBag },
+  { id: "guest_list", label: "Already on guest list", icon: ClipboardList },
+];
+
+interface Preset {
+  id: string;
+  label: string;
+  description: string;
+  icon: typeof Flame;
+  include: IncludeFilter[];
+  exclude: ExcludeFilter[];
+}
+
+const PRESETS: Preset[] = [
   {
-    id: "non_purchasers",
-    label: "Haven't purchased this event",
-    description: "Customers who have never bought tickets for the selected event",
-    icon: UserX,
-    needsEvent: true,
+    id: "warm_leads",
+    label: "Warm leads",
+    description: "Popup signups + abandoned carts, minus purchasers",
+    icon: Flame,
+    include: ["popup_signups", "abandoned_carts"],
+    exclude: ["purchased"],
   },
   {
-    id: "abandoned_carts",
-    label: "Abandoned cart for this event",
-    description: "People who added tickets to cart but didn't complete checkout",
-    icon: ShoppingCart,
-    needsEvent: true,
+    id: "cold_audience",
+    label: "Cold audience",
+    description: "All customers who haven't bought for this event",
+    icon: Snowflake,
+    include: ["all_customers"],
+    exclude: ["purchased"],
   },
   {
-    id: "popup_signups",
-    label: "Popup signups for this event",
-    description: "Email addresses captured by the discount popup on this event page",
-    icon: Tag,
-    needsEvent: true,
-  },
-  {
-    id: "interest_signups",
-    label: "Announcement signups for this event",
-    description: "People who signed up for event announcements or coming-soon notifications",
-    icon: Megaphone,
-    needsEvent: true,
-  },
-  {
-    id: "all_customers",
-    label: "All customers",
-    description: "Every customer with marketing consent across all events",
-    icon: Users,
-    needsEvent: false,
+    id: "re_engage",
+    label: "Re-engage",
+    description: "Cart abandoners who never came back",
+    icon: RotateCcw,
+    include: ["abandoned_carts"],
+    exclude: ["purchased"],
   },
 ];
 
 /* ═══════════════════════════════════════════════════════════
-   EMAIL PREVIEW — live rendered iframe
+   EMAIL PREVIEW
    ═══════════════════════════════════════════════════════════ */
-function EmailPreview({
-  previewUrl,
-}: {
-  previewUrl: string | null;
-}) {
+function EmailPreview({ previewUrl }: { previewUrl: string | null }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-  }, [previewUrl]);
+  useEffect(() => { setLoading(true); }, [previewUrl]);
 
   if (!previewUrl) {
     return (
@@ -141,9 +143,7 @@ function EmailPreview({
               type="button"
               onClick={() => setPreviewMode("desktop")}
               className={`rounded-md px-2 py-1 transition-all ${
-                previewMode === "desktop"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                previewMode === "desktop" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Monitor size={13} />
@@ -152,9 +152,7 @@ function EmailPreview({
               type="button"
               onClick={() => setPreviewMode("mobile")}
               className={`rounded-md px-2 py-1 transition-all ${
-                previewMode === "mobile"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                previewMode === "mobile" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Smartphone size={13} />
@@ -162,7 +160,6 @@ function EmailPreview({
           </div>
         </div>
       </CardHeader>
-
       <CardContent className="relative flex-1 p-4" style={{ minHeight: "600px" }}>
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
@@ -194,7 +191,7 @@ function EmailPreview({
    GUEST LIST OUTREACH BUILDER
    ═══════════════════════════════════════════════════════════ */
 export default function GuestListOutreachPage() {
-  // State
+  // Events + campaigns
   const [events, setEvents] = useState<EventOption[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
@@ -204,11 +201,14 @@ export default function GuestListOutreachPage() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
 
-  // Segment state
-  const [selectedSegment, setSelectedSegment] = useState<SegmentType>("non_purchasers");
-  const [segmentCount, setSegmentCount] = useState<number | null>(null);
-  const [loadingSegment, setLoadingSegment] = useState(false);
+  // Audience filters
+  const [includeFilters, setIncludeFilters] = useState<Set<IncludeFilter>>(new Set(["popup_signups"]));
+  const [excludeFilters, setExcludeFilters] = useState<Set<ExcludeFilter>>(new Set(["purchased"]));
+  const [audienceCount, setAudienceCount] = useState<number | null>(null);
+  const [loadingAudience, setLoadingAudience] = useState(false);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
+  const [activePreset, setActivePreset] = useState<string | null>("warm_leads");
+  const [filterCounts, setFilterCounts] = useState<Record<string, number>>({});
 
   // Copy states
   const [copiedHtml, setCopiedHtml] = useState(false);
@@ -216,14 +216,13 @@ export default function GuestListOutreachPage() {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedSubject, setCopiedSubject] = useState(false);
 
-  // Fetch events on mount
+  // Fetch events
   useEffect(() => {
     setLoadingEvents(true);
     fetch("/api/events")
       .then((r) => r.json())
       .then((json) => {
         const evts = (json.data || []) as EventOption[];
-        // Show all non-draft events, sorted by date descending
         const filtered = evts
           .filter((e) => e.status !== "draft")
           .sort((a, b) => {
@@ -232,9 +231,7 @@ export default function GuestListOutreachPage() {
             return db - da;
           });
         setEvents(filtered);
-        if (filtered.length > 0) {
-          setSelectedEventId(filtered[0].id);
-        }
+        if (filtered.length > 0) setSelectedEventId(filtered[0].id);
       })
       .catch(() => {})
       .finally(() => setLoadingEvents(false));
@@ -242,61 +239,86 @@ export default function GuestListOutreachPage() {
 
   // Fetch campaigns when event changes
   useEffect(() => {
-    if (!selectedEventId) {
-      setCampaigns([]);
-      setSelectedCampaignId("");
-      return;
-    }
+    if (!selectedEventId) { setCampaigns([]); setSelectedCampaignId(""); return; }
     setLoadingCampaigns(true);
     fetch(`/api/guest-list/campaigns?event_id=${selectedEventId}`)
       .then((r) => r.json())
       .then((json) => {
         const camps = (json.campaigns || []) as CampaignOption[];
-        const activeCamps = camps.filter((c) => c.active);
-        setCampaigns(activeCamps);
-        if (activeCamps.length > 0) {
-          setSelectedCampaignId(activeCamps[0].id);
-        } else {
-          setSelectedCampaignId("");
-        }
+        const active = camps.filter((c) => c.active);
+        setCampaigns(active);
+        setSelectedCampaignId(active.length > 0 ? active[0].id : "");
       })
-      .catch(() => {
-        setCampaigns([]);
-        setSelectedCampaignId("");
-      })
+      .catch(() => { setCampaigns([]); setSelectedCampaignId(""); })
       .finally(() => setLoadingCampaigns(false));
   }, [selectedEventId]);
 
-  // Update subject line when event changes
+  // Update subject when event changes
   useEffect(() => {
-    const event = events.find((e) => e.id === selectedEventId);
-    if (event) {
-      setSubjectLine(`Guest List — ${event.name}`);
-    }
+    const ev = events.find((e) => e.id === selectedEventId);
+    if (ev) setSubjectLine(`Guest List — ${ev.name}`);
   }, [selectedEventId, events]);
 
-  // Fetch segment count when segment or event changes
+  // Fetch individual filter counts when event changes
   useEffect(() => {
-    const segDef = SEGMENTS.find((s) => s.id === selectedSegment);
-    if (!segDef) return;
-    if (segDef.needsEvent && !selectedEventId) {
-      setSegmentCount(null);
-      return;
-    }
+    if (!selectedEventId) return;
+    const allFilters = [...INCLUDE_FILTERS, ...EXCLUDE_FILTERS];
+    Promise.all(
+      allFilters.map((f) =>
+        fetch(`/api/campaigns/audience?include=${f.id}&event_id=${selectedEventId}`)
+          .then((r) => r.json())
+          .then((j) => ({ id: f.id, count: j.count ?? 0 }))
+          .catch(() => ({ id: f.id, count: 0 }))
+      )
+    ).then((results) => {
+      const counts: Record<string, number> = {};
+      for (const r of results) counts[r.id] = r.count;
+      setFilterCounts(counts);
+    });
+  }, [selectedEventId]);
 
-    setLoadingSegment(true);
-    setSegmentCount(null);
-    const params = new URLSearchParams({ segment: selectedSegment });
-    if (selectedEventId) params.set("event_id", selectedEventId);
+  // Fetch combo audience count when filters change
+  useEffect(() => {
+    if (includeFilters.size === 0) { setAudienceCount(0); return; }
+    setLoadingAudience(true);
+    setAudienceCount(null);
+    const params = new URLSearchParams({
+      include: [...includeFilters].join(","),
+      event_id: selectedEventId || "",
+    });
+    if (excludeFilters.size > 0) params.set("exclude", [...excludeFilters].join(","));
 
     fetch(`/api/campaigns/audience?${params.toString()}`)
       .then((r) => r.json())
-      .then((json) => {
-        setSegmentCount(json.count ?? 0);
-      })
-      .catch(() => setSegmentCount(null))
-      .finally(() => setLoadingSegment(false));
-  }, [selectedSegment, selectedEventId]);
+      .then((j) => setAudienceCount(j.count ?? 0))
+      .catch(() => setAudienceCount(null))
+      .finally(() => setLoadingAudience(false));
+  }, [includeFilters, excludeFilters, selectedEventId]);
+
+  // Toggle handlers
+  const toggleInclude = useCallback((f: IncludeFilter) => {
+    setActivePreset(null);
+    setIncludeFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(f)) next.delete(f); else next.add(f);
+      return next;
+    });
+  }, []);
+
+  const toggleExclude = useCallback((f: ExcludeFilter) => {
+    setActivePreset(null);
+    setExcludeFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(f)) next.delete(f); else next.add(f);
+      return next;
+    });
+  }, []);
+
+  const applyPreset = useCallback((preset: Preset) => {
+    setActivePreset(preset.id);
+    setIncludeFilters(new Set(preset.include));
+    setExcludeFilters(new Set(preset.exclude));
+  }, []);
 
   // Preview URL
   const previewUrl = useMemo(() => {
@@ -309,7 +331,6 @@ export default function GuestListOutreachPage() {
     return `/api/campaigns/guest-list-outreach/preview?${params.toString()}`;
   }, [selectedEventId, selectedCampaignId, subjectLine, previewVersion]);
 
-  // Selected campaign data
   const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId);
 
   // Copy handlers
@@ -317,16 +338,11 @@ export default function GuestListOutreachPage() {
     if (!previewUrl) return;
     setCopyingHtml(true);
     try {
-      const res = await fetch(previewUrl);
-      const html = await res.text();
+      const html = await fetch(previewUrl).then((r) => r.text());
       await navigator.clipboard.writeText(html);
       setCopiedHtml(true);
       setTimeout(() => setCopiedHtml(false), 2500);
-    } catch {
-      // Clipboard API may fail in some contexts
-    } finally {
-      setCopyingHtml(false);
-    }
+    } catch { /* clipboard may fail */ } finally { setCopyingHtml(false); }
   }, [previewUrl]);
 
   const handleCopyUrl = useCallback(async () => {
@@ -347,42 +363,35 @@ export default function GuestListOutreachPage() {
     setDownloadingCsv(true);
     try {
       const params = new URLSearchParams({
-        segment: selectedSegment,
+        include: [...includeFilters].join(","),
+        event_id: selectedEventId || "",
         format: "csv",
       });
-      if (selectedEventId) params.set("event_id", selectedEventId);
-
+      if (excludeFilters.size > 0) params.set("exclude", [...excludeFilters].join(","));
       const res = await fetch(`/api/campaigns/audience?${params.toString()}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${selectedSegment}_audience.csv`;
+      a.download = "campaign_audience.csv";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch {
-      // Download failed
-    } finally {
-      setDownloadingCsv(false);
-    }
-  }, [selectedSegment, selectedEventId]);
+    } catch { /* download failed */ } finally { setDownloadingCsv(false); }
+  }, [includeFilters, excludeFilters, selectedEventId]);
 
-  const refreshPreview = useCallback(() => {
-    setPreviewVersion((v) => v + 1);
-  }, []);
+  const refreshPreview = useCallback(() => setPreviewVersion((v) => v + 1), []);
 
   return (
     <div>
-      {/* Breadcrumb + Header */}
+      {/* Header */}
       <div className="mb-6">
         <Link
           href="/admin/campaigns/"
           className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors no-underline hover:text-foreground"
         >
-          <ChevronLeft size={14} />
-          Campaigns
+          <ChevronLeft size={14} /> Campaigns
         </Link>
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
@@ -392,69 +401,46 @@ export default function GuestListOutreachPage() {
             <h1 className="font-mono text-base font-semibold tracking-wider text-foreground uppercase">
               Guest List Outreach
             </h1>
-            <p className="text-xs text-muted-foreground">
-              Generate an email to drive guest list applications
-            </p>
+            <p className="text-xs text-muted-foreground">Generate an email to drive guest list applications</p>
           </div>
         </div>
       </div>
 
-      {/* Two-panel layout */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        {/* ── LEFT PANEL: Config ── */}
+        {/* ── LEFT PANEL ── */}
         <div className="xl:col-span-4 space-y-4">
-          {/* Event selector */}
+          {/* Event */}
           <Card>
             <CardContent className="p-5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Event
-              </Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</Label>
               {loadingEvents ? (
-                <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 size={14} className="animate-spin" /> Loading events...
-                </div>
+                <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 size={14} className="animate-spin" /> Loading events...</div>
               ) : events.length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  No events found.
-                </p>
+                <p className="mt-2 text-sm text-muted-foreground">No events found.</p>
               ) : (
                 <select
                   value={selectedEventId}
                   onChange={(e) => setSelectedEventId(e.target.value)}
                   className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  {events.map((ev) => (
-                    <option key={ev.id} value={ev.id}>
-                      {ev.name}
-                    </option>
-                  ))}
+                  {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
                 </select>
               )}
             </CardContent>
           </Card>
 
-          {/* Campaign selector */}
+          {/* Campaign */}
           <Card>
             <CardContent className="p-5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Guest List Campaign
-              </Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Guest List Campaign</Label>
               {loadingCampaigns ? (
-                <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 size={14} className="animate-spin" /> Loading campaigns...
-                </div>
+                <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 size={14} className="animate-spin" /> Loading...</div>
               ) : campaigns.length === 0 ? (
                 <div className="mt-3 rounded-lg border border-dashed border-border p-4 text-center">
                   <AlertCircle size={20} className="mx-auto mb-2 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">
-                    No active guest list campaigns for this event.
-                  </p>
-                  <Link
-                    href="/admin/guest-list/"
-                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-                  >
-                    Create one in Guest List
-                    <ExternalLink size={11} />
+                  <p className="text-sm text-muted-foreground">No active campaigns for this event.</p>
+                  <Link href="/admin/guest-list/" className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
+                    Create one in Guest List <ExternalLink size={11} />
                   </Link>
                 </div>
               ) : (
@@ -465,25 +451,13 @@ export default function GuestListOutreachPage() {
                     className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     {campaigns.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.title}
-                        {c.default_price > 0 ? ` (£${c.default_price})` : " (Free)"}
-                      </option>
+                      <option key={c.id} value={c.id}>{c.title}{c.default_price > 0 ? ` (£${c.default_price})` : " (Free)"}</option>
                     ))}
                   </select>
                   {selectedCampaign && (
                     <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>
-                        {selectedCampaign.applied_count} applied
-                        {selectedCampaign.capacity
-                          ? ` / ${selectedCampaign.capacity} spots`
-                          : ""}
-                      </span>
-                      {selectedCampaign.default_price > 0 && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          £{selectedCampaign.default_price}
-                        </Badge>
-                      )}
+                      <span>{selectedCampaign.applied_count} applied{selectedCampaign.capacity ? ` / ${selectedCampaign.capacity} spots` : ""}</span>
+                      {selectedCampaign.default_price > 0 && <Badge variant="secondary" className="text-[10px]">£{selectedCampaign.default_price}</Badge>}
                     </div>
                   )}
                 </>
@@ -491,80 +465,134 @@ export default function GuestListOutreachPage() {
             </CardContent>
           </Card>
 
-          {/* Audience segment */}
+          {/* ── AUDIENCE BUILDER ── */}
           <Card>
             <CardContent className="p-5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Audience Segment
-              </Label>
-              <p className="mt-1 text-[11px] text-muted-foreground/60">
-                Choose who to target, then download the list for your email tool.
-              </p>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Audience</Label>
+              <p className="mt-1 text-[11px] text-muted-foreground/60">Build your target list with include/exclude filters.</p>
 
-              <div className="mt-3 space-y-1.5">
-                {SEGMENTS.map((seg) => {
-                  const Icon = seg.icon;
-                  const isSelected = selectedSegment === seg.id;
+              {/* Presets */}
+              <div className="mt-3 flex gap-2">
+                {PRESETS.map((p) => {
+                  const Icon = p.icon;
+                  const isActive = activePreset === p.id;
                   return (
                     <button
-                      key={seg.id}
+                      key={p.id}
                       type="button"
-                      onClick={() => setSelectedSegment(seg.id)}
-                      className={`w-full rounded-lg border px-3.5 py-3 text-left transition-all duration-150 ${
-                        isSelected
-                          ? "border-primary/30 bg-primary/5"
-                          : "border-border hover:border-border/80 hover:bg-accent/30"
+                      onClick={() => applyPreset(p)}
+                      title={p.description}
+                      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-medium transition-all ${
+                        isActive
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Icon
-                          size={14}
-                          className={isSelected ? "text-primary" : "text-muted-foreground/60"}
-                        />
-                        <span
-                          className={`text-[13px] font-medium ${
-                            isSelected ? "text-foreground" : "text-foreground/80"
-                          }`}
-                        >
-                          {seg.label}
-                        </span>
-                      </div>
-                      <p className="mt-1 ml-[26px] text-[11px] text-muted-foreground/60">
-                        {seg.description}
-                      </p>
+                      <Icon size={12} />
+                      {p.label}
                     </button>
                   );
                 })}
               </div>
 
-              {/* Segment count + download */}
+              {/* Include section */}
+              <div className="mt-4">
+                <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-emerald-400/80 mb-2">Include</p>
+                <div className="space-y-1">
+                  {INCLUDE_FILTERS.map((f) => {
+                    const Icon = f.icon;
+                    const checked = includeFilters.has(f.id as IncludeFilter);
+                    const count = filterCounts[f.id];
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => toggleInclude(f.id as IncludeFilter)}
+                        className={`flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-all ${
+                          checked
+                            ? "border-emerald-500/30 bg-emerald-500/5"
+                            : "border-transparent hover:bg-accent/30"
+                        }`}
+                      >
+                        <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
+                          checked ? "border-emerald-500 bg-emerald-500" : "border-muted-foreground/30"
+                        }`}>
+                          {checked && <CheckCircle2 size={10} className="text-white" />}
+                        </div>
+                        <Icon size={13} className={checked ? "text-emerald-400" : "text-muted-foreground/50"} />
+                        <span className={`flex-1 text-[12px] ${checked ? "text-foreground font-medium" : "text-foreground/70"}`}>
+                          {f.label}
+                        </span>
+                        {count !== undefined && (
+                          <span className="text-[10px] tabular-nums text-muted-foreground/50">{count.toLocaleString()}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Exclude section */}
+              <div className="mt-4">
+                <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-red-400/80 mb-2">Exclude</p>
+                <div className="space-y-1">
+                  {EXCLUDE_FILTERS.map((f) => {
+                    const Icon = f.icon;
+                    const checked = excludeFilters.has(f.id as ExcludeFilter);
+                    const count = filterCounts[f.id];
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => toggleExclude(f.id as ExcludeFilter)}
+                        className={`flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-all ${
+                          checked
+                            ? "border-red-500/30 bg-red-500/5"
+                            : "border-transparent hover:bg-accent/30"
+                        }`}
+                      >
+                        <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
+                          checked ? "border-red-500 bg-red-500" : "border-muted-foreground/30"
+                        }`}>
+                          {checked && <CheckCircle2 size={10} className="text-white" />}
+                        </div>
+                        <Icon size={13} className={checked ? "text-red-400" : "text-muted-foreground/50"} />
+                        <span className={`flex-1 text-[12px] ${checked ? "text-foreground font-medium" : "text-foreground/70"}`}>
+                          {f.label}
+                        </span>
+                        {count !== undefined && (
+                          <span className="text-[10px] tabular-nums text-muted-foreground/50">{count.toLocaleString()}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Result count + download */}
               <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-accent/20 px-3.5 py-2.5">
                 <div className="flex items-center gap-2">
                   <Users size={13} className="text-muted-foreground" />
-                  {loadingSegment ? (
+                  {loadingAudience ? (
                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Loader2 size={11} className="animate-spin" /> Counting...
                     </span>
-                  ) : segmentCount !== null ? (
+                  ) : audienceCount !== null ? (
                     <span className="text-xs font-medium text-foreground">
-                      {segmentCount.toLocaleString()} {segmentCount === 1 ? "person" : "people"}
+                      {audienceCount.toLocaleString()} {audienceCount === 1 ? "person" : "people"}
                     </span>
                   ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
+                    <span className="text-xs text-muted-foreground">Select filters above</span>
                   )}
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadCsv}
-                  disabled={!segmentCount || downloadingCsv}
+                  disabled={!audienceCount || downloadingCsv}
                   className="gap-1.5 text-xs h-7 px-2.5"
                 >
-                  {downloadingCsv ? (
-                    <Loader2 size={11} className="animate-spin" />
-                  ) : (
-                    <Download size={11} />
-                  )}
+                  {downloadingCsv ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
                   Download CSV
                 </Button>
               </div>
@@ -574,12 +602,7 @@ export default function GuestListOutreachPage() {
           {/* Subject line */}
           <Card>
             <CardContent className="p-5">
-              <Label
-                htmlFor="subject"
-                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              >
-                Subject Line
-              </Label>
+              <Label htmlFor="subject" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subject Line</Label>
               <div className="mt-2 flex gap-2">
                 <Input
                   id="subject"
@@ -589,77 +612,42 @@ export default function GuestListOutreachPage() {
                   placeholder="Guest List — Event Name"
                   className="flex-1 text-sm"
                 />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopySubject}
-                  className="shrink-0 gap-1.5 px-3"
-                >
-                  {copiedSubject ? (
-                    <CheckCircle2 size={13} className="text-success" />
-                  ) : (
-                    <Copy size={13} />
-                  )}
-                  <span className="text-xs">
-                    {copiedSubject ? "Copied" : "Copy"}
-                  </span>
+                <Button variant="outline" size="sm" onClick={handleCopySubject} className="shrink-0 gap-1.5 px-3">
+                  {copiedSubject ? <CheckCircle2 size={13} className="text-success" /> : <Copy size={13} />}
+                  <span className="text-xs">{copiedSubject ? "Copied" : "Copy"}</span>
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Action buttons */}
+          {/* Actions */}
           <div className="space-y-2.5">
-            <Button
-              onClick={handleCopyHtml}
-              disabled={!previewUrl || copyingHtml}
-              className="w-full gap-2"
-              size="lg"
-            >
-              {copyingHtml ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : copiedHtml ? (
-                <CheckCircle2 size={15} />
-              ) : (
-                <Copy size={15} />
-              )}
+            <Button onClick={handleCopyHtml} disabled={!previewUrl || copyingHtml} className="w-full gap-2" size="lg">
+              {copyingHtml ? <Loader2 size={15} className="animate-spin" /> : copiedHtml ? <CheckCircle2 size={15} /> : <Copy size={15} />}
               {copiedHtml ? "Email HTML Copied" : "Copy Email HTML"}
             </Button>
-
-            <Button
-              variant="outline"
-              onClick={handleCopyUrl}
-              disabled={!selectedCampaign?.url}
-              className="w-full gap-2"
-              size="lg"
-            >
-              {copiedUrl ? (
-                <CheckCircle2 size={15} className="text-success" />
-              ) : (
-                <Link2 size={15} />
-              )}
+            <Button variant="outline" onClick={handleCopyUrl} disabled={!selectedCampaign?.url} className="w-full gap-2" size="lg">
+              {copiedUrl ? <CheckCircle2 size={15} className="text-success" /> : <Link2 size={15} />}
               {copiedUrl ? "Campaign URL Copied" : "Copy Campaign URL"}
             </Button>
           </div>
 
-          {/* Usage instructions */}
+          {/* Instructions */}
           <Card className="border-dashed">
             <CardContent className="p-5">
-              <p className="text-xs font-semibold text-muted-foreground mb-2">
-                How to use
-              </p>
+              <p className="text-xs font-semibold text-muted-foreground mb-2">How to use</p>
               <ol className="space-y-1.5 text-xs text-muted-foreground/80 list-decimal list-inside">
                 <li>Select your event and guest list campaign</li>
-                <li>Choose an audience segment and download the CSV</li>
+                <li>Build your audience with include/exclude filters</li>
+                <li>Download the CSV and import into your email tool</li>
                 <li>Copy the subject line and email HTML</li>
-                <li>Import the CSV into your email tool (ActiveCampaign, Mailchimp, etc.)</li>
-                <li>Paste the email HTML and send</li>
+                <li>Paste into ActiveCampaign, Mailchimp, etc. and send</li>
               </ol>
             </CardContent>
           </Card>
         </div>
 
-        {/* ── RIGHT PANEL: Preview ── */}
+        {/* ── RIGHT PANEL ── */}
         <div className="xl:col-span-8" style={{ minHeight: "700px" }}>
           <EmailPreview previewUrl={previewUrl} />
         </div>

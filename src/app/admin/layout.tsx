@@ -125,7 +125,7 @@ const NAV_SECTIONS: NavSection[] = [
         icon: Send,
         children: [
           { href: "/admin/campaigns/", label: "Overview" },
-          { href: "/admin/campaigns/guest-list-outreach/", label: "Guest List Outreach" },
+          { href: "/admin/campaigns/email/", label: "Email Campaigns" },
         ],
       },
       { href: "/admin/communications/", label: "Communications", icon: Mail },

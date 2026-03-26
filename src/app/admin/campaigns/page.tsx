@@ -5,28 +5,20 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ChevronRight,
-  ClipboardCheck,
-  Megaphone,
+  Mail,
   Smartphone,
   Sparkles,
 } from "lucide-react";
 
-const CAMPAIGN_TYPES = [
+const CHANNELS = [
   {
-    name: "Guest List Outreach",
+    name: "Email Campaigns",
     description:
-      "Send a beautifully designed email to drive guest list applications for an event",
-    href: "/admin/campaigns/guest-list-outreach/",
-    icon: ClipboardCheck,
+      "Choose from proven playbooks to create beautiful, high-converting emails for your audience",
+    href: "/admin/campaigns/email/",
+    icon: Mail,
     status: "live" as const,
-  },
-  {
-    name: "Event Promotion",
-    description:
-      "Create promotional emails to boost ticket sales for upcoming events",
-    href: "#",
-    icon: Megaphone,
-    status: "coming-soon" as const,
+    detail: "1 playbook ready, more coming",
   },
   {
     name: "SMS Campaigns",
@@ -35,6 +27,7 @@ const CAMPAIGN_TYPES = [
     href: "#",
     icon: Smartphone,
     status: "coming-soon" as const,
+    detail: "On the roadmap",
   },
 ];
 
@@ -47,57 +40,59 @@ export default function CampaignsPage() {
           Campaigns
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Create and send outbound campaigns to your audience.
+          Create and send targeted campaigns to your audience.
         </p>
       </div>
 
-      {/* Campaign type cards */}
+      {/* Channel cards */}
       <div className="space-y-3">
-        {CAMPAIGN_TYPES.map((c) => {
+        {CHANNELS.map((c) => {
           const Icon = c.icon;
           const isLive = c.status === "live";
 
           const card = (
-            <Card className={`p-5 transition-all duration-200 ${isLive ? "hover:border-primary/20" : ""}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded-lg"
-                    style={{
-                      backgroundColor: isLive ? "rgba(139,92,246,0.1)" : "var(--color-accent)",
-                    }}
-                  >
-                    <Icon
-                      size={16}
-                      className={isLive ? "text-primary" : "text-muted-foreground"}
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-sm font-medium text-foreground">
-                        {c.name}
-                      </span>
-                      {isLive ? (
-                        <Badge variant="default" className="text-[10px] py-0">
-                          New
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-[10px] py-0">
-                          Coming soon
-                        </Badge>
-                      )}
+            <Card className={`overflow-hidden transition-all duration-200 ${isLive ? "hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5" : ""}`}>
+              {/* Accent bar */}
+              <div
+                className="h-1 w-full"
+                style={{
+                  background: isLive
+                    ? "linear-gradient(90deg, rgba(139,92,246,0.6), rgba(139,92,246,0.15))"
+                    : "var(--color-border)",
+                }}
+              />
+              <div className="p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-xl"
+                      style={{
+                        backgroundColor: isLive ? "rgba(139,92,246,0.1)" : "var(--color-accent)",
+                        boxShadow: isLive ? "0 0 16px rgba(139,92,246,0.08)" : "none",
+                      }}
+                    >
+                      <Icon size={18} className={isLive ? "text-primary" : "text-muted-foreground/50"} />
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {c.description}
-                    </p>
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-sm font-semibold text-foreground">{c.name}</span>
+                        {isLive ? (
+                          <Badge variant="default" className="text-[10px] py-0">New</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] py-0">Coming soon</Badge>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{c.description}</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground/50">{c.detail}</p>
+                    </div>
                   </div>
+                  {isLive && (
+                    <ChevronRight
+                      size={16}
+                      className="text-muted-foreground/30 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+                    />
+                  )}
                 </div>
-                {isLive && (
-                  <ChevronRight
-                    size={16}
-                    className="text-muted-foreground/30 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
-                  />
-                )}
               </div>
             </Card>
           );
@@ -107,26 +102,20 @@ export default function CampaignsPage() {
               {card}
             </Link>
           ) : (
-            <div key={c.name} className="opacity-60 cursor-default">
+            <div key={c.name} className="opacity-50 cursor-default">
               {card}
             </div>
           );
         })}
       </div>
 
-      {/* Roadmap hint */}
-      <Card className="mt-8 border-dashed">
-        <div className="p-8 text-center">
-          <Sparkles size={20} className="mx-auto mb-3 text-muted-foreground" />
-          <p className="mb-1 text-sm font-medium text-muted-foreground">
-            More campaign types on the way
-          </p>
-          <p className="mx-auto max-w-md text-xs text-muted-foreground/60">
-            Event promotions, SMS outreach, re-engagement sequences, and
-            win-back campaigns are on the roadmap.
-          </p>
-        </div>
-      </Card>
+      {/* Roadmap */}
+      <div className="mt-8 text-center">
+        <Sparkles size={16} className="mx-auto mb-2 text-muted-foreground/30" />
+        <p className="text-xs text-muted-foreground/50">
+          Push notifications, in-app messages, and multi-step sequences are on the roadmap.
+        </p>
+      </div>
     </div>
   );
 }

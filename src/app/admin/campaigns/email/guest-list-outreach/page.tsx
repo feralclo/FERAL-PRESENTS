@@ -388,10 +388,10 @@ export default function GuestListOutreachPage() {
       {/* Header */}
       <div className="mb-6">
         <Link
-          href="/admin/campaigns/"
+          href="/admin/campaigns/email/"
           className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors no-underline hover:text-foreground"
         >
-          <ChevronLeft size={14} /> Campaigns
+          <ChevronLeft size={14} /> Email Campaigns
         </Link>
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">

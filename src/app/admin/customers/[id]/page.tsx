@@ -1427,72 +1427,77 @@ function EventEngagementSection({
                 {/* Event name */}
                 <p className="text-sm font-medium text-foreground mb-3">{eng.eventName}</p>
 
-                {/* Funnel steps */}
-                <div className="flex items-center gap-1">
+                {/* Funnel steps with labels */}
+                <div className="flex items-start gap-0">
                   {FUNNEL_STEPS.map((step, i) => {
                     const date = eng.steps[step.key];
                     const isCompleted = !!date;
                     const StepIcon = step.icon;
-                    // Connector line before each step (except first)
                     return (
-                      <div key={step.key} className="flex items-center">
+                      <div key={step.key} className="flex items-start">
                         {i > 0 && (
                           <div
-                            className="h-px w-4 mx-0.5 transition-colors"
-                            style={{
-                              backgroundColor: isCompleted
-                                ? step.color
-                                : "var(--color-border)",
-                            }}
+                            className="mt-3.5 h-px w-3 shrink-0 transition-colors"
+                            style={{ backgroundColor: isCompleted ? step.color : "var(--color-border)" }}
                           />
                         )}
-                        <TooltipProvider delayDuration={200}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div
-                                className="flex h-7 w-7 items-center justify-center rounded-full border transition-all"
-                                style={
-                                  isCompleted
-                                    ? {
-                                        borderColor: step.color,
-                                        backgroundColor: `${step.color}15`,
-                                        boxShadow: `0 0 8px ${step.color}30`,
-                                      }
-                                    : {
-                                        borderColor: "var(--color-border)",
-                                        backgroundColor: "transparent",
-                                      }
-                                }
-                              >
-                                <StepIcon
-                                  size={12}
-                                  style={{ color: isCompleted ? step.color : "var(--color-muted-foreground)" }}
-                                  className={isCompleted ? "" : "opacity-30"}
-                                />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-xs">
-                              <p className="font-medium">{step.label}</p>
-                              {date && (
-                                <p className="text-muted-foreground">
-                                  {new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                                </p>
-                              )}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <div className="flex flex-col items-center" style={{ width: "52px" }}>
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className="flex h-7 w-7 items-center justify-center rounded-full border transition-all"
+                                  style={
+                                    isCompleted
+                                      ? {
+                                          borderColor: step.color,
+                                          backgroundColor: `${step.color}15`,
+                                          boxShadow: `0 0 8px ${step.color}30`,
+                                        }
+                                      : {
+                                          borderColor: "var(--color-border)",
+                                          backgroundColor: "transparent",
+                                        }
+                                  }
+                                >
+                                  <StepIcon
+                                    size={11}
+                                    style={{ color: isCompleted ? step.color : "var(--color-muted-foreground)" }}
+                                    className={isCompleted ? "" : "opacity-25"}
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                <p className="font-medium">{step.label}</p>
+                                {date && (
+                                  <p className="text-muted-foreground">
+                                    {new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                  </p>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <span
+                            className="mt-1 text-center leading-tight"
+                            style={{
+                              fontSize: "8px",
+                              fontWeight: isCompleted ? 600 : 400,
+                              color: isCompleted ? step.color : "var(--color-muted-foreground)",
+                              opacity: isCompleted ? 1 : 0.4,
+                              letterSpacing: "0.3px",
+                            }}
+                          >
+                            {step.label}
+                          </span>
+                          {date && (
+                            <span className="text-[8px] text-muted-foreground/50 mt-0.5">
+                              {new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Date summary */}
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
-                  {completedSteps.map((step) => (
-                    <span key={step.key} className="text-[10px] text-muted-foreground/60">
-                      {step.label} · {new Date(eng.steps[step.key]!).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                    </span>
-                  ))}
                 </div>
               </div>
             );

@@ -399,8 +399,11 @@ export default function GuestListOutreachPage() {
       });
       const result = await sendRes.json();
       setSendResult({ sent: result.sent || 0, failed: result.failed || 0 });
+      // Auto-clear success state after 5 seconds
+      setTimeout(() => setSendResult(null), 5000);
     } catch {
       setSendResult({ sent: 0, failed: audienceCount });
+      setTimeout(() => setSendResult(null), 5000);
     } finally {
       setSending(false);
     }
@@ -516,10 +519,9 @@ export default function GuestListOutreachPage() {
           <Card>
             <CardContent className="p-5">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Audience</Label>
-              <p className="mt-1 text-[11px] text-muted-foreground/60">Build your target list with include/exclude filters.</p>
 
               {/* Presets */}
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 space-y-1.5">
                 {PRESETS.map((p) => {
                   const Icon = p.icon;
                   const isActive = activePreset === p.id;
@@ -528,23 +530,34 @@ export default function GuestListOutreachPage() {
                       key={p.id}
                       type="button"
                       onClick={() => applyPreset(p)}
-                      title={p.description}
-                      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-medium transition-all ${
+                      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all ${
                         isActive
-                          ? "border-primary/40 bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-border hover:border-primary/20 hover:bg-accent/30"
                       }`}
                     >
-                      <Icon size={12} />
-                      {p.label}
+                      <Icon size={14} className={isActive ? "text-primary" : "text-muted-foreground/50"} />
+                      <div className="min-w-0 flex-1">
+                        <span className={`text-[12px] font-medium ${isActive ? "text-primary" : "text-foreground/80"}`}>
+                          {p.label}
+                        </span>
+                        <p className="text-[10px] text-muted-foreground/50 mt-0.5">{p.description}</p>
+                      </div>
                     </button>
                   );
                 })}
               </div>
 
+              {/* Fine-tune toggle */}
+              <details className="mt-3 group">
+                <summary className="cursor-pointer text-[10px] font-medium text-muted-foreground/50 hover:text-muted-foreground transition-colors select-none">
+                  Fine-tune filters
+                </summary>
+                <div className="mt-2 rounded-lg border border-border/50 bg-accent/10 p-3 space-y-3">
+
               {/* Include section */}
-              <div className="mt-4">
-                <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-emerald-400/80 mb-2">Include</p>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-emerald-400/80 mb-2">Who to target</p>
                 <div className="space-y-1">
                   {INCLUDE_FILTERS.map((f) => {
                     const Icon = f.icon;
@@ -580,8 +593,8 @@ export default function GuestListOutreachPage() {
               </div>
 
               {/* Exclude section */}
-              <div className="mt-4">
-                <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-red-400/80 mb-2">Exclude</p>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-red-400/80 mb-2">Who to skip</p>
                 <div className="space-y-1">
                   {EXCLUDE_FILTERS.map((f) => {
                     const Icon = f.icon;
@@ -615,6 +628,9 @@ export default function GuestListOutreachPage() {
                   })}
                 </div>
               </div>
+
+                </div>
+              </details>
 
               {/* Result count + download */}
               <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-accent/20 px-3.5 py-2.5">
@@ -685,8 +701,10 @@ export default function GuestListOutreachPage() {
               {sending
                 ? "Sending..."
                 : sendResult
-                  ? `Sent to ${sendResult.sent} ${sendResult.sent === 1 ? "person" : "people"}`
-                  : `Send to ${audienceCount?.toLocaleString() || 0} ${audienceCount === 1 ? "person" : "people"}`}
+                  ? `Sent to ${sendResult.sent.toLocaleString()} ${sendResult.sent === 1 ? "person" : "people"}${sendResult.failed > 0 ? ` (${sendResult.failed} failed)` : ""}`
+                  : audienceCount
+                    ? `Send to ${audienceCount.toLocaleString()} ${audienceCount === 1 ? "person" : "people"}`
+                    : "Select an audience above"}
             </Button>
 
             <div className="flex gap-2">

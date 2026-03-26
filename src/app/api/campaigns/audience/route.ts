@@ -246,19 +246,22 @@ async function fetchFilterEmails(
 
     case "purchased": {
       if (!eventId) return [];
+      // Orders link to customers via customer_id, not email directly
       const { data } = await supabase
         .from(TABLES.ORDERS)
-        .select("customer_email")
+        .select("customer:customers(email, first_name, last_name)")
         .eq("org_id", orgId)
         .eq("event_id", eventId)
         .in("status", ["completed", "confirmed"]);
 
       return dedup(
-        (data || []).map((o: { customer_email: string }) => ({
-          email: o.customer_email,
-          first_name: "",
-          last_name: "",
-        }))
+        (data || [])
+          .filter((o: { customer: { email: string } | null }) => o.customer?.email)
+          .map((o: { customer: { email: string; first_name: string; last_name: string } }) => ({
+            email: o.customer.email,
+            first_name: o.customer.first_name || "",
+            last_name: o.customer.last_name || "",
+          }))
       );
     }
 

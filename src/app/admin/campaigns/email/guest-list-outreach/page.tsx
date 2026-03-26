@@ -26,6 +26,7 @@ import {
   Megaphone,
   ShoppingBag,
   ClipboardList,
+  Send,
   Flame,
   Snowflake,
   RotateCcw,
@@ -210,7 +211,9 @@ export default function GuestListOutreachPage() {
   const [activePreset, setActivePreset] = useState<string | null>("warm_leads");
   const [filterCounts, setFilterCounts] = useState<Record<string, number>>({});
 
-  // Copy states
+  // Send + copy states
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ sent: number; failed: number } | null>(null);
   const [copiedHtml, setCopiedHtml] = useState(false);
   const [copyingHtml, setCopyingHtml] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -358,6 +361,50 @@ export default function GuestListOutreachPage() {
     setCopiedSubject(true);
     setTimeout(() => setCopiedSubject(false), 2500);
   }, [subjectLine]);
+
+  const handleSendCampaign = useCallback(async () => {
+    if (!audienceCount || !selectedEventId || sending) return;
+    const confirmed = window.confirm(
+      `Send this email to ${audienceCount.toLocaleString()} ${audienceCount === 1 ? "person" : "people"}?`
+    );
+    if (!confirmed) return;
+
+    setSending(true);
+    setSendResult(null);
+    try {
+      // Fetch the audience list
+      const params = new URLSearchParams({
+        include: [...includeFilters].join(","),
+        event_id: selectedEventId,
+      });
+      if (excludeFilters.size > 0) params.set("exclude", [...excludeFilters].join(","));
+      const audienceRes = await fetch(`/api/campaigns/audience?${params.toString()}`);
+      const { audience } = await audienceRes.json();
+
+      if (!audience || audience.length === 0) {
+        setSendResult({ sent: 0, failed: 0 });
+        return;
+      }
+
+      // Send via API
+      const sendRes = await fetch("/api/campaigns/guest-list-outreach/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: selectedEventId,
+          campaign_id: selectedCampaignId || undefined,
+          subject: subjectLine || undefined,
+          recipients: audience,
+        }),
+      });
+      const result = await sendRes.json();
+      setSendResult({ sent: result.sent || 0, failed: result.failed || 0 });
+    } catch {
+      setSendResult({ sent: 0, failed: audienceCount });
+    } finally {
+      setSending(false);
+    }
+  }, [audienceCount, selectedEventId, selectedCampaignId, subjectLine, includeFilters, excludeFilters, sending]);
 
   const handleDownloadCsv = useCallback(async () => {
     setDownloadingCsv(true);
@@ -622,14 +669,48 @@ export default function GuestListOutreachPage() {
 
           {/* Actions */}
           <div className="space-y-2.5">
-            <Button onClick={handleCopyHtml} disabled={!previewUrl || copyingHtml} className="w-full gap-2" size="lg">
-              {copyingHtml ? <Loader2 size={15} className="animate-spin" /> : copiedHtml ? <CheckCircle2 size={15} /> : <Copy size={15} />}
-              {copiedHtml ? "Email HTML Copied" : "Copy Email HTML"}
+            <Button
+              onClick={handleSendCampaign}
+              disabled={!audienceCount || !selectedEventId || sending}
+              className="w-full gap-2"
+              size="lg"
+            >
+              {sending ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : sendResult ? (
+                <CheckCircle2 size={15} />
+              ) : (
+                <Send size={15} />
+              )}
+              {sending
+                ? "Sending..."
+                : sendResult
+                  ? `Sent to ${sendResult.sent} ${sendResult.sent === 1 ? "person" : "people"}`
+                  : `Send to ${audienceCount?.toLocaleString() || 0} ${audienceCount === 1 ? "person" : "people"}`}
             </Button>
-            <Button variant="outline" onClick={handleCopyUrl} disabled={!selectedCampaign?.url} className="w-full gap-2" size="lg">
-              {copiedUrl ? <CheckCircle2 size={15} className="text-success" /> : <Link2 size={15} />}
-              {copiedUrl ? "Campaign URL Copied" : "Copy Campaign URL"}
-            </Button>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleCopyHtml}
+                disabled={!previewUrl || copyingHtml}
+                className="flex-1 gap-1.5 text-xs"
+                size="sm"
+              >
+                {copiedHtml ? <CheckCircle2 size={12} className="text-success" /> : <Copy size={12} />}
+                {copiedHtml ? "Copied" : "Copy HTML"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCopyUrl}
+                disabled={!selectedCampaign?.url}
+                className="flex-1 gap-1.5 text-xs"
+                size="sm"
+              >
+                {copiedUrl ? <CheckCircle2 size={12} className="text-success" /> : <Link2 size={12} />}
+                {copiedUrl ? "Copied" : "Copy URL"}
+              </Button>
+            </div>
           </div>
 
           {/* Instructions */}
@@ -639,10 +720,12 @@ export default function GuestListOutreachPage() {
               <ol className="space-y-1.5 text-xs text-muted-foreground/80 list-decimal list-inside">
                 <li>Select your event and guest list campaign</li>
                 <li>Build your audience with include/exclude filters</li>
-                <li>Download the CSV and import into your email tool</li>
-                <li>Copy the subject line and email HTML</li>
-                <li>Paste into ActiveCampaign, Mailchimp, etc. and send</li>
+                <li>Preview the email on the right</li>
+                <li>Hit send — emails go out via your configured sender</li>
               </ol>
+              <p className="mt-2 text-[10px] text-muted-foreground/40">
+                Or use Copy HTML / Copy URL to paste into an external email tool.
+              </p>
             </CardContent>
           </Card>
         </div>

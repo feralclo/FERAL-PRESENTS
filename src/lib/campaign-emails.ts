@@ -112,8 +112,8 @@ export function buildGuestListOutreachEmail(
 
                 <!-- Badge -->
                 <tr>
-                  <td style="padding: 24px 40px 0; text-align: center;">
-                    <div style="display: inline-block; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 6px 16px;">
+                  <td style="padding: 28px 40px 0; text-align: center;">
+                    <div style="display: inline-block; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: ${accent}; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 5px 14px;">
                       GUEST LIST
                     </div>
                   </td>
@@ -121,8 +121,8 @@ export function buildGuestListOutreachEmail(
 
                 <!-- Heading -->
                 <tr>
-                  <td style="padding: 20px 40px 12px; text-align: center;">
-                    <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 26px; font-weight: 700; color: #ffffff; line-height: 1.25;">
+                  <td style="padding: 18px 40px 8px; text-align: center;">
+                    <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 600; color: #ffffff; line-height: 1.4; letter-spacing: 0.2px;">
                       Guest list for ${eventName} is now open.
                     </h1>
                   </td>
@@ -130,9 +130,9 @@ export function buildGuestListOutreachEmail(
 
                 <!-- Message -->
                 <tr>
-                  <td style="padding: 0 40px 36px; text-align: center;">
-                    <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #999999;">
-                      Apply now to secure your spot.
+                  <td style="padding: 0 40px 32px; text-align: center;">
+                    <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #777777;">
+                      Apply below to secure your spot.
                     </p>
                   </td>
                 </tr>
@@ -171,17 +171,17 @@ export function buildGuestListOutreachEmail(
 
                 <!-- CTA Button -->
                 <tr>
-                  <td style="padding: 32px 40px 0; text-align: center;">
+                  <td style="padding: 28px 40px 0; text-align: center;">
                     <!--[if mso]>
-                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(opts.applyUrl)}" style="height:52px;v-text-anchor:middle;width:100%;" arcsize="14%" fill="t">
+                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(opts.applyUrl)}" style="height:46px;v-text-anchor:middle;width:100%;" arcsize="14%" fill="t">
                       <v:fill type="tile" color="${accent}" />
                       <w:anchorlock/>
-                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:bold;letter-spacing:0.5px;">Apply Now</center>
+                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.5px;">Apply now</center>
                     </v:roundrect>
                     <![endif]-->
                     <!--[if !mso]><!-->
-                    <a href="${escapeHtml(opts.applyUrl)}" style="display: block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; text-decoration: none; padding: 16px 24px; border-radius: 10px; text-align: center; mso-padding-alt: 0;">
-                      Apply Now
+                    <a href="${escapeHtml(opts.applyUrl)}" style="display: block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-decoration: none; padding: 14px 24px; border-radius: 8px; text-align: center; mso-padding-alt: 0;">
+                      Apply now
                     </a>
                     <!--<![endif]-->
                   </td>
@@ -189,9 +189,9 @@ export function buildGuestListOutreachEmail(
 
                 <!-- Scarcity copy -->
                 <tr>
-                  <td style="padding: 20px 40px 36px; text-align: center;">
-                    <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 1.6; color: #999999;">
-                      Spaces are limited. Applications are reviewed on a first-come basis.
+                  <td style="padding: 16px 40px 32px; text-align: center;">
+                    <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.6; color: #888888;">
+                      Spaces are limited. Applications reviewed on a first-come basis.
                     </p>
                   </td>
                 </tr>

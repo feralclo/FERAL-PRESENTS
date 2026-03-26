@@ -111,9 +111,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Final audience = include minus exclude
+    // Fetch all emails with marketing consent (GDPR compliance)
+    const { data: consentedCustomers } = await supabase
+      .from(TABLES.CUSTOMERS)
+      .select("email")
+      .eq("org_id", orgId)
+      .eq("marketing_consent", true);
+
+    const consentedEmails = new Set(
+      (consentedCustomers || []).map((c: { email: string }) => c.email?.toLowerCase())
+    );
+
+    // Final audience = include minus exclude, filtered to marketing consent only
     const audience = [...includeMap.values()].filter(
-      (m) => !excludeEmails.has(m.email.toLowerCase())
+      (m) => !excludeEmails.has(m.email.toLowerCase()) && consentedEmails.has(m.email.toLowerCase())
     );
 
     // CSV format

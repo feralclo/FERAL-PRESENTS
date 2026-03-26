@@ -145,10 +145,17 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < batchEmails.length; i += 100) {
       const batch = batchEmails.slice(i, i + 100);
       try {
-        await resend.batch.send(batch);
-        sent += batch.length;
+        const result = await resend.batch.send(batch);
+        // Resend batch returns data array — count actual successes
+        if (result.data && Array.isArray(result.data)) {
+          sent += result.data.length;
+          failed += batch.length - result.data.length;
+        } else {
+          sent += batch.length;
+        }
       } catch (err) {
         console.error(`[campaign-send] Batch ${i}-${i + batch.length} failed:`, err);
+        Sentry.captureException(err);
         failed += batch.length;
       }
     }

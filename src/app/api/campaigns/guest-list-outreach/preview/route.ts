@@ -79,11 +79,14 @@ export async function GET(request: NextRequest) {
       emailSettings.logo_url = `${origin}${emailSettings.logo_url.startsWith("/") ? "" : "/"}${emailSettings.logo_url}`;
     }
 
-    // Resolve event data (or fallback to sample)
+    // Resolve event data — if event_id was provided but not found, 404
     const event = eventRes.data;
-    const eventName = event?.name || "Summer Rave — Vol. 3";
+    if (eventId && !event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+    const eventName = event?.name || "Sample Event";
     const venueParts = [event?.venue_name, event?.venue_city].filter(Boolean);
-    const venue = venueParts.length > 0 ? venueParts.join(", ") : "The Warehouse, London";
+    const venue = venueParts.length > 0 ? venueParts.join(", ") : "Venue TBC";
     const eventDate = event?.date_start
       ? new Date(event.date_start).toLocaleDateString("en-GB", {
           weekday: "long",

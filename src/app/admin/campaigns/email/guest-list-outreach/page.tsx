@@ -534,6 +534,10 @@ export default function GuestListOutreachPage() {
       });
       if (excludeFilters.size > 0) params.set("exclude", [...excludeFilters].join(","));
       const audienceRes = await fetch(`/api/campaigns/audience?${params.toString()}`);
+      if (!audienceRes.ok) {
+        setSendResult({ sent: 0, failed: 0 });
+        return;
+      }
       const { audience } = await audienceRes.json();
 
       if (!audience || audience.length === 0) {
@@ -660,7 +664,9 @@ export default function GuestListOutreachPage() {
                   {selectedCampaign && (
                     <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                       <span>{selectedCampaign.applied_count} applied{selectedCampaign.capacity ? ` / ${selectedCampaign.capacity} spots` : ""}</span>
-                      {selectedCampaign.default_price > 0 && <Badge variant="secondary" className="text-[10px]">£{selectedCampaign.default_price}</Badge>}
+                      <Badge variant="secondary" className="text-[10px]">
+                        {selectedCampaign.default_price > 0 ? `£${selectedCampaign.default_price}` : "Free"}
+                      </Badge>
                     </div>
                   )}
                 </>

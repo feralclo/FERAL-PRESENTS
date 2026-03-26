@@ -5,9 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import {
   upgradeGuestAccessLevel,
   sendGuestListUpgradeEmail,
-  ACCESS_LEVELS,
 } from "@/lib/guest-list";
-import { sendOrderConfirmationEmail } from "@/lib/email";
 import type { AccessLevel } from "@/types/orders";
 import * as Sentry from "@sentry/nextjs";
 
@@ -23,8 +21,7 @@ const VALID_ACCESS_LEVELS: AccessLevel[] = [
  * POST /api/guest-list/upgrade — Upgrade a guest's access level
  *
  * Keeps the same QR code (ticket_code). Updates ticket_type_id, order_items,
- * and guest_list entry. Sends an upgrade notification email, then resends the
- * order confirmation with updated PDF tickets.
+ * and guest_list entry. Sends an upgrade notification email.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -90,78 +87,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Send upgrade notification email
     if (guest.email) {
-      // 1. Resend order confirmation with updated PDF (priority — has the ticket)
-      if (guest.order_id) {
-        try {
-          const { data: order } = await supabase
-            .from(TABLES.ORDERS)
-            .select(
-              "id, order_number, total, currency, customer:customers(id, email, first_name, last_name), tickets:tickets(id, ticket_code, ticket_type_id, merch_size, ticket_type:ticket_types(name, merch_name, product:products(name)))"
-            )
-            .eq("id", guest.order_id)
-            .eq("org_id", orgId)
-            .single();
-
-          if (order) {
-            const customer = order.customer as unknown as {
-              email: string;
-              first_name: string;
-              last_name: string;
-            } | null;
-            const tickets = (order.tickets || []) as unknown as {
-              ticket_code: string;
-              merch_size?: string;
-              ticket_type: {
-                name: string;
-                merch_name?: string;
-                product?: { name: string } | null;
-              } | null;
-            }[];
-
-            if (customer?.email) {
-              await sendOrderConfirmationEmail({
-                orgId,
-                order: {
-                  id: order.id,
-                  order_number: order.order_number,
-                  total: Number(order.total),
-                  currency: (event.currency || order.currency || "GBP").toUpperCase(),
-                },
-                customer: {
-                  first_name: customer.first_name,
-                  last_name: customer.last_name,
-                  email: customer.email,
-                },
-                event: {
-                  name: event.name,
-                  slug: event.slug,
-                  venue_name: event.venue_name,
-                  date_start: event.date_start,
-                  doors_time: event.doors_time,
-                  currency: event.currency,
-                },
-                tickets: tickets.map((t) => ({
-                  ticket_code: t.ticket_code,
-                  ticket_type_name: t.ticket_type?.name || ACCESS_LEVELS[new_access_level as AccessLevel].ticketLabel,
-                  merch_size: t.merch_size,
-                  merch_name: t.merch_size
-                    ? t.ticket_type?.product?.name || t.ticket_type?.merch_name || undefined
-                    : undefined,
-                })),
-                isGuestList: true,
-              });
-              console.log(`[guest-list-upgrade] PDF ticket resent to ${customer.email}`);
-            }
-          }
-        } catch (emailErr) {
-          console.error("[guest-list-upgrade] Failed to resend order confirmation:", emailErr);
-          Sentry.captureException(emailErr);
-        }
-      }
-
-      // 2. Send upgrade notification email (fire-and-forget — PDF is the priority)
-      sendGuestListUpgradeEmail({
+      await sendGuestListUpgradeEmail({
         orgId,
         guestName: guest.name,
         guestEmail: guest.email,
@@ -171,7 +99,7 @@ export async function POST(request: NextRequest) {
         venueName: event.venue_name || undefined,
         previousLevel,
         newLevel: new_access_level as AccessLevel,
-      }).catch(() => {});
+      });
     }
 
     return NextResponse.json({

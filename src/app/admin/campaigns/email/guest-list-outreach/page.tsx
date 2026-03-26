@@ -423,7 +423,7 @@ export default function GuestListOutreachPage() {
     const allFilters = [...INCLUDE_FILTERS, ...EXCLUDE_FILTERS];
     Promise.all(
       allFilters.map((f) =>
-        fetch(`/api/campaigns/audience?include=${f.id}&event_id=${selectedEventId}`)
+        fetch(`/api/campaigns/audience?include=${f.id}&event_id=${selectedEventId}&counts_only=1`)
           .then((r) => r.json())
           .then((j) => ({ id: f.id, count: j.count ?? 0 }))
           .catch(() => ({ id: f.id, count: 0 }))

@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const eventId = searchParams.get("event_id");
     const format = searchParams.get("format") || "json";
+    const skipConsent = searchParams.get("counts_only") === "1";
 
     // Parse include/exclude filters (new API) or single segment (legacy)
     const legacySegment = searchParams.get("segment");
@@ -111,21 +112,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch all emails with marketing consent (GDPR compliance)
-    const { data: consentedCustomers } = await supabase
-      .from(TABLES.CUSTOMERS)
-      .select("email")
-      .eq("org_id", orgId)
-      .eq("marketing_consent", true);
+    // Apply marketing consent filter (skip for raw display counts)
+    let audience: AudienceMember[];
+    if (skipConsent) {
+      audience = [...includeMap.values()].filter(
+        (m) => !excludeEmails.has(m.email.toLowerCase())
+      );
+    } else {
+      // Fetch all emails with marketing consent (GDPR compliance)
+      const { data: consentedCustomers } = await supabase
+        .from(TABLES.CUSTOMERS)
+        .select("email")
+        .eq("org_id", orgId)
+        .eq("marketing_consent", true);
 
-    const consentedEmails = new Set(
-      (consentedCustomers || []).map((c: { email: string }) => c.email?.toLowerCase())
-    );
+      const consentedEmails = new Set(
+        (consentedCustomers || []).map((c: { email: string }) => c.email?.toLowerCase())
+      );
 
-    // Final audience = include minus exclude, filtered to marketing consent only
-    const audience = [...includeMap.values()].filter(
-      (m) => !excludeEmails.has(m.email.toLowerCase()) && consentedEmails.has(m.email.toLowerCase())
-    );
+      audience = [...includeMap.values()].filter(
+        (m) => !excludeEmails.has(m.email.toLowerCase()) && consentedEmails.has(m.email.toLowerCase())
+      );
+    }
 
     // CSV format
     if (format === "csv") {

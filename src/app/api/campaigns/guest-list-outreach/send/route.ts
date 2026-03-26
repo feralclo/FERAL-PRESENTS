@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     const trackPixel = `<img src="${trackBase}?t=open&s=${sendId}" width="1" height="1" style="display:none;" alt="">`;
     const trackedApplyUrl = `${trackBase}?t=click&s=${sendId}&r=${encodeURIComponent(applyUrl)}`;
     const trackedHtml = html
-      .replace(applyUrl, trackedApplyUrl)
+      .replaceAll(applyUrl, trackedApplyUrl)
       .replace("</body>", `${trackPixel}</body>`);
 
     // Send via Resend using batch API

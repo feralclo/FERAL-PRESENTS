@@ -159,7 +159,7 @@ function isProtectedAdminPage(pathname: string): boolean {
  * Login page is excluded so staff can log in.
  */
 function isProtectedScannerPage(pathname: string): boolean {
-  return pathname.startsWith("/scanner") && !pathname.startsWith("/scanner/login");
+  return pathname.startsWith("/scanner") && !pathname.startsWith("/scanner/login") && !pathname.startsWith("/scanner/live");
 }
 
 /**
@@ -220,6 +220,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/merch-store/payment-intent",
   "/api/merch-store/confirm-order",
   "/api/scanner/manifest", // PWA manifest (public, no auth)
+  "/api/scanner/live/", // Live scanner (token-based auth, no login)
   "/api/brand/", // Brand assets (logo SVG, public)
   "/api/campaigns/track", // Email open/click tracking pixels (public)
 ];

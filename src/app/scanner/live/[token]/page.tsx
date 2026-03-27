@@ -224,7 +224,7 @@ export default function LiveScannerPage() {
           <QRScanner onScan={handleScan} active={!result} />
         </div>
 
-        <ManualEntry onSubmit={handleManualEntry} />
+        <ManualEntry onSubmit={handleManualEntry} loading={scanning} />
       </div>
 
       {/* Scan result overlay */}

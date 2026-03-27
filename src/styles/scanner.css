@@ -90,6 +90,31 @@
   50% { top: 90%; }
 }
 
+/* Torch toggle button */
+.scanner-torch-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.scanner-torch-button:active {
+  background: rgba(139, 92, 246, 0.4);
+  border-color: #8B5CF6;
+}
+
 /* Result slide-up animation */
 .scanner-result-enter {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;

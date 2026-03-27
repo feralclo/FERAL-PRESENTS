@@ -38,6 +38,7 @@ import {
   TrendingUp,
   Scan,
   Send,
+  Upload,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -68,6 +69,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/admin/events/", label: "All Events", icon: CalendarDays },
       { href: "/admin/artists/", label: "Artists", icon: Mic2 },
       { href: "/admin/guest-list/", label: "Guest List", icon: ClipboardCheck },
+      { href: "/admin/import-tickets/", label: "Import Tickets", icon: Upload },
       { href: "/scanner/", label: "Scanner", icon: Scan, external: true },
     ],
   },

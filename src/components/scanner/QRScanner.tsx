@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Camera, CameraOff } from "lucide-react";
+import { Camera, CameraOff, Flashlight, FlashlightOff } from "lucide-react";
 
 interface QRScannerProps {
   onScan: (code: string) => void;
@@ -26,6 +26,8 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
   const html5ScannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [useNative, setUseNative] = useState(true);
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
 
   // Keep a ref to the latest onScan so the RAF loop always calls the current version
   const onScanRef = useRef(onScan);
@@ -73,6 +75,20 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+      }
+
+      // Check torch capability on the video track
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const capabilities = videoTrack.getCapabilities() as any;
+          if (capabilities?.torch) {
+            setTorchAvailable(true);
+          }
+        } catch {
+          // Torch detection not supported — leave unavailable
+        }
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -135,6 +151,19 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
     }
   };
 
+  const toggleTorch = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      const next = !torchOn;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await track.applyConstraints({ advanced: [{ torch: next } as any] });
+      setTorchOn(next);
+    } catch {
+      // Torch toggle failed — device may not support it
+    }
+  }, [torchOn]);
+
   const stopScanning = () => {
     scanningRef.current = false;
     if (animFrameRef.current) {
@@ -148,6 +177,8 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
       html5ScannerRef.current.stop().catch(() => {});
       html5ScannerRef.current = null;
     }
+    setTorchOn(false);
+    setTorchAvailable(false);
   };
 
   // Allow clearing scan lock for next scan
@@ -208,6 +239,16 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
       <div className="scanner-corners" />
       <div className="scanner-corners-bottom" />
       {active && <div className="scanner-line" />}
+      {torchAvailable && active && (
+        <button
+          type="button"
+          onClick={toggleTorch}
+          className="scanner-torch-button"
+          aria-label={torchOn ? "Turn off flashlight" : "Turn on flashlight"}
+        >
+          {torchOn ? <FlashlightOff size={18} /> : <Flashlight size={18} />}
+        </button>
+      )}
       {!active && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
           <Camera size={32} className="text-white/50" />

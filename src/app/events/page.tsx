@@ -100,6 +100,7 @@ export default async function EventsPage({
           .eq("org_id", orgId)
           .eq("status", "live")
           .eq("visibility", "public")
+          .or(`date_end.gte.${new Date().toISOString()},date_end.is.null`)
           .order("date_start", { ascending: true }),
         supabase
           .from(TABLES.TICKET_TYPES)

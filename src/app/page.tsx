@@ -125,6 +125,7 @@ export default async function HomePage({
           .eq("org_id", orgId)
           .eq("status", "live")
           .eq("visibility", "public")
+          .or(`date_end.gte.${new Date().toISOString()},date_end.is.null`)
           .order("date_start", { ascending: true }),
         supabase
           .from(TABLES.SITE_SETTINGS)

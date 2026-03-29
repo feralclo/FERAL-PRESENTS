@@ -68,7 +68,11 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
   const startNativeScanner = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
       });
       streamRef.current = stream;
 
@@ -77,17 +81,30 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
         await videoRef.current.play();
       }
 
-      // Check torch capability on the video track
+      // Apply advanced camera constraints for faster QR recognition
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const capabilities = videoTrack.getCapabilities() as any;
+          const advanced: Record<string, unknown>[] = [];
+
+          if (capabilities?.focusMode?.includes("continuous")) {
+            advanced.push({ focusMode: "continuous" });
+          }
+          if (capabilities?.exposureMode?.includes("continuous")) {
+            advanced.push({ exposureMode: "continuous" });
+          }
           if (capabilities?.torch) {
             setTorchAvailable(true);
           }
+
+          if (advanced.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await videoTrack.applyConstraints({ advanced: advanced as any });
+          }
         } catch {
-          // Torch detection not supported — leave unavailable
+          // Advanced constraints not supported — continue with defaults
         }
       }
 
@@ -132,8 +149,11 @@ export function QRScanner({ onScan, active }: QRScannerProps) {
       await scanner.start(
         { facingMode: "environment" },
         {
-          fps: 15,
-          qrbox: { width: 250, height: 250 },
+          fps: 30,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
+            return { width: size, height: size };
+          },
           aspectRatio: 1.0,
         },
         (decodedText) => {

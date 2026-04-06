@@ -11,6 +11,28 @@ import * as Sentry from "@sentry/nextjs";
 
 const limiter = createRateLimiter("provision-org", { limit: 5, windowSeconds: 3600 });
 
+/** Map country code to a sensible default timezone */
+function getTimezoneForCountry(country: string): string {
+  const map: Record<string, string> = {
+    GB: "Europe/London", IE: "Europe/Dublin",
+    US: "America/New_York", CA: "America/Toronto",
+    AU: "Australia/Sydney", NZ: "Pacific/Auckland",
+    DE: "Europe/Berlin", FR: "Europe/Paris", ES: "Europe/Madrid",
+    IT: "Europe/Rome", NL: "Europe/Amsterdam", BE: "Europe/Brussels",
+    PT: "Europe/Lisbon", AT: "Europe/Vienna", CH: "Europe/Zurich",
+    SE: "Europe/Stockholm", NO: "Europe/Oslo", DK: "Europe/Copenhagen",
+    FI: "Europe/Helsinki", PL: "Europe/Warsaw", CZ: "Europe/Prague",
+    GR: "Europe/Athens", TR: "Europe/Istanbul", RU: "Europe/Moscow",
+    IN: "Asia/Kolkata", JP: "Asia/Tokyo", KR: "Asia/Seoul",
+    CN: "Asia/Shanghai", SG: "Asia/Singapore", HK: "Asia/Hong_Kong",
+    AE: "Asia/Dubai", SA: "Asia/Riyadh", IL: "Asia/Jerusalem",
+    ZA: "Africa/Johannesburg", NG: "Africa/Lagos", KE: "Africa/Nairobi",
+    BR: "America/Sao_Paulo", MX: "America/Mexico_City", AR: "America/Argentina/Buenos_Aires",
+    CO: "America/Bogota", CL: "America/Santiago",
+  };
+  return map[country] || "Europe/London";
+}
+
 /**
  * POST /api/auth/provision-org — Provision an org for an authenticated user.
  *
@@ -154,7 +176,7 @@ export async function POST(request: NextRequest) {
             key: generalKey(slug),
             data: {
               org_name: trimmedName,
-              timezone: "Europe/London",
+              timezone: getTimezoneForCountry(countryCode),
               support_email: "",
               country: countryCode,
               base_currency: baseCurrency,

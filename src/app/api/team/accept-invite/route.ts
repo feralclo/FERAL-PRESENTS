@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY, brandingKey, generalKey } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createRateLimiter } from "@/lib/rate-limit";
 import * as Sentry from "@sentry/nextjs";
@@ -44,14 +44,14 @@ export async function GET(request: NextRequest) {
         .eq("org_id", orgId)
         .single(),
       supabase
-        .from("site_settings")
+        .from(TABLES.SITE_SETTINGS)
         .select("data")
-        .eq("key", `${orgId}_branding`)
+        .eq("key", brandingKey(orgId))
         .single(),
       supabase
-        .from("site_settings")
+        .from(TABLES.SITE_SETTINGS)
         .select("data")
-        .eq("key", `${orgId}_general`)
+        .eq("key", generalKey(orgId))
         .single(),
     ]);
 

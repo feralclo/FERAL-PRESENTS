@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { OrgProvider } from "@/components/OrgProvider";
 import type { TrafficEventType } from "@/types/analytics";
+import type { ReactNode } from "react";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -123,7 +125,9 @@ describe("useTraffic", () => {
 
     it("sends product details in trackAddToCart payload", async () => {
       const { useTraffic } = await import("@/hooks/useTraffic");
-      const { result } = renderHook(() => useTraffic());
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        OrgProvider({ orgId: "test-org", children });
+      const { result } = renderHook(() => useTraffic(), { wrapper });
       mockFetch.mockClear();
 
       act(() => {
@@ -145,7 +149,7 @@ describe("useTraffic", () => {
       expect(payload.product_name).toBe("General Release");
       expect(payload.product_price).toBe(30.0);
       expect(payload.product_qty).toBe(2);
-      expect(payload.org_id).toBe("feral");
+      expect(payload.org_id).toBe("test-org");
     });
   });
 

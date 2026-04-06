@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, guestListSubmissionsKey } from "@/lib/constants";
+import { TABLES, guestListSubmissionsKey, brandingKey } from "@/lib/constants";
 import { getGuestListSettings, sendGuestListInviteEmail } from "@/lib/guest-list";
 import type { SubmissionLink } from "@/types/guest-list";
 import type { AccessLevel } from "@/types/orders";
@@ -78,7 +78,7 @@ export async function GET(
     const { data: brandingRow } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")
-      .eq("key", `${resolved.orgId}_branding`)
+      .eq("key", brandingKey(resolved.orgId))
       .single();
 
     const branding = (brandingRow?.data as Record<string, string>) || {};

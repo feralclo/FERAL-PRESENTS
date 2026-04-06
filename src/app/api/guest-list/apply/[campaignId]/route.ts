@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, guestListCampaignsKey } from "@/lib/constants";
+import { TABLES, guestListCampaignsKey, brandingKey } from "@/lib/constants";
 import type { ApplicationCampaign } from "@/types/guest-list";
 import * as Sentry from "@sentry/nextjs";
 
@@ -57,7 +57,7 @@ export async function GET(
 
     // Fetch branding
     const { data: brandingRow } = await supabase.from(TABLES.SITE_SETTINGS)
-      .select("data").eq("key", `${orgId}_branding`).single();
+      .select("data").eq("key", brandingKey(orgId)).single();
     const branding = (brandingRow?.data as Record<string, string>) || {};
 
     // Count applications (for capacity)

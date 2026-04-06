@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getStripe } from "@/lib/stripe/server";
 import { calculateApplicationFee, getCurrencySymbol } from "@/lib/stripe/config";
 import * as Sentry from "@sentry/nextjs";
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     let stripeAccountId = event.stripe_account_id || null;
     if (!stripeAccountId) {
       const { data: stripeRow } = await supabase.from(TABLES.SITE_SETTINGS)
-        .select("data").eq("key", `${orgId}_stripe_account`).single();
+        .select("data").eq("key", stripeAccountKey(orgId)).single();
       stripeAccountId = (stripeRow?.data as Record<string, string>)?.account_id || null;
     }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, brandingKey } from "@/lib/constants";
 import { getGuestListSettings, issueGuestListTicket, ACCESS_LEVELS } from "@/lib/guest-list";
 import * as Sentry from "@sentry/nextjs";
 
@@ -34,7 +34,7 @@ export async function GET(
     const { data: brandingRow } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")
-      .eq("key", `${orgId}_branding`)
+      .eq("key", brandingKey(orgId))
       .single();
 
     const brandingData = (brandingRow?.data as Record<string, string>) || {};

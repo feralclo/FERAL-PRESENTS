@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, walletPassesKey } from "@/lib/constants";
 import { getWalletConfigStatus } from "@/lib/wallet-passes";
 import type { WalletPassSettings } from "@/types/email";
 import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
@@ -26,7 +26,7 @@ export async function GET() {
         const { data: settingsRow } = await supabase
           .from(TABLES.SITE_SETTINGS)
           .select("data")
-          .eq("key", `${orgId}_wallet_passes`)
+          .eq("key", walletPassesKey(orgId))
           .single();
         if (settingsRow?.data && typeof settingsRow.data === "object") {
           walletSettings = { ...DEFAULT_WALLET_PASS_SETTINGS, ...(settingsRow.data as Partial<WalletPassSettings>) };

@@ -16,10 +16,6 @@ import {
   CalendarDays,
   FileText,
   Users,
-  ClipboardCheck,
-  MessageSquare,
-  Activity,
-  Mail,
   Settings,
   LogOut,
   PanelLeft,
@@ -32,110 +28,79 @@ import {
   Package,
   Store,
   Tags,
-  UsersRound,
-  Mic2,
   Shield,
   TrendingUp,
-  Scan,
-  Send,
-  Upload,
+  Megaphone,
 } from "lucide-react";
 
-/* ── Navigation grouped into sections ── */
+/* ── Navigation — flat list (Shopify-style) ── */
 
 interface NavItem {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
   children?: { href: string; label: string }[];
-  external?: boolean;
 }
 
-interface NavSection {
-  label: string;
-  items: NavItem[];
-}
-
-const NAV_SECTIONS: NavSection[] = [
+const NAV_ITEMS: NavItem[] = [
+  { href: "/admin/", label: "Home", icon: LayoutDashboard },
   {
-    label: "Dashboard",
-    items: [
-      { href: "/admin/", label: "Dashboard", icon: LayoutDashboard },
-    ],
-  },
-  {
+    href: "/admin/events/",
     label: "Events",
-    items: [
-      { href: "/admin/events/", label: "All Events", icon: CalendarDays },
-      { href: "/admin/artists/", label: "Artists", icon: Mic2 },
-      { href: "/admin/guest-list/", label: "Guest List", icon: ClipboardCheck },
-      { href: "/admin/import-tickets/", label: "Import Tickets", icon: Upload },
-      { href: "/scanner/", label: "Scanner", icon: Scan, external: true },
+    icon: CalendarDays,
+    children: [
+      { href: "/admin/events/", label: "All Events" },
+      { href: "/admin/artists/", label: "Artists" },
+      { href: "/admin/guest-list/", label: "Guest List" },
+      { href: "/admin/import-tickets/", label: "Import Tickets" },
     ],
   },
   {
-    label: "Commerce",
-    items: [
-      {
-        href: "/admin/orders/",
-        label: "Orders",
-        icon: FileText,
-        children: [
-          { href: "/admin/orders/", label: "All Orders" },
-          { href: "/admin/abandoned-carts/", label: "Abandoned Carts" },
-        ],
-      },
-      { href: "/admin/customers/", label: "Customers", icon: Users },
-      { href: "/admin/discounts/", label: "Discounts", icon: Tags },
-      {
-        href: "/admin/merch/",
-        label: "Merch",
-        icon: Package,
-        children: [
-          { href: "/admin/merch/", label: "Products" },
-          { href: "/admin/merch-store/", label: "Event Pre-orders" },
-          { href: "/admin/merch-store/online/", label: "Online Store" },
-        ],
-      },
-      {
-        href: "/admin/event-page/",
-        label: "Storefront",
-        icon: Store,
-        children: [
-          { href: "/admin/event-page/", label: "Event Page" },
-          { href: "/admin/ticketstore/", label: "Themes" },
-        ],
-      },
+    href: "/admin/orders/",
+    label: "Orders",
+    icon: FileText,
+    children: [
+      { href: "/admin/orders/", label: "All Orders" },
+      { href: "/admin/abandoned-carts/", label: "Abandoned Carts" },
+    ],
+  },
+  { href: "/admin/customers/", label: "Customers", icon: Users },
+  {
+    href: "/admin/merch/",
+    label: "Products",
+    icon: Package,
+    children: [
+      { href: "/admin/merch/", label: "Merch Products" },
+      { href: "/admin/merch-store/", label: "Event Pre-orders" },
     ],
   },
   {
-    label: "Growth",
-    items: [
-      {
-        href: "/admin/traffic/",
-        label: "Analytics",
-        icon: TrendingUp,
-        children: [
-          { href: "/admin/traffic/", label: "Traffic" },
-          { href: "/admin/popup/", label: "Popup" },
-        ],
-      },
-      { href: "/admin/reps/", label: "Reps", icon: UsersRound },
-      {
-        href: "/admin/campaigns/",
-        label: "Campaigns",
-        icon: Send,
-        children: [
-          { href: "/admin/campaigns/", label: "Overview" },
-          { href: "/admin/campaigns/email/", label: "Email Campaigns" },
-        ],
-      },
-      { href: "/admin/communications/", label: "Communications", icon: Mail },
+    href: "/admin/event-page/",
+    label: "Storefront",
+    icon: Store,
+    children: [
+      { href: "/admin/event-page/", label: "Event Page" },
+      { href: "/admin/ticketstore/", label: "Themes" },
+      { href: "/admin/merch-store/online/", label: "Online Store" },
     ],
   },
+  {
+    href: "/admin/campaigns/",
+    label: "Marketing",
+    icon: Megaphone,
+    children: [
+      { href: "/admin/reps/", label: "Reps" },
+      { href: "/admin/campaigns/", label: "Campaigns" },
+      { href: "/admin/campaigns/email/", label: "Email Campaigns" },
+      { href: "/admin/communications/", label: "Communications" },
+      { href: "/admin/popup/", label: "Popup" },
+    ],
+  },
+  { href: "/admin/traffic/", label: "Analytics", icon: TrendingUp },
+  { href: "/admin/discounts/", label: "Discounts", icon: Tags },
 ];
 
-const ALL_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
+const ALL_ITEMS = NAV_ITEMS;
 
 function matchRoute(pathname: string, href: string): boolean {
   if (href === "/admin/") return pathname === "/admin" || pathname === "/admin/";
@@ -193,18 +158,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // Auto-expand nav items whose children match the current path
   useEffect(() => {
-    for (const section of NAV_SECTIONS) {
-      for (const item of section.items) {
-        if (item.children) {
-          const childActive = item.children.some((c) => matchRoute(pathname, c.href));
-          if (childActive) {
-            setExpandedItems((prev) => {
-              if (prev.has(item.label)) return prev;
-              const next = new Set(prev);
-              next.add(item.label);
-              return next;
-            });
-          }
+    for (const item of NAV_ITEMS) {
+      if (item.children) {
+        const childActive = item.children.some((c) => matchRoute(pathname, c.href));
+        if (childActive) {
+          setExpandedItems((prev) => {
+            if (prev.has(item.label)) return prev;
+            const next = new Set(prev);
+            next.add(item.label);
+            return next;
+          });
         }
       }
     }
@@ -401,104 +364,30 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* Scrollable navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-3">
-          {NAV_SECTIONS.map((section) => (
-            <div key={section.label} className="mb-5">
-              <div className="mb-2 px-3 font-mono text-[10px] font-semibold uppercase tracking-[2px] text-sidebar-foreground/40">
-                {section.label}
-              </div>
+          <div className="flex flex-col gap-0.5">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const hasChildren = item.children && item.children.length > 0;
+              const isExpanded = expandedItems.has(item.label);
+              const childActive = hasChildren && item.children!.some((c) => matchRoute(pathname, c.href));
+              const active = hasChildren ? childActive : matchRoute(pathname, item.href);
 
-              <div className="flex flex-col gap-0.5">
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const hasChildren = item.children && item.children.length > 0;
-                  const isExpanded = expandedItems.has(item.label);
-                  const childActive = hasChildren && item.children!.some((c) => matchRoute(pathname, c.href));
-                  const active = hasChildren ? childActive : matchRoute(pathname, item.href);
-
-                  if (hasChildren) {
-                    return (
-                      <div key={item.label}>
-                        {/* Parent item — toggles children */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setExpandedItems((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(item.label)) next.delete(item.label);
-                              else next.add(item.label);
-                              return next;
-                            });
-                          }}
-                          className={cn(
-                            "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
-                            active
-                              ? "bg-primary/10 text-foreground"
-                              : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground"
-                          )}
-                        >
-                          <Icon
-                            size={16}
-                            strokeWidth={1.75}
-                            className={cn(
-                              "shrink-0 transition-colors duration-200",
-                              active
-                                ? "text-primary"
-                                : "text-sidebar-foreground/60 group-hover:text-foreground/80"
-                            )}
-                          />
-                          <span>{item.label}</span>
-                          <ChevronRight
-                            size={14}
-                            className={cn(
-                              "ml-auto shrink-0 text-sidebar-foreground/40 transition-transform duration-200",
-                              isExpanded && "rotate-90"
-                            )}
-                          />
-                        </button>
-
-                        {/* Children — animated collapse */}
-                        <div
-                          className={cn(
-                            "overflow-hidden transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
-                            isExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
-                          )}
-                        >
-                          <div className="ml-[22px] flex flex-col gap-0.5 border-l border-sidebar-border/50 py-1">
-                            {item.children!.map((child) => {
-                              const childIsActive = matchRoute(pathname, child.href);
-                              return (
-                                <Link
-                                  key={child.href}
-                                  href={child.href}
-                                  onClick={() => setOpen(false)}
-                                  className={cn(
-                                    "flex items-center gap-2 rounded-r-lg py-1.5 pl-4 pr-3 text-[12px] font-medium transition-all duration-200",
-                                    childIsActive
-                                      ? "border-l-2 border-primary bg-primary/8 text-foreground -ml-px"
-                                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-foreground"
-                                  )}
-                                >
-                                  <span>{child.label}</span>
-                                  {childIsActive && (
-                                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.6)]" />
-                                  )}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      {...(item.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              if (hasChildren) {
+                return (
+                  <div key={item.label}>
+                    {/* Parent item — toggles children */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExpandedItems((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(item.label)) next.delete(item.label);
+                          else next.add(item.label);
+                          return next;
+                        });
+                      }}
                       className={cn(
-                        "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
+                        "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
                         active
                           ? "bg-primary/10 text-foreground"
                           : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground"
@@ -515,16 +404,80 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         )}
                       />
                       <span>{item.label}</span>
-                      {active && (
-                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.6)]" />
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+                      <ChevronRight
+                        size={14}
+                        className={cn(
+                          "ml-auto shrink-0 text-sidebar-foreground/40 transition-transform duration-200",
+                          isExpanded && "rotate-90"
+                        )}
+                      />
+                    </button>
 
+                    {/* Children — animated collapse */}
+                    <div
+                      className={cn(
+                        "overflow-hidden transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                        isExpanded ? "max-h-60 opacity-100" : "max-h-0 opacity-0"
+                      )}
+                    >
+                      <div className="ml-[22px] flex flex-col gap-0.5 border-l border-sidebar-border/50 py-1">
+                        {item.children!.map((child) => {
+                          const childIsActive = matchRoute(pathname, child.href);
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              onClick={() => setOpen(false)}
+                              className={cn(
+                                "flex items-center gap-2 rounded-r-lg py-1.5 pl-4 pr-3 text-[12px] font-medium transition-all duration-200",
+                                childIsActive
+                                  ? "border-l-2 border-primary bg-primary/8 text-foreground -ml-px"
+                                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-foreground"
+                              )}
+                            >
+                              <span>{child.label}</span>
+                              {childIsActive && (
+                                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.6)]" />
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
+                    active
+                      ? "bg-primary/10 text-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground"
+                  )}
+                >
+                  <Icon
+                    size={16}
+                    strokeWidth={1.75}
+                    className={cn(
+                      "shrink-0 transition-colors duration-200",
+                      active
+                        ? "text-primary"
+                        : "text-sidebar-foreground/60 group-hover:text-foreground/80"
+                    )}
+                  />
+                  <span>{item.label}</span>
+                  {active && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.6)]" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
         {/* ── Pinned bottom: Settings + Entry Backend ── */}

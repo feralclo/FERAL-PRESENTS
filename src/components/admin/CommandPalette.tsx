@@ -7,19 +7,12 @@ import {
   CalendarDays,
   FileText,
   Users,
-  ClipboardCheck,
-  Mail,
   Settings,
   Package,
   Store,
   Tags,
-  UsersRound,
-  Mic2,
   TrendingUp,
   Shield,
-  CreditCard,
-  Globe,
-  Palette,
   Megaphone,
   type LucideIcon,
   Search,
@@ -54,53 +47,70 @@ interface LiveResult {
 /* ── Section icons ── */
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
-  Dashboard: LayoutDashboard,
+  Home: LayoutDashboard,
   Events: CalendarDays,
-  Commerce: FileText,
-  Growth: TrendingUp,
+  Orders: FileText,
+  Customers: UserIcon,
+  Products: Package,
+  Storefront: Store,
+  Marketing: Megaphone,
+  Analytics: TrendingUp,
+  Discounts: Tags,
   Settings: Settings,
   Backend: Shield,
-  Orders: Hash,
-  Customers: UserIcon,
+  "Live Search": Hash,
 };
 
 /* ── Search registry ── */
 
 const REGISTRY: CommandItem[] = [
-  // Dashboard
-  { label: "Dashboard", href: "/admin/", section: "Dashboard", keywords: ["home", "overview", "stats", "live", "analytics", "revenue", "visitors"], description: "Live stats, funnel analytics, activity feed" },
+  // Home
+  { label: "Dashboard", href: "/admin/", section: "Home", keywords: ["home", "overview", "stats", "live", "analytics", "revenue", "visitors"], description: "Live stats, funnel analytics, activity feed" },
 
   // Events
   { label: "All Events", href: "/admin/events/", section: "Events", keywords: ["events", "create", "manage", "live", "draft", "published", "archived", "cancelled"], description: "Manage all events" },
   { label: "Artists", href: "/admin/artists/", section: "Events", keywords: ["lineup", "performers", "djs", "acts", "bios", "artist", "music", "video"], description: "Artist profiles and media" },
   { label: "Guest List", href: "/admin/guest-list/", section: "Events", keywords: ["guest", "vip", "check-in", "checkin", "attendance", "door", "entry", "names"], description: "Manual guest list and check-in" },
+  { label: "Import Tickets", href: "/admin/import-tickets/", section: "Events", keywords: ["import", "upload", "csv", "external", "tickets", "bulk"], description: "Import tickets from external sources" },
 
-  // Commerce
-  { label: "Orders", href: "/admin/orders/", section: "Commerce", keywords: ["orders", "transactions", "sales", "purchases", "revenue", "refund", "export", "csv"], description: "View and manage all orders" },
-  { label: "Abandoned Carts", href: "/admin/abandoned-carts/", section: "Commerce", keywords: ["abandoned", "cart", "recovery", "lost", "incomplete", "drop-off"], description: "Cart recovery dashboard" },
-  { label: "Customers", href: "/admin/customers/", section: "Commerce", keywords: ["customers", "fans", "superfan", "audience", "profiles", "email", "contacts", "buyers"], description: "Customer profiles and tiers" },
-  { label: "Discounts", href: "/admin/discounts/", section: "Commerce", keywords: ["discounts", "codes", "promo", "promotions", "coupons", "vouchers", "deals", "percentage", "offer"], description: "Discount codes and promotions" },
-  { label: "Merch Products", href: "/admin/merch/", section: "Commerce", keywords: ["merch", "merchandise", "products", "inventory", "catalog", "tshirt", "apparel", "sizes"], description: "Merch product catalog" },
-  { label: "Event Pre-orders", href: "/admin/merch-store/", section: "Commerce", keywords: ["pre-order", "preorder", "merch store", "event merch", "bundle"], description: "Event-linked merch pre-orders" },
-  { label: "Online Store", href: "/admin/merch-store/online/", section: "Commerce", keywords: ["online", "store", "shop", "ecommerce", "standalone"], description: "Standalone online merch store" },
-{ label: "Event Page", href: "/admin/event-page/", section: "Commerce", keywords: ["event page", "theme", "design", "hero image", "focal point", "preview"], description: "Event page appearance settings" },
-  { label: "Themes", href: "/admin/ticketstore/", section: "Commerce", keywords: ["themes", "template", "midnight", "ticket store", "design", "look"], description: "Theme selection and customization" },
+  // Orders
+  { label: "All Orders", href: "/admin/orders/", section: "Orders", keywords: ["orders", "transactions", "sales", "purchases", "revenue", "refund", "export", "csv"], description: "View and manage all orders" },
+  { label: "Abandoned Carts", href: "/admin/abandoned-carts/", section: "Orders", keywords: ["abandoned", "cart", "recovery", "lost", "incomplete", "drop-off"], description: "Cart recovery dashboard" },
 
-  // Growth
-  { label: "Traffic Analytics", href: "/admin/traffic/", section: "Growth", keywords: ["traffic", "funnel", "analytics", "conversion", "visitors", "insights", "data", "reports"], description: "Funnel analytics and traffic data" },
-  { label: "Popup", href: "/admin/popup/", section: "Growth", keywords: ["popup", "leads", "capture", "engagement", "modal", "signup", "email capture", "cities", "locations"], description: "Popup performance and leads" },
-  { label: "Reps Programme", href: "/admin/reps/", section: "Growth", keywords: ["reps", "affiliates", "ambassadors", "rewards", "points", "quests", "leaderboard", "referral", "programme", "program"], description: "Rep affiliate programme" },
-  { label: "Rep Event Boards", href: "/admin/reps/event-boards/", section: "Growth", keywords: ["leaderboard", "event boards", "rep ranking", "competition", "standings"], description: "Event-specific rep leaderboards" },
-  { label: "Rep Quests", href: "/admin/reps/quests/", section: "Growth", keywords: ["quests", "challenges", "tasks", "missions", "daily", "rep quests"], description: "Rep quest management" },
-  { label: "Rep Rewards", href: "/admin/reps/rewards/", section: "Growth", keywords: ["rewards", "prizes", "redeem", "rep rewards", "incentives"], description: "Rep reward catalog" },
-  { label: "Communications", href: "/admin/communications/", section: "Growth", keywords: ["communications", "email", "messaging", "notifications", "channels"], description: "Communications hub overview" },
-  { label: "Marketing Automation", href: "/admin/communications/marketing/", section: "Growth", keywords: ["marketing", "automation", "campaigns", "email marketing"], description: "Marketing automation overview" },
-  { label: "Abandoned Cart Emails", href: "/admin/communications/marketing/abandoned-cart/", section: "Growth", keywords: ["abandoned cart email", "recovery email", "cart reminder", "automation", "drip"], description: "Cart recovery email sequence" },
-  { label: "Announcement Emails", href: "/admin/communications/marketing/announcements/", section: "Growth", keywords: ["announcement", "presale", "coming soon", "waitlist", "signup", "launch"], description: "Coming-soon email sequences" },
-  { label: "Popup Settings", href: "/admin/communications/marketing/popup/", section: "Growth", keywords: ["popup settings", "display rules", "popup config"], description: "Popup display configuration" },
-  { label: "Order Confirmation Email", href: "/admin/communications/transactional/order-confirmation/", section: "Growth", keywords: ["order confirmation", "transactional", "receipt", "email template"], description: "Order confirmation email template" },
-  { label: "PDF Ticket Template", href: "/admin/communications/transactional/pdf-ticket/", section: "Growth", keywords: ["pdf", "ticket", "template", "download", "print"], description: "PDF ticket design template" },
-  { label: "Wallet Passes", href: "/admin/communications/transactional/wallet-passes/", section: "Growth", keywords: ["wallet", "apple wallet", "google wallet", "pass", "mobile ticket", "pkpass"], description: "Apple/Google Wallet pass template" },
+  // Customers
+  { label: "Customers", href: "/admin/customers/", section: "Customers", keywords: ["customers", "fans", "superfan", "audience", "profiles", "email", "contacts", "buyers"], description: "Customer profiles and tiers" },
+
+  // Products
+  { label: "Merch Products", href: "/admin/merch/", section: "Products", keywords: ["merch", "merchandise", "products", "inventory", "catalog", "tshirt", "apparel", "sizes"], description: "Merch product catalog" },
+  { label: "Event Pre-orders", href: "/admin/merch-store/", section: "Products", keywords: ["pre-order", "preorder", "merch store", "event merch", "bundle"], description: "Event-linked merch pre-orders" },
+
+  // Storefront
+  { label: "Event Page", href: "/admin/event-page/", section: "Storefront", keywords: ["event page", "theme", "design", "hero image", "focal point", "preview"], description: "Event page appearance settings" },
+  { label: "Themes", href: "/admin/ticketstore/", section: "Storefront", keywords: ["themes", "template", "midnight", "ticket store", "design", "look"], description: "Theme selection and customization" },
+  { label: "Online Store", href: "/admin/merch-store/online/", section: "Storefront", keywords: ["online", "store", "shop", "ecommerce", "standalone"], description: "Standalone online merch store" },
+
+  // Marketing
+  { label: "Reps Programme", href: "/admin/reps/", section: "Marketing", keywords: ["reps", "affiliates", "ambassadors", "rewards", "points", "quests", "leaderboard", "referral", "programme", "program"], description: "Rep affiliate programme" },
+  { label: "Rep Event Boards", href: "/admin/reps/event-boards/", section: "Marketing", keywords: ["leaderboard", "event boards", "rep ranking", "competition", "standings"], description: "Event-specific rep leaderboards" },
+  { label: "Rep Quests", href: "/admin/reps/quests/", section: "Marketing", keywords: ["quests", "challenges", "tasks", "missions", "daily", "rep quests"], description: "Rep quest management" },
+  { label: "Rep Rewards", href: "/admin/reps/rewards/", section: "Marketing", keywords: ["rewards", "prizes", "redeem", "rep rewards", "incentives"], description: "Rep reward catalog" },
+  { label: "Campaigns", href: "/admin/campaigns/", section: "Marketing", keywords: ["campaigns", "overview", "campaign management"], description: "Campaign overview" },
+  { label: "Email Campaigns", href: "/admin/campaigns/email/", section: "Marketing", keywords: ["email", "campaign", "send", "blast", "newsletter"], description: "Email campaign management" },
+  { label: "Communications", href: "/admin/communications/", section: "Marketing", keywords: ["communications", "email", "messaging", "notifications", "channels"], description: "Communications hub overview" },
+  { label: "Marketing Automation", href: "/admin/communications/marketing/", section: "Marketing", keywords: ["marketing", "automation", "email marketing"], description: "Marketing automation overview" },
+  { label: "Abandoned Cart Emails", href: "/admin/communications/marketing/abandoned-cart/", section: "Marketing", keywords: ["abandoned cart email", "recovery email", "cart reminder", "automation", "drip"], description: "Cart recovery email sequence" },
+  { label: "Announcement Emails", href: "/admin/communications/marketing/announcements/", section: "Marketing", keywords: ["announcement", "presale", "coming soon", "waitlist", "signup", "launch"], description: "Coming-soon email sequences" },
+  { label: "Popup Settings", href: "/admin/communications/marketing/popup/", section: "Marketing", keywords: ["popup settings", "display rules", "popup config"], description: "Popup display configuration" },
+  { label: "Popup", href: "/admin/popup/", section: "Marketing", keywords: ["popup", "leads", "capture", "engagement", "modal", "signup", "email capture", "cities", "locations"], description: "Popup performance and leads" },
+  { label: "Order Confirmation Email", href: "/admin/communications/transactional/order-confirmation/", section: "Marketing", keywords: ["order confirmation", "transactional", "receipt", "email template"], description: "Order confirmation email template" },
+  { label: "PDF Ticket Template", href: "/admin/communications/transactional/pdf-ticket/", section: "Marketing", keywords: ["pdf", "ticket", "template", "download", "print"], description: "PDF ticket design template" },
+  { label: "Wallet Passes", href: "/admin/communications/transactional/wallet-passes/", section: "Marketing", keywords: ["wallet", "apple wallet", "google wallet", "pass", "mobile ticket", "pkpass"], description: "Apple/Google Wallet pass template" },
+
+  // Analytics
+  { label: "Traffic Analytics", href: "/admin/traffic/", section: "Analytics", keywords: ["traffic", "funnel", "analytics", "conversion", "visitors", "insights", "data", "reports"], description: "Funnel analytics and traffic data" },
+
+  // Discounts
+  { label: "Discounts", href: "/admin/discounts/", section: "Discounts", keywords: ["discounts", "codes", "promo", "promotions", "coupons", "vouchers", "deals", "percentage", "offer"], description: "Discount codes and promotions" },
 
   // Settings
   { label: "General Settings", href: "/admin/settings/general/", section: "Settings", keywords: ["general", "organization", "org", "timezone", "name", "support email", "settings"], description: "Organization name, timezone, email" },
@@ -110,6 +120,7 @@ const REGISTRY: CommandItem[] = [
   { label: "Finance", href: "/admin/settings/finance/", section: "Settings", keywords: ["finance", "vat", "tax", "currency", "payout", "payment settings", "gbp", "eur", "usd"], description: "VAT, currency, payout settings" },
   { label: "Integrations", href: "/admin/settings/integrations/", section: "Settings", keywords: ["integrations", "meta pixel", "facebook", "google analytics", "gtm", "klaviyo", "tracking", "pixel", "api"], description: "Meta Pixel, GA, Klaviyo setup" },
   { label: "Team & Users", href: "/admin/settings/users/", section: "Settings", keywords: ["team", "users", "members", "invite", "permissions", "roles", "access", "staff"], description: "Team members and permissions" },
+  { label: "Scanner Access", href: "/admin/settings/scanner/", section: "Settings", keywords: ["scanner", "qr", "door", "staff", "scan", "live", "token", "link", "access"], description: "Scanner links for door staff" },
   { label: "Payments", href: "/admin/payments/", section: "Settings", keywords: ["payments", "stripe", "connect", "onboarding", "bank", "payout", "charges", "account"], description: "Stripe Connect setup" },
   { label: "Account", href: "/admin/account/", section: "Settings", keywords: ["account", "profile", "password", "email", "personal", "my account"], description: "Your account and password" },
 
@@ -131,7 +142,7 @@ const QUICK_LINKS = [
   "/admin/events/",
   "/admin/orders/",
   "/admin/customers/",
-  "/admin/settings/branding/",
+  "/admin/discounts/",
 ];
 
 /* ── Scoring ── */
@@ -324,13 +335,13 @@ export function CommandPalette({ open, onClose, isPlatformOwner }: CommandPalett
 
       if (liveOrders.length > 0) {
         groups.push({
-          section: "Orders",
+          section: "Live Search",
           items: liveOrders.map((r) => ({ label: r.label, detail: r.detail, secondary: r.secondary, href: r.href })),
         });
       }
       if (liveCustomers.length > 0) {
         groups.push({
-          section: "Customers",
+          section: liveOrders.length > 0 ? "Live Search" : "Live Search",
           items: liveCustomers.map((r) => ({ label: r.label, detail: r.detail, href: r.href })),
         });
       }

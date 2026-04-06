@@ -19,6 +19,7 @@ import {
   PanelLeft,
   X,
   Search,
+  Scan,
 } from "lucide-react";
 
 interface SettingsNavItem {
@@ -34,6 +35,7 @@ const SETTINGS_NAV: SettingsNavItem[] = [
   { href: "/admin/settings/search-social/", label: "Search & Social", icon: Search },
   { href: "/admin/settings/users/", label: "Users", icon: Users },
   { href: "/admin/settings/finance/", label: "Finance", icon: CreditCard },
+  { href: "/admin/settings/scanner/", label: "Scanner", icon: Scan },
   { href: "/admin/settings/domains/", label: "Domains", icon: Globe },
   { href: "/admin/settings/integrations/", label: "Integrations", icon: Plug },
 ];

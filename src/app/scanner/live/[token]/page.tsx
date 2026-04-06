@@ -39,22 +39,19 @@ export default function LiveScannerPage() {
   useEffect(() => {
     async function validate() {
       try {
-        // Quick validation: attempt a scan with a dummy code to verify token
-        const res = await fetch("/api/scanner/live/scan", {
+        const res = await fetch("/api/scanner/live/validate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, ticket_code: "__validate__" }),
+          body: JSON.stringify({ token }),
         });
         if (res.status === 403) {
-          setError("Invalid scanner link. Please check the URL.");
+          setError("Invalid or revoked scanner link. Please ask your event organiser for a new one.");
           setLoading(false);
           return;
         }
-        // 404 = token is valid, just no ticket found (expected)
-        const json = await res.json();
-        // Extract event name from any valid response or just proceed
-        if (json.ticket?.event?.name) {
-          setEventName(json.ticket.event.name);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.event_name) setEventName(json.event_name);
         }
       } catch {
         setError("Unable to connect. Check your internet connection.");

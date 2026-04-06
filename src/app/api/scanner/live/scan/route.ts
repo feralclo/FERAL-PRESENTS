@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, scannerLiveTokensKey } from "@/lib/constants";
 import * as Sentry from "@sentry/nextjs";
 
 export const dynamic = "force-dynamic";

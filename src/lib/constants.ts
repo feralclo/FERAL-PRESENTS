@@ -135,6 +135,11 @@ export function scannerAssignmentsKey(orgId: string): string {
   return `${orgId}_scanner_assignments`;
 }
 
+/** Generate the scanner live tokens key for a given org */
+export function scannerLiveTokensKey(orgId: string): string {
+  return `${orgId}_scanner_live_tokens`;
+}
+
 /** Generate the guest list settings key for a given org */
 export function guestListSettingsKey(orgId: string): string {
   return `${orgId}_guest_list_settings`;

@@ -145,7 +145,7 @@ export function Header() {
             alt={branding.org_name || "Entry"}
             className="nav__logo-img"
             data-branding="logo"
-            style={branding.logo_height ? { height: Math.min(branding.logo_height, 48) } : undefined}
+            style={branding.logo_height ? { height: Math.min(branding.logo_height, 56) } : undefined}
           />
         ) : (
           <span className="nav__logo-text" data-branding="logo">

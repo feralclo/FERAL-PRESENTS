@@ -6,6 +6,7 @@ import { getActiveTemplate } from "@/lib/themes";
 import { setSentryEventContext } from "@/lib/sentry";
 import { getVibeById, getVibeCssVars } from "@/lib/theme-vibes";
 import { SettingsProvider } from "@/hooks/useSettings";
+import { BrandingProvider } from "@/hooks/useBranding";
 import { ThemeEditorBridge } from "@/components/event/ThemeEditorBridge";
 import type { BrandingSettings } from "@/types/settings";
 import type { ReactNode } from "react";
@@ -197,9 +198,11 @@ export default async function EventLayout({
         style={cssVars as React.CSSProperties}
       >
         <ThemeEditorBridge />
-        <SettingsProvider settingsKey={settingsKey} initialSettings={settings}>
-          {children}
-        </SettingsProvider>
+        <BrandingProvider initialBranding={branding}>
+          <SettingsProvider settingsKey={settingsKey} initialSettings={settings}>
+            {children}
+          </SettingsProvider>
+        </BrandingProvider>
       </div>
     </>
   );

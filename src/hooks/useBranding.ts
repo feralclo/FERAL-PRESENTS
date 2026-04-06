@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, createContext, useContext, type ReactNode } from "react";
 import type { BrandingSettings } from "@/types/settings";
 
 /** Platform-neutral default branding — tenants override via {org_id}_branding settings */
@@ -57,22 +57,55 @@ function fetchBranding(): Promise<BrandingSettings> {
   return _fetchPromise;
 }
 
+/* ── Server-side branding context ── */
+
+const BrandingContext = createContext<BrandingSettings | null>(null);
+
+/**
+ * Wraps children with server-fetched branding to prevent FOUC.
+ * Used by event layout to pass branding from server → client components.
+ */
+export function BrandingProvider({
+  children,
+  initialBranding,
+}: {
+  children: ReactNode;
+  initialBranding: BrandingSettings | null;
+}) {
+  const value = initialBranding
+    ? { ...DEFAULT_BRANDING, ...initialBranding }
+    : null;
+
+  // Also populate the module cache so non-context consumers stay in sync
+  if (value && !_cachedBranding) {
+    _cachedBranding = value;
+  }
+
+  return (
+    <BrandingContext.Provider value={value}>
+      {children}
+    </BrandingContext.Provider>
+  );
+}
+
 /**
  * Hook to access org branding settings.
- * Returns stable reference. Fetches once and caches at module level.
+ * Returns stable reference. Checks context first (SSR-safe), then module cache, then fetches.
  */
 export function useBranding(): BrandingSettings {
-  const [branding, setBranding] = useState<BrandingSettings>(
-    _cachedBranding || DEFAULT_BRANDING
-  );
+  const contextBranding = useContext(BrandingContext);
+  const initial = contextBranding || _cachedBranding || DEFAULT_BRANDING;
+
+  const [branding, setBranding] = useState<BrandingSettings>(initial);
 
   useEffect(() => {
-    if (_cachedBranding) {
-      setBranding(_cachedBranding);
+    // Context or cache already has correct branding — skip fetch
+    if (contextBranding || _cachedBranding) {
+      setBranding(contextBranding || _cachedBranding!);
       return;
     }
     fetchBranding().then(setBranding);
-  }, []);
+  }, [contextBranding]);
 
   return useMemo(() => branding, [branding]);
 }

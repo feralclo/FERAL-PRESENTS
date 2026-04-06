@@ -7,6 +7,7 @@ import { AboutSection } from "./AboutSection";
 import { GenericAboutSection } from "./GenericAboutSection";
 import { ContactSection } from "./ContactSection";
 import { Header } from "@/components/layout/Header";
+import { BrandingProvider } from "@/hooks/useBranding";
 import { MidnightFooter } from "@/components/midnight/MidnightFooter";
 import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { useDataLayer } from "@/hooks/useDataLayer";
@@ -80,7 +81,7 @@ export function LandingPage({ events, heroSettings, orgId, aboutSection, brandin
   const brandingJson = branding ? JSON.stringify(branding) : null;
 
   return (
-    <>
+    <BrandingProvider initialBranding={branding || null}>
       {/* Inject branding CSS vars into :root for header/hero (outside data-theme-root) */}
       {rootStyleContent && (
         <style dangerouslySetInnerHTML={{ __html: rootStyleContent }} />
@@ -125,6 +126,6 @@ export function LandingPage({ events, heroSettings, orgId, aboutSection, brandin
         <ContactSection />
         <MidnightFooter />
       </div>
-    </>
+    </BrandingProvider>
   );
 }

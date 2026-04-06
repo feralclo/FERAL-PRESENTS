@@ -2,72 +2,37 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Paintbrush,
-  Check,
-  Sparkles,
-  Plus,
-  Copy,
-  Trash2,
   Loader2,
-  Power,
+  Palette,
+  Eye,
 } from "lucide-react";
-import type { StoreTheme, ThemeStore } from "@/types/settings";
-
-/* ── Template metadata (for the "New Theme" dialog) ── */
-const TEMPLATES = [
-  {
-    id: "midnight" as const,
-    name: "Entry Dark",
-    description: "Deep dark theme designed for nightlife and events.",
-    tags: ["Dark", "Nightlife", "Events"],
-    gradient: "from-[#0e0e0e] via-[#1a0a0a] to-[#0e0e0e]",
-    accent: "#8B5CF6",
-  },
-  {
-    id: "aura" as const,
-    name: "Aura",
-    description: "Warm premium dark theme with amber accents and modern shadcn/ui design.",
-    tags: ["Premium", "Modern", "Warm"],
-    gradient: "from-[#0c0a09] via-[#1c1917] to-[#0c0a09]",
-    accent: "#f59e0b",
-  },
-];
-
-function getTemplateGradient(template: string): string {
-  return TEMPLATES.find((t) => t.id === template)?.gradient
-    || "from-[#0e0e0e] via-[#1a0a0a] to-[#0e0e0e]";
-}
-
-function getAccentFromTheme(theme: StoreTheme): string {
-  return theme.branding.accent_color || TEMPLATES.find((t) => t.id === theme.template)?.accent || "#8B5CF6";
-}
+import type { ThemeStore } from "@/types/settings";
 
 export default function TicketStorePage() {
   const router = useRouter();
   const [store, setStore] = useState<ThemeStore | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("midnight");
-  const [newThemeName, setNewThemeName] = useState("");
 
-  /* ── Fetch themes ── */
   const fetchThemes = useCallback(async () => {
     try {
       const res = await fetch("/api/themes");
       const json = await res.json();
-      if (json.data) setStore(json.data);
+      if (json.data) {
+        setStore(json.data);
+        // Auto-create a theme if none exist
+        if (!json.data.themes || json.data.themes.length === 0) {
+          const createRes = await fetch("/api/themes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "create", template: "midnight", name: "My Theme" }),
+          });
+          const createJson = await createRes.json();
+          if (createJson.store) setStore(createJson.store);
+        }
+      }
     } catch {
       // silent
     } finally {
@@ -79,41 +44,6 @@ export default function TicketStorePage() {
     fetchThemes();
   }, [fetchThemes]);
 
-  /* ── Theme actions ── */
-  const themeAction = async (body: Record<string, unknown>) => {
-    const idKey = (body.id as string) || (body.action as string);
-    setActionLoading(idKey);
-    try {
-      const res = await fetch("/api/themes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (json.store) setStore(json.store);
-      return json;
-    } catch {
-      // silent
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleCreate = async () => {
-    const name = newThemeName.trim() || TEMPLATES.find((t) => t.id === selectedTemplate)?.name || "New Theme";
-    await themeAction({ action: "create", template: selectedTemplate, name });
-    setCreateDialogOpen(false);
-    setNewThemeName("");
-  };
-
-  const handleActivate = (id: string) => themeAction({ action: "activate", id });
-  const handleDuplicate = (id: string) => themeAction({ action: "duplicate", id });
-  const handleDelete = (id: string) => {
-    if (!confirm("Delete this theme? This cannot be undone.")) return;
-    themeAction({ action: "delete", id });
-  };
-
-  /* ── Loading state ── */
   if (loading || !store) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -122,307 +52,159 @@ export default function TicketStorePage() {
     );
   }
 
-  const activeTheme = store.themes.find((t) => t.id === store.active_theme_id);
-  const otherThemes = store.themes.filter((t) => t.id !== store.active_theme_id);
+  const activeTheme = store.themes.find((t) => t.id === store.active_theme_id) || store.themes[0];
+  if (!activeTheme) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const accent = activeTheme.branding.accent_color || "#8B5CF6";
 
   return (
-    <div className="space-y-10">
+    <div className="mx-auto max-w-2xl space-y-8 px-6 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Themes</h2>
-          <p className="text-sm text-muted-foreground">
-            Manage your storefront themes. Changes apply to all event pages,
-            checkout, and emails.
-          </p>
-        </div>
-        <Button onClick={() => setCreateDialogOpen(true)} size="sm">
-          <Plus size={14} className="mr-1.5" />
-          New Theme
-        </Button>
+      <div>
+        <h1 className="text-lg font-semibold text-foreground">Storefront</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Customize how your event pages look. Choose a color vibe, upload your logo,
+          and pick fonts — all changes apply to every event page instantly.
+        </p>
       </div>
 
-      {/* Active theme — hero card */}
-      {activeTheme && (
-        <Card className="overflow-hidden border-border/60 py-0 gap-0">
-          <div className="flex flex-col lg:flex-row">
-            {/* Preview panel */}
-            <div className="relative lg:w-[420px] shrink-0">
+      {/* Theme preview card */}
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
+        {/* Mini preview */}
+        <div
+          className="relative h-48 p-6"
+          style={{
+            background: `linear-gradient(135deg, ${activeTheme.branding.background_color || "#0e0e0e"}, ${activeTheme.branding.card_color || "#1a1a1a"}, ${activeTheme.branding.background_color || "#0e0e0e"})`,
+          }}
+        >
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="h-2 w-16 rounded-full bg-white/20" />
+              <div className="flex gap-2">
+                <div className="h-2 w-8 rounded-full bg-white/10" />
+                <div className="h-2 w-8 rounded-full bg-white/10" />
+              </div>
+            </div>
+            <div
+              className="rounded-lg p-4 space-y-2"
+              style={{
+                background: `${activeTheme.branding.card_color || "#1a1a1a"}80`,
+                borderColor: `${activeTheme.branding.card_border_color || "#2a2a2a"}60`,
+                border: "1px solid",
+              }}
+            >
+              <div className="h-2.5 w-32 rounded-full bg-white/20" />
+              <div className="h-2 w-48 rounded-full bg-white/10" />
+              <div className="h-2 w-24 rounded-full bg-white/8" />
+            </div>
+            <div className="flex gap-2">
               <div
-                className={`h-full min-h-[280px] bg-gradient-to-b ${getTemplateGradient(activeTheme.template)} p-6 flex flex-col justify-between`}
+                className="flex-1 rounded-lg p-3 space-y-1.5"
+                style={{
+                  background: `${activeTheme.branding.card_color || "#1a1a1a"}60`,
+                  border: `1px solid ${activeTheme.branding.card_border_color || "#2a2a2a"}40`,
+                }}
               >
-                <ThemeMockup accent={getAccentFromTheme(activeTheme)} />
-                <div className="mt-4">
+                <div className="h-2 w-16 rounded-full bg-white/15" />
+                <div className="h-2 w-10 rounded-full" style={{ backgroundColor: `${accent}60` }} />
+              </div>
+              <div
+                className="flex-1 rounded-lg p-3 space-y-1.5"
+                style={{
+                  background: `${activeTheme.branding.card_color || "#1a1a1a"}60`,
+                  border: `1px solid ${activeTheme.branding.card_border_color || "#2a2a2a"}40`,
+                }}
+              >
+                <div className="h-2 w-16 rounded-full bg-white/15" />
+                <div className="h-2 w-10 rounded-full" style={{ backgroundColor: `${accent}60` }} />
+              </div>
+            </div>
+          </div>
+          {/* Scanline overlay */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)",
+            }}
+          />
+        </div>
+
+        {/* Info + actions */}
+        <div className="p-6 space-y-5">
+          {/* Color swatches */}
+          <div className="flex items-center gap-3">
+            <Palette size={14} className="text-muted-foreground/50" />
+            <div className="flex items-center gap-2">
+              {[
+                { color: activeTheme.branding.accent_color, label: "Accent" },
+                { color: activeTheme.branding.background_color, label: "Background" },
+                { color: activeTheme.branding.card_color, label: "Card" },
+                { color: activeTheme.branding.text_color, label: "Text" },
+              ].map(({ color, label }) => (
+                <div key={label} className="flex items-center gap-1.5">
                   <div
-                    className="h-8 w-28 rounded-md"
-                    style={{ backgroundColor: `${getAccentFromTheme(activeTheme)}90` }}
+                    className="h-5 w-5 rounded-full border border-white/10"
+                    style={{ backgroundColor: color || "#888" }}
                   />
+                  <span className="text-[10px] text-muted-foreground/60">{label}</span>
                 </div>
-                <ScanlineOverlay />
-              </div>
-            </div>
-
-            {/* Info panel */}
-            <div className="flex flex-1 flex-col justify-between p-6 lg:p-8">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-base font-semibold">{activeTheme.name}</h3>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                    <Check size={10} />
-                    Active
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  {TEMPLATES.find((t) => t.id === activeTheme.template)?.description
-                    || "Custom theme configuration."}
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {(TEMPLATES.find((t) => t.id === activeTheme.template)?.tags || ["Custom"]).map(
-                    (tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-md bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                      >
-                        {tag}
-                      </span>
-                    )
-                  )}
-                </div>
-                {/* Color swatches */}
-                <div className="flex items-center gap-2 mt-4">
-                  <ColorSwatch color={activeTheme.branding.accent_color} label="Accent" />
-                  <ColorSwatch color={activeTheme.branding.background_color} label="Background" />
-                  <ColorSwatch color={activeTheme.branding.card_color} label="Card" />
-                  <ColorSwatch color={activeTheme.branding.text_color} label="Text" />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 mt-6">
-                <Button
-                  onClick={() =>
-                    router.push(`/admin/ticketstore/editor/?theme=${activeTheme.id}`)
-                  }
-                >
-                  <Paintbrush size={14} className="mr-1.5" />
-                  Customize
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDuplicate(activeTheme.id)}
-                  disabled={actionLoading === activeTheme.id}
-                >
-                  <Copy size={12} className="mr-1" />
-                  Duplicate
-                </Button>
-              </div>
+              ))}
             </div>
           </div>
-        </Card>
-      )}
 
-      {/* Theme library */}
-      {otherThemes.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles size={14} className="text-muted-foreground" />
-            <h3 className="text-sm font-semibold">Your Themes</h3>
+          {/* Actions */}
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => router.push(`/admin/ticketstore/editor/?theme=${activeTheme.id}`)}
+              className="gap-2"
+            >
+              <Paintbrush size={14} />
+              Customize
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const slug = "your-event"; // Will use first event
+                window.open(`/event/${slug}`, "_blank");
+              }}
+              className="gap-2"
+            >
+              <Eye size={14} />
+              Preview
+            </Button>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {otherThemes.map((theme) => (
-              <Card
-                key={theme.id}
-                className="group relative overflow-hidden py-0 gap-0 transition-all hover:ring-1 hover:ring-border/60"
-              >
-                <div
-                  className={`h-36 bg-gradient-to-b ${getTemplateGradient(theme.template)} relative`}
-                >
-                  <div className="absolute inset-3 flex flex-col gap-1.5">
-                    <div className="h-1.5 w-12 rounded-full bg-white/15" />
-                    <div className="flex-1 rounded bg-white/[0.03] border border-white/[0.05]" />
-                    <div className="flex gap-1">
-                      <div className="flex-1 h-6 rounded bg-white/[0.03]" />
-                      <div className="flex-1 h-6 rounded bg-white/[0.03]" />
-                    </div>
-                  </div>
-                  <ScanlineOverlay />
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">{theme.name}</span>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ColorSwatch color={theme.branding.accent_color} small />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 mt-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[11px]"
-                      onClick={() =>
-                        router.push(`/admin/ticketstore/editor/?theme=${theme.id}`)
-                      }
-                    >
-                      <Paintbrush size={10} className="mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[11px]"
-                      onClick={() => handleActivate(theme.id)}
-                      disabled={actionLoading === theme.id}
-                    >
-                      {actionLoading === theme.id ? (
-                        <Loader2 size={10} className="mr-1 animate-spin" />
-                      ) : (
-                        <Power size={10} className="mr-1" />
-                      )}
-                      Activate
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDelete(theme.id)}
-                    >
-                      <Trash2 size={12} />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Create Theme Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="sm:max-w-lg" data-admin>
-          <DialogHeader>
-            <DialogTitle>Create New Theme</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Theme Name</Label>
-              <Input
-                value={newThemeName}
-                onChange={(e) => setNewThemeName(e.target.value)}
-                placeholder="My Custom Theme"
-                className="h-9"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Start from template
-              </Label>
-              <div className="grid grid-cols-3 gap-2">
-                {TEMPLATES.map((tmpl) => (
-                  <button
-                    key={tmpl.id}
-                    onClick={() => setSelectedTemplate(tmpl.id)}
-                    className={`rounded-lg border p-3 text-left transition-all ${
-                      selectedTemplate === tmpl.id
-                        ? "border-primary ring-1 ring-primary/30"
-                        : "border-border/40 hover:border-border"
-                    }`}
-                  >
-                    <div
-                      className={`h-12 rounded-md bg-gradient-to-b ${tmpl.gradient} mb-2`}
-                    />
-                    <span className="text-xs font-medium">{tmpl.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCreateDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button size="sm" onClick={handleCreate}>
-                <Plus size={12} className="mr-1" />
-                Create
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-/* ── Shared sub-components ── */
-
-function ThemeMockup({ accent }: { accent: string }) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="h-2 w-16 rounded-full bg-white/20" />
-        <div className="flex gap-2">
-          <div className="h-2 w-8 rounded-full bg-white/10" />
-          <div className="h-2 w-8 rounded-full bg-white/10" />
         </div>
       </div>
-      <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] p-4 space-y-2">
-        <div className="h-2.5 w-32 rounded-full bg-white/20" />
-        <div className="h-2 w-48 rounded-full bg-white/10" />
-        <div className="h-2 w-24 rounded-full bg-white/8" />
-      </div>
-      <div className="flex gap-2">
-        <div className="flex-1 rounded-lg border border-white/[0.06] bg-white/[0.03] p-3 space-y-1.5">
-          <div className="h-2 w-16 rounded-full bg-white/15" />
-          <div
-            className="h-2 w-10 rounded-full"
-            style={{ backgroundColor: `${accent}60` }}
-          />
-        </div>
-        <div className="flex-1 rounded-lg border border-white/[0.06] bg-white/[0.03] p-3 space-y-1.5">
-          <div className="h-2 w-16 rounded-full bg-white/15" />
-          <div
-            className="h-2 w-10 rounded-full"
-            style={{ backgroundColor: `${accent}60` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function ScanlineOverlay() {
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 opacity-[0.03]"
-      style={{
-        backgroundImage:
-          "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)",
-      }}
-    />
-  );
-}
-
-function ColorSwatch({
-  color,
-  label,
-  small,
-}: {
-  color?: string;
-  label?: string;
-  small?: boolean;
-}) {
-  const c = color || "#888";
-  return (
-    <div className="flex items-center gap-1.5">
-      <div
-        className={`rounded-full border border-white/10 ${small ? "h-4 w-4" : "h-5 w-5"}`}
-        style={{ backgroundColor: c }}
-      />
-      {label && (
-        <span className="text-[10px] text-muted-foreground/60">{label}</span>
-      )}
+      {/* Help text */}
+      <div className="rounded-xl border border-border/40 bg-card/50 p-5">
+        <h3 className="text-sm font-medium text-foreground">What you can customize</h3>
+        <ul className="mt-3 space-y-2 text-[13px] text-muted-foreground">
+          <li className="flex gap-2">
+            <span className="shrink-0 text-primary/60">-</span>
+            <span><strong>Vibe</strong> — Pick a color palette (Entry Dark, Rose Glow, Electric Blue, etc.)</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="shrink-0 text-primary/60">-</span>
+            <span><strong>Colors</strong> — Fine-tune accent, background, card, and text colors</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="shrink-0 text-primary/60">-</span>
+            <span><strong>Logo</strong> — Upload your brand logo and set its size</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="shrink-0 text-primary/60">-</span>
+            <span><strong>Fonts</strong> — Choose heading and body font pairings</span>
+          </li>
+        </ul>
+      </div>
     </div>
   );
 }

@@ -53,10 +53,16 @@
 }
 
 .nav__logo-img {
-  height: 48px;
+  height: 40px;
   width: auto;
   display: block;
   transition: opacity var(--transition-base);
+}
+
+@media (min-width: 768px) {
+  .nav__logo-img {
+    height: 52px;
+  }
 }
 
 .nav__logo:hover .nav__logo-img {

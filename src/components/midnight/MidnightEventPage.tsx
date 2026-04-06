@@ -691,47 +691,6 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
 
       <MidnightFooter />
 
-      {/* Fixed bottom bar — mobile checkout CTA
-           Synced with header scroll: hides on scroll down, shows on scroll up.
-           will-change + no backdrop-filter prevents Instagram in-app browser jank.
-           Controlled via admin Event Page settings (sticky_checkout_bar).
-           Hidden in announcement mode — no cart to checkout. */}
-      {settings?.sticky_checkout_bar !== false && !effectiveIsAnnouncement && (
-        <div
-          className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar will-change-transform ${
-            cart.totalQty > 0 && !headerHidden ? "translate-y-0" : "translate-y-full"
-          }`}
-          style={{ transition: "transform 400ms cubic-bezier(0.25, 1, 0.5, 1)" }}
-        >
-          <div className="px-5 pt-3.5 pb-[max(16px,calc(12px+env(safe-area-inset-bottom)))]">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-baseline gap-2 min-w-0">
-                <span className="font-[family-name:var(--font-mono)] text-[17px] font-bold text-foreground tracking-[0.01em]">
-                  {fmtPrice(displayTotal)}
-                </span>
-                <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/35">
-                  {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="h-11 px-7 text-[13px] font-bold tracking-[0.03em] rounded-xl shrink-0 bg-white text-[#0e0e0e] active:scale-[0.97] transition-transform duration-150 cursor-pointer"
-                onClick={() => {
-                  const url = cart.getCheckoutUrl(isConverted ? presentmentCurrency : undefined);
-                  if (!url) return;
-                  const ids = cart.activeTypes
-                    .filter((tt) => (cart.quantities[tt.id] || 0) > 0)
-                    .map((tt) => tt.id);
-                  tracking.trackInitiateCheckout(ids, cart.totalPrice, cart.totalQty, event.currency || "GBP");
-                  window.location.assign(url);
-                }}
-              >
-                Checkout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Merch Modal */}
       {teeModalTicketType && (

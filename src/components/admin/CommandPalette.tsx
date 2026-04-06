@@ -85,9 +85,8 @@ const REGISTRY: CommandItem[] = [
   { label: "Event Pre-orders", href: "/admin/merch-store/", section: "Products", keywords: ["pre-order", "preorder", "merch store", "event merch", "bundle"], description: "Event-linked merch pre-orders" },
 
   // Storefront
-  { label: "Event Page", href: "/admin/event-page/", section: "Storefront", keywords: ["event page", "theme", "design", "hero image", "focal point", "preview"], description: "Event page appearance settings" },
-  { label: "Themes", href: "/admin/ticketstore/", section: "Storefront", keywords: ["themes", "template", "midnight", "ticket store", "design", "look"], description: "Theme selection and customization" },
-  { label: "Online Store", href: "/admin/merch-store/online/", section: "Storefront", keywords: ["online", "store", "shop", "ecommerce", "standalone"], description: "Standalone online merch store" },
+  { label: "Themes", href: "/admin/ticketstore/", section: "Storefront", keywords: ["themes", "template", "midnight", "ticket store", "design", "look", "customize", "vibes", "colors"], description: "Theme selection and customization" },
+  { label: "Merch Store", href: "/admin/merch-store/online/", section: "Storefront", keywords: ["merch", "store", "shop", "ecommerce", "standalone", "online", "tshirt", "merchandise"], description: "Standalone online merch store" },
 
   // Marketing
   { label: "Reps Programme", href: "/admin/reps/", section: "Marketing", keywords: ["reps", "affiliates", "ambassadors", "rewards", "points", "quests", "leaderboard", "referral", "programme", "program"], description: "Rep affiliate programme" },

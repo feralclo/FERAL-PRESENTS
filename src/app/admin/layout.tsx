@@ -75,13 +75,12 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    href: "/admin/event-page/",
+    href: "/admin/ticketstore/",
     label: "Storefront",
     icon: Store,
     children: [
-      { href: "/admin/event-page/", label: "Event Page" },
       { href: "/admin/ticketstore/", label: "Themes" },
-      { href: "/admin/merch-store/online/", label: "Online Store" },
+      { href: "/admin/merch-store/online/", label: "Merch Store" },
     ],
   },
   {

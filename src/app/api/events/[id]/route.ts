@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
@@ -67,31 +68,40 @@ export async function PUT(
 
     // Gate: block going live with stripe payments if no Stripe account connected.
     // Only applies when *transitioning* to live — editing an already-live event is fine.
+    // Platform owners are exempt (they own the platform and may not have Connect set up).
     if (
       body.status === "live" &&
       body.payment_method === "stripe"
     ) {
-      const { data: existingEvent } = await supabase
-        .from(TABLES.EVENTS)
-        .select("status")
-        .eq("id", id)
-        .eq("org_id", orgId)
-        .single();
+      const supabaseServer = await getSupabaseServer();
+      const { data: { user: sessionUser } } = supabaseServer
+        ? await supabaseServer.auth.getUser()
+        : { data: { user: null } };
+      const isPlatformOwner = sessionUser?.app_metadata?.is_platform_owner === true;
 
-      const isAlreadyLive = existingEvent?.status === "live";
-
-      if (!isAlreadyLive) {
-        const { data: stripeRow } = await supabase
-          .from(TABLES.SITE_SETTINGS)
-          .select("data")
-          .eq("key", stripeAccountKey(orgId))
+      if (!isPlatformOwner) {
+        const { data: existingEvent } = await supabase
+          .from(TABLES.EVENTS)
+          .select("status")
+          .eq("id", id)
+          .eq("org_id", orgId)
           .single();
 
-        if (!stripeRow?.data?.account_id) {
-          return NextResponse.json(
-            { error: "Connect your payment account before going live. Go to Settings → Payments to set up." },
-            { status: 400 }
-          );
+        const isAlreadyLive = existingEvent?.status === "live";
+
+        if (!isAlreadyLive) {
+          const { data: stripeRow } = await supabase
+            .from(TABLES.SITE_SETTINGS)
+            .select("data")
+            .eq("key", stripeAccountKey(orgId))
+            .single();
+
+          if (!stripeRow?.data?.account_id) {
+            return NextResponse.json(
+              { error: "Connect your payment account before going live. Go to Settings → Payments to set up." },
+              { status: 400 }
+            );
+          }
         }
       }
     }

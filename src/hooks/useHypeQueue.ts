@@ -236,8 +236,8 @@ export function useHypeQueue({ eventId, eventName, durationSeconds, enabled, cap
     const remaining = Math.max(0, durationMs - elapsed);
     const secs = Math.round(remaining / 1000);
     if (secs <= 5) return "a few seconds";
-    if (secs < 20) return "less than 30 seconds";
-    if (secs < 45) return "less than a minute";
+    if (secs <= 20) return "less than 30 seconds";
+    if (secs <= 45) return "less than a minute";
     if (secs < 90) return "about a minute";
     return `~${Math.ceil(secs / 60)} min`;
   }, [phase, durationMs, entryTime, position]); // position dep forces re-eval on batch ticks

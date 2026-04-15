@@ -955,16 +955,16 @@ const ANNOUNCEMENT_DEFAULTS: Record<1 | 2 | 3 | 4, { subject: string; heading: s
     cta: "View Event",
   },
   3: {
-    subject: "Tickets are ON SALE — {event_name}",
-    heading: "Tickets Are Live!",
-    body: "Tickets for {event_name} are on sale now. Don't wait — secure your spot before they sell out.",
-    cta: "Buy Tickets",
+    subject: "Tickets for {event_name} are now available",
+    heading: "Tickets are live",
+    body: "Hi {first_name}, tickets for {event_name} just went on sale. Here's the link whenever you're ready.",
+    cta: "Get tickets",
   },
   4: {
-    subject: "Last chance — {event_name}",
-    heading: "Don't Miss Out",
-    body: "Tickets for {event_name} are still available — but not for long. Grab yours before it's too late.",
-    cta: "Buy Tickets",
+    subject: "A quick note on {event_name}",
+    heading: "Still available",
+    body: "Hi {first_name}, there are still tickets left for {event_name} if you'd like one.",
+    cta: "Get tickets",
   },
 };
 
@@ -1021,8 +1021,8 @@ export function buildAnnouncementEmail(
     : opts.step === 2
     ? "COMING SOON"
     : opts.step === 3
-    ? "ON SALE NOW"
-    : "LAST CHANCE";
+    ? "NOW AVAILABLE"
+    : "STILL AVAILABLE";
 
   const html = `<!DOCTYPE html>
 <html lang="en">

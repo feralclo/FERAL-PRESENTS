@@ -90,9 +90,9 @@ const STEPS: StepConfig[] = [
     subjectKey: "step_3_subject",
     headingKey: "step_3_heading",
     bodyKey: "step_3_body",
-    defaultSubject: "Tickets are ON SALE — {event_name}",
-    defaultHeading: "Tickets Are Live!",
-    defaultBody: "Tickets for {event_name} are on sale now. Don't wait — secure your spot before they sell out.",
+    defaultSubject: "Tickets for {event_name} are now available",
+    defaultHeading: "Tickets are live",
+    defaultBody: "Hi {first_name}, tickets for {event_name} just went on sale. Here's the link whenever you're ready.",
   },
   {
     step: 4,
@@ -104,9 +104,9 @@ const STEPS: StepConfig[] = [
     subjectKey: "step_4_subject",
     headingKey: "step_4_heading",
     bodyKey: "step_4_body",
-    defaultSubject: "Last chance — {event_name}",
-    defaultHeading: "Don't Miss Out",
-    defaultBody: "Tickets for {event_name} are still available — but not for long. Grab yours before it's too late.",
+    defaultSubject: "A quick note on {event_name}",
+    defaultHeading: "Still available",
+    defaultBody: "Hi {first_name}, there are still tickets left for {event_name} if you'd like one.",
   },
 ];
 

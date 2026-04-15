@@ -78,8 +78,11 @@ function generateBatchSchedule(
   // Generate batches that cover ~92% of duration, leaving 8% for final sprint to 0
   const targetDuration = durationMs * 0.92;
 
+  // Scale pause ranges to duration so a 20s queue doesn't sit on 2800-5500ms mid-phase pauses
+  const scale = durationMs / 45000;
+
   // First batch happens quickly — no awkward frozen start
-  const firstPause = 400 + rand() * 400; // 400-800ms
+  const firstPause = (400 + rand() * 400) * scale;
   t += firstPause;
   const firstBatchSize = Math.max(1, Math.floor(pos * 0.02 + rand() * pos * 0.04));
   pos = Math.max(1, pos - firstBatchSize);
@@ -103,7 +106,7 @@ function generateBatchSchedule(
       pauseMin = 600; pauseMax = 1800;
     }
 
-    const pause = pauseMin + rand() * (pauseMax - pauseMin);
+    const pause = (pauseMin + rand() * (pauseMax - pauseMin)) * scale;
     t += pause;
 
     // Batch size: relative to remaining position, with more variation

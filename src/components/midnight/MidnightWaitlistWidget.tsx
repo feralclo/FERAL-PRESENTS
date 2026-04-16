@@ -15,9 +15,7 @@ type State = "idle" | "loading" | "success" | "already_joined" | "error";
 export function MidnightWaitlistWidget({ eventId, eventName }: MidnightWaitlistWidgetProps) {
   const [state, setState] = useState<State>("idle");
   const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [marketingConsent, setMarketingConsent] = useState(false);
-  const [position, setPosition] = useState<number | null>(null);
+  const [marketingConsent, setMarketingConsent] = useState(true);
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
@@ -33,7 +31,6 @@ export function MidnightWaitlistWidget({ eventId, eventName }: MidnightWaitlistW
         body: JSON.stringify({
           email: email.trim(),
           event_id: eventId,
-          first_name: firstName.trim() || undefined,
           marketing_consent: marketingConsent,
         }),
       });
@@ -51,7 +48,6 @@ export function MidnightWaitlistWidget({ eventId, eventName }: MidnightWaitlistW
         return;
       }
 
-      setPosition(data.position ?? null);
       setState("success");
     } catch {
       setError("Something went wrong — please try again.");
@@ -95,12 +91,6 @@ export function MidnightWaitlistWidget({ eventId, eventName }: MidnightWaitlistW
               <p className="font-[family-name:var(--font-sans)] text-base font-semibold mb-1">
                 {state === "already_joined" ? "You're already on the list" : "You're on the waitlist!"}
               </p>
-              {state === "success" && position !== null && (
-                <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.1em] uppercase text-foreground/40 mb-3">
-                  Position{" "}
-                  <span className="text-foreground/70 font-bold">#{position}</span>
-                </p>
-              )}
               <p className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/50 leading-relaxed">
                 {state === "already_joined"
                   ? "We already have your details. We'll email you if a space opens up."
@@ -109,19 +99,6 @@ export function MidnightWaitlistWidget({ eventId, eventName }: MidnightWaitlistW
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
-              {/* Name field */}
-              <input
-                type="text"
-                placeholder="First name (optional)"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className={cn(
-                  "w-full h-[44px] px-4 rounded-xl text-sm",
-                  "bg-white/[0.05] border border-white/[0.08] text-foreground placeholder:text-foreground/30",
-                  "focus:outline-none focus:border-white/20 focus:bg-white/[0.07] transition-colors"
-                )}
-              />
-
               {/* Email field */}
               <input
                 type="email"

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useBranding } from "@/hooks/useBranding";
 
 interface MidnightWaitlistWidgetProps {
   eventId: string;
@@ -13,6 +14,7 @@ interface MidnightWaitlistWidgetProps {
 type State = "idle" | "loading" | "success" | "already_joined" | "error";
 
 export function MidnightWaitlistWidget({ eventId, eventName }: MidnightWaitlistWidgetProps) {
+  const branding = useBranding();
   const [state, setState] = useState<State>("idle");
   const [email, setEmail] = useState("");
   const [marketingConsent, setMarketingConsent] = useState(true);
@@ -62,6 +64,23 @@ export function MidnightWaitlistWidget({ eventId, eventName }: MidnightWaitlistW
     >
       <Card className="glass rounded-2xl max-lg:rounded-none max-lg:border-0 max-lg:shadow-none max-lg:backdrop-blur-0 max-lg:bg-transparent p-0 gap-0">
         <CardContent className="p-8 max-lg:p-6 max-[480px]:p-4">
+          {/* Tenant logo */}
+          <div className="mb-6 flex justify-center">
+            {branding.logo_url ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={branding.logo_url}
+                alt={branding.org_name || ""}
+                className="w-auto block"
+                style={{ height: Math.min(branding.logo_height || 36, 48), maxWidth: 180, objectFit: "contain" }}
+              />
+            ) : (
+              <span className="font-[family-name:var(--font-mono)] text-sm tracking-[0.15em] uppercase text-foreground/60">
+                {branding.org_name || ""}
+              </span>
+            )}
+          </div>
+
           {/* Sold Out header */}
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-2">

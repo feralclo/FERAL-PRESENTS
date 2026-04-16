@@ -252,9 +252,9 @@ Multi-currency support with exchange rate conversion. Buyer's currency auto-dete
 
 ## Database (Supabase)
 
-### Tables (32 total — all have `org_id`)
+### Tables (33 total — all have `org_id`)
 
-**Core:** `site_settings` (key-value JSONB config), `events`, `ticket_types` (event_id, price, capacity, sold), `products` (merch), `orders` (order_number FERAL-XXXXX, payment_ref), `order_items`, `tickets` (ticket_code FERAL-XXXXXXXX, scanned_at/by), `customers`, `artists`, `event_artists` (junction with sort_order), `guest_list` (source: direct/artist/application, access_level, invite_token), `discounts` (applicable_event_ids[], rep_id nullable), `abandoned_carts`, `traffic_events`, `org_users` (perm_* flags), `domains` (hostname unique), `popup_events`, `payment_events` (append-only health log), `event_interest_signups`, `merch_collections`, `merch_collection_items`.
+**Core:** `site_settings` (key-value JSONB config), `events`, `ticket_types` (event_id, price, capacity, sold), `products` (merch), `orders` (order_number FERAL-XXXXX, payment_ref), `order_items`, `tickets` (ticket_code FERAL-XXXXXXXX, scanned_at/by), `customers`, `artists`, `event_artists` (junction with sort_order), `guest_list` (source: direct/artist/application, access_level, invite_token), `discounts` (applicable_event_ids[], rep_id nullable), `abandoned_carts`, `traffic_events`, `org_users` (perm_* flags), `domains` (hostname unique), `popup_events`, `payment_events` (append-only health log), `event_interest_signups`, `merch_collections`, `merch_collection_items`, `waitlist_signups` (status: pending/notified/purchased/expired/removed, notification_token UUID with 48h TTL).
 
 **Reps Program (11 tables):** `reps` (points_balance, currency_balance, level, status), `rep_events`, `rep_rewards` (metadata JSONB), `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims` (metadata JSONB), `rep_event_position_rewards`, `rep_notifications` (type CHECK constraint), `rep_push_subscriptions`. Types: `src/types/reps.ts`.
 
@@ -287,7 +287,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 ### Settings Keys
 Stored in `site_settings` as key → JSONB. All helpers in `lib/constants.ts` — **always use helpers, never hardcode keys**.
 
-**Per-org keys** (pattern: `{org_id}_*`): `generalKey()`, `brandingKey()`, `themesKey()`, `vatKey()`, `homepageKey()`, `repsKey()`, `abandonedCartAutomationKey()`, `announcementAutomationKey()`, `popupKey()`, `marketingKey()`, `emailKey()`, `walletPassesKey()`, `eventsListKey()`, `stripeAccountKey()`, `planKey()`, `onboardingKey()`, `merchStoreKey()`, `scannerAssignmentsKey()`, `guestListSettingsKey()`, `guestListSubmissionsKey()`, `guestListCampaignsKey()`. Also `{org_id}_pdf_ticket` (no helper).
+**Per-org keys** (pattern: `{org_id}_*`): `generalKey()`, `brandingKey()`, `themesKey()`, `vatKey()`, `homepageKey()`, `repsKey()`, `abandonedCartAutomationKey()`, `announcementAutomationKey()`, `popupKey()`, `marketingKey()`, `emailKey()`, `walletPassesKey()`, `eventsListKey()`, `stripeAccountKey()`, `planKey()`, `onboardingKey()`, `merchStoreKey()`, `scannerAssignmentsKey()`, `guestListSettingsKey()`, `guestListSubmissionsKey()`, `guestListCampaignsKey()`, `waitlistKey(orgId, eventSlug)` (waitlist settings per event). Also `{org_id}_pdf_ticket` (no helper).
 
 **Platform keys**: `platformBillingKey()`, `exchangeRatesKey()`. Also without helpers: `platform_payment_digest`, `platform_health_digest`, `platform_beta_applications`, `platform_beta_invite_codes`, `entry_platform_xp`.
 

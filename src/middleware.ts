@@ -214,6 +214,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/rep-portal/magic-login/callback", // Test magic login — no auth
   "/api/team/accept-invite",
   "/api/announcement/signup",
+  "/api/waitlist/",
   "/api/beta/",
   "/api/platform/impersonate/callback", // Opened in incognito — no auth
   "/api/monitoring", // Sentry tunnel (bypasses ad blockers)

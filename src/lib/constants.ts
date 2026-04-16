@@ -42,6 +42,7 @@ export const TABLES = {
   EVENT_INTEREST_SIGNUPS: "event_interest_signups",
   MERCH_COLLECTIONS: "merch_collections",
   MERCH_COLLECTION_ITEMS: "merch_collection_items",
+  WAITLIST_SIGNUPS: "waitlist_signups",
 } as const;
 
 
@@ -158,6 +159,11 @@ export function guestListCampaignsKey(orgId: string): string {
 /** Generate the campaign sends key for a given org */
 export function campaignSendsKey(orgId: string): string {
   return `${orgId}_campaign_sends`;
+}
+
+/** Generate the waitlist settings key for a specific event */
+export function waitlistKey(orgId: string, eventSlug: string): string {
+  return `${orgId}_waitlist_${eventSlug}`;
 }
 
 /** Platform-level exchange rates cache key */

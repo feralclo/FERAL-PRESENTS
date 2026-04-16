@@ -34,6 +34,9 @@ export interface EventSettings {
   /** Merch booth closing time in HH:MM format (e.g. "22:00"). Shown on email/PDF for merch orders. */
   merch_collection_cutoff?: string;
 
+  /** Enable waitlist for this event (shown when all tickets are sold out) */
+  waitlist_enabled?: boolean;
+
   // Any additional dynamic fields
   [key: string]: unknown;
 }

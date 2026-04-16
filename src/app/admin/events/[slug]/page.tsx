@@ -24,6 +24,7 @@ import { ContentTab } from "@/components/admin/event-editor/ContentTab";
 import { DesignTab } from "@/components/admin/event-editor/DesignTab";
 import { TicketsTab } from "@/components/admin/event-editor/TicketsTab";
 import { SettingsTab } from "@/components/admin/event-editor/SettingsTab";
+import { WaitlistTab } from "@/components/admin/event-editor/WaitlistTab";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { EventSettings } from "@/types/settings";
@@ -352,6 +353,7 @@ export default function EventEditorPage() {
           <TabsTrigger value="design">Design</TabsTrigger>
           <TabsTrigger value="tickets">Tickets</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="mt-6">
@@ -397,6 +399,14 @@ export default function EventEditorPage() {
             updateSetting={updateSetting}
             artistNames={eventArtists.map((ea) => ea.artist?.name).filter(Boolean) as string[]}
             hasMerch={ticketTypes.some((tt) => tt.includes_merch || tt.product_id)}
+          />
+        </TabsContent>
+
+        <TabsContent value="waitlist" className="mt-6">
+          <WaitlistTab
+            event={event}
+            settings={settings}
+            updateSetting={updateSetting}
           />
         </TabsContent>
       </Tabs>

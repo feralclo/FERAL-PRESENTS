@@ -919,3 +919,338 @@ export async function sendAnnouncementEmail(params: {
     return false;
   }
 }
+
+interface WaitlistEmailParams {
+  orgId: string;
+  email: string;
+  firstName?: string;
+  event: {
+    name: string;
+    slug: string;
+    venue_name?: string | null;
+    date_start?: string | null;
+  };
+  position?: number;
+  customSubject?: string;
+  customBody?: string;
+}
+
+interface WaitlistNotificationParams extends Omit<WaitlistEmailParams, "position"> {
+  notificationUrl: string;
+  tokenExpiresAt: string;
+  customSubject?: string;
+  customBody?: string;
+}
+
+function buildWaitlistConfirmationHtml(opts: {
+  accentColor: string;
+  logoUrl?: string;
+  logoHeight: number;
+  logoAspectRatio?: number;
+  fromName: string;
+  subject: string;
+  eventName: string;
+  eventDate: string;
+  venue: string;
+  position?: number;
+  firstName?: string;
+  bodyText: string;
+  baseUrl: string;
+  eventSlug: string;
+}): string {
+  const accent = opts.accentColor;
+  const greeting = opts.firstName ? `Hi ${opts.firstName},` : "You're on the list.";
+  const eventDetails = [opts.eventDate, opts.venue].filter(Boolean).join(" · ");
+  const logoHtml = opts.logoUrl
+    ? `<img src="${opts.logoUrl}" alt="${opts.fromName}" height="${opts.logoHeight}" style="display:block;max-width:200px;">`
+    : `<span style="font-family:monospace;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.15em;">${opts.fromName.toUpperCase()}</span>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <title>${opts.subject}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;-webkit-font-smoothing:antialiased;color-scheme:light only;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12);">
+        <!-- DARK HERO -->
+        <tr><td style="background-color:#0e0e0e;padding:0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="height:4px;background-color:${accent};"></td></tr>
+            <tr><td align="center" style="padding:32px 40px 24px;">${logoHtml}</td></tr>
+            <tr><td align="center" style="padding:0 40px 8px;">
+              <span style="display:inline-block;background-color:${accent};color:#ffffff;font-family:monospace;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:4px 12px;border-radius:4px;">WAITLIST</span>
+            </td></tr>
+            <tr><td align="center" style="padding:12px 40px 8px;">
+              <h1 style="margin:0;font-family:monospace;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;line-height:1.2;">${greeting}</h1>
+            </td></tr>
+            ${opts.position !== undefined ? `<tr><td align="center" style="padding:6px 40px 16px;"><p style="margin:0;font-family:monospace;font-size:13px;color:rgba(255,255,255,0.5);letter-spacing:0.06em;">You are <strong style="color:${accent};">#${opts.position}</strong> on the waitlist</p></td></tr>` : `<tr><td style="height:16px;"></td></tr>`}
+          </table>
+        </td></tr>
+        <!-- WHITE CONTENT -->
+        <tr><td style="background-color:#ffffff;padding:32px 40px 28px;">
+          <p style="margin:0 0 20px;font-family:system-ui,sans-serif;font-size:15px;color:#374151;line-height:1.6;">${opts.bodyText}</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;margin-bottom:24px;">
+            <tr><td style="border-left:3px solid ${accent};padding:16px 20px;">
+              <p style="margin:0 0 2px;font-family:monospace;font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#9ca3af;">Event</p>
+              <p style="margin:0;font-family:system-ui,sans-serif;font-size:15px;font-weight:600;color:#111827;">${opts.eventName}</p>
+              ${eventDetails ? `<p style="margin:4px 0 0;font-family:system-ui,sans-serif;font-size:13px;color:#6b7280;">${eventDetails}</p>` : ""}
+            </td></tr>
+          </table>
+          <p style="margin:0;font-family:system-ui,sans-serif;font-size:13px;color:#9ca3af;line-height:1.5;">We'll email you immediately if a space opens up. First come, first served.</p>
+        </td></tr>
+        <!-- FOOTER -->
+        <tr><td style="background-color:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
+          <p style="margin:0;font-family:system-ui,sans-serif;font-size:12px;color:#9ca3af;">Powered by Entry</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+function buildWaitlistNotificationHtml(opts: {
+  accentColor: string;
+  logoUrl?: string;
+  logoHeight: number;
+  fromName: string;
+  subject: string;
+  eventName: string;
+  eventDate: string;
+  venue: string;
+  firstName?: string;
+  bodyText: string;
+  notificationUrl: string;
+  expiresDisplay: string;
+}): string {
+  const accent = opts.accentColor;
+  const greeting = opts.firstName ? `Good news, ${opts.firstName}!` : "Good news!";
+  const eventDetails = [opts.eventDate, opts.venue].filter(Boolean).join(" · ");
+  const logoHtml = opts.logoUrl
+    ? `<img src="${opts.logoUrl}" alt="${opts.fromName}" height="${opts.logoHeight}" style="display:block;max-width:200px;">`
+    : `<span style="font-family:monospace;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.15em;">${opts.fromName.toUpperCase()}</span>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <title>${opts.subject}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;-webkit-font-smoothing:antialiased;color-scheme:light only;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12);">
+        <!-- DARK HERO -->
+        <tr><td style="background-color:#0e0e0e;padding:0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="height:4px;background-color:${accent};"></td></tr>
+            <tr><td align="center" style="padding:32px 40px 24px;">${logoHtml}</td></tr>
+            <tr><td align="center" style="padding:0 40px 8px;">
+              <span style="display:inline-block;background-color:${accent};color:#ffffff;font-family:monospace;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:4px 12px;border-radius:4px;">SPOT AVAILABLE</span>
+            </td></tr>
+            <tr><td align="center" style="padding:12px 40px 20px;">
+              <h1 style="margin:0;font-family:monospace;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;line-height:1.2;">${greeting}</h1>
+            </td></tr>
+          </table>
+        </td></tr>
+        <!-- WHITE CONTENT -->
+        <tr><td style="background-color:#ffffff;padding:32px 40px 28px;">
+          <p style="margin:0 0 20px;font-family:system-ui,sans-serif;font-size:15px;color:#374151;line-height:1.6;">${opts.bodyText}</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;margin-bottom:24px;">
+            <tr><td style="border-left:3px solid ${accent};padding:16px 20px;">
+              <p style="margin:0 0 2px;font-family:monospace;font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#9ca3af;">Event</p>
+              <p style="margin:0;font-family:system-ui,sans-serif;font-size:15px;font-weight:600;color:#111827;">${opts.eventName}</p>
+              ${eventDetails ? `<p style="margin:4px 0 0;font-family:system-ui,sans-serif;font-size:13px;color:#6b7280;">${eventDetails}</p>` : ""}
+            </td></tr>
+          </table>
+          <!-- CTA BUTTON -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+            <tr><td align="center">
+              <a href="${opts.notificationUrl}" style="display:inline-block;background-color:${accent};color:#ffffff;font-family:monospace;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:14px 32px;border-radius:8px;">Get My Ticket</a>
+            </td></tr>
+          </table>
+          <p style="margin:0;font-family:system-ui,sans-serif;font-size:12px;color:#9ca3af;text-align:center;line-height:1.5;">This offer expires ${opts.expiresDisplay}. First come, first served.</p>
+        </td></tr>
+        <!-- FOOTER -->
+        <tr><td style="background-color:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
+          <p style="margin:0;font-family:system-ui,sans-serif;font-size:12px;color:#9ca3af;">Powered by Entry</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendWaitlistConfirmationEmail(params: WaitlistEmailParams): Promise<boolean> {
+  try {
+    const resend = getResendClient();
+    if (!resend) return false;
+
+    const [settings] = await Promise.all([getEmailSettings(params.orgId)]);
+
+    const accentColor = settings.accent_color || "#ff0033";
+    const fromName = settings.from_name || params.orgId;
+    const subject = params.customSubject
+      ? params.customSubject
+      : `You're on the waitlist — ${params.event.name}`;
+
+    const bodyText = params.customBody
+      || `A spot opened up or tickets became available, you'll be the first to know. We'll email you immediately — this is first come, first served, so make sure to act fast when you get the notification.`;
+
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://entry.events";
+
+    let emailLogoBase64: string | null = null;
+    const logoUrl = settings.logo_url;
+    try {
+      const sb = await getSupabaseAdmin();
+      if (sb && logoUrl) {
+        const m = logoUrl.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+        if (m && m[1].startsWith(`${params.orgId}_`)) {
+          const { data: row } = await sb.from(TABLES.SITE_SETTINGS).select("data").eq("key", `media_${m[1]}`).single();
+          const d = row?.data as { image?: string } | null;
+          if (d?.image) emailLogoBase64 = d.image;
+        }
+      }
+    } catch { /* logo fetch failed */ }
+
+    const resolvedLogoUrl = emailLogoBase64 ? "cid:brand-logo" : logoUrl || undefined;
+
+    const html = buildWaitlistConfirmationHtml({
+      accentColor,
+      logoUrl: resolvedLogoUrl,
+      logoHeight: Math.min(settings.logo_height || 48, 100),
+      fromName,
+      subject,
+      eventName: params.event.name,
+      eventDate: params.event.date_start ? formatEventDate(params.event.date_start) : "",
+      venue: params.event.venue_name || "",
+      position: params.position,
+      firstName: params.firstName,
+      bodyText,
+      baseUrl,
+      eventSlug: params.event.slug,
+    });
+
+    const attachments: { filename: string; content: Buffer; contentType?: string; contentId?: string }[] = [];
+    if (emailLogoBase64) {
+      const base64Match = emailLogoBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (base64Match) {
+        attachments.push({ filename: "logo.png", content: Buffer.from(base64Match[2], "base64"), contentType: base64Match[1], contentId: "brand-logo" });
+      }
+    }
+
+    const { error } = await resend.emails.send({
+      from: `${settings.from_name} <${settings.from_email}>`,
+      replyTo: settings.reply_to || undefined,
+      to: [params.email],
+      subject,
+      html,
+      ...(attachments.length > 0 ? { attachments } : {}),
+    });
+
+    if (error) {
+      console.error(`[email] Waitlist confirmation failed for ${params.email}:`, error);
+      return false;
+    }
+
+    console.log(`[email] Waitlist confirmation sent to ${params.email} for ${params.event.name}`);
+    return true;
+  } catch (err) {
+    console.error(`[email] Failed to send waitlist confirmation to ${params.email}:`, err);
+    return false;
+  }
+}
+
+export async function sendWaitlistNotificationEmail(params: WaitlistNotificationParams): Promise<boolean> {
+  try {
+    const resend = getResendClient();
+    if (!resend) return false;
+
+    const settings = await getEmailSettings(params.orgId);
+
+    const accentColor = settings.accent_color || "#ff0033";
+    const subject = params.customSubject
+      ? params.customSubject
+      : `A spot has opened — ${params.event.name}`;
+
+    const bodyText = params.customBody
+      || `A space has opened up for ${params.event.name}. Use the button below to secure your ticket — this offer is available for a limited time, and it's first come, first served.`;
+
+    let expiresDisplay = "in 48 hours";
+    try {
+      const d = new Date(params.tokenExpiresAt);
+      const datePart = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+      const timePart = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      expiresDisplay = `on ${datePart} at ${timePart}`;
+    } catch { /* use fallback */ }
+
+    let emailLogoBase64: string | null = null;
+    const logoUrl = settings.logo_url;
+    try {
+      const sb = await getSupabaseAdmin();
+      if (sb && logoUrl) {
+        const m = logoUrl.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+        if (m && m[1].startsWith(`${params.orgId}_`)) {
+          const { data: row } = await sb.from(TABLES.SITE_SETTINGS).select("data").eq("key", `media_${m[1]}`).single();
+          const d = row?.data as { image?: string } | null;
+          if (d?.image) emailLogoBase64 = d.image;
+        }
+      }
+    } catch { /* logo fetch failed */ }
+
+    const resolvedLogoUrl = emailLogoBase64 ? "cid:brand-logo" : logoUrl || undefined;
+
+    const html = buildWaitlistNotificationHtml({
+      accentColor,
+      logoUrl: resolvedLogoUrl,
+      logoHeight: Math.min(settings.logo_height || 48, 100),
+      fromName: settings.from_name || params.orgId,
+      subject,
+      eventName: params.event.name,
+      eventDate: params.event.date_start ? formatEventDate(params.event.date_start) : "",
+      venue: params.event.venue_name || "",
+      firstName: params.firstName,
+      bodyText,
+      notificationUrl: params.notificationUrl,
+      expiresDisplay,
+    });
+
+    const attachments: { filename: string; content: Buffer; contentType?: string; contentId?: string }[] = [];
+    if (emailLogoBase64) {
+      const base64Match = emailLogoBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (base64Match) {
+        attachments.push({ filename: "logo.png", content: Buffer.from(base64Match[2], "base64"), contentType: base64Match[1], contentId: "brand-logo" });
+      }
+    }
+
+    const { error } = await resend.emails.send({
+      from: `${settings.from_name} <${settings.from_email}>`,
+      replyTo: settings.reply_to || undefined,
+      to: [params.email],
+      subject,
+      html,
+      ...(attachments.length > 0 ? { attachments } : {}),
+    });
+
+    if (error) {
+      console.error(`[email] Waitlist notification failed for ${params.email}:`, error);
+      return false;
+    }
+
+    console.log(`[email] Waitlist notification sent to ${params.email} for ${params.event.name}`);
+    return true;
+  } catch (err) {
+    console.error(`[email] Failed to send waitlist notification to ${params.email}:`, err);
+    return false;
+  }
+}

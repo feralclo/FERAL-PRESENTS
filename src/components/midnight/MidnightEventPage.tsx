@@ -18,6 +18,7 @@ import { MidnightHero } from "./MidnightHero";
 import { MidnightEventInfo } from "./MidnightEventInfo";
 import { MidnightLineup } from "./MidnightLineup";
 import { MidnightTicketWidget } from "./MidnightTicketWidget";
+import { MidnightWaitlistWidget } from "./MidnightWaitlistWidget";
 import { MidnightAnnouncementWidget } from "./MidnightAnnouncementWidget";
 import { MidnightAnnouncementPage } from "./MidnightAnnouncementPage";
 import { MidnightMerchModal } from "./MidnightMerchModal";
@@ -66,6 +67,20 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
   const isQueuePreview = previewMode === "queue";
   const testMode = useMemo(() => isTestOrder(), []);
 
+  // Waitlist token: ?wt=TOKEN unlocks purchase for notified waitlist members
+  const [waitlistToken] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("wt");
+  });
+  const [waitlistTokenValid, setWaitlistTokenValid] = useState(false);
+  useEffect(() => {
+    if (!waitlistToken) return;
+    fetch(`/api/waitlist/validate?token=${encodeURIComponent(waitlistToken)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.valid) setWaitlistTokenValid(true); })
+      .catch(() => {});
+  }, [waitlistToken]);
+
   // Extract release config from settings (needs to be before useCart)
   const ticketGroupMap =
     (settings?.ticket_group_map as Record<string, string | null> | undefined) || {};
@@ -85,6 +100,23 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
     tracking,
     releaseConfig,
   });
+
+  // Waitlist: determine if event is fully sold out and waitlist is enabled
+  const allSoldOut = useMemo(() => {
+    const types = event.ticket_types || [];
+    const purchasable = types.filter(
+      (tt) => tt.status === "active" || tt.status === "sold_out"
+    );
+    return (
+      purchasable.length > 0 &&
+      purchasable.every(
+        (tt) => tt.status === "sold_out" || (tt.capacity != null && tt.capacity > 0 && tt.sold >= tt.capacity)
+      )
+    );
+  }, [event.ticket_types]);
+
+  const waitlistEnabled = settings?.waitlist_enabled === true;
+  const showWaitlist = allSoldOut && waitlistEnabled && !waitlistTokenValid && !isTicketPreview;
 
   // Track PageView + ViewContent on mount (skip in editor preview)
   useEffect(() => {
@@ -649,6 +681,11 @@ function MidnightEventPageInner({ event }: MidnightEventPageProps) {
                     title={event.announcement_title}
                     subtitle={event.announcement_subtitle}
                     onCountdownComplete={() => setAnnouncementComplete(true)}
+                  />
+                ) : showWaitlist ? (
+                  <MidnightWaitlistWidget
+                    eventId={event.id}
+                    eventName={event.name}
                   />
                 ) : (
                   <MidnightTicketWidget

@@ -107,7 +107,7 @@ export function WaitlistTab({ event, settings, updateSetting }: WaitlistTabProps
   async function handleRemove(signupId: string) {
     setRemoving(true);
     try {
-      await fetch(`/api/admin/waitlist/${signupId}`, { method: "DELETE" });
+      await fetch(`/api/admin/waitlist/${event.id}/signups/${signupId}`, { method: "DELETE" });
       await loadSignups();
     } finally {
       setRemoving(false);

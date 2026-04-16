@@ -1123,7 +1123,11 @@ export async function sendWaitlistConfirmationEmail(params: WaitlistEmailParams)
       }
     } catch { /* logo fetch failed */ }
 
-    const resolvedLogoUrl = emailLogoBase64 ? "cid:brand-logo" : logoUrl || undefined;
+    const resolvedLogoUrl = emailLogoBase64
+      ? "cid:brand-logo"
+      : logoUrl
+        ? (logoUrl.startsWith("/") ? `${baseUrl}${logoUrl}` : logoUrl)
+        : undefined;
 
     const html = buildWaitlistConfirmationHtml({
       accentColor,
@@ -1196,6 +1200,7 @@ export async function sendWaitlistNotificationEmail(params: WaitlistNotification
 
     let emailLogoBase64: string | null = null;
     const logoUrl = settings.logo_url;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://entry.events";
     try {
       const sb = await getSupabaseAdmin();
       if (sb && logoUrl) {
@@ -1208,7 +1213,11 @@ export async function sendWaitlistNotificationEmail(params: WaitlistNotification
       }
     } catch { /* logo fetch failed */ }
 
-    const resolvedLogoUrl = emailLogoBase64 ? "cid:brand-logo" : logoUrl || undefined;
+    const resolvedLogoUrl = emailLogoBase64
+      ? "cid:brand-logo"
+      : logoUrl
+        ? (logoUrl.startsWith("/") ? `${baseUrl}${logoUrl}` : logoUrl)
+        : undefined;
 
     const html = buildWaitlistNotificationHtml({
       accentColor,

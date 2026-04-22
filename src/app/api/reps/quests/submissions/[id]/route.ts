@@ -59,7 +59,7 @@ export async function PUT(
     // Fetch the submission with quest and rep info
     const { data: submission, error: fetchErr } = await supabase
       .from(TABLES.REP_QUEST_SUBMISSIONS)
-      .select("*, quest:rep_quests(id, title, points_reward, currency_reward, total_completed), rep:reps(id, first_name, last_name, display_name, email, photo_url)")
+      .select("*, quest:rep_quests(id, title, points_reward, xp_reward, currency_reward, ep_reward, total_completed), rep:reps(id, first_name, last_name, display_name, email, photo_url)")
       .eq("id", id)
       .eq("org_id", orgId)
       .single();
@@ -91,8 +91,10 @@ export async function PUT(
     }
 
     if (status === "approved") {
-      const pointsReward = submission.quest?.points_reward || 0;
-      updates.points_awarded = pointsReward;
+      // Legacy points_awarded tracking — keep in sync with the new xp_reward
+      // column preferred by iOS / Android / web-v2.
+      updates.points_awarded =
+        submission.quest?.xp_reward ?? submission.quest?.points_reward ?? 0;
       updates.requires_revision = false;
     }
 
@@ -109,17 +111,22 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Award XP + currency and increment counter only after successful status update
+    // Award XP + EP and increment counter only after successful status update
     if (status === "approved") {
-      const pointsReward = submission.quest?.points_reward || 0;
-      const currencyReward = submission.quest?.currency_reward || 0;
+      // XP (platform-wide, via rep_points_log + cached reps.points_balance)
+      const xpReward =
+        submission.quest?.xp_reward ?? submission.quest?.points_reward ?? 0;
+      // EP (real money — goes through the ledger RPC, NOT awardPoints)
+      const epReward =
+        submission.quest?.ep_reward ?? submission.quest?.currency_reward ?? 0;
 
-      if (pointsReward > 0 || currencyReward > 0) {
+      // XP first — never fails the approval
+      if (xpReward > 0) {
         await awardPoints({
           repId: submission.rep_id,
           orgId,
-          points: pointsReward,
-          currency: currencyReward,
+          points: xpReward,
+          currency: 0, // EP handled separately via ledger — don't double-credit
           sourceType: "quest",
           sourceId: submission.quest_id,
           description: `Quest completed: ${submission.quest?.title || "Unknown quest"}`,
@@ -127,7 +134,49 @@ export async function PUT(
         });
       }
 
-      // Increment total_completed on the quest
+      // EP via the atomic ledger RPC — may raise insufficient_float
+      if (epReward > 0) {
+        const { getEpConfig } = await import("@/lib/ep/config");
+        const epConfig = await getEpConfig();
+        const { error: epError } = await supabase.rpc("award_quest_ep", {
+          p_rep_id: submission.rep_id,
+          p_tenant_org_id: orgId,
+          p_ep_amount: epReward,
+          p_quest_submission_id: id,
+          p_fiat_rate_pence: epConfig.fiat_rate_pence,
+        });
+
+        if (epError) {
+          // Float shortfall OR other RPC failure. Roll the submission back to
+          // pending so the admin can fix (top up EP, lower the reward, etc.)
+          // rather than leaving the approval stuck in an awarded-XP-but-not-EP
+          // state.
+          await supabase
+            .from(TABLES.REP_QUEST_SUBMISSIONS)
+            .update({ status: "pending", reviewed_at: null, reviewed_by: null })
+            .eq("id", id)
+            .eq("org_id", orgId);
+
+          const message = epError.message?.includes("insufficient_float")
+            ? `Not enough EP float to cover this reward. Top up your EP balance before approving.`
+            : "Failed to credit EP reward";
+
+          Sentry.captureException(epError, {
+            extra: { submissionId: id, orgId, epReward },
+          });
+          return NextResponse.json(
+            {
+              error: message,
+              code: epError.message?.includes("insufficient_float")
+                ? "insufficient_float"
+                : "ep_award_failed",
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Increment total_completed on the quest (best-effort — cache only)
       const { data: currentQuest } = await supabase
         .from(TABLES.REP_QUESTS)
         .select("total_completed")
@@ -146,8 +195,8 @@ export async function PUT(
 
       // In-app notification for quest approval
       const notifParts = [];
-      if (pointsReward > 0) notifParts.push(`+${pointsReward} XP`);
-      if (currencyReward > 0) notifParts.push(`+${currencyReward} EP`);
+      if (xpReward > 0) notifParts.push(`+${xpReward} XP`);
+      if (epReward > 0) notifParts.push(`+${epReward} EP`);
       createNotification({
         repId: submission.rep_id,
         orgId,
@@ -155,7 +204,7 @@ export async function PUT(
         title: "Quest Approved!",
         body: `${submission.quest?.title || "Quest"} — ${notifParts.join(" ")}`,
         link: "/rep/quests",
-        metadata: { quest_id: submission.quest_id, submission_id: id, points_awarded: pointsReward, currency_awarded: currencyReward },
+        metadata: { quest_id: submission.quest_id, submission_id: id, xp_awarded: xpReward, ep_awarded: epReward },
       }).catch(() => {});
     } else if (status === "rejected") {
       createNotification({

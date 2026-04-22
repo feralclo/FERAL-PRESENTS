@@ -395,11 +395,19 @@ export const DEFAULT_PLATFORM_XP_CONFIG: PlatformXPConfig = {
 export type RepNotificationType =
   | "reward_unlocked"
   | "quest_approved"
+  | "quest_rejected"
+  | "quest_revision_requested"
   | "sale_attributed"
+  | "first_sale_for_event"
   | "level_up"
+  | "leaderboard_top10"
   | "reward_fulfilled"
   | "manual_grant"
   | "approved"
+  | "team_request_approved"
+  | "team_request_rejected"
+  | "poster_drop"
+  | "peer_milestone"
   | "general";
 
 export interface RepNotification {

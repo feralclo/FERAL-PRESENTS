@@ -5,11 +5,17 @@ import { requireRepAuth } from "@/lib/auth";
 import * as Sentry from "@sentry/nextjs";
 
 /**
- * GET /api/rep-portal/quests — Available quests for current rep (protected)
+ * GET /api/rep-portal/quests
  *
- * Shows quests where event_id is null (global) or event_id is in the rep's
- * assigned events. Includes the rep's submission count per quest.
- * For sales_milestone quests, computes progress from actual order data.
+ * Quest list shaped for iOS / Android / web-v2 per ENTRY-IOS-BACKEND-SPEC §6.5.
+ * Scope is resolved through approved rep_promoter_memberships — a rep sees
+ * all active quests from every promoter whose team they're on, plus any
+ * platform-level quest (promoter_id IS NULL).
+ *
+ * Query params:
+ *   ?promoter_id=UUID — restrict to one promoter
+ *   ?event_id=UUID    — restrict to one event
+ *   ?status=active|paused|archived — default active
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,10 +23,9 @@ export async function GET(request: NextRequest) {
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
-    const orgId = auth.rep.org_id;
 
-    const supabase = await getSupabaseAdmin();
-    if (!supabase) {
+    const db = await getSupabaseAdmin();
+    if (!db) {
       return NextResponse.json(
         { error: "Service unavailable" },
         { status: 503 }
@@ -28,6 +33,8 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = request.nextUrl;
+    const promoterIdParam = searchParams.get("promoter_id");
+    const eventIdParam = searchParams.get("event_id");
     const statusFilter = searchParams.get("status") || "active";
 
     if (!["active", "paused", "archived"].includes(statusFilter)) {
@@ -37,39 +44,73 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get rep's assigned event IDs
-    const { data: repEvents } = await supabase
-      .from(TABLES.REP_EVENTS)
-      .select("event_id")
+    // 1. Resolve scope — which promoters does this rep have active on?
+    const { data: memberships } = await db
+      .from("rep_promoter_memberships")
+      .select("promoter_id, promoter:promoters(id, org_id, handle, display_name, accent_hex)")
       .eq("rep_id", repId)
-      .eq("org_id", orgId);
+      .eq("status", "approved");
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const eventIds = (repEvents || [])
-      .map((re: { event_id: string }) => re.event_id)
-      .filter((id: string) => uuidRegex.test(id));
+    type PromoterShort = {
+      id: string;
+      org_id: string;
+      handle: string;
+      display_name: string;
+      accent_hex: number;
+    };
+    type MembershipRow = {
+      promoter_id: string;
+      promoter: PromoterShort | PromoterShort[] | null;
+    };
+    const approved = ((memberships ?? []) as unknown as MembershipRow[]).map(
+      (m) => ({
+        promoter_id: m.promoter_id,
+        promoter: Array.isArray(m.promoter) ? m.promoter[0] ?? null : m.promoter,
+      })
+    );
 
-    // Fetch quests: global OR in rep's assigned events
-    let query = supabase
+    // Apply ?promoter_id= scoping if set
+    const scoped = promoterIdParam
+      ? approved.filter((m) => m.promoter_id === promoterIdParam)
+      : approved;
+    const scopedPromoterIds = scoped.map((m) => m.promoter_id);
+    const promoterByPromoterId = new Map<string, PromoterShort>();
+    for (const m of scoped) {
+      if (m.promoter) promoterByPromoterId.set(m.promoter_id, m.promoter);
+    }
+
+    // 2. Fetch quests: (promoter_id IN scoped) OR (promoter_id IS NULL,
+    // platform-level — visible to everyone). Filter by event_id if given.
+    let questQuery = db
       .from(TABLES.REP_QUESTS)
-      .select("*, event:events(id, name, slug)")
-      .eq("org_id", orgId)
+      .select(
+        `
+          id, title, subtitle, description, instructions, quest_type,
+          platform, proof_type, xp_reward, points_reward, currency_reward,
+          ep_reward, sales_target, max_completions, starts_at, expires_at,
+          cover_image_url, image_url, banner_image_url, accent_hex,
+          accent_hex_secondary, status, promoter_id, event_id, auto_approve,
+          event:events(id, name, slug, date_start, cover_image_url, cover_image)
+        `
+      )
       .eq("status", statusFilter)
       .order("created_at", { ascending: false })
       .limit(100);
 
-    if (eventIds.length > 0) {
-      query = query.or(
-        `event_id.is.null,event_id.in.(${eventIds.join(",")})`
-      );
-    } else {
-      query = query.is("event_id", null);
+    // `(promoter_id IN (...) OR promoter_id IS NULL)` — Supabase .or() syntax
+    const promoterClause = scopedPromoterIds.length
+      ? `promoter_id.is.null,promoter_id.in.(${scopedPromoterIds.join(",")})`
+      : `promoter_id.is.null`;
+    questQuery = questQuery.or(promoterClause);
+
+    if (eventIdParam) {
+      questQuery = questQuery.eq("event_id", eventIdParam);
     }
 
-    const { data: quests, error } = await query;
+    const { data: quests, error } = await questQuery;
 
     if (error) {
-      console.error("[rep-portal/quests] Query error:", error);
+      Sentry.captureException(error, { extra: { repId, statusFilter } });
       return NextResponse.json(
         { error: "Failed to fetch quests" },
         { status: 500 }
@@ -80,94 +121,211 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: [] });
     }
 
-    // Get the rep's submission counts per quest
-    const questIds = quests.map((q: { id: string }) => q.id);
-    const { data: submissions } = await supabase
+    const questIds = (quests as Array<{ id: string }>).map((q) => q.id);
+
+    // 3. My submissions (for my_submissions counts + latest)
+    const { data: submissions } = await db
       .from(TABLES.REP_QUEST_SUBMISSIONS)
-      .select("quest_id, status")
+      .select(
+        "id, quest_id, status, created_at, rejection_reason, requires_revision"
+      )
       .eq("rep_id", repId)
-      .eq("org_id", orgId)
+      .in("quest_id", questIds)
+      .order("created_at", { ascending: false });
+
+    type Submission = {
+      id: string;
+      quest_id: string;
+      status: "pending" | "approved" | "rejected" | "requires_revision";
+      created_at: string;
+      rejection_reason: string | null;
+      requires_revision: boolean;
+    };
+    const submissionsByQuestId = new Map<string, Submission[]>();
+    for (const s of (submissions ?? []) as Submission[]) {
+      const list = submissionsByQuestId.get(s.quest_id) ?? [];
+      list.push(s);
+      submissionsByQuestId.set(s.quest_id, list);
+    }
+
+    // 4. Accepted flags
+    const { data: acceptances } = await db
+      .from("rep_quest_acceptances")
+      .select("quest_id, accepted_at")
+      .eq("rep_id", repId)
       .in("quest_id", questIds);
 
-    // Build submission count map: { quest_id: { total, approved, pending, rejected } }
-    const submissionMap: Record<
-      string,
-      { total: number; approved: number; pending: number; rejected: number }
-    > = {};
+    const acceptedQuestIds = new Set(
+      ((acceptances ?? []) as Array<{ quest_id: string }>).map(
+        (a) => a.quest_id
+      )
+    );
 
-    for (const sub of submissions || []) {
-      const s = sub as { quest_id: string; status: string };
-      if (!submissionMap[s.quest_id]) {
-        submissionMap[s.quest_id] = {
-          total: 0,
-          approved: 0,
-          pending: 0,
-          rejected: 0,
-        };
-      }
-      submissionMap[s.quest_id].total++;
-      if (s.status === "approved") submissionMap[s.quest_id].approved++;
-      if (s.status === "pending") submissionMap[s.quest_id].pending++;
-      if (s.status === "rejected") submissionMap[s.quest_id].rejected++;
-    }
-
-    // Compute sales progress for sales_milestone quests
-    const salesMilestoneQuests = quests.filter(
-      (q: { quest_type: string }) => q.quest_type === "sales_milestone"
-    ) as Array<{
+    // 5. Sales milestone progress (only for quest_type='sales_milestone')
+    const salesMilestones = (quests as Array<{
       id: string;
-      event_id: string | null;
+      quest_type: string;
       sales_target: number | null;
+      event_id: string | null;
       starts_at: string | null;
-      created_at: string;
-    }>;
+    }>).filter((q) => q.quest_type === "sales_milestone");
 
-    const salesProgressMap: Record<string, { current: number; target: number }> = {};
+    const progressByQuestId = new Map<
+      string,
+      { current: number; target: number }
+    >();
 
-    if (salesMilestoneQuests.length > 0) {
-      // Count orders attributed to this rep, grouped by event, since each quest's start
-      for (const quest of salesMilestoneQuests) {
-        const target = quest.sales_target || 0;
-        const sinceDate = quest.starts_at || quest.created_at;
+    for (const q of salesMilestones) {
+      const target = q.sales_target ?? 1;
+      const since = q.starts_at ?? "1970-01-01T00:00:00Z";
 
-        let orderQuery = supabase
-          .from(TABLES.ORDERS)
-          .select("id", { count: "exact", head: true })
-          .eq("org_id", orgId)
-          .contains("metadata", { rep_id: repId })
-          .gte("created_at", sinceDate)
-          .in("status", ["completed", "paid"]);
+      let orderQuery = db
+        .from(TABLES.ORDERS)
+        .select("id", { count: "exact", head: true })
+        .contains("metadata", { rep_id: repId })
+        .gte("created_at", since)
+        .in("status", ["completed", "paid"]);
 
-        if (quest.event_id) {
-          orderQuery = orderQuery.eq("event_id", quest.event_id);
-        }
-
-        const { count } = await orderQuery;
-        salesProgressMap[quest.id] = { current: Math.min(count || 0, target), target };
+      if (q.event_id) {
+        orderQuery = orderQuery.eq("event_id", q.event_id);
       }
+
+      const { count } = await orderQuery;
+      progressByQuestId.set(q.id, {
+        current: Math.min(count ?? 0, target),
+        target,
+      });
     }
 
-    // Attach submission counts + sales progress to quests
-    const questsWithCounts = quests.map((q: { id: string; quest_type: string }) => ({
-      ...q,
-      my_submissions: submissionMap[q.id] || {
-        total: 0,
-        approved: 0,
-        pending: 0,
-        rejected: 0,
-      },
-      ...(q.quest_type === "sales_milestone" && salesProgressMap[q.id]
-        ? { my_progress: salesProgressMap[q.id] }
-        : {}),
-    }));
+    // 6. Assemble the iOS-shaped response
+    type RawQuest = {
+      id: string;
+      title: string;
+      subtitle: string | null;
+      description: string | null;
+      instructions: string | null;
+      quest_type: string;
+      platform: string | null;
+      proof_type: string;
+      xp_reward: number | null;
+      points_reward: number | null;
+      currency_reward: number | null;
+      ep_reward: number | null;
+      sales_target: number | null;
+      max_completions: number | null;
+      starts_at: string | null;
+      expires_at: string | null;
+      cover_image_url: string | null;
+      image_url: string | null;
+      banner_image_url: string | null;
+      accent_hex: number | null;
+      accent_hex_secondary: number | null;
+      promoter_id: string | null;
+      event_id: string | null;
+      auto_approve: boolean;
+      event:
+        | {
+            id: string;
+            name: string;
+            slug: string;
+            date_start: string | null;
+            cover_image_url: string | null;
+            cover_image: string | null;
+          }
+        | Array<{
+            id: string;
+            name: string;
+            slug: string;
+            date_start: string | null;
+            cover_image_url: string | null;
+            cover_image: string | null;
+          }>
+        | null;
+    };
 
-    return NextResponse.json({ data: questsWithCounts });
+    const shaped = (quests as unknown as RawQuest[]).map((q) => {
+      const subs = submissionsByQuestId.get(q.id) ?? [];
+      const approved = subs.filter((s) => s.status === "approved").length;
+      const pending = subs.filter((s) => s.status === "pending").length;
+      const rejected = subs.filter(
+        (s) => s.status === "rejected" || s.status === "requires_revision"
+      ).length;
+      const latest = subs[0] ?? null;
+
+      const progress =
+        progressByQuestId.get(q.id) ?? {
+          current: Math.min(approved, q.max_completions ?? 1),
+          target: q.max_completions ?? 1,
+        };
+
+      const eventRow = Array.isArray(q.event) ? q.event[0] ?? null : q.event;
+
+      const promoter = q.promoter_id
+        ? promoterByPromoterId.get(q.promoter_id) ?? null
+        : null;
+
+      return {
+        id: q.id,
+        title: q.title,
+        subtitle: q.subtitle,
+        instructions: q.instructions ?? q.description ?? null,
+        kind: q.quest_type,
+        platform: q.platform,
+        proof_type: q.proof_type,
+        xp_reward: q.xp_reward ?? q.points_reward ?? 0,
+        ep_reward: q.ep_reward ?? q.currency_reward ?? 0,
+        sales_target: q.sales_target,
+        progress,
+        max_completions: q.max_completions ?? 1,
+        completed_count: approved,
+        accepted: acceptedQuestIds.has(q.id),
+        event: eventRow
+          ? {
+              id: eventRow.id,
+              name: eventRow.name,
+              slug: eventRow.slug,
+              date_start: eventRow.date_start,
+              cover_image_url:
+                eventRow.cover_image_url ?? eventRow.cover_image ?? null,
+            }
+          : null,
+        promoter: promoter
+          ? {
+              id: promoter.id,
+              handle: promoter.handle,
+              display_name: promoter.display_name,
+              accent_hex: promoter.accent_hex,
+            }
+          : null,
+        cover_image_url: q.cover_image_url ?? q.image_url ?? null,
+        banner_image_url: q.banner_image_url,
+        accent_hex: q.accent_hex,
+        accent_hex_secondary: q.accent_hex_secondary,
+        starts_at: q.starts_at,
+        expires_at: q.expires_at,
+        auto_approve: q.auto_approve,
+        my_submissions: {
+          total: subs.length,
+          approved,
+          pending,
+          rejected,
+          latest: latest
+            ? {
+                id: latest.id,
+                status: latest.status,
+                submitted_at: latest.created_at,
+                rejection_reason: latest.rejection_reason,
+                requires_revision: latest.requires_revision,
+              }
+            : null,
+        },
+      };
+    });
+
+    return NextResponse.json({ data: shaped });
   } catch (err) {
     Sentry.captureException(err);
     console.error("[rep-portal/quests] Error:", err);
-    return NextResponse.json(
-      { error: "Internal error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

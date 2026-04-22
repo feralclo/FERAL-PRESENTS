@@ -192,9 +192,12 @@ export async function POST(request: NextRequest) {
 
     const status = settings.auto_approve ? "active" : "pending";
     const inviteToken = crypto.randomUUID();
-    const verificationToken = crypto.randomUUID();
 
-    // Create rep row — email_verified=false until they click the verification link
+    // Create rep row. Supabase admin.createUser({ email_confirm: true })
+    // above already flagged the auth user as confirmed — we don't need
+    // a custom verification token/column. (The reps table dropped those
+    // columns somewhere pre-Phase-0; the route was writing them and
+    // silently 500-ing for new signups.)
     const { data: rep, error: repError } = await supabase
       .from(TABLES.REPS)
       .insert({
@@ -212,8 +215,6 @@ export async function POST(request: NextRequest) {
         gender: gender || null,
         bio: bio || null,
         invite_token: inviteToken,
-        email_verified: false,
-        email_verification_token: verificationToken,
         points_balance: 0,
         total_sales: 0,
         total_revenue: 0,
@@ -224,9 +225,26 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (repError) {
+      // Roll back the orphan Supabase auth user — if we can't create the
+      // rep row, the auth user is useless AND its email is now blocked
+      // for retry. Best-effort; log but don't fail the error response on it.
+      const serviceRoleKeyForCleanup = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (serviceRoleKeyForCleanup && SUPABASE_URL && authUserId) {
+        try {
+          const adminClient = createClient(SUPABASE_URL, serviceRoleKeyForCleanup);
+          await adminClient.auth.admin.deleteUser(authUserId);
+        } catch (cleanupErr) {
+          Sentry.captureException(cleanupErr, {
+            extra: { step: "signup orphan cleanup", authUserId, email: finalEmail },
+          });
+        }
+      }
+      Sentry.captureException(repError, {
+        extra: { step: "create rep row", email: finalEmail, orgId },
+      });
       console.error("[rep-portal/signup] Failed to create rep row:", repError);
       return NextResponse.json(
-        { error: "Failed to create rep account" },
+        { error: "Failed to create rep account", detail: repError.message },
         { status: 500 }
       );
     }
@@ -255,16 +273,17 @@ export async function POST(request: NextRequest) {
       }).catch(() => {});
     }
 
-    // Send verification email (welcome email sent after verification)
+    // Welcome email (no custom verification step — Supabase admin.createUser
+    // already confirmed the email). Failure here is non-blocking; the rep
+    // row exists, they can log in.
     sendRepEmail({
-      type: "email_verification",
+      type: "welcome",
       repId: rep.id,
       orgId,
-      data: { verification_token: verificationToken },
     }).catch(() => {});
 
     return NextResponse.json(
-      { data: { rep_id: rep.id, status: rep.status, needs_verification: true } },
+      { data: { rep_id: rep.id, status: rep.status, needs_verification: false } },
       { status: 201 }
     );
   } catch (err) {

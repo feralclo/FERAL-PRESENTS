@@ -72,14 +72,18 @@ export async function PUT(
 
     const allowedFields = [
       "title",
+      "subtitle",
       "description",
       "instructions",
       "quest_type",
       "platform",
+      "proof_type",
       "image_url",
+      "cover_image_url",
       "banner_image_url",
       "video_url",
       "points_reward",
+      "xp_reward",
       "event_id",
       "max_completions",
       "max_total",
@@ -90,7 +94,11 @@ export async function PUT(
       "reference_url",
       "uses_sound",
       "currency_reward",
+      "ep_reward",
       "sales_target",
+      "accent_hex",
+      "accent_hex_secondary",
+      "auto_approve",
     ];
 
     const updates: Record<string, unknown> = {};

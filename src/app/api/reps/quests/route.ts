@@ -93,11 +93,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       title,
+      subtitle,
       description,
       instructions,
       quest_type,
       platform = "any",
+      proof_type = "none",
       image_url,
+      cover_image_url,
       banner_image_url,
       video_url,
       points_reward,
@@ -111,7 +114,11 @@ export async function POST(request: NextRequest) {
       reference_url,
       uses_sound = false,
       currency_reward,
+      ep_reward,
       sales_target,
+      accent_hex,
+      accent_hex_secondary,
+      auto_approve = false,
     } = body;
 
     if (!title || !quest_type || points_reward == null) {
@@ -174,20 +181,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Resolve promoter_id for this org so iOS/Android clients can scope the
+    // quest by promoter (the new way) without losing the legacy org_id path.
+    let promoterId: string | null = null;
+    {
+      const { data: promoter } = await supabase
+        .from("promoters")
+        .select("id")
+        .eq("org_id", orgId)
+        .maybeSingle();
+      promoterId = promoter?.id ?? null;
+    }
+
+    // EP reward: accept either new `ep_reward` or legacy `currency_reward`.
+    const epAmount = Number(ep_reward ?? currency_reward ?? 0);
+
     const { data, error } = await supabase
       .from(TABLES.REP_QUESTS)
       .insert({
         org_id: orgId,
+        promoter_id: promoterId,
         title: title.trim(),
+        subtitle: subtitle?.trim() || null,
         description: description?.trim() || null,
         instructions: instructions?.trim() || null,
         quest_type,
         platform,
+        proof_type,
         image_url: image_url || null,
+        cover_image_url: cover_image_url || image_url || null,
         banner_image_url: banner_image_url || null,
         video_url: video_url || null,
         points_reward: platformXP,
-        currency_reward: Number(currency_reward) || 0,
+        xp_reward: platformXP,
+        currency_reward: epAmount,
+        ep_reward: epAmount,
+        accent_hex: typeof accent_hex === "number" ? accent_hex : null,
+        accent_hex_secondary:
+          typeof accent_hex_secondary === "number" ? accent_hex_secondary : null,
+        auto_approve: Boolean(auto_approve),
         event_id: event_id || null,
         max_completions: max_completions != null ? Number(max_completions) : null,
         max_total: max_total != null ? Number(max_total) : null,

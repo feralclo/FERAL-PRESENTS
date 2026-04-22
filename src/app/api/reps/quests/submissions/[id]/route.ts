@@ -22,16 +22,28 @@ export async function PUT(
     const body = await request.json();
     const { status, rejection_reason } = body;
 
-    if (!status || !["approved", "rejected"].includes(status)) {
+    // 'requires_revision' sits between approved and rejected: the submission
+    // is declined for THIS attempt, but the rep is invited to resubmit with
+    // the reviewer's revision guidance. No XP/EP awarded until an eventual
+    // 'approved'.
+    if (!status || !["approved", "rejected", "requires_revision"].includes(status)) {
       return NextResponse.json(
-        { error: "status must be 'approved' or 'rejected'" },
+        {
+          error:
+            "status must be 'approved', 'rejected', or 'requires_revision'",
+        },
         { status: 400 }
       );
     }
 
-    if (status === "rejected" && !rejection_reason) {
+    if ((status === "rejected" || status === "requires_revision") && !rejection_reason) {
       return NextResponse.json(
-        { error: "rejection_reason is required when rejecting" },
+        {
+          error:
+            status === "rejected"
+              ? "rejection_reason is required when rejecting"
+              : "rejection_reason is required for revision requests (what needs to change?)",
+        },
         { status: 400 }
       );
     }
@@ -72,14 +84,16 @@ export async function PUT(
       reviewed_at: new Date().toISOString(),
     };
 
-    if (status === "rejected") {
+    if (status === "rejected" || status === "requires_revision") {
       updates.rejection_reason = rejection_reason.trim();
       updates.points_awarded = 0;
+      updates.requires_revision = status === "requires_revision";
     }
 
     if (status === "approved") {
       const pointsReward = submission.quest?.points_reward || 0;
       updates.points_awarded = pointsReward;
+      updates.requires_revision = false;
     }
 
     // Update the submission status first — if this fails, don't award points
@@ -133,7 +147,7 @@ export async function PUT(
       // In-app notification for quest approval
       const notifParts = [];
       if (pointsReward > 0) notifParts.push(`+${pointsReward} XP`);
-      if (currencyReward > 0) notifParts.push(`+${currencyReward} currency`);
+      if (currencyReward > 0) notifParts.push(`+${currencyReward} EP`);
       createNotification({
         repId: submission.rep_id,
         orgId,
@@ -142,6 +156,26 @@ export async function PUT(
         body: `${submission.quest?.title || "Quest"} — ${notifParts.join(" ")}`,
         link: "/rep/quests",
         metadata: { quest_id: submission.quest_id, submission_id: id, points_awarded: pointsReward, currency_awarded: currencyReward },
+      }).catch(() => {});
+    } else if (status === "rejected") {
+      createNotification({
+        repId: submission.rep_id,
+        orgId,
+        type: "quest_rejected",
+        title: "Quest submission rejected",
+        body: rejection_reason.trim(),
+        link: "/rep/quests",
+        metadata: { quest_id: submission.quest_id, submission_id: id },
+      }).catch(() => {});
+    } else if (status === "requires_revision") {
+      createNotification({
+        repId: submission.rep_id,
+        orgId,
+        type: "quest_revision_requested",
+        title: "Quest needs revision",
+        body: rejection_reason.trim(),
+        link: "/rep/quests",
+        metadata: { quest_id: submission.quest_id, submission_id: id },
       }).catch(() => {});
     }
 

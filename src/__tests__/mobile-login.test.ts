@@ -219,7 +219,7 @@ describe("POST /api/auth/mobile-login", () => {
     expect(mockSignOut).toHaveBeenCalled();
   });
 
-  it("returns 403 when rep exists but status is not 'active'", async () => {
+  it("allows pending reps to log in (signup is open; team gates happen elsewhere)", async () => {
     mockSignInWithPassword.mockResolvedValueOnce({
       data: {
         user: { id: "auth-user-2", email: "pending@feral.com" },
@@ -229,10 +229,29 @@ describe("POST /api/auth/mobile-login", () => {
     });
     stubAdminFrom({
       repByAuthId: { id: "rep-1", auth_user_id: "auth-user-2", status: "pending" },
+      domain: { hostname: "feral.entry.events" },
     });
 
     const { POST } = await import("@/app/api/auth/mobile-login/route");
     const res = await POST(buildRequest({ email: "pending@feral.com", password: "hunter2" }));
+    expect(res.status).toBe(200);
+    expect(mockSignOut).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when rep status is 'deleted' (PII scrubbed, account unrecoverable)", async () => {
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: {
+        user: { id: "auth-user-2d", email: "deleted@feral.com" },
+        session: { access_token: "a", refresh_token: "r", expires_at: 0 },
+      },
+      error: null,
+    });
+    stubAdminFrom({
+      repByAuthId: { id: "rep-1d", auth_user_id: "auth-user-2d", status: "deleted" },
+    });
+
+    const { POST } = await import("@/app/api/auth/mobile-login/route");
+    const res = await POST(buildRequest({ email: "deleted@feral.com", password: "hunter2" }));
     expect(res.status).toBe(403);
     expect(mockSignOut).toHaveBeenCalled();
   });

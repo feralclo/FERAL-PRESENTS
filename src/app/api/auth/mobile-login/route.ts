@@ -121,10 +121,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!rep || rep.status !== "active") {
+    if (!rep) {
       await supabase.auth.signOut();
       return NextResponse.json(
         { error: "not a rep for this tenant" },
+        { status: 403 }
+      );
+    }
+
+    // Signup is open and free — reps may log in while pending. Team-gated
+    // surfaces filter by rep_promoter_memberships.status='approved', so
+    // rep.status is not the gate for login. Only 'deleted' blocks login:
+    // PII has been scrubbed and the account can't be recovered.
+    if (rep.status === "deleted") {
+      await supabase.auth.signOut();
+      return NextResponse.json(
+        { error: "account deleted" },
         { status: 403 }
       );
     }

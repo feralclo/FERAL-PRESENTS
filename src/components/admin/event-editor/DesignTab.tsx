@@ -26,32 +26,57 @@ export function DesignTab({
       {/* Images */}
       <Card className="py-0 gap-0">
         <CardHeader className="px-6 pt-5 pb-4">
-          <CardTitle className="text-sm">Event Images</CardTitle>
+          <CardTitle className="text-sm">Event imagery</CardTitle>
         </CardHeader>
-        <CardContent className="px-6 pb-6">
+        <CardContent className="px-6 pb-6 space-y-6">
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-1">
               <ImageUpload
-                label="Event Tile"
-                value={event.cover_image || ""}
-                onChange={(v) => updateEvent("cover_image", v)}
+                label="Cover (clean)"
+                value={event.cover_image_url || event.cover_image || ""}
+                onChange={(v) => {
+                  // Dual-write: legacy cover_image (used by live web event
+                  // pages, emails, wallet passes) AND cover_image_url (used
+                  // by iOS / Android / web-v2). Keeping both in sync means
+                  // tenants only upload once and every surface stays correct.
+                  updateEvent("cover_image", v);
+                  updateEvent("cover_image_url", v);
+                }}
                 uploadKey={event.id ? `event_${event.id}_cover` : undefined}
               />
               <p className="text-[10px] text-muted-foreground/60">
-                Tile image for event listings / homepage.
+                Clean artwork, no baked-in text. Shown in event cards and tiles.
               </p>
             </div>
             <div className="space-y-1">
               <ImageUpload
-                label="Event Banner"
-                value={event.hero_image || ""}
-                onChange={(v) => updateEvent("hero_image", v)}
+                label="Banner (landscape)"
+                value={event.banner_image_url || event.hero_image || ""}
+                onChange={(v) => {
+                  // Same dual-write rationale as cover: legacy hero_image
+                  // drives the live event page; banner_image_url feeds the
+                  // new clients' card headers.
+                  updateEvent("hero_image", v);
+                  updateEvent("banner_image_url", v);
+                }}
                 uploadKey={event.id ? `event_${event.id}_banner` : undefined}
               />
               <p className="text-[10px] text-muted-foreground/60">
-                Hero background on the event page.
+                Wide 16:9 hero. Used as background on the event page and as header on card variants.
               </p>
             </div>
+          </div>
+
+          <div className="space-y-1 max-w-md">
+            <ImageUpload
+              label="Poster (for Stories)"
+              value={event.poster_image_url || ""}
+              onChange={(v) => updateEvent("poster_image_url", v)}
+              uploadKey={event.id ? `event_${event.id}_poster` : undefined}
+            />
+            <p className="text-[10px] text-muted-foreground/60">
+              Full poster with lineup / date / venue text baked in. Only used when reps share your event to an Instagram or TikTok story — standalone artwork. Leave blank to fall back to the cover.
+            </p>
           </div>
         </CardContent>
       </Card>

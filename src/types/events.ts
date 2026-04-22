@@ -22,6 +22,10 @@ export interface Event {
   capacity?: number;
   cover_image?: string;
   hero_image?: string;
+  /** iOS/Android/web-v2 clients read these. Clean cover (no baked text) used in-app; poster (text-baked) used for share-to-Story; banner (16:9) used for card headers. */
+  cover_image_url?: string | null;
+  poster_image_url?: string | null;
+  banner_image_url?: string | null;
   theme?: string;
   settings_key?: string;
   currency: string;

@@ -191,17 +191,74 @@ export async function GET() {
       const ticketTypeName = meta?.ticket_type_id ? ticketTypeNameMap.get(meta.ticket_type_id as string) || null : null;
       const upgradeTicketTypeName = meta?.upgrade_to_ticket_type_id ? ticketTypeNameMap.get(meta.upgrade_to_ticket_type_id as string) || null : null;
 
-      // can_purchase: check currency_balance, stock, and multi-claim limits
+      // Normalise reward_type to the iOS-contract name ('shop' instead of
+      // legacy 'points_shop'). Keep both readable until v1 web is retired.
+      const normalisedKind: "milestone" | "shop" | "manual" =
+        rewardType === "points_shop" ? "shop" : (rewardType as typeof normalisedKind);
+
+      // Prefer new ep_cost column; fall back to legacy points_cost
+      const epCost = (reward.ep_cost as number | null) ?? (reward.points_cost as number | null) ?? 0;
+      // xp_threshold is the new name for milestone-unlock level requirement
+      const xpThreshold = (reward.xp_threshold as number | null) ?? (rewardType === "milestone" ? (reward.points_cost as number | null) : null);
+
+      // Effective stock — prefer new `stock`, fall back to legacy total_available - total_claimed
+      let stockRemaining: number | null = null;
+      if (reward.stock !== null && reward.stock !== undefined) {
+        stockRemaining = reward.stock as number;
+      } else if (reward.total_available !== null && reward.total_available !== undefined) {
+        stockRemaining = Math.max(
+          0,
+          (reward.total_available as number) - ((reward.total_claimed as number) ?? 0)
+        );
+      }
+
+      // can_purchase: check ledger balance, stock, and multi-claim limits
       const canClaimMore =
-        rewardType === "points_shop" &&
+        normalisedKind === "shop" &&
         rep &&
-        reward.points_cost &&
-        rep.currency_balance >= (reward.points_cost as number) &&
-        (reward.total_available === null ||
-          (reward.total_claimed as number) < (reward.total_available as number)) &&
+        epCost > 0 &&
+        rep.currency_balance >= epCost &&
+        (stockRemaining === null || stockRemaining > 0) &&
         (maxClaims === 0 || maxClaims === null || claimsCount < maxClaims);
 
+      // Fulfillment kind — prefer new column, fall back to mapping from
+      // legacy metadata.fulfillment_type.
+      const legacyFulfillmentType = meta?.fulfillment_type as string | undefined;
+      const fulfillmentKind =
+        (reward.fulfillment_kind as string | null | undefined) ??
+        mapLegacyFulfillmentToKind(legacyFulfillmentType);
+
+      // Derive iOS my_claim_state from rep's claims + stock + unlock check.
+      // Last claim's status (newest first per query order) drives the state
+      // for UIs that show a single "status pill" per reward card.
+      const latestClaim = rewardClaims[0] as
+        | { status?: string }
+        | undefined;
+      const unlockedMilestone =
+        normalisedKind === "milestone" &&
+        rep &&
+        xpThreshold !== null &&
+        xpThreshold !== undefined &&
+        (rep.points_balance as number) >= xpThreshold;
+
+      let myClaimState: "available" | "claimed" | "fulfilled" | "out_of_stock" | "locked";
+      if (latestClaim?.status === "fulfilled") {
+        myClaimState = "fulfilled";
+      } else if (
+        latestClaim?.status === "claimed" ||
+        latestClaim?.status === "fulfilling"
+      ) {
+        myClaimState = "claimed";
+      } else if (stockRemaining === 0) {
+        myClaimState = "out_of_stock";
+      } else if (normalisedKind === "milestone" && !unlockedMilestone) {
+        myClaimState = "locked";
+      } else {
+        myClaimState = "available";
+      }
+
       return {
+        // Legacy fields (kept verbatim so v1 web keeps working)
         ...reward,
         image_url: imageUrl,
         milestones: rewardType === "milestone" ? milestonesWithProgress : [],
@@ -212,6 +269,16 @@ export async function GET() {
         ticket_type_name: ticketTypeName,
         upgrade_ticket_type_name: upgradeTicketTypeName,
         can_purchase: canClaimMore,
+        // iOS-contract fields (§6.6) — explicit names, explicit shapes
+        kind: normalisedKind,
+        fulfillment_kind: fulfillmentKind,
+        ep_cost: epCost,
+        xp_cost: xpThreshold,                    // present for milestone rewards
+        milestone_threshold: xpThreshold,        // alias for iOS mapper
+        stock: stockRemaining,                   // null = unlimited
+        unlocked: normalisedKind === "milestone" ? !!unlockedMilestone : true,
+        my_claim_state: myClaimState,
+        promoter_id: null,                       // TODO Phase 3.10: plumb promoter_id once reward editor writes it
       };
     });
 
@@ -223,5 +290,24 @@ export async function GET() {
       { error: "Internal error" },
       { status: 500 }
     );
+  }
+}
+
+// Legacy metadata.fulfillment_type → iOS fulfillment_kind enum (§5.11)
+function mapLegacyFulfillmentToKind(
+  legacy: string | undefined
+): "digital_ticket" | "guest_list" | "merch" | "custom" | null {
+  switch (legacy) {
+    case "free_ticket":
+    case "extra_tickets":
+      return "digital_ticket";
+    case "vip_upgrade":
+      return "guest_list";
+    case "merch":
+      return "merch";
+    case "manual":
+      return "custom";
+    default:
+      return null;
   }
 }

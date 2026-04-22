@@ -215,6 +215,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/team/accept-invite",
   "/api/announcement/signup",
   "/api/waitlist/",
+  "/api/promoters/", // public promoter discovery (iOS / Android / web-v2)
   "/api/beta/",
   "/api/platform/impersonate/callback", // Opened in incognito — no auth
   "/api/monitoring", // Sentry tunnel (bypasses ad blockers)
@@ -435,8 +436,11 @@ export async function middleware(request: NextRequest) {
 
   // ── Rep-portal API routes (non-public) ──
   // Require authentication (route handler does the rep-specific check).
+  // Native clients (iOS) send an Authorization: Bearer <token> header instead
+  // of a session cookie — let those through so requireRepAuth() can validate.
   if (isRepPortalApiRoute(pathname) && !isPublicApiRoute(pathname, method)) {
-    if (!user) {
+    const hasBearer = /^Bearer\s+/i.test(request.headers.get("authorization") || "");
+    if (!user && !hasBearer) {
       const errorResponse = NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }

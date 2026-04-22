@@ -81,6 +81,7 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { href: "/admin/ticketstore/", label: "Themes" },
       { href: "/admin/merch-store/online/", label: "Merch Store" },
+      { href: "/admin/promoter/", label: "Promoter profile" },
     ],
   },
   {

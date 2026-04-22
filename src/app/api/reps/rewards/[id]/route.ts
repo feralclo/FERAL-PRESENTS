@@ -77,9 +77,13 @@ export async function PUT(
       "image_url",
       "reward_type",
       "points_cost",
+      "ep_cost",
+      "xp_threshold",
       "product_id",
       "custom_value",
       "total_available",
+      "stock",
+      "fulfillment_kind",
       "status",
       "metadata",
     ];
@@ -98,12 +102,42 @@ export async function PUT(
       );
     }
 
-    // Validate enums if provided
-    if (updates.reward_type && !["milestone", "points_shop", "manual"].includes(updates.reward_type as string)) {
-      return NextResponse.json(
-        { error: "reward_type must be 'milestone', 'points_shop', or 'manual'" },
-        { status: 400 }
-      );
+    // Dual-write: if the caller updated ep_cost, mirror to points_cost so the
+    // legacy web UI stays consistent; same for stock ↔ total_available.
+    if (updates.ep_cost !== undefined && updates.points_cost === undefined) {
+      updates.points_cost = updates.ep_cost;
+    }
+    if (updates.stock !== undefined && updates.total_available === undefined) {
+      updates.total_available = updates.stock;
+    }
+
+    // Validate enums if provided. Accept both legacy 'points_shop' and new
+    // 'shop' for reward_type; the DB CHECK now only allows 'shop'.
+    if (updates.reward_type) {
+      if (updates.reward_type === "points_shop") {
+        updates.reward_type = "shop";
+      }
+      if (!["milestone", "shop", "manual"].includes(updates.reward_type as string)) {
+        return NextResponse.json(
+          { error: "reward_type must be 'milestone', 'shop', or 'manual'" },
+          { status: 400 }
+        );
+      }
+    }
+    if (updates.fulfillment_kind !== undefined && updates.fulfillment_kind !== null) {
+      if (
+        !["digital_ticket", "guest_list", "merch", "custom"].includes(
+          updates.fulfillment_kind as string
+        )
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "fulfillment_kind must be 'digital_ticket', 'guest_list', 'merch', or 'custom'",
+          },
+          { status: 400 }
+        );
+      }
     }
     if (updates.status && !["active", "archived"].includes(updates.status as string)) {
       return NextResponse.json(

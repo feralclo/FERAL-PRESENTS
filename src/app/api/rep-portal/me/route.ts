@@ -228,6 +228,16 @@ export async function PUT(request: NextRequest) {
 }
 
 /**
+ * PATCH /api/rep-portal/me — iOS Edit Profile sends PATCH.
+ *
+ * Same semantics as PUT: partial update, only-provided-fields are written.
+ * Delegates to PUT to keep validation + cooldown + uniqueness in one place.
+ */
+export async function PATCH(request: NextRequest) {
+  return PUT(request);
+}
+
+/**
  * DELETE /api/rep-portal/me
  *
  * App Store requirement (guideline 5.1.1(v)) for apps that offer in-app
@@ -260,14 +270,16 @@ export async function DELETE() {
 
     const scrubbedEmail = `deleted-${repId.slice(0, 8)}@entry.local`;
 
-    // 1. Scrub PII + flip status
+    // 1. Scrub PII + flip status. first_name/last_name are NOT NULL on
+    // the reps table, so we write non-sensitive markers instead of null
+    // (matches the scrubbed-email pattern: identifiable as deleted, no PII).
     const { error: repError } = await supabase
       .from(TABLES.REPS)
       .update({
         status: "deleted",
         email: scrubbedEmail,
-        first_name: null,
-        last_name: null,
+        first_name: "deleted",
+        last_name: "user",
         display_name: null,
         phone: null,
         photo_url: null,
@@ -282,6 +294,7 @@ export async function DELETE() {
       .eq("id", repId);
 
     if (repError) {
+      console.error("[rep-portal/me] DELETE scrub error:", repError);
       Sentry.captureException(repError, { extra: { repId } });
       return NextResponse.json(
         { error: "Failed to scrub rep data" },

@@ -28,6 +28,14 @@
     {
       "path": "/api/cron/ep-payouts/",
       "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/cron/rep-rank-snapshots/",
+      "schedule": "0 2 * * 1"
+    },
+    {
+      "path": "/api/cron/rep-streak-reset/",
+      "schedule": "5 0 * * *"
     }
   ],
   "headers": [

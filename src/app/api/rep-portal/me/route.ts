@@ -226,3 +226,106 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+
+/**
+ * DELETE /api/rep-portal/me
+ *
+ * App Store requirement (guideline 5.1.1(v)) for apps that offer in-app
+ * account creation. Soft-delete:
+ *   • reps.status = 'deleted'
+ *   • PII scrubbed: email → deleted-{id_prefix}@entry.local, name / photo /
+ *     phone / bio / socials / DOB / gender blanked, auth_user_id detached
+ *   • device_tokens + rep_push_subscriptions removed so we stop pushing
+ *   • Supabase auth user deleted (their JWT stops working on refresh)
+ *
+ * rep.id is PRESERVED so historical FKs stay valid (orders.metadata.rep_id,
+ * ep_ledger.rep_id, rep_reward_claims.rep_id). Money history can never
+ * orphan. A deleted rep cannot be recovered — they must sign up fresh
+ * (and can reuse their email since we've scrubbed the old one).
+ *
+ * Response: { data: { deleted: true } }
+ */
+export async function DELETE() {
+  try {
+    const auth = await requireRepAuth({ allowPending: true });
+    if (auth.error) return auth.error;
+
+    const repId = auth.rep.id;
+    const authUserId = auth.rep.auth_user_id;
+
+    const supabase = await getSupabaseAdmin();
+    if (!supabase) {
+      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+    }
+
+    const scrubbedEmail = `deleted-${repId.slice(0, 8)}@entry.local`;
+
+    // 1. Scrub PII + flip status
+    const { error: repError } = await supabase
+      .from(TABLES.REPS)
+      .update({
+        status: "deleted",
+        email: scrubbedEmail,
+        first_name: null,
+        last_name: null,
+        display_name: null,
+        phone: null,
+        photo_url: null,
+        bio: null,
+        instagram: null,
+        tiktok: null,
+        date_of_birth: null,
+        gender: null,
+        auth_user_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", repId);
+
+    if (repError) {
+      Sentry.captureException(repError, { extra: { repId } });
+      return NextResponse.json(
+        { error: "Failed to scrub rep data" },
+        { status: 500 }
+      );
+    }
+
+    // 2. Stop pushing to this rep — remove every registered device
+    await supabase.from("device_tokens").delete().eq("rep_id", repId);
+    await supabase.from("rep_push_subscriptions").delete().eq("rep_id", repId);
+
+    // 3. Drop the rep's live memberships to pending-rejected rather than
+    // keeping them 'approved' — prevents a fresh signup with the same
+    // email from inheriting the deleted rep's teams.
+    await supabase
+      .from("rep_promoter_memberships")
+      .update({
+        status: "left",
+        left_at: new Date().toISOString(),
+      })
+      .eq("rep_id", repId)
+      .in("status", ["pending", "approved"]);
+
+    // 4. Revoke auth — delete the Supabase auth user so their JWT is
+    // invalidated on refresh. Best-effort; failure here is logged but
+    // doesn't undo the scrub.
+    if (authUserId) {
+      try {
+        await supabase.auth.admin.deleteUser(authUserId);
+      } catch (err) {
+        Sentry.captureException(err, {
+          extra: { step: "auth.admin.deleteUser", repId, authUserId },
+          level: "warning",
+        });
+      }
+    }
+
+    return NextResponse.json({ data: { deleted: true } });
+  } catch (err) {
+    Sentry.captureException(err);
+    console.error("[rep-portal/me] DELETE error:", err);
+    return NextResponse.json(
+      { error: "Internal error" },
+      { status: 500 }
+    );
+  }
+}

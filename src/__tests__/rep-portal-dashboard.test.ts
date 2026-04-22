@@ -28,6 +28,8 @@ function makeQueryChain(result: { data: unknown; count?: number | null }) {
   chain.eq = stub;
   chain.in = stub;
   chain.gte = stub;
+  chain.lte = stub;
+  chain.maybeSingle = () => Promise.resolve(result);
   chain.order = stub;
   chain.limit = stub;
   chain.is = stub;

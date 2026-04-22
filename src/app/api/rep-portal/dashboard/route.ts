@@ -385,6 +385,24 @@ export async function GET(request: NextRequest) {
     const levelName = getTierName(progress.level, tiers);
     const nextTierName = getTierName(progress.level + 1, tiers);
 
+    // Mark today's activity and grab the updated streak numbers. No-op if
+    // this rep already hit the dashboard earlier today. Non-blocking from
+    // the user's perspective — errors silently ignored.
+    let streakCurrent = 0;
+    let streakBest = 0;
+    if (!isPending) {
+      try {
+        const { data: streakData } = await db.rpc("mark_rep_active", {
+          p_rep_id: repId,
+        });
+        const row = Array.isArray(streakData) ? streakData[0] : streakData;
+        streakCurrent = (row as { current_streak?: number } | null)?.current_streak ?? 0;
+        streakBest = (row as { best_streak?: number } | null)?.best_streak ?? 0;
+      } catch {
+        // Streaks are decorative — never block the dashboard on them.
+      }
+    }
+
     const repBlock = want("rep")
       ? {
           id: rep.id,
@@ -404,6 +422,8 @@ export async function GET(request: NextRequest) {
           total_revenue_pence: Math.round(Number(rep.total_revenue ?? 0) * 100),
           onboarding_completed: rep.onboarding_completed ?? false,
           status: isPending ? "pending" : "active",
+          streak_current: streakCurrent,
+          streak_best: streakBest,
         }
       : null;
 
@@ -441,7 +461,10 @@ export async function GET(request: NextRequest) {
         }
       : null;
 
-    // leaderboard
+    // leaderboard — delta_week compares today's position to the rank from
+    // ~7 days ago pulled out of rep_rank_snapshots (written weekly by the
+    // /api/cron/rep-rank-snapshots cron). Negative value = climbed, positive
+    // = dropped. Null if no snapshot from last week (e.g. brand-new rep).
     let leaderboardBlock: {
       position: number | null;
       total: number;
@@ -453,10 +476,36 @@ export async function GET(request: NextRequest) {
         (leaderboardResult.data as Array<{ id: string }> | null) ?? [];
       const idx = rows.findIndex((r) => r.id === repId);
       const position = idx >= 0 ? idx + 1 : null;
+
+      let deltaWeek: number | null = null;
+      if (position !== null && scopedPromoterIds.length > 0) {
+        // Find the nearest snapshot captured 5–10 days ago — roughly "last
+        // week" with enough slack to still return something if a cron run
+        // was delayed. Snapshots older than 10 days ignored so a stale
+        // delta doesn't bleed through weeks of inactivity.
+        const fromWindow = new Date(Date.now() - 10 * 24 * 3600 * 1000)
+          .toISOString();
+        const toWindow = new Date(Date.now() - 5 * 24 * 3600 * 1000)
+          .toISOString();
+        const { data: lastWeek } = await db
+          .from("rep_rank_snapshots")
+          .select("rank, captured_at")
+          .eq("rep_id", repId)
+          .in("promoter_id", scopedPromoterIds)
+          .gte("captured_at", fromWindow)
+          .lte("captured_at", toWindow)
+          .order("captured_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (lastWeek?.rank != null) {
+          deltaWeek = position - (lastWeek.rank as number);
+        }
+      }
+
       leaderboardBlock = {
         position,
         total: rows.length,
-        delta_week: null, // populated in Phase 5 via rep_rank_snapshots
+        delta_week: deltaWeek,
         in_top_10: position !== null && position <= 10,
       };
     }

@@ -1,7 +1,7 @@
 # Entry Backend — iOS / Android / web-v2 Spec
 
-**Version:** v1.4 — 2026-04-22
-**Status:** Phase 0 in progress.
+**Version:** v1.5 — 2026-04-22
+**Status:** Phases 0, 1, 2 shipped. Phase 3 (EP economy) in progress. Poster drops paused — see §5.10.
 
 This document is the single source of truth for the backend work required to support the native Entry clients (iOS first, Android + web-v2 later). It supersedes ad-hoc conversation and the iOS-side `design/api-contract.md` (which should be updated to match once this spec is locked).
 
@@ -314,7 +314,9 @@ CREATE INDEX pd_promoter_idx ON poster_drops(promoter_id, published_at DESC);
 - `quest_drop` — new quest published. Auto-generated on quest publish with `ep_reward > 0` (EP quests create buzz; XP-only quests do not auto-drop).
 - `announcement` — free-form text/image post from the promoter (line-up change, door update, after-party reveal). Manual authoring.
 
-v1 ships `event_reveal` and `quest_drop` auto-inserts. Manual authoring UI (`poster_reveal`, `announcement`) lands in Phase 5.
+**Status: paused.** The whole poster-drops concept (promoter-authored broadcasts: event reveals, poster reveals, quest drops, announcements) is deferred per owner direction — the product surface needs more thought before building. The spec is kept as-is so we can pick it up cleanly later, but no table, no auto-generation, no API, no UI lands in v1.
+
+Phase 4 `/api/rep-portal/feed` remains in scope but returns **peer activity only** (approved submissions across the rep's teams) — no drops union.
 
 ### 5.11 EP economy tables (NEW)
 
@@ -1351,9 +1353,9 @@ Each phase ends with: migrations applied, endpoints live, admin UI shipped, unit
 - **4.4** Unified fanout in `createNotification()`.
 - **4.5** `notification_deliveries` logging.
 - **4.6** New notification types (10 total per §5.15).
-- **4.7** `poster_drops` table.
-- **4.8** Auto-generate `event_reveal` drop on event publish.
-- **4.9** `GET /api/rep-portal/feed` (drops + peer activity union).
+- ~~**4.7** `poster_drops` table.~~ **PAUSED — see §5.10**
+- ~~**4.8** Auto-generate `event_reveal` drop on event publish.~~ **PAUSED**
+- **4.9** `GET /api/rep-portal/feed` (peer activity only; drops-union reinstates when poster drops unpause).
 - **4.10** `GET /api/rep-portal/peer-activity`.
 - **4.11** `GET /api/rep-portal/me/friends`.
 
@@ -1363,7 +1365,7 @@ Each phase ends with: migrations applied, endpoints live, admin UI shipped, unit
 
 - **5.1** `rep_rank_snapshots` + weekly cron + rolling-30-day leaderboard + `delta_week`.
 - **5.2** `rep_streaks` + daily activity marker + midnight reset cron.
-- **5.3** Poster drop authoring UI (`/admin/poster-drops/`).
+- ~~**5.3** Poster drop authoring UI (`/admin/poster-drops/`).~~ **PAUSED — see §5.10**
 - **5.4** `xpToday` computation on dashboard.
 - **5.5** Account deletion endpoint (App Store requirement).
 - **5.6** Email verification flow.
@@ -1396,6 +1398,7 @@ Assumes no parallel web-v2 work. Assumes product decisions (§3) are locked befo
 
 - **2026-04-22 v1 draft** — initial write.
 - **2026-04-22 v1.1** — all 12 open questions closed and locked per owner authorisation. Added decisions M (tenant refund window), N (breakage policy), O (flat EP pricing). Added §7.5 (worked economic examples across 5 scenarios), §7.6 (VAT treatment — EP classified as MPV), §7.7 (`platform_ep_config` table). Economy stress-tested and confirmed sound at all promoter scales.
+- **2026-04-22 v1.5** — poster drops paused. Concept (promoter-authored broadcasts into the feed) deferred — the product surface needs more thought before we build it. §5.10 re-marked as paused, Phase 4.7/4.8 crossed out, Phase 5.3 crossed out, Phase 4.9 feed endpoint scope reduced to peer activity only. Phases 0, 1, 2 now shipped. Phase 3 (EP economy) in progress.
 - **2026-04-22 v1.4** — simplifications from owner confirming rep platform isn't live:
   - §11 rewritten — no dual-write / coexistence engineering needed. Migrations are direct. Legacy `/rep/*` pages frozen-then-deleted rather than preserved. Main Entry platform (event pages, checkout, scanner, merch, guest list) remains critical and untouched; rep-scoped tables get clean migrations.
   - Decision L (Apple Sign-In) deferred — not in v1. Revisited when Google SSO is added. Phase 0 dropped from 7 steps to 6, ~4–5 day estimate.

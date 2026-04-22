@@ -101,6 +101,38 @@ interface PushPayload {
 }
 
 /**
+ * Low-level send to a single push subscription. Used by the unified
+ * fanout in lib/push/ which manages its own device_tokens rather than
+ * iterating rep_push_subscriptions. Returns a structured result that
+ * the fanout can translate into a DeliveryResult without throwing.
+ */
+export async function sendRawPush(
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  payload: PushPayload
+): Promise<
+  | { ok: true }
+  | { ok: false; statusCode?: number; message?: string }
+> {
+  if (!isPushConfigured()) {
+    return { ok: false, message: "VAPID keys not configured" };
+  }
+  try {
+    await webPush.sendNotification(
+      subscription,
+      JSON.stringify(payload),
+      { TTL: 60 * 60 }
+    );
+    return { ok: true };
+  } catch (err: unknown) {
+    return {
+      ok: false,
+      statusCode: (err as { statusCode?: number })?.statusCode,
+      message: (err as { message?: string })?.message || String(err),
+    };
+  }
+}
+
+/**
  * Send a push notification to a specific rep (all their subscriptions).
  */
 export async function sendPushToRep(

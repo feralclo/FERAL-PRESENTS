@@ -1,249 +1,723 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
-import { getRepSettings, getPlatformXPConfig } from "@/lib/rep-points";
-import { getLevelProgress, getTierName, DEFAULT_LEVELING, DEFAULT_TIERS } from "@/lib/xp-levels";
+import { getPlatformXPConfig } from "@/lib/rep-points";
+import {
+  getLevelProgress,
+  getTierName,
+  DEFAULT_LEVELING,
+  DEFAULT_TIERS,
+} from "@/lib/xp-levels";
 import type { LevelingConfig, TierDefinition } from "@/lib/xp-levels";
 import * as Sentry from "@sentry/nextjs";
 
 /**
- * GET /api/rep-portal/dashboard — Dashboard data (protected)
+ * GET /api/rep-portal/dashboard
  *
- * Returns aggregated stats, level info, active quests/rewards counts,
- * leaderboard position, recent sales, and active events for the current rep.
+ * Aggregated home-screen payload for native clients (iOS / Android / web-v2).
+ * Shape documented in ENTRY-IOS-BACKEND-SPEC.md §6.3.
+ *
+ * Query params:
+ *   ?promoter_id=UUID — scope events / leaderboard / recent_sales to one
+ *                       promoter. Omit for aggregate view across all
+ *                       approved memberships.
+ *   ?include=a,b,c   — comma-separated subset of top-level sections
+ *                       (rep,xp,ep,leaderboard,story_rail,followed_promoters,
+ *                        events,feed,recent_sales,featured_rewards,discount).
+ *                       Default: all.
+ *
+ * Sections returning empty-but-present arrays in v1 (story_rail, feed,
+ * featured_rewards) land in Phase 3 / Phase 4. followed_promoters and
+ * events / recent_sales / leaderboard / discount are real from day one.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const auth = await requireRepAuth({ allowPending: true });
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
-    const orgId = auth.rep.org_id;
     const isPending = auth.rep.status === "pending";
 
-    const supabase = await getSupabaseAdmin();
-    if (!supabase) {
+    const url = new URL(request.url);
+    const promoterIdParam = url.searchParams.get("promoter_id") || null;
+    const includeParam = url.searchParams.get("include");
+    const includes = includeParam
+      ? new Set(includeParam.split(",").map((s) => s.trim()).filter(Boolean))
+      : null; // null = all sections
+    const want = (section: string) => !includes || includes.has(section);
+
+    const db = await getSupabaseAdmin();
+    if (!db) {
       return NextResponse.json(
         { error: "Service unavailable" },
         { status: 503 }
       );
     }
 
-    // Fetch rep, settings, and counts in parallel
+    // ------------------------------------------------------------------
+    // Step 1a: fetch full rep row (auth.rep is a thin shape)
+    // ------------------------------------------------------------------
+    const { data: repRow } = await db
+      .from(TABLES.REPS)
+      .select(
+        "id, email, first_name, last_name, display_name, photo_url, bio, instagram, tiktok, level, points_balance, currency_balance, total_sales, total_revenue, onboarding_completed"
+      )
+      .eq("id", repId)
+      .single();
+
+    if (!repRow) {
+      return NextResponse.json({ error: "Rep not found" }, { status: 404 });
+    }
+
+    type FullRep = {
+      id: string;
+      email: string | null;
+      first_name: string | null;
+      last_name: string | null;
+      display_name: string | null;
+      photo_url: string | null;
+      bio: string | null;
+      instagram: string | null;
+      tiktok: string | null;
+      level: number | null;
+      points_balance: number | null;
+      currency_balance: number | null;
+      total_sales: number | null;
+      total_revenue: number | null;
+      onboarding_completed: boolean | null;
+    };
+    const rep = repRow as unknown as FullRep;
+
+    // ------------------------------------------------------------------
+    // Step 1b: resolve scope — which promoters does this rep belong to?
+    // ------------------------------------------------------------------
+    const { data: membershipRows } = await db
+      .from("rep_promoter_memberships")
+      .select(
+        "promoter_id, discount_code, discount_percent, promoter:promoters(id, org_id, handle, display_name, tagline, accent_hex, avatar_url, avatar_initials, avatar_bg_hex, cover_image_url, follower_count, team_size)"
+      )
+      .eq("rep_id", repId)
+      .eq("status", "approved");
+
+    type Promoter = {
+      id: string;
+      org_id: string;
+      handle: string;
+      display_name: string;
+      tagline: string | null;
+      accent_hex: number;
+      avatar_url: string | null;
+      avatar_initials: string | null;
+      avatar_bg_hex: number | null;
+      cover_image_url: string | null;
+      follower_count: number;
+      team_size: number;
+    };
+    type Membership = {
+      promoter_id: string;
+      discount_code: string | null;
+      discount_percent: number | null;
+      promoter: Promoter | null;
+    };
+
+    // Supabase typings return joined relations as arrays even for 1:1 FKs.
+    // Normalise by picking the first (or null) so downstream code gets a
+    // single object it can reason about.
+    const approvedMemberships: Membership[] = (
+      (membershipRows ?? []) as unknown as Array<{
+        promoter_id: string;
+        discount_code: string | null;
+        discount_percent: number | null;
+        promoter: Promoter | Promoter[] | null;
+      }>
+    ).map((row) => ({
+      promoter_id: row.promoter_id,
+      discount_code: row.discount_code,
+      discount_percent: row.discount_percent,
+      promoter: Array.isArray(row.promoter)
+        ? row.promoter[0] ?? null
+        : row.promoter ?? null,
+    }));
+
+    // Apply ?promoter_id= filter to scope downstream queries
+    const scopedMemberships = promoterIdParam
+      ? approvedMemberships.filter((m) => m.promoter_id === promoterIdParam)
+      : approvedMemberships;
+    const scopedPromoterIds = scopedMemberships
+      .map((m) => m.promoter_id)
+      .filter(Boolean);
+    const scopedOrgIds = scopedMemberships
+      .map((m) => m.promoter?.org_id)
+      .filter((s): s is string => !!s);
+
+    // ------------------------------------------------------------------
+    // Step 2: fan out everything in parallel
+    // ------------------------------------------------------------------
     const [
-      repResult,
-      settingsResult,
-      questsResult,
-      pendingRewardsResult,
+      platformConfig,
+      repPointsLogTodayResult,
       leaderboardResult,
+      followedPromotersResult,
+      eventsResult,
       recentSalesResult,
-      activeEventsResult,
-      allOrgEventsResult,
-      domainResult,
     ] = await Promise.all([
-      // Full rep row (include name/photo for dashboard display)
-      supabase
-        .from(TABLES.REPS)
-        .select("id, first_name, display_name, photo_url, points_balance, currency_balance, total_sales, total_revenue, level, onboarding_completed")
-        .eq("id", repId)
-        .eq("org_id", orgId)
-        .single(),
+      getPlatformXPConfig(),
 
-      // Program settings (tenant)
-      getRepSettings(orgId),
+      // XP earned today — for the `xp.today` field
+      want("xp")
+        ? db
+            .from(TABLES.REP_POINTS_LOG)
+            .select("points_delta", { count: "exact" })
+            .eq("rep_id", repId)
+            .gte("created_at", startOfTodayIso())
+        : Promise.resolve({ data: null, count: null }),
 
-      // Active quests count (global or assigned to rep's events)
-      getActiveQuestsCount(supabase, repId, orgId),
+      // Leaderboard (for position + total) — scoped to first scoped org if set,
+      // otherwise platform-wide across all approved orgs this rep belongs to.
+      want("leaderboard") && scopedOrgIds.length > 0
+        ? db
+            .from(TABLES.REPS)
+            .select("id, total_revenue", { count: "exact" })
+            .in("org_id", scopedOrgIds)
+            .eq("status", "active")
+            .order("total_revenue", { ascending: false })
+        : Promise.resolve({ data: [], count: 0 }),
 
-      // Pending reward claims count
-      supabase
-        .from(TABLES.REP_REWARD_CLAIMS)
-        .select("id", { count: "exact", head: true })
-        .eq("rep_id", repId)
-        .eq("org_id", orgId)
-        .eq("status", "claimed"),
+      // Followed promoters
+      want("followed_promoters")
+        ? db
+            .from("rep_promoter_follows")
+            .select(
+              "promoter:promoters(id, handle, display_name, tagline, accent_hex, avatar_url, avatar_initials, avatar_bg_hex, cover_image_url, follower_count, team_size)"
+            )
+            .eq("rep_id", repId)
+        : Promise.resolve({ data: [] }),
 
-      // Leaderboard: all active reps ordered by total_revenue
-      supabase
-        .from(TABLES.REPS)
-        .select("id, total_revenue")
-        .eq("org_id", orgId)
-        .eq("status", "active")
-        .order("total_revenue", { ascending: false }),
+      // Events — everything rep-enabled + live from scoped promoters (via their org_id)
+      want("events") && scopedOrgIds.length > 0
+        ? db
+            .from(TABLES.EVENTS)
+            .select(
+              "id, org_id, name, slug, date_start, date_end, venue_name, city, country, status, cover_image, cover_image_url, poster_image_url, banner_image_url"
+            )
+            .in("org_id", scopedOrgIds)
+            .eq("rep_enabled", true)
+            .in("status", ["published", "active", "live"])
+            .order("date_start", { ascending: true })
+        : Promise.resolve({ data: [] }),
 
-      // Recent sales: last 5 orders attributed to this rep
-      supabase
-        .from(TABLES.ORDERS)
-        .select("id, order_number, total, status, created_at, event:events(id, name, slug)")
-        .eq("org_id", orgId)
-        .eq("metadata->>rep_id", repId)
-        .order("created_at", { ascending: false })
-        .limit(5),
-
-      // Active events assigned to this rep
-      supabase
-        .from(TABLES.REP_EVENTS)
-        .select("id, event_id, sales_count, revenue, assigned_at, event:events(id, name, slug, date_start, status, cover_image)")
-        .eq("rep_id", repId)
-        .eq("org_id", orgId),
-
-      // All live/published events in this org that are rep-enabled (for discovery)
-      supabase
-        .from(TABLES.EVENTS)
-        .select("id, name, slug, date_start, status, cover_image, venue_name")
-        .eq("org_id", orgId)
-        .eq("rep_enabled", true)
-        .in("status", ["published", "active", "live"])
-        .order("date_start", { ascending: true }),
-
-      // Tenant's primary domain for building share URLs
-      supabase
-        .from(TABLES.DOMAINS)
-        .select("hostname")
-        .eq("org_id", orgId)
-        .eq("is_primary", true)
-        .eq("status", "active")
-        .single(),
+      // Recent sales — last 5 orders attributed to this rep
+      want("recent_sales") && scopedOrgIds.length > 0
+        ? db
+            .from(TABLES.ORDERS)
+            .select(
+              "id, org_id, order_number, total, currency, status, metadata, created_at, event:events(id, name, slug)"
+            )
+            .in("org_id", scopedOrgIds)
+            .eq("metadata->>rep_id", repId)
+            .order("created_at", { ascending: false })
+            .limit(5)
+        : Promise.resolve({ data: [] }),
     ]);
 
-    const rep = repResult.data;
-    if (!rep) {
-      return NextResponse.json(
-        { error: "Rep not found" },
-        { status: 404 }
-      );
-    }
+    const leveling: LevelingConfig =
+      (platformConfig.leveling as LevelingConfig | undefined) ||
+      DEFAULT_LEVELING;
+    const tiers: TierDefinition[] =
+      (platformConfig.tiers as TierDefinition[] | undefined) || DEFAULT_TIERS;
 
-    const settings = settingsResult;
+    // ------------------------------------------------------------------
+    // Step 3: compute event-level joins (rep_events aggregates + quest counts)
+    // ------------------------------------------------------------------
+    const events = (eventsResult.data ?? []) as Array<{
+      id: string;
+      org_id: string;
+      name: string;
+      slug: string;
+      date_start: string;
+      date_end: string | null;
+      venue_name: string | null;
+      city: string | null;
+      country: string | null;
+      status: string;
+      cover_image: string | null;
+      cover_image_url: string | null;
+      poster_image_url: string | null;
+      banner_image_url: string | null;
+    }>;
+    const eventIds = events.map((e) => e.id);
 
-    // Use formula-based leveling from platform config
-    const platformConfig = await getPlatformXPConfig();
-    const leveling: LevelingConfig = platformConfig.leveling || DEFAULT_LEVELING;
-    const tiers: TierDefinition[] = (platformConfig.tiers || DEFAULT_TIERS) as TierDefinition[];
-    const progress = getLevelProgress(rep.points_balance, leveling);
-    const levelName = getTierName(progress.level, tiers);
-    const currentLevelPoints = progress.currentLevelXp;
-    const nextLevelPoints = progress.nextLevelXp;
+    const [repEventsResult, questsResult, mySubmissionsResult] =
+      await Promise.all([
+        eventIds.length > 0
+          ? db
+              .from(TABLES.REP_EVENTS)
+              .select("event_id, sales_count, revenue")
+              .eq("rep_id", repId)
+              .in("event_id", eventIds)
+          : Promise.resolve({ data: [] }),
+        eventIds.length > 0
+          ? db
+              .from(TABLES.REP_QUESTS)
+              .select("id, event_id, points_reward, currency_reward")
+              .in("event_id", eventIds)
+              .eq("status", "active")
+          : Promise.resolve({ data: [] }),
+        eventIds.length > 0
+          ? db
+              .from(TABLES.REP_QUEST_SUBMISSIONS)
+              .select("id, quest_id, status, quest:rep_quests(event_id)")
+              .eq("rep_id", repId)
+              .in(
+                "quest_id",
+                // fetch submissions only for quests of the events we care about
+                // — cheaper than fetching all rep submissions. Use the quest
+                // list we just pulled.
+                [] // filled below after questsResult lands
+              )
+          : Promise.resolve({ data: [] }),
+      ]);
 
-    // Calculate leaderboard position
-    let leaderboardPosition: number | null = null;
-    if (leaderboardResult.data) {
-      const idx = leaderboardResult.data.findIndex(
-        (r: { id: string }) => r.id === repId
-      );
-      leaderboardPosition = idx >= 0 ? idx + 1 : null;
-    }
-
-    // Flatten active_events to match frontend interface
-    const flatEvents = (activeEventsResult.data || []).map(
-      (ae: Record<string, unknown>) => {
-        const evt = ae.event as Record<string, unknown> | null;
-        return {
-          id: ae.event_id || ae.id,
-          name: evt?.name || "Unknown Event",
-          slug: evt?.slug || "",
-          sales_count: ae.sales_count || 0,
-          revenue: ae.revenue || 0,
-          cover_image: evt?.cover_image || undefined,
-        };
-      }
-    );
-
-    // Discoverable events = org events the rep is NOT already assigned to
-    const assignedIds = new Set(flatEvents.map((e: Record<string, unknown>) => String(e.id)));
-    const discoverableEvents = (allOrgEventsResult.data || [])
-      .filter((e: Record<string, unknown>) => !assignedIds.has(String(e.id)))
-      .map((e: Record<string, unknown>) => ({
-        id: e.id,
-        name: e.name,
-        slug: e.slug,
-        date_start: e.date_start,
-        cover_image: e.cover_image || undefined,
-        venue_name: e.venue_name || undefined,
+    // The `.in("quest_id", [])` empty-array shortcut sidesteps a DB round-trip
+    // when there are no quests. If there ARE quests, re-run with the right ids.
+    const quests = (questsResult.data ?? []) as Array<{
+      id: string;
+      event_id: string | null;
+      points_reward: number;
+      currency_reward: number;
+    }>;
+    const questIds = quests.map((q) => q.id);
+    type SubmissionRow = {
+      id: string;
+      quest_id: string;
+      status: string;
+      quest: { event_id: string | null } | { event_id: string | null }[] | null;
+    };
+    type Submission = {
+      id: string;
+      quest_id: string;
+      status: string;
+      quest: { event_id: string | null } | null;
+    };
+    let mySubmissions: Submission[] = [];
+    if (questIds.length > 0) {
+      const { data } = await db
+        .from(TABLES.REP_QUEST_SUBMISSIONS)
+        .select("id, quest_id, status, quest:rep_quests(event_id)")
+        .eq("rep_id", repId)
+        .in("quest_id", questIds);
+      const rows = (data ?? []) as unknown as SubmissionRow[];
+      mySubmissions = rows.map((r) => ({
+        id: r.id,
+        quest_id: r.quest_id,
+        status: r.status,
+        quest: Array.isArray(r.quest) ? r.quest[0] ?? null : r.quest,
       }));
+    } else {
+      mySubmissions = [];
+    }
+    // mySubmissionsResult is a no-op placeholder when there are no quests;
+    // silence the unused-var complaint by discarding it explicitly.
+    void mySubmissionsResult;
 
-    return NextResponse.json({
-      data: {
-        rep: {
+    // Index helpers
+    const repEventByEventId = new Map<
+      string,
+      { sales_count: number; revenue: number }
+    >();
+    for (const re of (repEventsResult.data ?? []) as Array<{
+      event_id: string;
+      sales_count: number | null;
+      revenue: number | null;
+    }>) {
+      repEventByEventId.set(re.event_id, {
+        sales_count: re.sales_count ?? 0,
+        revenue: Number(re.revenue ?? 0),
+      });
+    }
+
+    const questAggByEventId = new Map<
+      string,
+      {
+        total: number;
+        xp_reward_max: number;
+        ep_reward_max: number;
+      }
+    >();
+    for (const q of quests) {
+      if (!q.event_id) continue;
+      const agg = questAggByEventId.get(q.event_id) ?? {
+        total: 0,
+        xp_reward_max: 0,
+        ep_reward_max: 0,
+      };
+      agg.total += 1;
+      agg.xp_reward_max += q.points_reward ?? 0;
+      agg.ep_reward_max += q.currency_reward ?? 0;
+      questAggByEventId.set(q.event_id, agg);
+    }
+
+    const myStateByEventId = new Map<
+      string,
+      { completed: number; in_progress: number }
+    >();
+    for (const sub of mySubmissions) {
+      const eid = sub.quest?.event_id;
+      if (!eid) continue;
+      const agg = myStateByEventId.get(eid) ?? { completed: 0, in_progress: 0 };
+      if (sub.status === "approved") agg.completed += 1;
+      else if (sub.status === "pending") agg.in_progress += 1;
+      myStateByEventId.set(eid, agg);
+    }
+
+    const promoterByOrgId = new Map<string, (typeof approvedMemberships)[0]["promoter"]>();
+    for (const m of approvedMemberships) {
+      if (m.promoter) promoterByOrgId.set(m.promoter.org_id, m.promoter);
+    }
+
+    // ------------------------------------------------------------------
+    // Step 4: build each section of the response
+    // ------------------------------------------------------------------
+
+    // rep block — mirrors the /me shape
+    const progress = getLevelProgress(rep.points_balance ?? 0, leveling);
+    const levelName = getTierName(progress.level, tiers);
+    const nextTierName = getTierName(progress.level + 1, tiers);
+
+    const repBlock = want("rep")
+      ? {
           id: rep.id,
-          first_name: rep.first_name,
-          display_name: rep.display_name,
-          photo_url: rep.photo_url,
-          points_balance: rep.points_balance,
-          currency_balance: rep.currency_balance ?? 0,
-          total_sales: rep.total_sales,
-          total_revenue: rep.total_revenue,
-          level: rep.level,
+          email: rep.email,
+          first_name: rep.first_name ?? null,
+          last_name: rep.last_name ?? null,
+          display_name: rep.display_name ?? null,
+          photo_url: rep.photo_url ?? null,
+          bio: rep.bio ?? null,
+          instagram: rep.instagram ?? null,
+          tiktok: rep.tiktok ?? null,
+          level: progress.level,
+          tier: levelName,
+          xp_balance: rep.points_balance ?? 0,
+          ep_balance: rep.currency_balance ?? 0,
+          total_sales: rep.total_sales ?? 0,
+          total_revenue_pence: Math.round(Number(rep.total_revenue ?? 0) * 100),
           onboarding_completed: rep.onboarding_completed ?? false,
           status: isPending ? "pending" : "active",
-        },
-        currency_name: settings.currency_name || "FRL",
-        level_name: levelName,
-        next_level_points: nextLevelPoints,
-        current_level_points: currentLevelPoints,
-        active_quests: questsResult,
-        pending_rewards: pendingRewardsResult.count || 0,
-        leaderboard_position: leaderboardPosition,
-        recent_sales: recentSalesResult.data || [],
-        active_events: flatEvents,
-        discoverable_events: discoverableEvents,
-        public_url: domainResult.data?.hostname
-          ? `https://${domainResult.data.hostname}`
-          : null,
+        }
+      : null;
+
+    const xpToday = Array.isArray(repPointsLogTodayResult.data)
+      ? (repPointsLogTodayResult.data as Array<{ points_delta: number }>).reduce(
+          (sum, row) => sum + (row.points_delta ?? 0),
+          0
+        )
+      : 0;
+
+    // progress.nextLevelXp is null when the rep is at max level (no next tier)
+    const atMaxLevel = progress.nextLevelXp === null;
+    const xpBlock = want("xp")
+      ? {
+          balance: rep.points_balance ?? 0,
+          today: xpToday,
+          from_last_level: progress.currentLevelXp,
+          for_next_level: progress.nextLevelXp,
+          level: progress.level,
+          tier: levelName,
+          tier_next: nextTierName !== levelName ? nextTierName : null,
+          xp_to_next_level: atMaxLevel
+            ? 0
+            : Math.max(
+                0,
+                (progress.nextLevelXp as number) - (rep.points_balance ?? 0)
+              ),
+        }
+      : null;
+
+    const epBlock = want("ep")
+      ? {
+          balance: rep.currency_balance ?? 0,
+          label: `${rep.currency_balance ?? 0} EP`,
+        }
+      : null;
+
+    // leaderboard
+    let leaderboardBlock: {
+      position: number | null;
+      total: number;
+      delta_week: number | null;
+      in_top_10: boolean;
+    } | null = null;
+    if (want("leaderboard")) {
+      const rows =
+        (leaderboardResult.data as Array<{ id: string }> | null) ?? [];
+      const idx = rows.findIndex((r) => r.id === repId);
+      const position = idx >= 0 ? idx + 1 : null;
+      leaderboardBlock = {
+        position,
+        total: rows.length,
+        delta_week: null, // populated in Phase 5 via rep_rank_snapshots
+        in_top_10: position !== null && position <= 10,
+      };
+    }
+
+    // followed_promoters
+    type FollowedPromoterRow = {
+      promoter: Promoter | Promoter[] | null;
+    };
+    const followedPromotersBlock = want("followed_promoters")
+      ? (
+          (followedPromotersResult.data ?? []) as unknown as FollowedPromoterRow[]
+        )
+          .map((row) =>
+            Array.isArray(row.promoter) ? row.promoter[0] ?? null : row.promoter
+          )
+          .filter((p): p is Promoter => !!p)
+          .map((p) => ({
+            id: p.id,
+            handle: p.handle,
+            display_name: p.display_name,
+            tagline: p.tagline,
+            accent_hex: p.accent_hex,
+            avatar_url: p.avatar_url,
+            avatar_initials: p.avatar_initials,
+            avatar_bg_hex: p.avatar_bg_hex,
+            cover_image_url: p.cover_image_url,
+            follower_count: p.follower_count,
+            team_size: p.team_size,
+            is_following: true,
+            is_on_team: approvedMemberships.some(
+              (m) => m.promoter?.id === p.id
+            ),
+          }))
+      : null;
+
+    // events
+    const eventsBlock = want("events")
+      ? events.map((e) => {
+          const promoter = promoterByOrgId.get(e.org_id) ?? null;
+          const myAgg = repEventByEventId.get(e.id) ?? {
+            sales_count: 0,
+            revenue: 0,
+          };
+          const qAgg = questAggByEventId.get(e.id) ?? {
+            total: 0,
+            xp_reward_max: 0,
+            ep_reward_max: 0,
+          };
+          const myState = myStateByEventId.get(e.id) ?? {
+            completed: 0,
+            in_progress: 0,
+          };
+          const available = Math.max(
+            0,
+            qAgg.total - myState.completed - myState.in_progress
+          );
+          const { label: dateLabel } = formatDateLabel(
+            e.date_start,
+            e.city
+          );
+          return {
+            id: e.id,
+            promoter_id: promoter?.id ?? null,
+            promoter_handle: promoter?.handle ?? null,
+            promoter_display_name: promoter?.display_name ?? null,
+            title: e.name,
+            slug: e.slug,
+            date_start: e.date_start,
+            date_end: e.date_end,
+            venue_name: e.venue_name,
+            city: e.city,
+            country: e.country,
+            status: mapEventStatus(e.status, e.date_start, e.date_end),
+            time_label: formatTimeLabel(e.date_start, e.date_end),
+            date_label: dateLabel,
+            cover_image_url: e.cover_image_url ?? e.cover_image ?? null,
+            poster_image_url: e.poster_image_url ?? null,
+            banner_image_url: e.banner_image_url ?? null,
+            accent_hex: promoter?.accent_hex ?? null,
+            sales_count: myAgg.sales_count,
+            revenue_pence: Math.round(myAgg.revenue * 100),
+            xp_reward_max: qAgg.xp_reward_max,
+            ep_reward_max: qAgg.ep_reward_max,
+            quests: {
+              total: qAgg.total,
+              completed: myState.completed,
+              in_progress: myState.in_progress,
+              available,
+            },
+          };
+        })
+      : null;
+
+    // recent_sales — compute ticket_count via one extra query
+    type RawOrderRow = {
+      id: string;
+      order_number: string;
+      total: number;
+      currency: string | null;
+      status: string;
+      metadata: Record<string, unknown> | null;
+      created_at: string;
+      event:
+        | { id: string; name: string; slug: string }
+        | { id: string; name: string; slug: string }[]
+        | null;
+    };
+    type RawOrder = Omit<RawOrderRow, "event"> & {
+      event: { id: string; name: string; slug: string } | null;
+    };
+    const rawSales: RawOrder[] = (
+      (recentSalesResult.data ?? []) as unknown as RawOrderRow[]
+    ).map((s) => ({
+      ...s,
+      event: Array.isArray(s.event) ? s.event[0] ?? null : s.event,
+    }));
+    let recentSalesBlock: Array<{
+      id: string;
+      order_number: string;
+      total_pence: number;
+      currency: string;
+      ticket_count: number;
+      buyer_first_name: string | null;
+      status: string;
+      created_at: string;
+      event: { id: string; name: string; slug: string } | null;
+    }> | null = null;
+
+    if (want("recent_sales")) {
+      const orderIds = rawSales.map((s) => s.id);
+      let ticketCountByOrder = new Map<string, number>();
+      if (orderIds.length > 0) {
+        const { data: items } = await db
+          .from(TABLES.ORDER_ITEMS)
+          .select("order_id, qty")
+          .in("order_id", orderIds);
+        for (const item of (items ?? []) as Array<{
+          order_id: string;
+          qty: number | null;
+        }>) {
+          ticketCountByOrder.set(
+            item.order_id,
+            (ticketCountByOrder.get(item.order_id) ?? 0) + (item.qty ?? 0)
+          );
+        }
+      }
+      recentSalesBlock = rawSales.map((s) => ({
+        id: s.id,
+        order_number: s.order_number,
+        total_pence: Math.round(Number(s.total ?? 0) * 100),
+        currency: s.currency ?? "GBP",
+        ticket_count: ticketCountByOrder.get(s.id) ?? 1,
+        buyer_first_name:
+          (s.metadata?.["buyer_first_name"] as string | undefined) ??
+          (s.metadata?.["first_name"] as string | undefined) ??
+          null,
+        status: s.status,
+        created_at: s.created_at,
+        event: s.event,
+      }));
+    }
+
+    // discount — per-membership codes + primary (first approved membership)
+    const discountBlock = want("discount")
+      ? {
+          primary_code:
+            approvedMemberships.find((m) => m.discount_code)?.discount_code ??
+            null,
+          primary_percent:
+            approvedMemberships.find((m) => m.discount_code)
+              ?.discount_percent ?? null,
+          per_promoter: approvedMemberships
+            .filter((m) => m.discount_code)
+            .map((m) => ({
+              promoter_id: m.promoter_id,
+              code: m.discount_code,
+              discount_percent: m.discount_percent,
+            })),
+        }
+      : null;
+
+    // Deferred sections — present but empty so iOS mapper is happy.
+    const storyRailBlock = want("story_rail") ? [] : null;
+    const feedBlock = want("feed") ? [] : null;
+    const featuredRewardsBlock = want("featured_rewards") ? [] : null;
+
+    // ------------------------------------------------------------------
+    // Step 5: assemble
+    // ------------------------------------------------------------------
+    return NextResponse.json({
+      data: {
+        ...(repBlock && { rep: repBlock }),
+        ...(xpBlock && { xp: xpBlock }),
+        ...(epBlock && { ep: epBlock }),
+        ...(leaderboardBlock && { leaderboard: leaderboardBlock }),
+        ...(storyRailBlock && { story_rail: storyRailBlock }),
+        ...(followedPromotersBlock && {
+          followed_promoters: followedPromotersBlock,
+        }),
+        ...(eventsBlock && { events: eventsBlock }),
+        ...(feedBlock && { feed: feedBlock }),
+        ...(recentSalesBlock && { recent_sales: recentSalesBlock }),
+        ...(featuredRewardsBlock && { featured_rewards: featuredRewardsBlock }),
+        ...(discountBlock && { discount: discountBlock }),
       },
     });
   } catch (err) {
     Sentry.captureException(err);
     console.error("[rep-portal/dashboard] Error:", err);
-    return NextResponse.json(
-      { error: "Internal error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
 
-/**
- * Count active quests available to a rep.
- * Quests are available if they are global (event_id is null)
- * or their event_id is in the rep's assigned events.
- */
-async function getActiveQuestsCount(
-  supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>,
-  repId: string,
-  orgId: string
-): Promise<number> {
-  try {
-    if (!supabase) return 0;
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-    // Get rep's assigned event IDs
-    const { data: repEvents } = await supabase
-      .from(TABLES.REP_EVENTS)
-      .select("event_id")
-      .eq("rep_id", repId)
-      .eq("org_id", orgId);
+function startOfTodayIso(): string {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return d.toISOString();
+}
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const eventIds = (repEvents || [])
-      .map((re: { event_id: string }) => re.event_id)
-      .filter((id: string) => uuidRegex.test(id));
+function mapEventStatus(
+  dbStatus: string,
+  dateStart: string,
+  dateEnd: string | null
+): "upcoming" | "live" | "past" {
+  const now = Date.now();
+  const start = new Date(dateStart).getTime();
+  const end = dateEnd ? new Date(dateEnd).getTime() : start + 4 * 3600 * 1000;
+  if (now < start) return "upcoming";
+  if (now >= start && now <= end) return "live";
+  if (dbStatus === "published" || dbStatus === "active") return "upcoming";
+  return "past";
+}
 
-    // Count active quests: global OR assigned to rep's events
-    let query = supabase
-      .from(TABLES.REP_QUESTS)
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .eq("status", "active");
-
-    if (eventIds.length > 0) {
-      query = query.or(`event_id.is.null,event_id.in.(${eventIds.join(",")})`);
-    } else {
-      query = query.is("event_id", null);
-    }
-
-    const { count } = await query;
-    return count || 0;
-  } catch {
-    return 0;
+function formatTimeLabel(dateStart: string, dateEnd: string | null): string {
+  const now = Date.now();
+  const start = new Date(dateStart).getTime();
+  const end = dateEnd ? new Date(dateEnd).getTime() : start + 4 * 3600 * 1000;
+  if (now >= start && now <= end) return "live";
+  if (now > end) return "ended";
+  const diffMs = start - now;
+  const days = Math.floor(diffMs / (24 * 3600 * 1000));
+  const hours = Math.floor((diffMs % (24 * 3600 * 1000)) / (3600 * 1000));
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) {
+    const minutes = Math.floor((diffMs % (3600 * 1000)) / 60000);
+    return `${hours}h ${minutes}m`;
   }
+  return "soon";
+}
+
+function formatDateLabel(
+  dateStart: string,
+  city: string | null
+): { label: string } {
+  const d = new Date(dateStart);
+  const day = d.getUTCDate().toString().padStart(2, "0");
+  const month = (d.getUTCMonth() + 1).toString().padStart(2, "0");
+  const loc = city ? city.toLowerCase() : null;
+  return { label: loc ? `${day}.${month} · ${loc}` : `${day}.${month}` };
 }

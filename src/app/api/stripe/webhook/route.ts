@@ -242,6 +242,12 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
     return;
   }
 
+  // EP purchase — tenant topping up their float
+  if (metadata.type === "ep_purchase" && metadata.tenant_org_id) {
+    await handleEpPurchaseSuccess(paymentIntent);
+    return;
+  }
+
   const eventId = metadata.event_id;
   const orgId = metadata.org_id || fallbackOrgId;
   const customerEmail = metadata.customer_email;
@@ -597,4 +603,95 @@ async function handleGuestListApplicationPayment(paymentIntent: Stripe.PaymentIn
   } catch (err) {
     console.error(`[webhook] Failed to issue guest list ticket for ${guestListId}:`, err);
   }
+}
+
+// ---------------------------------------------------------------------------
+// EP purchase — tenant's Stripe PaymentIntent succeeded, record it in the
+// ledger so their float goes up by the purchased EP amount.
+// Idempotent: looks up ep_tenant_purchases by stripe_payment_intent_id and
+// short-circuits if status is not 'pending'.
+// ---------------------------------------------------------------------------
+async function handleEpPurchaseSuccess(paymentIntent: Stripe.PaymentIntent) {
+  const supabase = await getSupabaseAdmin();
+  if (!supabase) {
+    Sentry.captureMessage("[webhook/ep_purchase] Supabase not configured", "error");
+    return;
+  }
+
+  const tenantOrgId = paymentIntent.metadata.tenant_org_id;
+  const purchaseId = paymentIntent.metadata.purchase_id;
+
+  if (!tenantOrgId || !purchaseId) {
+    Sentry.captureMessage(
+      "[webhook/ep_purchase] Missing metadata on PaymentIntent",
+      { extra: { paymentIntentId: paymentIntent.id, metadata: paymentIntent.metadata } }
+    );
+    return;
+  }
+
+  // Look up the pending purchase row
+  const { data: purchase, error: fetchErr } = await supabase
+    .from("ep_tenant_purchases")
+    .select("id, ep_amount, fiat_rate_pence, status")
+    .eq("id", purchaseId)
+    .eq("tenant_org_id", tenantOrgId)
+    .single();
+
+  if (fetchErr || !purchase) {
+    Sentry.captureException(fetchErr ?? new Error("ep_tenant_purchases row missing"), {
+      extra: { paymentIntentId: paymentIntent.id, purchaseId, tenantOrgId },
+    });
+    return;
+  }
+
+  if (purchase.status !== "pending") {
+    // Already processed — idempotent no-op. Happens when Stripe retries a
+    // webhook or we redeliver manually from the dashboard.
+    console.log(
+      `[webhook/ep_purchase] Purchase ${purchaseId} already ${purchase.status}; ignoring`
+    );
+    return;
+  }
+
+  // Transition: pending → succeeded + write ledger entry
+  const { error: updateErr } = await supabase
+    .from("ep_tenant_purchases")
+    .update({ status: "succeeded", completed_at: new Date().toISOString() })
+    .eq("id", purchase.id);
+
+  if (updateErr) {
+    Sentry.captureException(updateErr, {
+      extra: { purchaseId, paymentIntentId: paymentIntent.id },
+    });
+    return;
+  }
+
+  // Write the tenant_purchase ledger entry — this is what credits the
+  // tenant's float (ep_tenant_float view SUMs this up).
+  const { error: ledgerErr } = await supabase.from("ep_ledger").insert({
+    entry_type: "tenant_purchase",
+    ep_amount: purchase.ep_amount,
+    tenant_org_id: tenantOrgId,
+    ep_purchase_id: purchase.id,
+    fiat_rate_pence: purchase.fiat_rate_pence,
+    notes: `Stripe PI ${paymentIntent.id}`,
+  });
+
+  if (ledgerErr) {
+    // Ledger write failed — roll the purchase status back so we can retry.
+    // If Stripe redelivers the webhook, the handler will see 'pending' again
+    // and re-attempt. Sentry alerts on the drift.
+    await supabase
+      .from("ep_tenant_purchases")
+      .update({ status: "pending" })
+      .eq("id", purchase.id);
+    Sentry.captureException(ledgerErr, {
+      extra: { purchaseId, paymentIntentId: paymentIntent.id, epAmount: purchase.ep_amount },
+    });
+    return;
+  }
+
+  console.log(
+    `[webhook/ep_purchase] +${purchase.ep_amount} EP to ${tenantOrgId} float (PI ${paymentIntent.id})`
+  );
 }

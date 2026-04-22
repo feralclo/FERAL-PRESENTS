@@ -90,6 +90,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: Megaphone,
     children: [
       { href: "/admin/reps/", label: "Reps" },
+      { href: "/admin/ep/", label: "EP Economy" },
       { href: "/admin/campaigns/", label: "Campaigns" },
       { href: "/admin/campaigns/email/", label: "Email Campaigns" },
       { href: "/admin/communications/", label: "Communications" },

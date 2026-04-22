@@ -1,7 +1,7 @@
 # Entry Backend — iOS / Android / web-v2 Spec
 
-**Version:** v1.5 — 2026-04-22
-**Status:** Phases 0, 1, 2 shipped. Phase 3 (EP economy) in progress. Poster drops paused — see §5.10.
+**Version:** v2.0 — 2026-04-22 (shipped)
+**Status:** All 5 phases complete. iOS unblocked for end-to-end consumption. Poster drops paused — see §5.10. Apple Sign-In deferred — see Decision L. Awaiting: APNs + FCM credentials for push transports to light up.
 
 This document is the single source of truth for the backend work required to support the native Entry clients (iOS first, Android + web-v2 later). It supersedes ad-hoc conversation and the iOS-side `design/api-contract.md` (which should be updated to match once this spec is locked).
 
@@ -1396,6 +1396,21 @@ Assumes no parallel web-v2 work. Assumes product decisions (§3) are locked befo
 
 ## 14. Changelog
 
+- **2026-04-22 v2.0 — SHIPPED.** All 5 phases complete across ~36 feature commits and 27 migrations. Session totals: 465 unit tests + 6 EP integration tests (all green). Real-DB reconciliation proves zero `ep_rep_balance_drift` after every state change in the money-path tests.
+
+  What landed across the session:
+  - **Phase 0** — `mobile-login` + `mobile-refresh`, promoters table (1:1 with orgs, seeded from branding), `rep_promoter_memberships` + backfill, `rep_promoter_follows`, `rep_follows`, `device_tokens`, `/admin/promoter/` editor page.
+  - **Phase 1** — Events `cover_image_url` / `poster_image_url` / `banner_image_url`, dashboard rewrite to §6.3 shape, `/me/memberships` + `/me/balances` + `/me/following/promoters`, `/api/promoters/discover` + `/api/promoters/[handle]` (public, auth-aware), follow/unfollow + join-request endpoints.
+  - **Phase 2** — `rep_quests` schema extensions (promoter_id, subtitle, proof_type, cover_image_url, accent_hex/accent_hex_secondary, sales_target, xp_reward, ep_reward, auto_approve), quests list to §6.5 shape, `/quests/[id]/accept`, signed-URL upload flow (`uploads/signed-url` + `uploads/complete`, `rep-media` bucket), admin quest API accepts new fields, `requires_revision` state + typed notifications.
+  - **Phase 3** — EP economy end-to-end. `platform_ep_config`, `ep_ledger` (append-only, trigger-enforced), `ep_tenant_purchases`, `ep_tenant_payouts`, balance views, cache sync trigger, `award_quest_ep` + `reverse_quest_ep` + `claim_reward_atomic` + `cancel_claim_and_refund` + `plan/create/complete/fail_tenant_payout` RPCs, Stripe PI purchase flow, Stripe Transfer payout cron, `/admin/ep/` page (4 subtabs), rewards schema overhaul (ep_cost / xp_threshold / stock / fulfillment_kind; `points_shop` → `shop`), full integration test suite.
+  - **Phase 4** (minus paused drops) — device registration endpoints, `/me/push-preferences`, unified push fanout (`lib/push/`: APNs + FCM stubbed, web live), `notification_deliveries` log, `peer-activity`, `feed` (peer-only), `/me/friends`.
+  - **Phase 5** — `rep_rank_snapshots` weekly cron + dashboard `delta_week`, `rep_streaks` with `mark_rep_active` on dashboard hit + nightly `reset_stale_streaks` cron, `DELETE /api/rep-portal/me` (App Store 5.1.1(v) compliant soft-delete preserving ledger FKs), email verification audit.
+
+  Fixed during cleanup: `rep_rank_snapshots` table was referenced in Phase 5.1 but never actually created — backfilled with a fresh migration before Monday's cron fires. Pre-push hook also extended with `tsc --noEmit -p tsconfig.build.json` to catch the class of TS errors that previously slipped through `npm test` and blew up on Vercel.
+
+  Legacy-freeze policy from v1.4 held: `/rep/*` web portal untouched, existing columns kept writable for backwards compat, `currency_name` ignored by new clients.
+
+- **2026-04-22 v1.5** — poster drops paused. Concept (promoter-authored broadcasts into the feed) deferred — the product surface needs more thought before we build it. §5.10 re-marked as paused, Phase 4.7/4.8 crossed out, Phase 5.3 crossed out, Phase 4.9 feed endpoint scope reduced to peer activity only. Phases 0, 1, 2 now shipped. Phase 3 (EP economy) in progress.
 - **2026-04-22 v1 draft** — initial write.
 - **2026-04-22 v1.1** — all 12 open questions closed and locked per owner authorisation. Added decisions M (tenant refund window), N (breakage policy), O (flat EP pricing). Added §7.5 (worked economic examples across 5 scenarios), §7.6 (VAT treatment — EP classified as MPV), §7.7 (`platform_ep_config` table). Economy stress-tested and confirmed sound at all promoter scales.
 - **2026-04-22 v1.5** — poster drops paused. Concept (promoter-authored broadcasts into the feed) deferred — the product surface needs more thought before we build it. §5.10 re-marked as paused, Phase 4.7/4.8 crossed out, Phase 5.3 crossed out, Phase 4.9 feed endpoint scope reduced to peer activity only. Phases 0, 1, 2 now shipped. Phase 3 (EP economy) in progress.

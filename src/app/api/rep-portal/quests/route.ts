@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
     const { data: quests, error } = await questQuery;
 
     if (error) {
+      console.error("[rep-portal/quests] Postgres error:", error);
       Sentry.captureException(error, { extra: { repId, statusFilter } });
       return NextResponse.json(
         { error: "Failed to fetch quests" },

@@ -44,7 +44,7 @@ export async function POST(
     // Fetch the full reward for validation + fulfillment
     const { data: reward, error: rewardError } = await supabase
       .from(TABLES.REP_REWARDS)
-      .select("id, name, reward_type, points_cost, product_id, metadata")
+      .select("id, name, reward_type, points_cost, ep_cost, product_id, metadata, fulfillment_kind")
       .eq("id", rewardId)
       .eq("org_id", orgId)
       .single();
@@ -56,27 +56,33 @@ export async function POST(
       );
     }
 
-    if (reward.reward_type !== "points_shop") {
+    // Accept both the post-Phase-3.2 value ('shop') and legacy 'points_shop'
+    // for rewards that pre-date the rename. Milestone rewards are unlocked,
+    // not claimed — they surface via the milestone rewards flow.
+    if (reward.reward_type !== "shop" && reward.reward_type !== "points_shop") {
       return NextResponse.json(
-        { error: "This reward cannot be claimed via points. It is a milestone reward." },
+        { error: "This reward cannot be claimed via EP. It is a milestone reward." },
         { status: 400 }
       );
     }
 
-    const pointsCost = reward.points_cost || 0;
-    if (pointsCost <= 0) {
+    // Prefer the new ep_cost column; fall back to the legacy points_cost for
+    // rewards not yet migrated to the dedicated EP column.
+    const epCost = reward.ep_cost ?? reward.points_cost ?? 0;
+    if (epCost <= 0) {
       return NextResponse.json(
-        { error: "This reward has no points cost configured" },
+        { error: "This reward has no EP price configured" },
         { status: 400 }
       );
     }
 
-    // Call the atomic RPC — handles locking, balance check, deduction, claim creation
+    // Call the atomic RPC — handles locking, balance check (via ledger view),
+    // rep_shop_debit ledger entry, claim creation, stock decrement.
     const { data, error } = await supabase.rpc("claim_reward_atomic", {
       p_rep_id: repId,
       p_org_id: orgId,
       p_reward_id: rewardId,
-      p_points_cost: pointsCost,
+      p_points_cost: epCost,
     });
 
     if (error) {
@@ -93,6 +99,7 @@ export async function POST(
       balance?: number;
       claim_id?: string;
       new_balance?: number;
+      stock_remaining?: number | null;
     };
 
     if (result.error) {
@@ -108,7 +115,8 @@ export async function POST(
       if (result.error === "Insufficient balance") {
         return NextResponse.json(
           {
-            error: `Not enough balance. You have ${result.balance} but this reward costs ${pointsCost}.`,
+            error: `Not enough EP. You have ${result.balance} but this reward costs ${epCost}.`,
+            code: "insufficient_ep",
           },
           { status: 400 }
         );
@@ -123,7 +131,14 @@ export async function POST(
     }
 
     // ── Fulfillment phase ──
-    const fulfillmentType = reward.metadata?.fulfillment_type || "manual";
+    // Prefer the new first-class fulfillment_kind column (Phase 3.2) over the
+    // legacy metadata.fulfillment_type. They use different enum names, so map
+    // new → legacy for the existing fulfillment dispatcher.
+    const legacyFulfillmentType = reward.metadata?.fulfillment_type;
+    const newFulfillmentKind = reward.fulfillment_kind;
+    const fulfillmentType = legacyFulfillmentType
+      || mapFulfillmentKindToLegacy(newFulfillmentKind)
+      || "manual";
     let claimMetadata = {};
 
     if (fulfillmentType !== "manual" && result.claim_id) {
@@ -166,11 +181,32 @@ export async function POST(
       claimMetadata = fulfillResult.metadata;
     }
 
+    // Mark as fulfilled for synchronous flows where fulfillment succeeded.
+    // Manual/custom stays at 'claimed' until the tenant marks it done.
+    const finalStatus =
+      fulfillmentType === "manual" ? "claimed" : "fulfilled";
+    if (finalStatus === "fulfilled" && result.claim_id) {
+      await supabase
+        .from(TABLES.REP_REWARD_CLAIMS)
+        .update({
+          status: "fulfilled",
+          fulfilled_at: new Date().toISOString(),
+          fulfillment_payload: claimMetadata,
+        })
+        .eq("id", result.claim_id)
+        .eq("org_id", orgId);
+    }
+
     return NextResponse.json({
       data: {
         claim_id: result.claim_id,
         new_balance: result.new_balance,
-        fulfillment_type: fulfillmentType,
+        ep_balance: result.new_balance,
+        stock_remaining: result.stock_remaining,
+        fulfillment_kind: newFulfillmentKind ?? mapLegacyToNewKind(legacyFulfillmentType),
+        fulfillment_type: fulfillmentType, // legacy name kept for v1 web compat
+        status: finalStatus,
+        fulfillment_payload: claimMetadata,
         ...claimMetadata,
       },
     });
@@ -181,5 +217,43 @@ export async function POST(
       { error: "Internal error" },
       { status: 500 }
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fulfillment-kind translation. Phase 3.2 introduced a first-class
+// fulfillment_kind column with the iOS-contract names; the existing
+// fulfillment dispatcher still keys off the legacy metadata.fulfillment_type
+// values. These keep both read paths correct during rollout.
+// ---------------------------------------------------------------------------
+
+function mapFulfillmentKindToLegacy(kind: string | null | undefined): string | null {
+  switch (kind) {
+    case "digital_ticket":
+      return "free_ticket";
+    case "guest_list":
+      return "vip_upgrade";
+    case "merch":
+      return "merch";
+    case "custom":
+      return "manual";
+    default:
+      return null;
+  }
+}
+
+function mapLegacyToNewKind(legacy: string | null | undefined): string | null {
+  switch (legacy) {
+    case "free_ticket":
+    case "extra_tickets":
+      return "digital_ticket";
+    case "vip_upgrade":
+      return "guest_list";
+    case "merch":
+      return "merch";
+    case "manual":
+      return "custom";
+    default:
+      return null;
   }
 }

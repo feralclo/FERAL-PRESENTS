@@ -290,42 +290,54 @@ async function cancelClaimAndRefund(params: {
   pointsCost: number;
   reason: string;
 }) {
-  const { supabase, orgId, repId, claimId, rewardId, pointsCost, reason } = params;
+  const { supabase, claimId, reason } = params;
 
-  // Cancel the claim
-  await supabase
-    .from(TABLES.REP_REWARD_CLAIMS)
-    .update({
-      status: "cancelled",
-      notes: `Fulfillment failed: ${reason}`,
-    })
-    .eq("id", claimId)
-    .eq("org_id", orgId);
-
-  // Refund the currency via awardPoints (0 XP, +currency)
-  await awardPoints({
-    repId,
-    orgId,
-    points: 0,
-    currency: pointsCost,
-    sourceType: "refund",
-    sourceId: claimId,
-    description: `Refund: reward fulfillment failed — ${reason}`,
+  // Delegates to the cancel_claim_and_refund RPC which:
+  //   • writes a rep_shop_reversal ledger entry (refunds rep balance via
+  //     trigger, debits tenant earned)
+  //   • restores stock
+  //   • marks the claim as cancelled
+  // All in one transaction so a partial failure (e.g. ticket issuance
+  // half-succeeded) can't leave the economy in a half-refunded state.
+  const { error } = await supabase.rpc("cancel_claim_and_refund", {
+    p_claim_id: claimId,
+    p_reason: reason,
   });
 
-  // Decrement total_claimed on reward
-  const { data: currentReward } = await supabase
-    .from(TABLES.REP_REWARDS)
-    .select("total_claimed")
-    .eq("id", rewardId)
-    .eq("org_id", orgId)
-    .single();
-
-  if (currentReward) {
-    await supabase
-      .from(TABLES.REP_REWARDS)
-      .update({ total_claimed: Math.max(0, currentReward.total_claimed - 1) })
-      .eq("id", rewardId)
+  if (error) {
+    // Ledger-based refund failed — fall back to the legacy direct path
+    // so we never end up with a cancelled claim that didn't return the EP.
+    // Sentry alerts so we can investigate the RPC failure separately.
+    const { supabase: db, orgId, repId, rewardId, pointsCost } = params;
+    await db
+      .from(TABLES.REP_REWARD_CLAIMS)
+      .update({ status: "cancelled", notes: `Fulfillment failed: ${reason}` })
+      .eq("id", claimId)
       .eq("org_id", orgId);
+
+    await awardPoints({
+      repId,
+      orgId,
+      points: 0,
+      currency: pointsCost,
+      sourceType: "refund",
+      sourceId: claimId,
+      description: `Refund fallback: reward fulfillment failed — ${reason}`,
+    });
+
+    const { data: currentReward } = await db
+      .from(TABLES.REP_REWARDS)
+      .select("total_claimed")
+      .eq("id", rewardId)
+      .eq("org_id", orgId)
+      .single();
+
+    if (currentReward) {
+      await db
+        .from(TABLES.REP_REWARDS)
+        .update({ total_claimed: Math.max(0, (currentReward.total_claimed ?? 0) - 1) })
+        .eq("id", rewardId)
+        .eq("org_id", orgId);
+    }
   }
 }

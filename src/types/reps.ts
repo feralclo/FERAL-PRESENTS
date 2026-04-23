@@ -154,20 +154,48 @@ export type QuestType =
   | "sales_milestone";
 export type QuestPlatform = "tiktok" | "instagram" | "any";
 export type QuestStatus = "active" | "paused" | "archived" | "draft";
+// v2: how reps prove they completed the quest. iOS renders a different
+// input UI per value (camera, URL field, text area, deeplink picker).
+export type QuestProofType =
+  | "screenshot"
+  | "url"
+  | "text"
+  | "instagram_link"
+  | "tiktok_link"
+  | "none";
 
 export interface RepQuest {
   id: string;
   org_id: string;
+  // v2: promoter-scoped; populated on create from the tenant's promoter row.
+  promoter_id?: string | null;
   title: string;
+  // v2: one-line caption shown under the title on iOS. Never rendered in
+  // legacy web rep portal, so nullable for pre-v2 rows.
+  subtitle?: string | null;
   description?: string | null;
   instructions?: string | null;
   quest_type: QuestType;
   platform: QuestPlatform;
+  // v2: how the rep submits proof. Default "screenshot" mirrors the DB
+  // default; "none" means the tenant is managing verification externally.
+  proof_type?: QuestProofType | null;
   image_url?: string | null;
+  // v2: full-bleed hero image for the iOS quest card. Falls back to
+  // image_url when unset. Different aspect ratio than banner.
+  cover_image_url?: string | null;
   banner_image_url?: string | null;
   video_url?: string | null;
+  // v2 aliases — same numbers as points_reward / currency_reward but
+  // named consistently with the iOS schema. Backend writes both.
+  xp_reward?: number | null;
+  ep_reward?: number | null;
   points_reward: number;
   currency_reward: number;
+  // v2: optional per-quest accent gradient (top-left and bottom-right
+  // stops). Stored as 0..0xFFFFFF integers. Null = inherit promoter accent.
+  accent_hex?: number | null;
+  accent_hex_secondary?: number | null;
   event_id?: string | null;
   max_completions?: number | null;
   max_total?: number | null;
@@ -176,6 +204,8 @@ export interface RepQuest {
   expires_at?: string | null;
   status: QuestStatus;
   notify_reps: boolean;
+  // v2: bypass manual review — submissions auto-approve on submit.
+  auto_approve?: boolean | null;
   reference_url?: string | null;
   uses_sound: boolean;
   sales_target?: number | null;

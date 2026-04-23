@@ -68,6 +68,7 @@ import type {
   RepQuest,
   QuestType,
   QuestStatus,
+  QuestProofType,
   RepQuestSubmission,
   PlatformXPConfig,
 } from "@/types/reps";
@@ -105,6 +106,27 @@ const QUEST_STATUS_VARIANT: Record<QuestStatus, "success" | "warning" | "seconda
   draft: "outline",
 };
 
+const PROOF_TYPE_OPTIONS: ReadonlyArray<{ value: QuestProofType; label: string; hint: string }> = [
+  { value: "screenshot", label: "Screenshot", hint: "Rep uploads an image as proof" },
+  { value: "url", label: "URL / link", hint: "Rep pastes a link to their post" },
+  { value: "instagram_link", label: "Instagram link", hint: "Rep pastes their @handle post link" },
+  { value: "tiktok_link", label: "TikTok link", hint: "Rep pastes their TikTok post link" },
+  { value: "text", label: "Text note", hint: "Rep writes a short free-text submission" },
+  { value: "none", label: "No proof", hint: "You verify externally — auto-approve recommended" },
+];
+
+// Colour conversion — iOS stores accent as an integer 0..0xFFFFFF; the
+// form uses CSS hex strings. Null round-trip signals "inherit promoter".
+function hexIntToCss(n: number | null | undefined): string {
+  if (typeof n !== "number" || !Number.isFinite(n)) return "";
+  return `#${Math.max(0, Math.min(0xffffff, Math.floor(n))).toString(16).padStart(6, "0")}`;
+}
+function cssHexToInt(s: string): number | null {
+  const m = s.trim().match(/^#?([0-9a-fA-F]{6})$/);
+  if (!m) return null;
+  return parseInt(m[1], 16);
+}
+
 export function QuestsTab() {
   const orgId = useOrgId();
   const [quests, setQuests] = useState<RepQuest[]>([]);
@@ -136,6 +158,13 @@ export function QuestsTab() {
   const [currencyReward, setCurrencyReward] = useState("");
   const [salesTarget, setSalesTarget] = useState("");
   const [eventId, setEventId] = useState("");
+  // v2 fields — exposed per iOS §6.5 spec
+  const [subtitle, setSubtitle] = useState("");
+  const [proofType, setProofType] = useState<QuestProofType>("screenshot");
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [accentHex, setAccentHex] = useState<string>(""); // e.g. "#B845FF"
+  const [accentHexSecondary, setAccentHexSecondary] = useState<string>("");
+  const [autoApprove, setAutoApprove] = useState(false);
 
   // Events list for event picker + date awareness (for past-vs-upcoming grouping)
   const [events, setEvents] = useState<
@@ -228,6 +257,14 @@ export function QuestsTab() {
     setSalesTarget("");
     // Pre-select event when filtered to a specific event
     setEventId(eventFilter !== "all" && eventFilter !== "global" ? eventFilter : "");
+    // v2 defaults — proof_type=screenshot matches iOS default for social/story
+    // quests; cover/accent inherit from the promoter until the tenant overrides.
+    setSubtitle("");
+    setProofType("screenshot");
+    setCoverImageUrl("");
+    setAccentHex("");
+    setAccentHexSecondary("");
+    setAutoApprove(false);
     setVideoError("");
     setDialogStep("type");
     setFormTab(0);
@@ -240,13 +277,20 @@ export function QuestsTab() {
     setQuestType(q.quest_type);
     setPlatform(q.platform || "any");
     setImageUrl(q.image_url || ""); setBannerImageUrl(q.banner_image_url || ""); setVideoUrl(q.video_url || "");
-    setPointsReward(String(q.points_reward));
+    setPointsReward(String(q.xp_reward ?? q.points_reward));
     setMaxCompletions(q.max_completions != null ? String(q.max_completions) : "");
     setExpiresAt(q.expires_at ? q.expires_at.slice(0, 16) : ""); setNotifyReps(q.notify_reps);
     setReferenceUrl(q.reference_url || ""); setUsesSound(q.uses_sound ?? false);
-    setCurrencyReward(String(q.currency_reward || 0));
+    setCurrencyReward(String(q.ep_reward ?? q.currency_reward ?? 0));
     setSalesTarget(q.sales_target != null ? String(q.sales_target) : "");
     setEventId(q.event_id || "");
+    // v2 fields — populate with whatever was stored, default to sensible values
+    setSubtitle(q.subtitle || "");
+    setProofType((q.proof_type as QuestProofType) || "screenshot");
+    setCoverImageUrl(q.cover_image_url || "");
+    setAccentHex(hexIntToCss(q.accent_hex));
+    setAccentHexSecondary(hexIntToCss(q.accent_hex_secondary));
+    setAutoApprove(q.auto_approve ?? false);
     setVideoError("");
     setDialogStep("form");
     setFormTab(0);
@@ -256,14 +300,31 @@ export function QuestsTab() {
   const handleSave = async () => {
     if (!title.trim()) return;
     setSaving(true);
+    const xp = (platformConfig.xp_per_quest_type as Record<string, number>)[questType] ?? (Number(pointsReward) || 0);
+    const ep = Number(currencyReward) || 0;
     const body = {
-      title: title.trim(), description: description.trim() || null,
+      title: title.trim(),
+      subtitle: subtitle.trim() || null,
+      description: description.trim() || null,
       instructions: instructions.trim() || null, quest_type: questType, platform,
+      // v2: proof_type drives the rep submission UI on iOS
+      proof_type: proofType,
       image_url: imageUrl.trim() || null,
+      // v2: cover_image_url is the full-bleed hero on iOS; falls back to image_url
+      cover_image_url: coverImageUrl.trim() || imageUrl.trim() || null,
       banner_image_url: bannerImageUrl.trim() || null,
       video_url: videoUrl.trim() || null,
-      points_reward: (platformConfig.xp_per_quest_type as Record<string, number>)[questType] ?? (Number(pointsReward) || 0),
-      currency_reward: Number(currencyReward) || 0,
+      // Write both v1 (points/currency) and v2 (xp/ep) names — backend
+      // accepts either but old reads still populate the legacy columns.
+      points_reward: xp,
+      xp_reward: xp,
+      currency_reward: ep,
+      ep_reward: ep,
+      // v2: per-quest accent gradient stops (int 0..0xFFFFFF, null=inherit promoter)
+      accent_hex: cssHexToInt(accentHex),
+      accent_hex_secondary: cssHexToInt(accentHexSecondary),
+      // v2: skip manual review on submission
+      auto_approve: autoApprove,
       max_completions: maxCompletions ? Number(maxCompletions) : null,
       expires_at: expiresAt || null, notify_reps: notifyReps,
       reference_url: referenceUrl.trim() || null, uses_sound: usesSound,
@@ -298,15 +359,22 @@ export function QuestsTab() {
     setImageUrl(q.image_url || "");
     setBannerImageUrl(q.banner_image_url || "");
     setVideoUrl(q.video_url || "");
-    setPointsReward(String(q.points_reward));
+    setPointsReward(String(q.xp_reward ?? q.points_reward));
     setMaxCompletions(""); // fresh completions cap
     setExpiresAt(""); // fresh expiry
     setNotifyReps(true);
     setReferenceUrl(q.reference_url || "");
     setUsesSound(q.uses_sound ?? false);
-    setCurrencyReward(String(q.currency_reward || 0));
+    setCurrencyReward(String(q.ep_reward ?? q.currency_reward ?? 0));
     setSalesTarget(q.sales_target != null ? String(q.sales_target) : "");
     setEventId(""); // user picks a new event
+    // v2 fields — preserve the brand/proof choices the source quest had
+    setSubtitle(q.subtitle || "");
+    setProofType((q.proof_type as QuestProofType) || "screenshot");
+    setCoverImageUrl(q.cover_image_url || "");
+    setAccentHex(hexIntToCss(q.accent_hex));
+    setAccentHexSecondary(hexIntToCss(q.accent_hex_secondary));
+    setAutoApprove(q.auto_approve ?? false);
     setVideoError("");
     setDialogStep("form"); // skip type picker — we know the type
     setFormTab(0);
@@ -1098,6 +1166,20 @@ export function QuestsTab() {
                       <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share Our Event on Stories" autoFocus />
                     </div>
                     <div className="space-y-2">
+                      <Label>
+                        Subtitle{" "}
+                        <span className="text-[10px] text-muted-foreground font-normal">
+                          (optional — shown under the title on iOS)
+                        </span>
+                      </Label>
+                      <Input
+                        value={subtitle}
+                        onChange={(e) => setSubtitle(e.target.value)}
+                        placeholder="e.g. 30-second win — takes 2 minutes"
+                        maxLength={100}
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label>Description</Label>
                       <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={3} />
                     </div>
@@ -1119,6 +1201,91 @@ export function QuestsTab() {
                           : "Every active rep will see this quest."}
                       </p>
                     </div>
+
+                    {/* ── iOS appearance: cover + accent gradient ── */}
+                    <div className="flex items-center gap-3 pt-2">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">
+                        Appearance (iOS)
+                      </span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+                    <div className="space-y-2">
+                      <ImageUpload
+                        label="Cover Image"
+                        value={coverImageUrl}
+                        onChange={setCoverImageUrl}
+                        uploadKey={editId ? `quest_${editId}_cover` : undefined}
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Full-bleed hero on the iOS quest card. Falls back to the downloadable image if empty.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>
+                          Accent colour{" "}
+                          <span className="text-[10px] text-muted-foreground font-normal">(top-left stop)</span>
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={accentHex || "#b845ff"}
+                            onChange={(e) => setAccentHex(e.target.value)}
+                            className="h-9 w-10 shrink-0 cursor-pointer rounded border border-border bg-background"
+                          />
+                          <Input
+                            value={accentHex}
+                            onChange={(e) => setAccentHex(e.target.value)}
+                            placeholder="Inherit promoter"
+                            className="font-mono text-xs"
+                          />
+                          {accentHex && (
+                            <button
+                              type="button"
+                              onClick={() => setAccentHex("")}
+                              className="text-[11px] text-muted-foreground hover:text-foreground"
+                              title="Clear — inherit promoter accent"
+                            >
+                              clear
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>
+                          Secondary{" "}
+                          <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={accentHexSecondary || "#b845ff"}
+                            onChange={(e) => setAccentHexSecondary(e.target.value)}
+                            className="h-9 w-10 shrink-0 cursor-pointer rounded border border-border bg-background"
+                          />
+                          <Input
+                            value={accentHexSecondary}
+                            onChange={(e) => setAccentHexSecondary(e.target.value)}
+                            placeholder="Single-stop"
+                            className="font-mono text-xs"
+                          />
+                          {accentHexSecondary && (
+                            <button
+                              type="button"
+                              onClick={() => setAccentHexSecondary("")}
+                              className="text-[11px] text-muted-foreground hover:text-foreground"
+                              title="Clear"
+                            >
+                              clear
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      The iOS quest card renders a gradient from the accent colour to the secondary. Leave blank to inherit your promoter accent.
+                    </p>
                   </div>
                 )}
 
@@ -1339,9 +1506,43 @@ export function QuestsTab() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Currency Reward</Label>
+                        <Label>
+                          EP Reward{" "}
+                          <span className="text-[10px] text-muted-foreground font-normal">
+                            (1 EP = £0.01)
+                          </span>
+                        </Label>
                         <Input type="number" value={currencyReward} onChange={(e) => setCurrencyReward(e.target.value)} min="0" />
+                        <p className="text-[10px] text-muted-foreground">
+                          Paid from your EP float when the submission is approved.
+                        </p>
                       </div>
+                    </div>
+
+                    {/* ── Proof type: shapes the rep submission UI on iOS ── */}
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">
+                        Proof
+                      </span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>How reps submit proof</Label>
+                      <select
+                        value={proofType}
+                        onChange={(e) => setProofType(e.target.value as QuestProofType)}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                      >
+                        {PROOF_TYPE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-muted-foreground">
+                        {PROOF_TYPE_OPTIONS.find((o) => o.value === proofType)?.hint}
+                      </p>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -1362,9 +1563,19 @@ export function QuestsTab() {
                     <div className="flex items-center justify-between rounded-lg border border-border p-3">
                       <div>
                         <p className="text-sm font-medium text-foreground">Notify Reps</p>
-                        <p className="text-[11px] text-muted-foreground">Send notification when this quest goes live</p>
+                        <p className="text-[11px] text-muted-foreground">Send a push when this quest goes live</p>
                       </div>
                       <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Auto-approve submissions</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Skip manual review — submissions award XP &amp; EP the moment they&apos;re submitted.
+                          Good for sales milestones or when you verify externally.
+                        </p>
+                      </div>
+                      <Switch checked={autoApprove} onCheckedChange={setAutoApprove} />
                     </div>
                   </div>
                 )}

@@ -30,7 +30,9 @@ import type {
 
 type ReportKind = "submissions" | "claims" | "requests";
 
-type SubFilter = "pending" | "approved" | "rejected" | "all";
+// Mirror the DB CHECK: pending / approved / rejected / requires_revision
+// (v2 Phase 3) + an "all" catch-all for the filter UI.
+type SubFilter = "pending" | "approved" | "rejected" | "requires_revision" | "all";
 
 function repName(r: { display_name?: string | null; first_name?: string | null; last_name?: string | null } | null | undefined): string {
   if (!r) return "A rep";
@@ -286,8 +288,13 @@ function SubmissionsQueue({
   onChange: (updated: RepQuestSubmission) => void;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
+  // Shared "open reason textarea" state for both reject + request-revision
+  // actions. `action` drives the CTA label + final status submitted.
+  const [reasonTarget, setReasonTarget] = useState<
+    | { id: string; action: "rejected" | "requires_revision" }
+    | null
+  >(null);
+  const [reasonText, setReasonText] = useState("");
   const [lightbox, setLightbox] = useState<string | null>(null);
 
   const filtered = (submissions ?? []).filter((s) => {
@@ -298,6 +305,7 @@ function SubmissionsQueue({
     pending: (submissions ?? []).filter((s) => s.status === "pending").length,
     approved: (submissions ?? []).filter((s) => s.status === "approved").length,
     rejected: (submissions ?? []).filter((s) => s.status === "rejected").length,
+    requires_revision: (submissions ?? []).filter((s) => s.status === "requires_revision").length,
     all: (submissions ?? []).length,
   };
 
@@ -307,6 +315,8 @@ function SubmissionsQueue({
       const res = await fetch(`/api/reps/quests/submissions/${s.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        // Backend accepts rejection_reason on both "rejected" and
+        // "requires_revision" — it surfaces as the revision note to the rep.
         body: JSON.stringify({ status, rejection_reason: reason }),
       });
       if (res.ok) {
@@ -321,28 +331,39 @@ function SubmissionsQueue({
       /* network */
     }
     setBusyId(null);
-    setRejectingId(null);
-    setRejectReason("");
+    setReasonTarget(null);
+    setReasonText("");
   }
 
   return (
     <div className="space-y-4">
-      {/* Status filter */}
+      {/* Status filter — "Revision" tab only rendered when there's at least one,
+          to keep the filter row compact for the common case. */}
       <div className="-mx-1 overflow-x-auto px-1">
         <div className="inline-flex items-center gap-1 rounded-lg bg-muted/50 p-1">
-          {(["pending", "approved", "rejected", "all"] as const).map((t) => (
+          {(
+            [
+              { key: "pending" as const, label: "Pending" },
+              { key: "approved" as const, label: "Approved" },
+              { key: "rejected" as const, label: "Rejected" },
+              ...(counts.requires_revision > 0
+                ? ([{ key: "requires_revision" as const, label: "Revision" }] as const)
+                : []),
+              { key: "all" as const, label: "All" },
+            ] as const
+          ).map(({ key, label }) => (
             <button
-              key={t}
-              onClick={() => onFilter(t)}
+              key={key}
+              onClick={() => onFilter(key)}
               className={`whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                filter === t
+                filter === key
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+              {label}
               <span className="ml-1 text-[10px] tabular-nums text-muted-foreground/60">
-                {counts[t]}
+                {counts[key]}
               </span>
             </button>
           ))}
@@ -415,6 +436,8 @@ function SubmissionsQueue({
               ? "ring-1 ring-primary/25"
               : s.status === "approved"
               ? "opacity-80"
+              : s.status === "requires_revision"
+              ? "ring-1 ring-warning/30"
               : "ring-1 ring-destructive/20 opacity-90";
 
             return (
@@ -514,8 +537,21 @@ function SubmissionsQueue({
                             variant="outline"
                             disabled={busyId === s.id}
                             onClick={() => {
-                              setRejectingId(s.id);
-                              setRejectReason("");
+                              setReasonTarget({ id: s.id, action: "requires_revision" });
+                              setReasonText("");
+                            }}
+                            className="gap-1.5 border-warning/40 text-warning hover:bg-warning/10"
+                          >
+                            <RefreshCw size={13} />
+                            Request revision
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busyId === s.id}
+                            onClick={() => {
+                              setReasonTarget({ id: s.id, action: "rejected" });
+                              setReasonText("");
                             }}
                             className="gap-1.5"
                           >
@@ -532,12 +568,16 @@ function SubmissionsQueue({
                         </div>
                       )}
 
-                      {rejectingId === s.id && (
+                      {reasonTarget?.id === s.id && (
                         <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
                           <Textarea
-                            value={rejectReason}
-                            onChange={(e) => setRejectReason(e.target.value)}
-                            placeholder="Reason (optional — shown to the rep)"
+                            value={reasonText}
+                            onChange={(e) => setReasonText(e.target.value)}
+                            placeholder={
+                              reasonTarget.action === "requires_revision"
+                                ? "What needs changing? The rep sees this exact message in their app."
+                                : "Why are you rejecting? Optional — shown to the rep."
+                            }
                             rows={2}
                             className="text-xs"
                           />
@@ -546,19 +586,31 @@ function SubmissionsQueue({
                               size="sm"
                               variant="ghost"
                               onClick={() => {
-                                setRejectingId(null);
-                                setRejectReason("");
+                                setReasonTarget(null);
+                                setReasonText("");
                               }}
                             >
                               Cancel
                             </Button>
                             <Button
                               size="sm"
-                              variant="destructive"
+                              variant={
+                                reasonTarget.action === "requires_revision"
+                                  ? "default"
+                                  : "destructive"
+                              }
                               disabled={busyId !== null}
-                              onClick={() => decide(s, "rejected", rejectReason.trim() || undefined)}
+                              onClick={() =>
+                                decide(
+                                  s,
+                                  reasonTarget.action,
+                                  reasonText.trim() || undefined
+                                )
+                              }
                             >
-                              Confirm reject
+                              {reasonTarget.action === "requires_revision"
+                                ? "Send revision request"
+                                : "Confirm reject"}
                             </Button>
                           </div>
                         </div>
@@ -597,12 +649,16 @@ function StatusBadge({ status }: { status: SubmissionStatus }) {
       ? "border-success/30 bg-success/10 text-success"
       : status === "rejected"
       ? "border-destructive/30 bg-destructive/10 text-destructive"
+      : status === "requires_revision"
+      ? "border-warning/40 bg-warning/10 text-warning"
       : "border-primary/30 bg-primary/10 text-primary";
+  // Friendlier label for the compound-word status so tenants don't read "requires_revision".
+  const label = status === "requires_revision" ? "needs revision" : status;
   return (
     <span
       className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${cls}`}
     >
-      {status}
+      {label}
     </span>
   );
 }

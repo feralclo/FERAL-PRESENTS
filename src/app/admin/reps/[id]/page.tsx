@@ -72,6 +72,8 @@ const STATUS_VARIANT: Record<
   pending: "warning",
   suspended: "destructive",
   deactivated: "secondary",
+  // v2 soft-delete — PII scrubbed; treat visually like deactivated.
+  deleted: "secondary",
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

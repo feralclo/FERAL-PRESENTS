@@ -50,6 +50,8 @@ const STATUS_VARIANT: Record<RepStatus, "success" | "warning" | "secondary" | "d
   pending: "warning",
   suspended: "destructive",
   deactivated: "secondary",
+  // v2 soft-delete — PII scrubbed, row retained for FK integrity.
+  deleted: "secondary",
 };
 
 export function TeamTab() {

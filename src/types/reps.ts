@@ -1,6 +1,18 @@
 // ─── Rep Status ──────────────────────────────────────────────────────────────
-export type RepStatus = "pending" | "active" | "suspended" | "deactivated";
+// Matches reps_status_check in Postgres. "deleted" added in v2 Phase 5
+// (App Store soft-delete compliance — PII scrubbed, row retained for FK integrity).
+export type RepStatus =
+  | "pending"
+  | "active"
+  | "suspended"
+  | "deactivated"
+  | "deleted";
 export type RepGender = "male" | "female" | "non-binary" | "prefer-not-to-say";
+
+// ─── Promoter Membership (v2) ────────────────────────────────────────────────
+// Matches rep_promoter_memberships_status_check. Represents a rep's
+// relationship with a specific promoter (reps can belong to many teams).
+export type MembershipStatus = "pending" | "approved" | "rejected" | "left";
 
 // ─── Core Rep ────────────────────────────────────────────────────────────────
 export interface Rep {
@@ -218,7 +230,9 @@ export interface RepQuest {
 
 // ─── Quest Submissions ───────────────────────────────────────────────────────
 export type SubmissionProofType = "screenshot" | "url" | "text" | "tiktok_link" | "instagram_link";
-export type SubmissionStatus = "pending" | "approved" | "rejected";
+// v2: adds "requires_revision" — tenant asks rep to re-submit with changes
+// rather than flat-out rejecting. Matches rep_quest_submissions_status_check.
+export type SubmissionStatus = "pending" | "approved" | "rejected" | "requires_revision";
 
 export interface RepQuestSubmission {
   id: string;
@@ -240,8 +254,12 @@ export interface RepQuestSubmission {
 }
 
 // ─── Reward Claims ───────────────────────────────────────────────────────────
-export type ClaimType = "milestone" | "points_shop" | "manual";
-export type ClaimStatus = "claimed" | "fulfilled" | "cancelled";
+// v2 renamed "points_shop" → "shop" (rep_reward_claims_claim_type_check).
+// Both accepted on the UI side while legacy rows may still exist.
+export type ClaimType = "milestone" | "shop" | "points_shop" | "manual";
+// v2: full lifecycle is claimed → fulfilling → fulfilled (or cancelled/failed).
+// Matches rep_reward_claims_status_check.
+export type ClaimStatus = "claimed" | "fulfilling" | "fulfilled" | "cancelled" | "failed";
 
 export interface RepRewardClaim {
   id: string;

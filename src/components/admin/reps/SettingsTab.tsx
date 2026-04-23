@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectTrigger,
@@ -100,7 +99,9 @@ export function SettingsTab() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Only send tenant-controlled fields
+      // Only send tenant-controlled fields. v2 removed per-tenant currency
+      // (platform-wide EP) and XP rates (platform-controlled) — those are
+      // no longer part of the save payload.
       const payload: Partial<RepProgramSettings> = {
         enabled: settings.enabled,
         auto_approve: settings.auto_approve,
@@ -110,8 +111,6 @@ export function SettingsTab() {
         welcome_message: settings.welcome_message,
         email_from_name: settings.email_from_name,
         email_from_address: settings.email_from_address,
-        currency_per_sale: settings.currency_per_sale,
-        currency_name: settings.currency_name,
         auto_assign_events: settings.auto_assign_events,
       };
       const res = await fetch("/api/reps/settings", {
@@ -179,44 +178,24 @@ export function SettingsTab() {
           </CardContent>
         </Card>
 
-        {/* XP info card — replaces old Points & Levels card */}
+        {/* Economy info card — EP + XP are both platform-wide in v2. No
+            per-tenant configuration; tenants fund quest rewards by buying EP
+            on the Economy page, not by naming or re-rating a local currency. */}
         <Card>
-          <CardHeader><CardTitle className="text-sm">XP & Levels</CardTitle></CardHeader>
-          <CardContent>
+          <CardHeader><CardTitle className="text-sm">Economy</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
             <div className="flex items-start gap-3 rounded-lg bg-primary/5 border border-primary/10 p-4">
               <Info size={16} className="text-primary shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-foreground">Managed at the platform level</p>
+                <p className="text-sm font-medium text-foreground">Platform-wide by design</p>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  XP rates, level thresholds, and level names are controlled via the Platform tab to ensure consistency across all tenants.
+                  <span className="font-semibold text-foreground">XP</span> (reputation) and{" "}
+                  <span className="font-semibold text-foreground">EP</span> (spendable, 1 EP = £0.01) are platform-wide
+                  so reps carry progress across every team they join. There&apos;s nothing
+                  for you to configure here — XP rates are set centrally, and EP is funded
+                  per-quest from the Economy page.
                 </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Currency</CardTitle></CardHeader>
-          <CardContent className="space-y-5">
-            <div className="space-y-2">
-              <Label>Currency Name</Label>
-              <Input value={settings.currency_name} onChange={(e) => update("currency_name", e.target.value)} placeholder="FRL" />
-              <p className="text-[11px] text-muted-foreground">The spendable currency name shown to reps (e.g. &quot;FRL&quot;)</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Currency per Sale</Label>
-              <div className="flex items-center gap-3">
-                <Slider value={[settings.currency_per_sale]} onValueChange={([v]) => update("currency_per_sale", v)} min={1} max={100} step={1} className="flex-1" />
-                <span className="inline-flex items-baseline gap-1 font-mono text-sm font-bold text-warning w-20 text-right tabular-nums">
-                  {settings.currency_per_sale}
-                  <span className="text-[10px] font-normal uppercase tracking-wider text-muted-foreground">
-                    {settings.currency_name || "units"}
-                  </span>
-                </span>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Awarded per ticket sold with a rep&apos;s discount code.
-              </p>
             </div>
           </CardContent>
         </Card>

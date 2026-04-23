@@ -113,7 +113,8 @@ export default function EventBoardsPage() {
   const [events, setEvents] = useState<EventWithReps[]>([]);
   const [loading, setLoading] = useState(true);
   const [rewards, setRewards] = useState<Reward[]>([]);
-  const [currencyName, setCurrencyName] = useState("FRL");
+  // v2: platform-wide EP replaces the per-tenant "FRL" currency name.
+  const [currencyName] = useState("EP");
 
   // Position rewards dialog
   const [selectedEvent, setSelectedEvent] = useState<EventWithReps | null>(null);
@@ -159,9 +160,8 @@ export default function EventBoardsPage() {
       if (rewardsJson.data) {
         setRewards(rewardsJson.data.filter((r: Reward) => r.status === "active"));
       }
-      if (settingsJson.data?.currency_name) {
-        setCurrencyName(settingsJson.data.currency_name);
-      }
+      // v2: currency_name is a deprecated per-tenant field — the label is
+      // always "EP" platform-wide. Nothing to pull from settings here.
 
       const allEvents = eventsJson.data || [];
       const stats = summaryJson.data?.stats || {};

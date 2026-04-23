@@ -50,9 +50,13 @@ export interface RepEvent {
 }
 
 // ─── Rewards ─────────────────────────────────────────────────────────────────
-export type RewardType = "milestone" | "points_shop" | "manual";
+// v2 renamed "points_shop" → "shop"; DB CHECK now allows both while old rows
+// migrate. UI accepts either and treats them as the same thing for display.
+export type RewardType = "milestone" | "points_shop" | "shop" | "manual";
 export type RewardStatus = "active" | "archived";
 export type FulfillmentType = "manual" | "free_ticket" | "extra_tickets" | "vip_upgrade" | "merch";
+// v2 fulfillment kinds (new column `fulfillment_kind` on rep_rewards).
+export type FulfillmentKind = "digital_ticket" | "guest_list" | "merch" | "custom";
 
 export interface RewardMetadata {
   fulfillment_type?: FulfillmentType;
@@ -79,6 +83,12 @@ export interface RepReward {
   image_url?: string | null;
   reward_type: RewardType;
   points_cost?: number | null;
+  // v2 columns (Phase 3.10). Old rows have only points_cost / total_available;
+  // new rows also populate these. UI should read ep_cost ?? points_cost.
+  ep_cost?: number | null;
+  xp_threshold?: number | null;
+  stock?: number | null;
+  fulfillment_kind?: FulfillmentKind | null;
   product_id?: string | null;
   custom_value?: string | null;
   total_available?: number | null;

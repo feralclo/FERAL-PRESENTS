@@ -65,15 +65,33 @@ import { cn } from "@/lib/utils";
 
 const REWARD_TYPE_LABELS: Record<RewardType, string> = {
   milestone: "Milestone",
-  points_shop: "Points Shop",
+  // "shop" = v2 name; "points_shop" = v1 alias for old rows. Both render
+  // as "EP Shop" because the economy is EP-denominated post-v2.
+  shop: "EP Shop",
+  points_shop: "EP Shop",
   manual: "Manual",
 };
 
 const REWARD_TYPE_ICONS: Record<RewardType, typeof Target> = {
   milestone: Target,
+  shop: ShoppingCart,
   points_shop: ShoppingCart,
   manual: Award,
 };
+
+// Guard against any future reward_type value we don't know about — never
+// render `<undefined />`, which is what crashed the page for the user.
+function rewardIcon(type: string): typeof Target {
+  return REWARD_TYPE_ICONS[type as RewardType] ?? Award;
+}
+function rewardLabel(type: string): string {
+  return REWARD_TYPE_LABELS[type as RewardType] ?? type;
+}
+
+// Treat "shop" and legacy "points_shop" as the same concept throughout the UI.
+function isShopType(t: string | undefined): boolean {
+  return t === "shop" || t === "points_shop";
+}
 
 const FULFILLMENT_TYPE_ICONS: Record<FulfillmentType, typeof Wrench> = {
   manual: Wrench,
@@ -168,7 +186,7 @@ export function RewardsTab() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [rewardType, setRewardType] = useState<RewardType>("points_shop");
+  const [rewardType, setRewardType] = useState<RewardType>("shop");
   const [pointsCost, setPointsCost] = useState("");
   const [customValue, setCustomValue] = useState("");
   const [totalAvailable, setTotalAvailable] = useState("");
@@ -275,7 +293,7 @@ export function RewardsTab() {
   // ─── Dialog Helpers ─────────────────────────────────────────────────────
 
   const resetAll = () => {
-    setName(""); setDescription(""); setImageUrl(""); setRewardType("points_shop");
+    setName(""); setDescription(""); setImageUrl(""); setRewardType("shop");
     setPointsCost(""); setCustomValue(""); setTotalAvailable(""); setProductId("");
     setRewardStatus("active"); setFulfillmentType("manual"); setEventId("");
     setTicketTypeId(""); setUpgradeTicketTypeId(""); setMaxClaimsPerRep("1");
@@ -320,7 +338,7 @@ export function RewardsTab() {
 
   const selectFulfillmentType = (ft: FulfillmentType) => {
     setFulfillmentType(ft);
-    setRewardType("points_shop");
+    setRewardType("shop");
     // Reset type-specific fields
     setEventId(""); setTicketTypeId(""); setUpgradeTicketTypeId(""); setProductId("");
     // Smart defaults
@@ -346,7 +364,7 @@ export function RewardsTab() {
     setSaveError("");
 
     const metadata: RewardMetadata = { fulfillment_type: fulfillmentType };
-    if (rewardType === "points_shop") {
+    if (isShopType(rewardType)) {
       if (fulfillmentType === "free_ticket" || fulfillmentType === "extra_tickets") {
         if (eventId) metadata.event_id = eventId;
         if (ticketTypeId) metadata.ticket_type_id = ticketTypeId;
@@ -359,16 +377,23 @@ export function RewardsTab() {
       metadata.max_claims_per_rep = unlimitedClaims ? 0 : (maxClaimsPerRep ? Number(maxClaimsPerRep) : 1);
     }
 
+    // Send both ep_cost (v2) and points_cost (v1) + both stock (v2) and
+    // total_available (v1). Backend normalises either pair; sending both
+    // keeps legacy-web and new-web reads consistent during the transition.
+    const costValue = pointsCost ? Number(pointsCost) : null;
+    const stockValue = totalAvailable ? Number(totalAvailable) : null;
     const body = {
       name: name.trim(),
       description: description.trim() || null,
       image_url: imageUrl.trim() || null,
       reward_type: rewardType,
-      points_cost: pointsCost ? Number(pointsCost) : null,
+      points_cost: costValue,
+      ep_cost: costValue,
       custom_value: customValue.trim() || null,
-      total_available: totalAvailable ? Number(totalAvailable) : null,
+      total_available: stockValue,
+      stock: stockValue,
       product_id: productId || null,
-      metadata: rewardType === "points_shop" ? metadata : {},
+      metadata: isShopType(rewardType) ? metadata : {},
       ...(editId ? { status: rewardStatus } : {}),
     };
 
@@ -557,7 +582,7 @@ export function RewardsTab() {
         )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleRewards.map((reward) => {
-            const Icon = REWARD_TYPE_ICONS[reward.reward_type];
+            const Icon = rewardIcon(reward.reward_type);
             return (
               <Card key={reward.id} className="py-0 gap-0 overflow-hidden">
                 {reward.image_url && (
@@ -577,13 +602,24 @@ export function RewardsTab() {
                   </div>
                   {reward.description && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{reward.description}</p>}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-                    <span className="font-mono">{REWARD_TYPE_LABELS[reward.reward_type]}</span>
-                    {reward.points_cost != null && <span className="font-mono text-primary font-bold">{reward.points_cost} pts</span>}
-                    <span className="tabular-nums">{reward.total_claimed}/{reward.total_available ?? "\u221E"} claimed</span>
+                    <span className="font-mono">{rewardLabel(reward.reward_type)}</span>
+                    {/* Prefer v2 ep_cost; fall back to points_cost for legacy rows. */}
+                    {(() => {
+                      const cost = reward.ep_cost ?? reward.points_cost;
+                      if (cost == null) return null;
+                      const unit = reward.ep_cost != null ? "EP" : "pts";
+                      return (
+                        <span className="font-mono text-primary font-bold">
+                          {cost} {unit}
+                        </span>
+                      );
+                    })()}
+                    <span className="tabular-nums">{reward.total_claimed}/{(reward.stock ?? reward.total_available) ?? "\u221E"} claimed</span>
                   </div>
                   {(() => {
-                    if (reward.total_available == null) return null;
-                    const remaining = reward.total_available - reward.total_claimed;
+                    const cap = reward.stock ?? reward.total_available;
+                    if (cap == null) return null;
+                    const remaining = cap - reward.total_claimed;
                     if (remaining <= 0) {
                       return (
                         <Badge
@@ -595,7 +631,7 @@ export function RewardsTab() {
                         </Badge>
                       );
                     }
-                    const lowThreshold = Math.max(2, Math.ceil(reward.total_available * 0.2));
+                    const lowThreshold = Math.max(2, Math.ceil(cap * 0.2));
                     if (remaining <= lowThreshold) {
                       return (
                         <Badge
@@ -856,12 +892,14 @@ export function RewardsTab() {
                   </div>
                 )}
 
-                {/* ── Points Cost (shop rewards) ── */}
-                {rewardType === "points_shop" && (
+                {/* ── EP Cost (shop rewards) ── */}
+                {isShopType(rewardType) && (
                   <div className="space-y-2">
-                    <Label>Cost (in points) *</Label>
+                    <Label>EP cost *</Label>
                     <Input type="number" value={pointsCost} onChange={(e) => setPointsCost(e.target.value)} placeholder="e.g. 500" min="1" />
-                    <p className="text-[11px] text-muted-foreground">How many points the rep spends to claim this reward.</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      How many EP the rep spends to claim this reward. 1 EP = £0.01.
+                    </p>
                   </div>
                 )}
 
@@ -883,7 +921,7 @@ export function RewardsTab() {
                 </div>
 
                 {/* ── Advanced: Stock + Claims ── */}
-                {rewardType === "points_shop" && (
+                {isShopType(rewardType) && (
                   <div className="space-y-4 rounded-lg border border-border/40 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground -mb-1">Limits</p>
                     <div className="grid grid-cols-2 gap-4">

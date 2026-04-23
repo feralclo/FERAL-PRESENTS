@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowDown, ArrowUp, Minus, Sparkle } from "lucide-react";
 
 export interface LeaderboardEntry {
   id: string;
@@ -12,6 +13,47 @@ export interface LeaderboardEntry {
   total_sales: number;
   total_revenue: number;
   points_balance: number;
+  /** Server-computed rank (1-indexed). When present, supersedes the positional prop. */
+  rank?: number | null;
+  /**
+   * Rolling-week rank delta. Positive = moved up in rank (e.g. 4 → 1 = +3).
+   * `null` = no historical baseline (new rep this week / first snapshot).
+   * `undefined` = delta not applicable in this mode (e.g. all-time leaderboard).
+   */
+  delta_week?: number | null;
+}
+
+function RankDelta({ delta }: { delta: number | null | undefined }) {
+  if (delta === undefined) return null;
+  if (delta === null) {
+    return (
+      <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+        <Sparkle size={10} className="text-primary" />
+        new
+      </span>
+    );
+  }
+  if (delta > 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 font-mono text-[11px] tabular-nums text-success">
+        <ArrowUp size={11} />
+        {delta}
+      </span>
+    );
+  }
+  if (delta < 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 font-mono text-[11px] tabular-nums text-destructive">
+        <ArrowDown size={11} />
+        {Math.abs(delta)}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+      <Minus size={11} />0
+    </span>
+  );
 }
 
 export function repName(r: LeaderboardEntry): string {
@@ -45,13 +87,16 @@ export function LeaderboardRow({
   rank: number;
   rep: LeaderboardEntry;
 }) {
+  // Server-sent rank wins when present (so e.g. a filtered snapshot can still
+  // display absolute ranks). Positional prop is the fallback.
+  const displayRank = typeof rep.rank === "number" ? rep.rank : rank;
   return (
     <Link
       href={`/admin/reps/${rep.id}`}
       className="flex items-center gap-3 p-3 transition-colors hover:bg-primary/5"
     >
       <span className="w-6 shrink-0 text-center font-mono text-sm font-bold tabular-nums text-muted-foreground">
-        {rank}
+        {displayRank}
       </span>
 
       <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary/50 to-primary/20 text-[11px] font-bold text-white ring-1 ring-primary/20">
@@ -71,11 +116,14 @@ export function LeaderboardRow({
         <p className="truncate text-sm font-medium text-foreground">
           {repName(rep)}
         </p>
-        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-          Level{" "}
-          <span className="font-mono tabular-nums text-foreground/80">
-            {rep.level}
+        <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span>
+            Level{" "}
+            <span className="font-mono tabular-nums text-foreground/80">
+              {rep.level}
+            </span>
           </span>
+          <RankDelta delta={rep.delta_week} />
         </p>
       </div>
 

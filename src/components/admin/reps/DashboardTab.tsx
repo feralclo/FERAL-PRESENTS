@@ -226,7 +226,7 @@ export function DashboardTab() {
     });
 
     Promise.allSettled([
-      fetchJson<LeaderboardEntry[]>("/api/reps/leaderboard"),
+      fetchJson<LeaderboardEntry[]>("/api/reps/leaderboard?window=30d"),
     ]).then(([r]) => mark<LeaderboardEntry[]>((s) => setLeaderboard(s))(r));
 
     Promise.allSettled([
@@ -388,14 +388,15 @@ export function DashboardTab() {
         <WeekMetrics stats={stats.data} loading={stats.loading} error={stats.error} />
       </section>
 
-      {/* Top reps — all-time leaderboard (ranked by total revenue) */}
+      {/* Top reps — rolling-30-day rank from rep_rank_snapshots (matches iOS masthead).
+          delta_week arrows compare today's snapshot vs the next-oldest ≥3-day-old one. */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[2px] text-muted-foreground">
             <Trophy size={12} />
             Top reps
             <span className="ml-1 normal-case tracking-normal text-muted-foreground/60">
-              · all-time
+              · last 30 days
             </span>
           </h3>
           <Link

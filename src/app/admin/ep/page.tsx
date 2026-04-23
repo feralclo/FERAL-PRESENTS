@@ -26,6 +26,8 @@ import {
   ExternalLink,
   Plus,
   RefreshCw,
+  ArrowRight,
+  type LucideIcon,
 } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 
@@ -225,7 +227,7 @@ export default function EpAdminPage() {
               EP Economy
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your EP balance, ledger, and payout history
+              Buy EP, fund quest rewards, get paid when reps redeem.
             </p>
           </div>
         </div>
@@ -235,17 +237,52 @@ export default function EpAdminPage() {
         </Button>
       </div>
 
+      {/* ─────────────── How the economy flows ───────────────
+          Four-step strip at the top so every tenant grasps the loop
+          the moment they land on the page: money in, value out, money back. */}
+      <Card className="border-border bg-card p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] sm:items-center">
+          <FlowStep
+            icon={Plus}
+            tone="primary"
+            title="You buy EP"
+            body="Top up your float. 1 EP = £0.01."
+          />
+          <FlowArrow />
+          <FlowStep
+            icon={Coins}
+            tone="primary"
+            title="Reps earn it"
+            body="Quest approvals pay out from your float."
+          />
+          <FlowArrow />
+          <FlowStep
+            icon={Wallet}
+            tone="info"
+            title="Reps redeem"
+            body="They spend EP in your reward shop."
+          />
+          <FlowArrow />
+          <FlowStep
+            icon={ArrowDownToLine}
+            tone="success"
+            title="You get paid"
+            body="Monthly Stripe Transfer, minus our 10% cut."
+          />
+        </div>
+      </Card>
+
       {/* Low-float warning */}
       {balance?.low_float_warning && (
         <Card className="border-destructive/40 bg-destructive/5 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle size={18} className="mt-0.5 text-destructive" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Low EP float</p>
+              <p className="text-sm font-medium text-foreground">You&apos;re running out of EP</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Your EP float ({formatEp(balance.float)}) is below your open
-                quest commitments ({formatEp(balance.committed)}). Approvals
-                will be blocked once float hits zero — top up to keep running.
+                Your balance ({formatEp(balance.float)}) is below what you&apos;ve already
+                committed to active quests ({formatEp(balance.committed)}). Once you hit
+                zero, quest approvals will stop paying out — top up to keep the programme running.
               </p>
             </div>
           </div>
@@ -325,6 +362,47 @@ export default function EpAdminPage() {
 // ---------------------------------------------------------------------------
 // Skeleton helpers
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Flow-explainer at the top of the EP page — makes the loop legible in 2s.
+// ---------------------------------------------------------------------------
+
+function FlowStep({
+  icon: Icon,
+  title,
+  body,
+  tone,
+}: {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+  tone: "primary" | "info" | "success";
+}) {
+  const toneClasses = {
+    primary: "bg-primary/10 text-primary ring-primary/20",
+    info: "bg-info/10 text-info ring-info/20",
+    success: "bg-success/10 text-success ring-success/20",
+  }[tone];
+  return (
+    <div className="flex items-start gap-3">
+      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-1 ${toneClasses}`}>
+        <Icon size={14} strokeWidth={2} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-foreground">{title}</p>
+        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{body}</p>
+      </div>
+    </div>
+  );
+}
+
+function FlowArrow() {
+  return (
+    <div className="hidden items-center justify-center sm:flex">
+      <ArrowRight size={14} className="text-muted-foreground/40" />
+    </div>
+  );
+}
 
 function BalanceSkeleton({ withBuyCta }: { withBuyCta?: boolean }) {
   return (
@@ -445,11 +523,12 @@ function FloatTab({
   return (
     <div className="space-y-6">
       {/* Balance cards — keyed numeric spans remount on value change, which
-          fires the `.numeric-change` animation for an iOS-style fade-in. */}
+          fires the `.numeric-change` animation for an iOS-style fade-in.
+          Labels in plain English: no "float" jargon for non-finance tenants. */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Available float
+            EP you&apos;ve bought
           </p>
           <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
             <span key={balance.float} className="numeric-change inline-block">
@@ -463,7 +542,7 @@ function FloatTab({
         </Card>
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Committed
+            Locked to active quests
           </p>
           <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
             <span key={balance.committed} className="numeric-change inline-block">
@@ -471,12 +550,12 @@ function FloatTab({
             </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Reserved for open quest approvals
+            Reserved for reps who approve their quest
           </p>
         </Card>
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Net available
+            Free to spend
           </p>
           <p
             className={`mt-2 text-2xl font-bold tabular-nums ${
@@ -493,7 +572,7 @@ function FloatTab({
             </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Float minus commitments
+            What you can still give away
           </p>
         </Card>
       </div>
@@ -503,10 +582,10 @@ function FloatTab({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-mono text-xs font-semibold uppercase tracking-[2px] text-foreground">
-              Buy EP
+              Top up
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Top up your float to fund quest rewards. 1 EP ={" "}
+              Add EP to your balance so reps can earn it from quests. 1 EP ={" "}
               {formatPence(balance.fiat_rate_pence)}.
             </p>
           </div>
@@ -660,7 +739,7 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Earned this cycle
+            Earned since last payout
           </p>
           <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
             <span key={balance.earned} className="numeric-change inline-block">
@@ -668,12 +747,12 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
             </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Gross {formatPence(balance.earned_pence_gross)}
+            Reps have redeemed {formatPence(balance.earned_pence_gross)} from your shop
           </p>
         </Card>
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Platform fee ({cutPct}%)
+            Entry fee ({cutPct}%)
           </p>
           <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
             <span
@@ -684,12 +763,12 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
             </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Entry&apos;s cut on redemptions
+            Our cut for running the platform
           </p>
         </Card>
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Next payout (net)
+            Heading to your Stripe
           </p>
           <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
             <span key={balance.earned_pence_net} className="numeric-change inline-block">
@@ -698,30 +777,31 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {aboveMin
-              ? "Will pay at next monthly cron"
-              : `Below ${formatPence(balance.min_payout_pence)} minimum — rolls to next cycle`}
+              ? "Pays out on the 1st of next month"
+              : `Below the ${formatPence(balance.min_payout_pence)} minimum — carries over to next month`}
           </p>
         </Card>
       </div>
 
       <Card className="border-border bg-card p-6">
         <h2 className="mb-3 font-mono text-xs font-semibold uppercase tracking-[2px] text-foreground">
-          How this works
+          How you get paid
         </h2>
         <div className="space-y-2 text-xs text-muted-foreground">
           <p>
-            When a rep on your team redeems an EP reward from your shop, EP
-            flows out of their balance and into your &ldquo;earned&rdquo; pot.
+            When a rep redeems one of your rewards, the EP they spend lands
+            here — this is money you&apos;re owed, not a balance you can spend.
           </p>
           <p>
-            Once a month, Entry issues a Stripe Transfer to your connected
-            account for the total earned this cycle, minus the platform fee.
-            You need a connected Stripe account to receive payouts.
+            On the 1st of every month we send a Stripe Transfer to your connected
+            bank account for everything you&apos;ve earned, minus our {cutPct}% platform fee.
+            You&apos;ll need a connected Stripe account — set that up in{" "}
+            <span className="font-mono">Payments</span> if you haven&apos;t yet.
           </p>
           <p>
-            Amounts below {formatPence(balance.min_payout_pence)} (net) roll
-            forward to the next cycle instead of paying out, to avoid
-            Stripe&apos;s small-transfer fees eating the whole transfer.
+            Anything under {formatPence(balance.min_payout_pence)} rolls over to
+            the next month&apos;s payout instead of paying out on its own — so
+            Stripe&apos;s fixed transfer fees don&apos;t eat the whole thing.
           </p>
         </div>
       </Card>

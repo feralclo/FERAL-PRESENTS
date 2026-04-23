@@ -1,18 +1,23 @@
 "use client";
 
-import { Zap, Coins, Heart, Share2, Camera, Link as LinkIcon, Type, Instagram } from "lucide-react";
+import { Zap, Coins, Share2, Camera, Link as LinkIcon, Type, Instagram } from "lucide-react";
 import type { QuestType, QuestProofType } from "@/types/reps";
 
 /**
  * Mini mockup of the iOS quest card, rendered in the admin so tenants see
- * exactly what their rep will see in the app before saving. The shape follows
- * Views/YourQuestCard.swift + Views/OnDeckHero.swift in the iOS repo:
+ * exactly what their rep will see on their home / quests list in the app.
+ * The shape follows Views/YourQuestCard.swift + Views/OnDeckHero.swift:
  *   - cover image as the full-bleed background (or promoter-accent gradient
  *     if empty — iOS does the same cascade)
  *   - accent tint + dark readability scrim
- *   - kind pill, title, subtitle (detail-only; hidden here if blank),
- *     reward chips (XP + EP)
- *   - proof-type icon hint at bottom
+ *   - kind pill (top-left), title, reward chips (XP + EP), proof-type hint
+ *
+ * NOT shown here — matches iOS card rendering exactly:
+ *   - subtitle: iOS cards don't render subtitle; it only appears on the
+ *     full-screen QuestDetailSheet + QuestArtStudyScreen. The form tells
+ *     the tenant that via the subtitle field's hint copy.
+ *   - no "like/bookmark" icon — iOS cards don't render one. (I had a
+ *     heart glyph in an earlier draft; removed once verified.)
  */
 
 function intToCss(n: number | null | undefined): string | null {
@@ -39,6 +44,10 @@ const PROOF_HINT: Record<QuestProofType, { label: string; icon: typeof Camera }>
 
 export interface QuestCardPreviewProps {
   title: string;
+  /** Subtitle is accepted but intentionally not rendered on the card preview
+   *  — iOS cards don't render it either; it only appears on the full-screen
+   *  detail sheet. Kept in the prop shape so callers don't have to change
+   *  when/if we ever add a second "detail" preview. */
   subtitle: string;
   coverImageUrl: string;
   /** Promoter's brand accent as an int (0..0xFFFFFF). iOS derives both
@@ -53,7 +62,7 @@ export interface QuestCardPreviewProps {
 
 export function QuestCardPreview({
   title,
-  subtitle,
+  subtitle: _subtitle,
   coverImageUrl,
   promoterAccentHex,
   questType,
@@ -61,6 +70,8 @@ export function QuestCardPreview({
   ep,
   proofType,
 }: QuestCardPreviewProps) {
+  // subtitle is not rendered on card — see comment above the interface.
+  void _subtitle;
   // Mirror iOS fallbacks: accent_hex null → platform violet; per-quest accents
   // cut from the wire contract entirely, so we only consume the promoter hex.
   const accent = intToCss(promoterAccentHex) ?? "#4A1FFF";
@@ -103,13 +114,11 @@ export function QuestCardPreview({
         {/* Readability scrim */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
-        {/* Content */}
+        {/* Content — kind pill top-left; no like/bookmark on the right
+            because iOS cards don't render one. */}
         <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
           <span className="rounded-full bg-white/15 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[1.2px] text-white backdrop-blur-md">
             {KIND_LABELS[questType]}
-          </span>
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 backdrop-blur-md">
-            <Heart size={12} className="text-white" />
           </span>
         </div>
 
@@ -118,11 +127,6 @@ export function QuestCardPreview({
             <h4 className="line-clamp-2 text-lg font-bold leading-tight tracking-tight">
               {title.trim() || "Your quest title"}
             </h4>
-            {subtitle.trim() && (
-              <p className="mt-0.5 line-clamp-1 text-xs text-white/70">
-                {subtitle}
-              </p>
-            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

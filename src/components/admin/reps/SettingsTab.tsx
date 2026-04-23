@@ -15,7 +15,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, RotateCcw, Info, Calendar } from "lucide-react";
+import { Loader2, Save, RotateCcw, Info, Calendar, AlertCircle, Check } from "lucide-react";
 import type { RepProgramSettings } from "@/types/reps";
 import { DEFAULT_REP_PROGRAM_SETTINGS } from "@/types/reps";
 
@@ -36,6 +36,8 @@ export function SettingsTab() {
   const [saved, setSaved] = useState(false);
   const [campaignEvents, setCampaignEvents] = useState<CampaignEvent[]>([]);
   const [togglingEvent, setTogglingEvent] = useState<string | null>(null);
+  // Per-event feedback state so failures don't silently revert and wins get a pulse.
+  const [eventFeedback, setEventFeedback] = useState<Record<string, "saved" | "error">>({});
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -56,18 +58,42 @@ export function SettingsTab() {
 
   const toggleEventRepEnabled = async (eventId: string, enabled: boolean) => {
     setTogglingEvent(eventId);
+    // Clear any stale feedback from the last attempt
+    setEventFeedback((prev) => {
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+    // Optimistic update — reverts on failure
+    const previousValue = campaignEvents.find((e) => e.id === eventId)?.rep_enabled;
+    setCampaignEvents((prev) =>
+      prev.map((e) => (e.id === eventId ? { ...e, rep_enabled: enabled } : e))
+    );
     try {
       const res = await fetch("/api/reps/campaign-events", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ eventId, rep_enabled: enabled }),
       });
-      if (res.ok) {
+      if (!res.ok) throw new Error("Save failed");
+      setEventFeedback((prev) => ({ ...prev, [eventId]: "saved" }));
+      // Clear the saved pulse after a short beat
+      window.setTimeout(() => {
+        setEventFeedback((prev) => {
+          const next = { ...prev };
+          if (next[eventId] === "saved") delete next[eventId];
+          return next;
+        });
+      }, 1600);
+    } catch {
+      // Revert optimistic change + surface error inline
+      if (previousValue !== undefined) {
         setCampaignEvents((prev) =>
-          prev.map((e) => (e.id === eventId ? { ...e, rep_enabled: enabled } : e))
+          prev.map((e) => (e.id === eventId ? { ...e, rep_enabled: previousValue } : e))
         );
       }
-    } catch { /* network */ }
+      setEventFeedback((prev) => ({ ...prev, [eventId]: "error" }));
+    }
     setTogglingEvent(null);
   };
 
@@ -178,11 +204,19 @@ export function SettingsTab() {
               <p className="text-[11px] text-muted-foreground">The spendable currency name shown to reps (e.g. &quot;FRL&quot;)</p>
             </div>
             <div className="space-y-2">
-              <Label>Currency per Sale (per ticket)</Label>
+              <Label>Currency per Sale</Label>
               <div className="flex items-center gap-3">
                 <Slider value={[settings.currency_per_sale]} onValueChange={([v]) => update("currency_per_sale", v)} min={1} max={100} step={1} className="flex-1" />
-                <span className="font-mono text-sm font-bold text-amber-400 w-10 text-right tabular-nums">{settings.currency_per_sale}</span>
+                <span className="inline-flex items-baseline gap-1 font-mono text-sm font-bold text-warning w-20 text-right tabular-nums">
+                  {settings.currency_per_sale}
+                  <span className="text-[10px] font-normal uppercase tracking-wider text-muted-foreground">
+                    {settings.currency_name || "units"}
+                  </span>
+                </span>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Awarded per ticket sold with a rep&apos;s discount code.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -219,6 +253,17 @@ export function SettingsTab() {
             <div className="space-y-2">
               <Label>From Address</Label>
               <Input type="email" value={settings.email_from_address} onChange={(e) => update("email_from_address", e.target.value)} placeholder="reps@yourdomain.com" />
+              {(() => {
+                const v = settings.email_from_address?.trim() ?? "";
+                if (!v) return null;
+                // Simple RFC-5322 lite — same shape the Resend API will accept
+                const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+                return ok ? null : (
+                  <p className="text-[11px] text-destructive">
+                    Not a valid email address
+                  </p>
+                );
+              })()}
             </div>
             <div className="space-y-2">
               <Label>Welcome Message</Label>
@@ -271,11 +316,26 @@ export function SettingsTab() {
                       </div>
                     </div>
                   </div>
-                  <Switch
-                    checked={event.rep_enabled}
-                    disabled={togglingEvent === event.id}
-                    onCheckedChange={(checked) => toggleEventRepEnabled(event.id, checked)}
-                  />
+                  <div className="flex items-center gap-2">
+                    {togglingEvent === event.id ? (
+                      <Loader2 size={12} className="animate-spin text-muted-foreground" />
+                    ) : eventFeedback[event.id] === "saved" ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-success">
+                        <Check size={11} strokeWidth={2.5} />
+                        saved
+                      </span>
+                    ) : eventFeedback[event.id] === "error" ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-destructive">
+                        <AlertCircle size={11} strokeWidth={2.5} />
+                        failed
+                      </span>
+                    ) : null}
+                    <Switch
+                      checked={event.rep_enabled}
+                      disabled={togglingEvent === event.id}
+                      onCheckedChange={(checked) => toggleEventRepEnabled(event.id, checked)}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

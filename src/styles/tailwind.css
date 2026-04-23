@@ -227,6 +227,23 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ── Numeric-value change animation — mirrors iOS contentTransition(.numericText())
+      Used on balance / count displays so updates feel live, not silent. ── */
+@keyframes numeric-change-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+[data-admin] .numeric-change {
+  animation: numeric-change-in 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-admin] .numeric-change {
+    animation: none;
+  }
+}
+
 /* ── Collapsible animations ── */
 @keyframes collapsible-down {
   from { height: 0; }

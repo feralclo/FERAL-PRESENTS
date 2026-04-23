@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,9 @@ import {
   Wrench,
   ChevronLeft,
   Info,
+  AlertTriangle,
+  ShoppingBag,
+  ExternalLink,
 } from "lucide-react";
 import type {
   RepReward,
@@ -151,6 +155,8 @@ export function RewardsTab() {
   const [rewards, setRewards] = useState<RepReward[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  // Count of claims awaiting fulfilment — for the cross-link banner to Reports
+  const [unfulfilledClaims, setUnfulfilledClaims] = useState(0);
 
   // Create / Edit dialog
   const [showDialog, setShowDialog] = useState(false);
@@ -223,10 +229,30 @@ export function RewardsTab() {
     } catch { /* network */ }
   }, []);
 
-  useEffect(() => { loadRewards(); loadProducts(); loadEvents(); }, [loadRewards, loadProducts, loadEvents]);
+  // Small fetch to show "N claims awaiting fulfilment → Reports" banner.
+  // Only the count is needed; actual management happens in Reports.
+  const loadClaimsCount = useCallback(async () => {
+    try {
+      const res = await fetch("/api/reps/claims?status=claimed");
+      const json = await res.json();
+      if (Array.isArray(json.data)) setUnfulfilledClaims(json.data.length);
+    } catch { /* network */ }
+  }, []);
 
-  // Load ticket types when event changes
   useEffect(() => {
+    // Each fetch sets its own state after await. The rule flags the
+    // transitive chain; no data-library in play, so disable with reason.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadRewards();
+    loadProducts();
+    loadEvents();
+    loadClaimsCount();
+  }, [loadRewards, loadProducts, loadEvents, loadClaimsCount]);
+
+  // Load ticket types when event changes.
+  useEffect(() => {
+    // Intentional synchronous reset when no event is selected.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!eventId) { setTicketTypes([]); return; }
     (async () => {
       try {
@@ -471,6 +497,29 @@ export function RewardsTab() {
         </Button>
       </div>
 
+      {/* Claims-pending cross-link → Reports handles actual fulfilment */}
+      {unfulfilledClaims > 0 && (
+        <Link
+          href="/admin/reps?tab=reports&review=claims"
+          className="group flex items-center gap-3 rounded-xl border border-info/30 bg-info/5 px-5 py-3 transition-colors hover:bg-info/10"
+        >
+          <ShoppingBag size={18} className="shrink-0 text-info" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">
+              <span className="font-mono tabular-nums">{unfulfilledClaims}</span>{" "}
+              {unfulfilledClaims === 1 ? "claim is" : "claims are"} awaiting fulfilment
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Fulfil or cancel in Reports — reps get refunded on cancel
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-info group-hover:text-foreground">
+            Fulfil
+            <ExternalLink size={12} />
+          </span>
+        </Link>
+      )}
+
       {/* ── Rewards Grid ── */}
       {loading ? (
         <Card className="py-0 gap-0">
@@ -532,6 +581,34 @@ export function RewardsTab() {
                     {reward.points_cost != null && <span className="font-mono text-primary font-bold">{reward.points_cost} pts</span>}
                     <span className="tabular-nums">{reward.total_claimed}/{reward.total_available ?? "\u221E"} claimed</span>
                   </div>
+                  {(() => {
+                    if (reward.total_available == null) return null;
+                    const remaining = reward.total_available - reward.total_claimed;
+                    if (remaining <= 0) {
+                      return (
+                        <Badge
+                          variant="outline"
+                          className="mb-3 gap-1 border-destructive/40 bg-destructive/10 text-destructive text-[10px]"
+                        >
+                          <AlertTriangle size={10} strokeWidth={2} />
+                          Out of stock
+                        </Badge>
+                      );
+                    }
+                    const lowThreshold = Math.max(2, Math.ceil(reward.total_available * 0.2));
+                    if (remaining <= lowThreshold) {
+                      return (
+                        <Badge
+                          variant="outline"
+                          className="mb-3 gap-1 border-warning/40 bg-warning/10 text-warning text-[10px]"
+                        >
+                          <AlertTriangle size={10} strokeWidth={2} />
+                          Low stock ({remaining} left)
+                        </Badge>
+                      );
+                    }
+                    return null;
+                  })()}
                   <div className="flex items-center gap-2 flex-wrap mb-3">
                     {getFulfillmentBadge(reward)}
                     {reward.product_id && (

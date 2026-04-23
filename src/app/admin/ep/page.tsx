@@ -8,6 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Coins,
   Wallet,
   Scroll,
@@ -125,56 +133,80 @@ export default function EpAdminPage() {
   const [balance, setBalance] = useState<BalanceData | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Per-resource loading — Float / Earned only need balance, Ledger & Payouts
+  // each render a skeleton independently so a slow endpoint doesn't block the page.
+  const [loadingBalance, setLoadingBalance] = useState(true);
+  const [loadingLedger, setLoadingLedger] = useState(true);
+  const [loadingPayouts, setLoadingPayouts] = useState(true);
+  const [balanceError, setBalanceError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Load helpers set state only asynchronously (after await). Initial
+  // loading=true comes from useState; refresh button handles resets.
   const loadBalance = useCallback(async () => {
-    const res = await fetch("/api/admin/ep/balance");
-    if (res.ok) {
-      const { data } = await res.json();
-      setBalance(data);
+    try {
+      const res = await fetch("/api/admin/ep/balance", { cache: "no-store" });
+      if (res.ok) {
+        const { data } = await res.json();
+        setBalance(data);
+        setBalanceError(false);
+      } else {
+        setBalanceError(true);
+      }
+    } catch {
+      setBalanceError(true);
     }
+    setLoadingBalance(false);
   }, []);
 
   const loadLedger = useCallback(async () => {
-    const res = await fetch("/api/admin/ep/ledger?limit=100");
-    if (res.ok) {
-      const { data } = await res.json();
-      setLedger(data);
+    try {
+      const res = await fetch("/api/admin/ep/ledger?limit=100", { cache: "no-store" });
+      if (res.ok) {
+        const { data } = await res.json();
+        setLedger(data);
+      }
+    } catch {
+      /* network */
     }
+    setLoadingLedger(false);
   }, []);
 
   const loadPayouts = useCallback(async () => {
-    const res = await fetch("/api/admin/ep/payouts?limit=50");
-    if (res.ok) {
-      const { data } = await res.json();
-      setPayouts(data);
+    try {
+      const res = await fetch("/api/admin/ep/payouts?limit=50", { cache: "no-store" });
+      if (res.ok) {
+        const { data } = await res.json();
+        setPayouts(data);
+      }
+    } catch {
+      /* network */
     }
+    setLoadingPayouts(false);
   }, []);
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      await Promise.all([loadBalance(), loadLedger(), loadPayouts()]);
-      setLoading(false);
-    })();
+    // Fires three async fetches; state writes happen after await so they're
+    // not synchronous-within-effect in practice. Rule flags the transitive
+    // chain; refactoring to avoid it would require pulling in a data-library.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadBalance();
+    loadLedger();
+    loadPayouts();
   }, [loadBalance, loadLedger, loadPayouts]);
 
   const refresh = async () => {
     setRefreshing(true);
+    setLoadingBalance(true);
+    setLoadingLedger(true);
+    setLoadingPayouts(true);
     await Promise.all([loadBalance(), loadLedger(), loadPayouts()]);
     setRefreshing(false);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 size={20} className="animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!balance) {
+  // Hard-fail only if the balance endpoint dies — without it we can't render
+  // the Float/Earned tabs meaningfully. Ledger/Payouts skeletons render inline.
+  if (balanceError && !balance) {
     return (
       <div className="flex items-center justify-center py-24">
         <p className="text-sm text-muted-foreground">Failed to load EP data</p>
@@ -204,7 +236,7 @@ export default function EpAdminPage() {
       </div>
 
       {/* Low-float warning */}
-      {balance.low_float_warning && (
+      {balance?.low_float_warning && (
         <Card className="border-destructive/40 bg-destructive/5 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle size={18} className="mt-0.5 text-destructive" />
@@ -252,17 +284,102 @@ export default function EpAdminPage() {
       </div>
 
       {/* Float tab */}
-      {tab === "float" && <FloatTab balance={balance} onBought={refresh} />}
+      {tab === "float" &&
+        (loadingBalance && !balance ? (
+          <BalanceSkeleton withBuyCta />
+        ) : balance ? (
+          <FloatTab balance={balance} onBought={refresh} />
+        ) : (
+          <InlineError onRetry={loadBalance} />
+        ))}
 
       {/* Earned tab */}
-      {tab === "earned" && <EarnedTab balance={balance} />}
+      {tab === "earned" &&
+        (loadingBalance && !balance ? (
+          <BalanceSkeleton />
+        ) : balance ? (
+          <EarnedTab balance={balance} />
+        ) : (
+          <InlineError onRetry={loadBalance} />
+        ))}
 
       {/* Ledger tab */}
-      {tab === "ledger" && <LedgerTab entries={ledger} />}
+      {tab === "ledger" &&
+        (loadingLedger && ledger.length === 0 ? (
+          <RowsSkeleton rows={6} />
+        ) : (
+          <LedgerTab entries={ledger} />
+        ))}
 
       {/* Payouts tab */}
-      {tab === "payouts" && <PayoutsTab payouts={payouts} />}
+      {tab === "payouts" &&
+        (loadingPayouts && payouts.length === 0 ? (
+          <RowsSkeleton rows={4} />
+        ) : (
+          <PayoutsTab payouts={payouts} />
+        ))}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Skeleton helpers
+// ---------------------------------------------------------------------------
+
+function BalanceSkeleton({ withBuyCta }: { withBuyCta?: boolean }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <Card key={i} className="border-border bg-card p-6">
+            <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+            <div className="mt-4 h-7 w-28 animate-pulse rounded bg-muted" />
+            <div className="mt-2 h-3 w-32 animate-pulse rounded bg-muted" />
+          </Card>
+        ))}
+      </div>
+      {withBuyCta && (
+        <Card className="border-border bg-card p-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+              <div className="h-3 w-48 animate-pulse rounded bg-muted" />
+            </div>
+            <div className="h-9 w-24 animate-pulse rounded bg-muted" />
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function RowsSkeleton({ rows }: { rows: number }) {
+  return (
+    <Card className="border-border bg-card">
+      <div className="divide-y divide-border">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 p-4">
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+              <div className="h-2.5 w-1/2 animate-pulse rounded bg-muted" />
+            </div>
+            <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function InlineError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Card className="border-border bg-card p-10 text-center">
+      <p className="text-sm text-muted-foreground">Couldn&apos;t load EP balance.</p>
+      <Button variant="outline" size="sm" onClick={onRetry} className="mt-3 gap-2">
+        <RefreshCw size={14} />
+        Retry
+      </Button>
+    </Card>
   );
 }
 
@@ -281,6 +398,9 @@ function FloatTab({
   const [amount, setAmount] = useState("1000");
   const [purchasing, setPurchasing] = useState(false);
   const [status, setStatus] = useState("");
+  // Confirmation modal — protects against fat-finger large purchases.
+  // "Confirm" in the form opens this; actual Stripe redirect happens from here.
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const handleBuy = async () => {
     const ep = parseInt(amount, 10);
@@ -324,14 +444,17 @@ function FloatTab({
 
   return (
     <div className="space-y-6">
-      {/* Balance cards */}
+      {/* Balance cards — keyed numeric spans remount on value change, which
+          fires the `.numeric-change` animation for an iOS-style fade-in. */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Available float
           </p>
-          <p className="mt-2 text-2xl font-bold text-foreground">
-            {formatEp(balance.float)}
+          <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
+            <span key={balance.float} className="numeric-change inline-block">
+              {formatEp(balance.float)}
+            </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             ≈ {formatPence(balance.float_pence)} at{" "}
@@ -342,8 +465,10 @@ function FloatTab({
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Committed
           </p>
-          <p className="mt-2 text-2xl font-bold text-foreground">
-            {formatEp(balance.committed)}
+          <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
+            <span key={balance.committed} className="numeric-change inline-block">
+              {formatEp(balance.committed)}
+            </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Reserved for open quest approvals
@@ -354,13 +479,18 @@ function FloatTab({
             Net available
           </p>
           <p
-            className={`mt-2 text-2xl font-bold ${
+            className={`mt-2 text-2xl font-bold tabular-nums ${
               balance.float_net_of_commitments < 0
                 ? "text-destructive"
                 : "text-foreground"
             }`}
           >
-            {formatEp(Math.max(0, balance.float_net_of_commitments))}
+            <span
+              key={balance.float_net_of_commitments}
+              className="numeric-change inline-block"
+            >
+              {formatEp(Math.max(0, balance.float_net_of_commitments))}
+            </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Float minus commitments
@@ -421,7 +551,19 @@ function FloatTab({
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleBuy} disabled={purchasing} className="gap-2">
+                <Button
+                  onClick={() => {
+                    const ep = parseInt(amount || "0", 10);
+                    if (!Number.isFinite(ep) || ep < 100) {
+                      setStatus("Minimum purchase is 100 EP");
+                      return;
+                    }
+                    setStatus("");
+                    setConfirmOpen(true);
+                  }}
+                  disabled={purchasing}
+                  className="gap-2"
+                >
                   {purchasing ? (
                     <Loader2 size={14} className="animate-spin" />
                   ) : (
@@ -437,6 +579,70 @@ function FloatTab({
           </div>
         )}
       </Card>
+
+      {/* Buy EP confirmation — two-step so large amounts don't skip straight to Stripe */}
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(o) => {
+          if (!purchasing) setConfirmOpen(o);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm EP purchase</DialogTitle>
+            <DialogDescription>
+              You&apos;ll be redirected to Stripe to complete the payment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm text-muted-foreground">Amount</span>
+              <span className="font-mono text-lg font-bold tabular-nums text-foreground">
+                {formatEp(parseInt(amount || "0", 10) || 0)}
+              </span>
+            </div>
+            <Separator />
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm text-muted-foreground">You pay</span>
+              <span className="font-mono text-lg font-bold tabular-nums text-foreground">
+                {formatPence(
+                  (parseInt(amount || "0", 10) || 0) * balance.fiat_rate_pence
+                )}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between text-xs text-muted-foreground">
+              <span>Rate</span>
+              <span className="font-mono tabular-nums">
+                {formatPence(balance.fiat_rate_pence)} per EP
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={purchasing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                await handleBuy();
+                setConfirmOpen(false);
+              }}
+              disabled={purchasing}
+              className="gap-2"
+            >
+              {purchasing ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Plus size={14} />
+              )}
+              Go to Stripe
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -456,8 +662,10 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Earned this cycle
           </p>
-          <p className="mt-2 text-2xl font-bold text-foreground">
-            {formatEp(balance.earned)}
+          <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
+            <span key={balance.earned} className="numeric-change inline-block">
+              {formatEp(balance.earned)}
+            </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Gross {formatPence(balance.earned_pence_gross)}
@@ -467,21 +675,26 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Platform fee ({cutPct}%)
           </p>
-          <p className="mt-2 text-2xl font-bold text-foreground">
-            {formatPence(
-              balance.earned_pence_gross - balance.earned_pence_net
-            )}
+          <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
+            <span
+              key={balance.earned_pence_gross - balance.earned_pence_net}
+              className="numeric-change inline-block"
+            >
+              {formatPence(balance.earned_pence_gross - balance.earned_pence_net)}
+            </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Entry's cut on redemptions
+            Entry&apos;s cut on redemptions
           </p>
         </Card>
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Next payout (net)
           </p>
-          <p className="mt-2 text-2xl font-bold text-foreground">
-            {formatPence(balance.earned_pence_net)}
+          <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
+            <span key={balance.earned_pence_net} className="numeric-change inline-block">
+              {formatPence(balance.earned_pence_net)}
+            </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {aboveMin
@@ -498,7 +711,7 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
         <div className="space-y-2 text-xs text-muted-foreground">
           <p>
             When a rep on your team redeems an EP reward from your shop, EP
-            flows out of their balance and into your "earned" pot.
+            flows out of their balance and into your &ldquo;earned&rdquo; pot.
           </p>
           <p>
             Once a month, Entry issues a Stripe Transfer to your connected
@@ -507,8 +720,8 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
           </p>
           <p>
             Amounts below {formatPence(balance.min_payout_pence)} (net) roll
-            forward to the next cycle instead of paying out, to avoid Stripe's
-            small-transfer fees eating the whole transfer.
+            forward to the next cycle instead of paying out, to avoid
+            Stripe&apos;s small-transfer fees eating the whole transfer.
           </p>
         </div>
       </Card>
@@ -520,7 +733,43 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
 // Ledger tab — every EP movement affecting this tenant
 // ---------------------------------------------------------------------------
 
+export type LedgerCategory = "all" | "purchase" | "quest" | "shop" | "payout";
+
+// Map entry_type to a user-facing category for filter pills
+export function categoryOf(entryType: string): Exclude<LedgerCategory, "all"> | null {
+  if (entryType.startsWith("tenant_purchase")) return "purchase";
+  if (entryType.endsWith("quest_debit") || entryType.endsWith("quest_reversal") || entryType.startsWith("rep_quest")) return "quest";
+  if (entryType.startsWith("rep_shop")) return "shop";
+  if (entryType.startsWith("tenant_payout")) return "payout";
+  return null;
+}
+
+export function dayKey(iso: string): string {
+  // Group by local calendar date — tenants expect "yesterday" to behave
+  // like their own day, not UTC midnight.
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function LedgerTab({ entries }: { entries: LedgerEntry[] }) {
+  const [cat, setCat] = useState<LedgerCategory>("all");
+
+  const filtered = cat === "all"
+    ? entries
+    : entries.filter((e) => categoryOf(e.entry_type) === cat);
+
+  const counts: Record<LedgerCategory, number> = {
+    all: entries.length,
+    purchase: entries.filter((e) => categoryOf(e.entry_type) === "purchase").length,
+    quest: entries.filter((e) => categoryOf(e.entry_type) === "quest").length,
+    shop: entries.filter((e) => categoryOf(e.entry_type) === "shop").length,
+    payout: entries.filter((e) => categoryOf(e.entry_type) === "payout").length,
+  };
+
   if (entries.length === 0) {
     return (
       <Card className="border-border bg-card p-12 text-center">
@@ -532,14 +781,76 @@ function LedgerTab({ entries }: { entries: LedgerEntry[] }) {
     );
   }
 
+  // Group filtered entries by day for sticky headers
+  const grouped: Array<{ day: string; entries: LedgerEntry[] }> = [];
+  let current: { day: string; entries: LedgerEntry[] } | null = null;
+  for (const e of filtered) {
+    const k = dayKey(e.created_at);
+    if (!current || current.day !== k) {
+      current = { day: k, entries: [] };
+      grouped.push(current);
+    }
+    current.entries.push(e);
+  }
+
   return (
-    <Card className="border-border bg-card">
-      <div className="divide-y divide-border">
-        {entries.map((entry) => (
-          <LedgerRow key={entry.id} entry={entry} />
+    <div className="space-y-4">
+      {/* Category filter pills */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        {(
+          [
+            { id: "all" as const, label: "All" },
+            { id: "purchase" as const, label: "Purchases" },
+            { id: "quest" as const, label: "Quests" },
+            { id: "shop" as const, label: "Shop" },
+            { id: "payout" as const, label: "Payouts" },
+          ]
+        ).map(({ id, label }) => (
+          <button
+            key={id}
+            onClick={() => setCat(id)}
+            className={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
+              cat === id
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            {label}
+            <span className={`ml-1.5 text-[10px] tabular-nums ${cat === id ? "opacity-90" : "opacity-60"}`}>
+              {counts[id]}
+            </span>
+          </button>
         ))}
       </div>
-    </Card>
+
+      {filtered.length === 0 ? (
+        <Card className="border-border bg-card p-12 text-center">
+          <p className="text-sm text-muted-foreground">
+            No entries match this filter.
+          </p>
+        </Card>
+      ) : (
+        <Card className="border-border bg-card">
+          {grouped.map((group) => (
+            <div key={group.day}>
+              <div className="sticky top-0 z-[1] border-b border-border bg-card/95 px-4 py-2 backdrop-blur">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                  {group.day}
+                  <span className="ml-2 tabular-nums text-foreground/60">
+                    {group.entries.length}
+                  </span>
+                </p>
+              </div>
+              <div className="divide-y divide-border">
+                {group.entries.map((entry) => (
+                  <LedgerRow key={entry.id} entry={entry} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
   );
 }
 

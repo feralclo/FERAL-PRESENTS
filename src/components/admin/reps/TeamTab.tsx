@@ -139,8 +139,16 @@ export function TeamTab() {
     } catch { /* network */ }
   }, []);
 
-  useEffect(() => { loadReps(); }, [loadReps]);
-  useEffect(() => { loadStats(); }, [loadStats]);
+  // Each fetch manages its own loading state internally. The rule flags the
+  // transitive chain; no data-library in play, so disable with reason.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadReps();
+  }, [loadReps]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadStats();
+  }, [loadStats]);
 
   const handleInviteRep = async () => {
     if (!inviteFirstName.trim() || !inviteEmail.trim()) return;
@@ -311,6 +319,29 @@ export function TeamTab() {
           <StatCard label="Revenue via Reps" value={`£${stats.total_revenue_via_reps.toFixed(2)}`} icon={DollarSign} />
           <StatCard label="Pending Applications" value={String(stats.pending_applications)} icon={UserPlus} />
         </div>
+      )}
+
+      {/* Handoff to Reports — where approve/reject actually happens now */}
+      {stats && stats.pending_applications > 0 && (
+        <Link
+          href="/admin/reps?tab=reports&review=requests"
+          className="group flex items-center gap-3 rounded-xl border border-warning/30 bg-warning/5 px-5 py-3 transition-colors hover:bg-warning/10"
+        >
+          <UserPlus size={18} className="shrink-0 text-warning" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">
+              <span className="font-mono tabular-nums">{stats.pending_applications}</span>{" "}
+              {stats.pending_applications === 1 ? "person is" : "people are"} waiting to join
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Review applications with one-tap approve/reject in Reports
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-warning group-hover:text-foreground">
+            Review
+            <ExternalLink size={12} />
+          </span>
+        </Link>
       )}
 
       {/* Actions row */}

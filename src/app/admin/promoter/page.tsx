@@ -55,6 +55,10 @@ export default function PromoterPage() {
 
   // Editable form state
   const [handle, setHandle] = useState("");
+  // Debounced availability check so tenants don't discover taken handles only on save.
+  const [handleStatus, setHandleStatus] = useState<
+    "idle" | "checking" | "available" | "taken" | "yours" | "invalid"
+  >("idle");
   const [displayName, setDisplayName] = useState("");
   const [tagline, setTagline] = useState("");
   const [bio, setBio] = useState("");
@@ -74,6 +78,46 @@ export default function PromoterPage() {
 
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
+
+  // Debounced availability check against the public promoter endpoint.
+  // If the handle matches the current promoter's, it's "yours" (safe to save).
+  // Otherwise 200 = someone else has it, 404 = free.
+  useEffect(() => {
+    if (!promoter) return;
+    const trimmed = handle.trim().toLowerCase();
+    if (trimmed === promoter.handle) {
+      setHandleStatus("yours");
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(trimmed)) {
+      setHandleStatus(trimmed.length === 0 ? "idle" : "invalid");
+      return;
+    }
+    setHandleStatus("checking");
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/promoters/${encodeURIComponent(trimmed)}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (res.status === 404) {
+          setHandleStatus("available");
+        } else if (res.ok) {
+          const { data } = await res.json();
+          setHandleStatus(data?.id === promoter.id ? "yours" : "taken");
+        } else {
+          setHandleStatus("idle");
+        }
+      } catch {
+        // Aborted or network — ignore
+      }
+    }, 400);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [handle, promoter]);
 
   useEffect(() => {
     (async () => {
@@ -244,53 +288,110 @@ export default function PromoterPage() {
         </div>
       </div>
 
-      {/* Preview card */}
-      <Card className="relative overflow-hidden border-border bg-card">
-        <div
-          className="h-32 bg-gradient-to-br from-primary/60 to-primary/20"
-          style={{
-            background: coverUrl
-              ? `url(${coverUrl}) center/cover`
-              : `linear-gradient(135deg, ${accentHex}aa, ${accentHex}44)`,
-          }}
-        />
-        <div className="flex items-end gap-4 px-6 pb-6 pt-0 -mt-8">
-          <div
-            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl text-xl font-bold text-white ring-4 ring-card"
-            style={{
-              background: avatarUrl
-                ? `url(${avatarUrl}) center/cover`
-                : accentHex,
-            }}
-          >
-            {!avatarUrl && previewInitials}
+      {/* iOS preview — mirrors how reps see the promoter profile in the native app.
+          Shape matches RepProfileScreen.swift: full-bleed hero with accent tint,
+          circle avatar, big display name, stats pills, mock Follow button. */}
+      <div className="space-y-2">
+        <p className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
+          </span>
+          Live preview — how reps see you in the app
+        </p>
+        <Card className="relative overflow-hidden border-border bg-background">
+          {/* Hero */}
+          <div className="relative h-40">
+            {coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={coverUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(135deg, ${accentHex} 0%, ${accentHex}40 60%, transparent 100%)`,
+                }}
+              />
+            )}
+            {/* Accent tint */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(135deg, ${accentHex}4D 0%, transparent 55%)`,
+              }}
+            />
+            {/* Readability scrim */}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/30 to-transparent" />
           </div>
-          <div className="min-w-0 flex-1 pb-1">
-            <p className="truncate text-base font-semibold text-foreground">
-              {displayName || "Unnamed promoter"}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              @{handle || promoter.handle}
-              {location ? ` · ${location}` : ""}
-            </p>
-          </div>
-          <div className="shrink-0 text-right pb-1">
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Heart size={12} /> {promoter.follower_count}
-              </span>
-              <span className="flex items-center gap-1">
-                <Users size={12} /> {promoter.team_size}
-              </span>
+
+          <div className="relative -mt-14 flex items-end gap-4 px-6">
+            {/* Circle avatar */}
+            <div
+              className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full text-2xl font-bold text-white ring-4 ring-background"
+              style={{
+                background: avatarUrl
+                  ? undefined
+                  : `linear-gradient(135deg, ${accentHex}, ${accentHex}80)`,
+              }}
+            >
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="font-mono tracking-tight">{previewInitials}</span>
+              )}
+            </div>
+
+            {/* Mock Follow CTA — always disabled, just a visual cue */}
+            <div className="mb-1 ml-auto shrink-0 cursor-not-allowed rounded-full border border-border bg-background/60 px-4 py-1.5 text-xs font-semibold text-foreground backdrop-blur">
+              Follow
             </div>
           </div>
-        </div>
-        {tagline && (
-          <div className="px-6 pb-6 -mt-4">
-            <p className="text-sm text-muted-foreground">{tagline}</p>
+
+          <div className="relative px-6 pb-5 pt-3">
+            <p className="truncate text-xl font-bold tracking-tight text-foreground">
+              {displayName || "Unnamed promoter"}
+            </p>
+            <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+              @{(handle || promoter.handle).toLowerCase()}
+              {location ? ` · ${location}` : ""}
+            </p>
+            {tagline && (
+              <p className="mt-2 text-sm text-foreground/80">{tagline}</p>
+            )}
+
+            {/* Stats pills — iOS uses monospaced numbers with tracked labels */}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-border bg-card px-3 py-2">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Heart size={10} strokeWidth={1.75} />
+                  Followers
+                </div>
+                <p className="mt-0.5 font-mono text-lg font-bold tabular-nums text-foreground">
+                  {promoter.follower_count}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-card px-3 py-2">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Users size={10} strokeWidth={1.75} />
+                  Team
+                </div>
+                <p className="mt-0.5 font-mono text-lg font-bold tabular-nums text-foreground">
+                  {promoter.team_size}
+                </p>
+              </div>
+            </div>
           </div>
-        )}
-      </Card>
+        </Card>
+      </div>
 
       {/* Identity */}
       <Card className="border-border bg-card p-6">
@@ -312,9 +413,33 @@ export default function PromoterPage() {
                 className="flex-1"
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              3–32 characters. Lowercase letters, numbers, hyphens.
-            </p>
+            {(() => {
+              const base = "text-xs";
+              if (handleStatus === "checking") {
+                return <p className={`${base} text-muted-foreground`}>Checking availability...</p>;
+              }
+              if (handleStatus === "available") {
+                return <p className={`${base} text-success`}>@{handle.trim().toLowerCase()} is available</p>;
+              }
+              if (handleStatus === "taken") {
+                return <p className={`${base} text-destructive`}>@{handle.trim().toLowerCase()} is already taken</p>;
+              }
+              if (handleStatus === "yours") {
+                return <p className={`${base} text-muted-foreground`}>This is your current handle.</p>;
+              }
+              if (handleStatus === "invalid") {
+                return (
+                  <p className={`${base} text-warning`}>
+                    Must be 3–32 chars — lowercase letters, numbers, hyphens; no leading/trailing hyphen.
+                  </p>
+                );
+              }
+              return (
+                <p className={`${base} text-muted-foreground`}>
+                  3–32 characters. Lowercase letters, numbers, hyphens.
+                </p>
+              );
+            })()}
           </div>
 
           <div className="space-y-2">

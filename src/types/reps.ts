@@ -243,6 +243,12 @@ export interface RepQuestSubmission {
   proof_url?: string | null;
   proof_text?: string | null;
   status: SubmissionStatus;
+  // v2 (Phase 3): denormalised "this needs changes" boolean sitting alongside
+  // the status enum. NOT NULL with DEFAULT false in the DB. Set TRUE while
+  // status='requires_revision', cleared on resubmit. UI can key off either
+  // this flag or status; prefer status for display, this flag for quick
+  // filters (WHERE requires_revision = true).
+  requires_revision?: boolean;
   reviewed_by?: string | null;
   reviewed_at?: string | null;
   rejection_reason?: string | null;
@@ -269,8 +275,16 @@ export interface RepRewardClaim {
   claim_type: ClaimType;
   milestone_id?: string | null;
   points_spent: number;
+  // v2 (Phase 3.7): EP-economy claims record ep_spent alongside points_spent.
+  // Both get written on new claims; prefer ep_spent when present.
+  ep_spent?: number | null;
   status: ClaimStatus;
   metadata?: ClaimMetadata;
+  // v2 (Phase 3.7): server-side fulfilment payload (ticket_code, guest_list_id,
+  // whatever the fulfilment_kind required) + external reference (e.g. Stripe
+  // transfer, Shopify order). Both nullable until fulfilment completes.
+  fulfillment_payload?: Record<string, unknown> | null;
+  fulfillment_reference?: string | null;
   fulfilled_at?: string | null;
   fulfilled_by?: string | null;
   notes?: string | null;

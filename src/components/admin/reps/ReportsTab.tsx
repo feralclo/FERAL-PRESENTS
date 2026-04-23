@@ -752,15 +752,19 @@ function ClaimsQueue({
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                  {/* Prefer v2 ep_spent; fall back to points_spent for legacy rows.
+                      Label matches — "EP" for v2 claims, "pts" for pre-v2. */}
                   <span className="font-mono tabular-nums">
-                    {c.points_spent} pts
+                    {c.ep_spent != null ? `${c.ep_spent} EP` : `${c.points_spent} pts`}
                   </span>
                   {rew?.reward_type && (
                     <Badge
                       variant="outline"
                       className="border-border text-[10px] uppercase tracking-wider text-muted-foreground"
                     >
-                      {rew.reward_type}
+                      {rew.reward_type === "shop" || rew.reward_type === "points_shop"
+                        ? "EP Shop"
+                        : rew.reward_type}
                     </Badge>
                   )}
                   {c.notes && <span className="italic">&ldquo;{c.notes}&rdquo;</span>}

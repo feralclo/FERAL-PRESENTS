@@ -3,6 +3,10 @@ import { requireAuth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/server";
 import { getEpConfig, epToPence } from "@/lib/ep/config";
+import {
+  getOrCreateEpCustomer,
+  getEpBillingRecord,
+} from "@/lib/ep/billing";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -41,7 +45,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
 
-    let body: { ep_amount?: unknown };
+    let body: { ep_amount?: unknown; use_saved?: unknown };
     try {
       body = await request.json();
     } catch {
@@ -55,6 +59,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const useSaved = body.use_saved === true;
 
     const db = await getSupabaseAdmin();
     if (!db) {
@@ -92,25 +98,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Always bind to the tenant's Stripe Customer so:
+    //   1) setup_future_usage on first Buy EP saves the card against a
+    //      stable Customer (no orphan PaymentMethods)
+    //   2) use_saved=true can off-session confirm against that Customer's
+    //      default PaymentMethod in one shot (no Stripe sheet).
+    const customerId = await getOrCreateEpCustomer(
+      auth.orgId,
+      auth.user?.email ?? null
+    );
+    const saved = await getEpBillingRecord(auth.orgId);
     const stripe = getStripe();
     let paymentIntent;
     try {
-      paymentIntent = await stripe.paymentIntents.create({
-        amount: fiatPence,
-        currency: "gbp",
-        // Let Stripe decide the best payment method (card by default; adds
-        // Apple/Google Pay at checkout time). Tenant is topping up a credit,
-        // so "setup" intent doesn't apply — straight purchase.
-        automatic_payment_methods: { enabled: true },
-        description: `Entry EP top-up — ${epAmount} EP`,
-        metadata: {
-          type: "ep_purchase",
-          tenant_org_id: auth.orgId,
-          ep_amount: String(epAmount),
-          fiat_rate_pence: String(config.fiat_rate_pence),
-          purchase_id: purchase.id,
-        },
-      });
+      if (useSaved && saved?.payment_method_id) {
+        // One-click path: charge the saved card off-session. Returns
+        // status "succeeded" immediately (no SCA), or "requires_action"
+        // with a client_secret the frontend can hand to Stripe.js.
+        paymentIntent = await stripe.paymentIntents.create({
+          amount: fiatPence,
+          currency: "gbp",
+          customer: customerId,
+          payment_method: saved.payment_method_id,
+          off_session: true,
+          confirm: true,
+          description: `Entry EP top-up — ${epAmount} EP (saved card)`,
+          metadata: {
+            type: "ep_purchase",
+            tenant_org_id: auth.orgId,
+            ep_amount: String(epAmount),
+            fiat_rate_pence: String(config.fiat_rate_pence),
+            purchase_id: purchase.id,
+          },
+        });
+      } else {
+        // First-time (or "use a different card") path: let Stripe show its
+        // payment sheet. setup_future_usage + customer mean the card will
+        // be attached to the Customer after a successful payment, so the
+        // NEXT top-up can take the one-click path above.
+        paymentIntent = await stripe.paymentIntents.create({
+          amount: fiatPence,
+          currency: "gbp",
+          customer: customerId,
+          setup_future_usage: "off_session",
+          automatic_payment_methods: { enabled: true },
+          description: `Entry EP top-up — ${epAmount} EP`,
+          metadata: {
+            type: "ep_purchase",
+            tenant_org_id: auth.orgId,
+            ep_amount: String(epAmount),
+            fiat_rate_pence: String(config.fiat_rate_pence),
+            purchase_id: purchase.id,
+          },
+        });
+      }
     } catch (stripeErr) {
       // Stripe failed — mark the pending purchase as failed for audit
       await db
@@ -137,6 +178,10 @@ export async function POST(request: NextRequest) {
       data: {
         client_secret: paymentIntent.client_secret,
         payment_intent_id: paymentIntent.id,
+        // Off-session charges may complete server-side ("succeeded") or need
+        // the browser to handle 3DS ("requires_action"). Surface the status
+        // so the UI can skip the Stripe sheet on the happy path.
+        status: paymentIntent.status,
         ep_amount: epAmount,
         fiat_pence: fiatPence,
         fiat_currency: "GBP",

@@ -488,6 +488,13 @@ function InlineError({ onRetry }: { onRetry: () => void }) {
 // Float tab — current balance + Buy EP flow
 // ---------------------------------------------------------------------------
 
+interface SavedCard {
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+}
+
 function FloatTab({
   balance,
   onBought,
@@ -499,9 +506,71 @@ function FloatTab({
   const [amount, setAmount] = useState("1000");
   const [purchasing, setPurchasing] = useState(false);
   const [status, setStatus] = useState("");
-  // Confirmation modal — protects against fat-finger large purchases.
-  // "Confirm" in the form opens this; actual Stripe redirect happens from here.
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // Saved card — null means "no card on file yet", drives the 1-click UX.
+  // forceNewCard=true bypasses the saved card on next Confirm so the tenant
+  // can pay with a different card without having to remove the saved one.
+  const [savedCard, setSavedCard] = useState<SavedCard | null>(null);
+  const [savedCardLoaded, setSavedCardLoaded] = useState(false);
+  const [forceNewCard, setForceNewCard] = useState(false);
+  const [removingCard, setRemovingCard] = useState(false);
+
+  // Load the saved card once on mount. Stays null if nothing's saved.
+  const loadSavedCard = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/ep/payment-method", { cache: "no-store" });
+      if (res.ok) {
+        const { data } = await res.json();
+        setSavedCard((data ?? null) as SavedCard | null);
+      }
+    } catch {
+      /* network — UI just falls back to "no saved card" */
+    }
+    setSavedCardLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    loadSavedCard();
+  }, [loadSavedCard]);
+
+  // Post-redirect sync — Stripe appends ?payment_intent=pi_xxx on return_url
+  // after the hosted payment sheet. If this was the first-time top-up and the
+  // card was just captured via setup_future_usage, sync it to our settings
+  // so the next click can be one-click. Safe to call repeatedly.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const pi = params.get("payment_intent");
+    const status = params.get("redirect_status");
+    if (pi && status === "succeeded") {
+      fetch("/api/admin/ep/payment-method", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payment_intent_id: pi }),
+      })
+        .then(() => loadSavedCard())
+        .catch(() => {});
+      // Clean the URL so a refresh doesn't re-fire the sync
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete("payment_intent");
+      clean.searchParams.delete("payment_intent_client_secret");
+      clean.searchParams.delete("redirect_status");
+      window.history.replaceState({}, "", clean.toString());
+    }
+  }, [loadSavedCard]);
+
+  const handleRemoveCard = async () => {
+    if (!savedCard) return;
+    setRemovingCard(true);
+    try {
+      await fetch("/api/admin/ep/payment-method", { method: "DELETE" });
+      setSavedCard(null);
+    } catch {
+      /* network */
+    }
+    setRemovingCard(false);
+  };
 
   const handleBuy = async () => {
     const ep = parseInt(amount, 10);
@@ -511,21 +580,47 @@ function FloatTab({
     }
     setPurchasing(true);
     setStatus("");
+    const canUseSaved = !!savedCard && !forceNewCard;
     try {
       const res = await fetch("/api/admin/ep/purchase-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ep_amount: ep }),
+        body: JSON.stringify({ ep_amount: ep, use_saved: canUseSaved }),
       });
       if (!res.ok) {
         const { error } = await res.json();
         throw new Error(error || "Failed to create purchase");
       }
       const { data } = await res.json();
+
+      // One-click happy path — the server already confirmed the PI off-session.
+      // No Stripe sheet to open; tell the user it worked and refresh the balance.
+      if (canUseSaved && data.status === "succeeded") {
+        setStatus(`Charged your saved card — ${ep} EP on the way.`);
+        onBought();
+        return;
+      }
+
+      // One-click path that hit SCA / bank 3DS. Hand the client_secret to
+      // stripe.js to complete the challenge, then treat like a normal redirect.
       const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
       if (!pk) throw new Error("Stripe publishable key not configured");
       const stripe = await loadStripe(pk);
       if (!stripe) throw new Error("Stripe failed to load");
+
+      if (canUseSaved && data.status === "requires_action") {
+        const { error } = await stripe.handleNextAction({
+          clientSecret: data.client_secret,
+        });
+        if (error) throw new Error(error.message || "Authentication failed");
+        setStatus("Payment confirmed after 3DS.");
+        onBought();
+        return;
+      }
+
+      // Fresh-card path — open Stripe's hosted payment sheet. The redirect
+      // URL preserves ?payment_intent=... so the post-redirect effect above
+      // can sync the card for next time.
       const { error } = await stripe.confirmPayment({
         clientSecret: data.client_secret,
         confirmParams: {
@@ -533,13 +628,13 @@ function FloatTab({
         },
       });
       if (error) throw new Error(error.message || "Payment failed");
-      // Stripe redirects away on success; if we get here it's pending
       setStatus("Payment pending confirmation");
       onBought();
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Error");
     } finally {
       setPurchasing(false);
+      setForceNewCard(false);
     }
   };
 
@@ -623,6 +718,63 @@ function FloatTab({
         {showBuy && (
           <div className="mt-4 space-y-4">
             <Separator />
+
+            {/* Saved-card strip. Visible once the tenant has topped up at
+                least once — all subsequent Buy EP clicks skip the Stripe
+                sheet and charge this card off-session in one request. */}
+            {savedCardLoaded && savedCard && !forceNewCard && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/5 p-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-11 shrink-0 items-center justify-center rounded-md bg-foreground text-[10px] font-bold uppercase tracking-widest text-background">
+                    {savedCard.brand}
+                  </div>
+                  <div className="text-xs">
+                    <p className="font-semibold text-foreground">
+                      Saved card · •••• {savedCard.last4}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Expires {String(savedCard.exp_month).padStart(2, "0")}/
+                      {String(savedCard.exp_year).slice(-2)} ·
+                      <span className="ml-1">One-click top-ups from now on.</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setForceNewCard(true)}
+                    disabled={purchasing}
+                    className="font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    Use a different card
+                  </button>
+                  <span className="text-muted-foreground/40">·</span>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCard}
+                    disabled={purchasing || removingCard}
+                    className="font-medium text-muted-foreground hover:text-destructive disabled:opacity-50"
+                  >
+                    {removingCard ? "Removing…" : "Remove"}
+                  </button>
+                </div>
+              </div>
+            )}
+            {savedCardLoaded && savedCard && forceNewCard && (
+              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 p-3 text-[11px] text-muted-foreground">
+                <span>
+                  Using a different card for this top-up. Your saved card stays on file.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setForceNewCard(false)}
+                  className="font-medium text-foreground hover:underline"
+                >
+                  Use saved instead
+                </button>
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
               <div className="space-y-2">
                 <Label htmlFor="ep-amount">EP amount</Label>
@@ -648,6 +800,7 @@ function FloatTab({
                   onClick={() => {
                     setShowBuy(false);
                     setStatus("");
+                    setForceNewCard(false);
                   }}
                   disabled={purchasing}
                 >
@@ -693,7 +846,9 @@ function FloatTab({
           <DialogHeader>
             <DialogTitle>Confirm EP purchase</DialogTitle>
             <DialogDescription>
-              You&apos;ll be redirected to Stripe to complete the payment.
+              {savedCard && !forceNewCard
+                ? `Charging your saved ${savedCard.brand} •••• ${savedCard.last4}.`
+                : "You'll be redirected to Stripe to complete the payment."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
@@ -740,7 +895,9 @@ function FloatTab({
               ) : (
                 <Plus size={14} />
               )}
-              Go to Stripe
+              {savedCard && !forceNewCard
+                ? `Charge ${savedCard.brand} •••• ${savedCard.last4}`
+                : "Go to Stripe"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -106,6 +106,23 @@ export function stripeAccountKey(orgId: string): string {
   return `${orgId}_stripe_account`;
 }
 
+/**
+ * Settings key for the tenant's Stripe Customer used for EP top-up saved-card
+ * billing. This is the PLATFORM's Stripe Customer (not the tenant's Connect
+ * account) — it exists solely to attach PaymentMethods against so subsequent
+ * Buy EP clicks can use off-session confirmation.
+ *
+ * Shape stored under this key:
+ *   {
+ *     customer_id: "cus_xxx",
+ *     default_payment_method_id: "pm_xxx" | null,
+ *     card: { brand, last4, exp_month, exp_year } | null
+ *   }
+ */
+export function epBillingKey(orgId: string): string {
+  return `${orgId}_ep_billing`;
+}
+
 /** Generate the platform plan settings key for a given org */
 export function planKey(orgId: string): string {
   return `${orgId}_plan`;

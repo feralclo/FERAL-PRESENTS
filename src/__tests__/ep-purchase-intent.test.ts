@@ -36,6 +36,13 @@ vi.mock("@/lib/ep/config", () => ({
   epToPence: (ep: number, rate: number) => Math.round(ep * rate),
 }));
 
+const mockGetOrCreateEpCustomer = vi.fn();
+const mockGetEpBillingRecord = vi.fn();
+vi.mock("@/lib/ep/billing", () => ({
+  getOrCreateEpCustomer: (...args: unknown[]) => mockGetOrCreateEpCustomer(...args),
+  getEpBillingRecord: (...args: unknown[]) => mockGetEpBillingRecord(...args),
+}));
+
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
   captureMessage: vi.fn(),
@@ -129,6 +136,10 @@ describe("POST /api/admin/ep/purchase-intent", () => {
     mockCreatePaymentIntent.mockReset();
     mockPurchaseInsert.mockReset();
     mockPurchaseUpdate.mockReset();
+    mockGetOrCreateEpCustomer.mockReset();
+    mockGetEpBillingRecord.mockReset();
+    mockGetOrCreateEpCustomer.mockResolvedValue("cus_test_stub");
+    mockGetEpBillingRecord.mockResolvedValue(null);
   });
 
   it("returns 401 when not authenticated", async () => {

@@ -74,6 +74,7 @@ import type {
 } from "@/types/reps";
 import { DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
 import { partitionQuestsByEventDate } from "@/lib/rep-quest-grouping";
+import { QuestCardPreview } from "./QuestCardPreview";
 
 const QUEST_TYPE_LABELS: Record<QuestType, string> = {
   social_post: "Social Post",
@@ -106,26 +107,16 @@ const QUEST_STATUS_VARIANT: Record<QuestStatus, "success" | "warning" | "seconda
   draft: "outline",
 };
 
+// proof_type="none" is intentionally absent — iOS currently has no CTA for
+// no-proof quests (the submission UI is EmptyView + canSubmit=false), so
+// letting tenants pick it would create quests reps can't complete.
 const PROOF_TYPE_OPTIONS: ReadonlyArray<{ value: QuestProofType; label: string; hint: string }> = [
   { value: "screenshot", label: "Screenshot", hint: "Rep uploads an image as proof" },
   { value: "url", label: "URL / link", hint: "Rep pastes a link to their post" },
-  { value: "instagram_link", label: "Instagram link", hint: "Rep pastes their @handle post link" },
+  { value: "instagram_link", label: "Instagram link", hint: "Rep pastes their Instagram post link" },
   { value: "tiktok_link", label: "TikTok link", hint: "Rep pastes their TikTok post link" },
   { value: "text", label: "Text note", hint: "Rep writes a short free-text submission" },
-  { value: "none", label: "No proof", hint: "You verify externally — auto-approve recommended" },
 ];
-
-// Colour conversion — iOS stores accent as an integer 0..0xFFFFFF; the
-// form uses CSS hex strings. Null round-trip signals "inherit promoter".
-function hexIntToCss(n: number | null | undefined): string {
-  if (typeof n !== "number" || !Number.isFinite(n)) return "";
-  return `#${Math.max(0, Math.min(0xffffff, Math.floor(n))).toString(16).padStart(6, "0")}`;
-}
-function cssHexToInt(s: string): number | null {
-  const m = s.trim().match(/^#?([0-9a-fA-F]{6})$/);
-  if (!m) return null;
-  return parseInt(m[1], 16);
-}
 
 export function QuestsTab() {
   const orgId = useOrgId();
@@ -141,11 +132,8 @@ export function QuestsTab() {
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [questType, setQuestType] = useState<QuestType>("social_post");
   const [platform, setPlatform] = useState<"tiktok" | "instagram" | "any">("any");
-  const [imageUrl, setImageUrl] = useState("");
-  const [bannerImageUrl, setBannerImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [pointsReward, setPointsReward] = useState("");
   const [maxCompletions, setMaxCompletions] = useState("");
@@ -158,12 +146,14 @@ export function QuestsTab() {
   const [currencyReward, setCurrencyReward] = useState("");
   const [salesTarget, setSalesTarget] = useState("");
   const [eventId, setEventId] = useState("");
-  // v2 fields — exposed per iOS §6.5 spec
+  // v2 fields that iOS actively renders.
+  // Cut per iOS-session review: description (never rendered), image_url (merged
+  // with cover_image_url server-side), banner_image_url (events-only, dead on
+  // quests), accent_hex + accent_hex_secondary (iOS now derives gradient stops
+  // from the promoter's accent — one brand colour cascades everywhere).
   const [subtitle, setSubtitle] = useState("");
   const [proofType, setProofType] = useState<QuestProofType>("screenshot");
   const [coverImageUrl, setCoverImageUrl] = useState("");
-  const [accentHex, setAccentHex] = useState<string>(""); // e.g. "#B845FF"
-  const [accentHexSecondary, setAccentHexSecondary] = useState<string>("");
   const [autoApprove, setAutoApprove] = useState(false);
 
   // Events list for event picker + date awareness (for past-vs-upcoming grouping)
@@ -183,6 +173,10 @@ export function QuestsTab() {
 
   // Platform XP config
   const [platformConfig, setPlatformConfig] = useState<PlatformXPConfig>(DEFAULT_PLATFORM_XP_CONFIG);
+
+  // Promoter accent — feeds the live iOS quest-card preview. Null until loaded;
+  // preview falls through to the iOS platform-default violet in that case.
+  const [promoterAccentHex, setPromoterAccentHex] = useState<number | null>(null);
 
   // Submissions review — global view
   const [view, setView] = useState<"quests" | "submissions">("quests");
@@ -209,7 +203,7 @@ export function QuestsTab() {
 
   useEffect(() => { loadQuests(); }, [loadQuests]);
 
-  // Fetch platform XP config + events on mount
+  // Fetch platform XP config + events + promoter on mount
   useEffect(() => {
     fetch("/api/platform/xp-config")
       .then((r) => r.json())
@@ -230,6 +224,16 @@ export function QuestsTab() {
           );
       })
       .catch(() => {});
+    // Promoter accent for the live preview — iOS cascades gradient stops off
+    // this one value. Soft fail: preview falls back to platform violet.
+    fetch("/api/admin/promoter")
+      .then((r) => r.json())
+      .then((json) => {
+        if (typeof json.data?.accent_hex === "number") {
+          setPromoterAccentHex(json.data.accent_hex);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const loadAllSubmissions = useCallback(async () => {
@@ -248,22 +252,20 @@ export function QuestsTab() {
   }, [view, loadAllSubmissions]);
 
   const openCreate = () => {
-    setEditId(null); setTitle(""); setDescription(""); setInstructions("");
+    setEditId(null); setTitle(""); setInstructions("");
     setInstructionsAutoGenerated(false);
-    setQuestType("social_post"); setPlatform("any"); setImageUrl(""); setBannerImageUrl(""); setVideoUrl("");
+    setQuestType("social_post"); setPlatform("any"); setVideoUrl("");
     setPointsReward(String(platformConfig.xp_per_quest_type.social_post));
     setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
     setReferenceUrl(""); setUsesSound(false); setCurrencyReward("0");
     setSalesTarget("");
     // Pre-select event when filtered to a specific event
     setEventId(eventFilter !== "all" && eventFilter !== "global" ? eventFilter : "");
-    // v2 defaults — proof_type=screenshot matches iOS default for social/story
-    // quests; cover/accent inherit from the promoter until the tenant overrides.
+    // v2 defaults. proof_type="screenshot" matches iOS default for social/story
+    // quests; cover_image_url blank → iOS shows the promoter-accent gradient.
     setSubtitle("");
     setProofType("screenshot");
     setCoverImageUrl("");
-    setAccentHex("");
-    setAccentHexSecondary("");
     setAutoApprove(false);
     setVideoError("");
     setDialogStep("type");
@@ -272,11 +274,11 @@ export function QuestsTab() {
   };
 
   const openEdit = (q: RepQuest) => {
-    setEditId(q.id); setTitle(q.title); setDescription(q.description || "");
+    setEditId(q.id); setTitle(q.title);
     setInstructions(q.instructions || ""); setInstructionsAutoGenerated(false);
     setQuestType(q.quest_type);
     setPlatform(q.platform || "any");
-    setImageUrl(q.image_url || ""); setBannerImageUrl(q.banner_image_url || ""); setVideoUrl(q.video_url || "");
+    setVideoUrl(q.video_url || "");
     setPointsReward(String(q.xp_reward ?? q.points_reward));
     setMaxCompletions(q.max_completions != null ? String(q.max_completions) : "");
     setExpiresAt(q.expires_at ? q.expires_at.slice(0, 16) : ""); setNotifyReps(q.notify_reps);
@@ -284,12 +286,17 @@ export function QuestsTab() {
     setCurrencyReward(String(q.ep_reward ?? q.currency_reward ?? 0));
     setSalesTarget(q.sales_target != null ? String(q.sales_target) : "");
     setEventId(q.event_id || "");
-    // v2 fields — populate with whatever was stored, default to sensible values
     setSubtitle(q.subtitle || "");
-    setProofType((q.proof_type as QuestProofType) || "screenshot");
-    setCoverImageUrl(q.cover_image_url || "");
-    setAccentHex(hexIntToCss(q.accent_hex));
-    setAccentHexSecondary(hexIntToCss(q.accent_hex_secondary));
+    // Existing "none" proof_type is a dead-end on iOS — coerce to screenshot on edit
+    // so resave with the new form doesn't re-lock the quest in the broken state.
+    setProofType(
+      q.proof_type === "none" || !q.proof_type
+        ? "screenshot"
+        : (q.proof_type as QuestProofType)
+    );
+    // v2 cascade: cover_image_url is the only quest image iOS reads; image_url
+    // lingers only on legacy rows. Populate from whichever the row has.
+    setCoverImageUrl(q.cover_image_url || q.image_url || "");
     setAutoApprove(q.auto_approve ?? false);
     setVideoError("");
     setDialogStep("form");
@@ -305,14 +312,18 @@ export function QuestsTab() {
     const body = {
       title: title.trim(),
       subtitle: subtitle.trim() || null,
-      description: description.trim() || null,
-      instructions: instructions.trim() || null, quest_type: questType, platform,
+      // `description` column is dead on iOS — don't write to it from new rows.
+      description: null,
+      instructions: instructions.trim() || null,
+      quest_type: questType,
+      platform,
       // v2: proof_type drives the rep submission UI on iOS
       proof_type: proofType,
-      image_url: imageUrl.trim() || null,
-      // v2: cover_image_url is the full-bleed hero on iOS; falls back to image_url
-      cover_image_url: coverImageUrl.trim() || imageUrl.trim() || null,
-      banner_image_url: bannerImageUrl.trim() || null,
+      // Dead on iOS: image_url (merged with cover server-side) + banner_image_url
+      // (events-only). Write null so legacy rows get cleared.
+      image_url: null,
+      cover_image_url: coverImageUrl.trim() || null,
+      banner_image_url: null,
       video_url: videoUrl.trim() || null,
       // Write both v1 (points/currency) and v2 (xp/ep) names — backend
       // accepts either but old reads still populate the legacy columns.
@@ -320,14 +331,17 @@ export function QuestsTab() {
       xp_reward: xp,
       currency_reward: ep,
       ep_reward: ep,
-      // v2: per-quest accent gradient stops (int 0..0xFFFFFF, null=inherit promoter)
-      accent_hex: cssHexToInt(accentHex),
-      accent_hex_secondary: cssHexToInt(accentHexSecondary),
+      // Cut per iOS-session review: quest-level accents no longer configurable.
+      // iOS derives the gradient stops from promoter.accent_hex.
+      accent_hex: null,
+      accent_hex_secondary: null,
       // v2: skip manual review on submission
       auto_approve: autoApprove,
       max_completions: maxCompletions ? Number(maxCompletions) : null,
-      expires_at: expiresAt || null, notify_reps: notifyReps,
-      reference_url: referenceUrl.trim() || null, uses_sound: usesSound,
+      expires_at: expiresAt || null,
+      notify_reps: notifyReps,
+      reference_url: referenceUrl.trim() || null,
+      uses_sound: usesSound,
       sales_target: questType === "sales_milestone" && salesTarget ? Number(salesTarget) : null,
       event_id: eventId || null,
     };
@@ -351,13 +365,10 @@ export function QuestsTab() {
   const openClone = (q: RepQuest) => {
     setEditId(null);
     setTitle(q.title ? `${q.title} (copy)` : "");
-    setDescription(q.description || "");
     setInstructions(q.instructions || "");
     setInstructionsAutoGenerated(false);
     setQuestType(q.quest_type);
     setPlatform(q.platform || "any");
-    setImageUrl(q.image_url || "");
-    setBannerImageUrl(q.banner_image_url || "");
     setVideoUrl(q.video_url || "");
     setPointsReward(String(q.xp_reward ?? q.points_reward));
     setMaxCompletions(""); // fresh completions cap
@@ -368,12 +379,13 @@ export function QuestsTab() {
     setCurrencyReward(String(q.ep_reward ?? q.currency_reward ?? 0));
     setSalesTarget(q.sales_target != null ? String(q.sales_target) : "");
     setEventId(""); // user picks a new event
-    // v2 fields — preserve the brand/proof choices the source quest had
     setSubtitle(q.subtitle || "");
-    setProofType((q.proof_type as QuestProofType) || "screenshot");
-    setCoverImageUrl(q.cover_image_url || "");
-    setAccentHex(hexIntToCss(q.accent_hex));
-    setAccentHexSecondary(hexIntToCss(q.accent_hex_secondary));
+    setProofType(
+      q.proof_type === "none" || !q.proof_type
+        ? "screenshot"
+        : (q.proof_type as QuestProofType)
+    );
+    setCoverImageUrl(q.cover_image_url || q.image_url || "");
     setAutoApprove(q.auto_approve ?? false);
     setVideoError("");
     setDialogStep("form"); // skip type picker — we know the type
@@ -760,7 +772,15 @@ export function QuestsTab() {
                     ) : (
                       <Button variant="ghost" size="icon-xs" onClick={() => { setView("submissions"); setSubFilter("all"); setQuestFilter(quest.id); }} title="View submissions"><Eye size={13} /></Button>
                     )}
-                    <Button variant="ghost" size="icon-xs" onClick={() => openClone(quest)} title="Duplicate for another event"><Copy size={13} /></Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 px-2 text-[11px]"
+                      onClick={() => openClone(quest)}
+                      title="Clone this quest for a new event"
+                    >
+                      <Copy size={12} /> Clone
+                    </Button>
                     <Button variant="ghost" size="icon-xs" onClick={() => openEdit(quest)} title="Edit"><Pencil size={13} /></Button>
                     <Button variant="ghost" size="icon-xs" onClick={() => handleDelete(quest.id)} className="text-muted-foreground hover:text-destructive" title="Archive"><Trash2 size={13} /></Button>
                   </div>
@@ -1064,7 +1084,13 @@ export function QuestsTab() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className={dialogStep === "type" ? "max-w-xl" : "max-w-2xl max-h-[85vh] flex flex-col"}>
+        <DialogContent
+          className={
+            dialogStep === "type"
+              ? "max-w-xl"
+              : "max-w-4xl max-h-[90vh] flex flex-col sm:p-6"
+          }
+        >
           <DialogHeader>
             <DialogTitle>{editId ? "Edit Quest" : dialogStep === "type" ? "New Quest" : "Create Quest"}</DialogTitle>
             <DialogDescription>
@@ -1124,8 +1150,13 @@ export function QuestsTab() {
               </div>
             </div>
           ) : (
-            /* ── Quest Form ── */
+            /* ── Quest Form ──
+                 Two-column layout: form on the left, live iOS-card preview on
+                 the right (sticky at desktop). Preview collapses below the
+                 form on mobile so the tenant still sees what they're creating. */
             <>
+            <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+              <div className="flex min-h-0 flex-1 flex-col gap-3">
               {/* Navigation bar */}
               <div className="space-y-3">
                 {!editId ? (
@@ -1180,112 +1211,97 @@ export function QuestsTab() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={3} />
-                    </div>
-                    <div className="space-y-2">
                       <Label>Event</Label>
-                      <select
-                        value={eventId}
-                        onChange={(e) => setEventId(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                      >
-                        <option value="">Global — visible to all reps</option>
-                        {events.map((ev) => (
-                          <option key={ev.id} value={ev.id}>{ev.name}</option>
-                        ))}
-                      </select>
+                      {(() => {
+                        // Partition events: upcoming (or undated) at the top,
+                        // past events grouped below. Most tenants are creating
+                        // quests for what's NEXT, not February's event.
+                        const nowMs = Date.now();
+                        const upcoming = events
+                          .filter(
+                            (ev) =>
+                              !ev.date_start ||
+                              new Date(ev.date_start).getTime() >= nowMs
+                          )
+                          .sort((a, b) => {
+                            const aT = a.date_start ? new Date(a.date_start).getTime() : Number.POSITIVE_INFINITY;
+                            const bT = b.date_start ? new Date(b.date_start).getTime() : Number.POSITIVE_INFINITY;
+                            return aT - bT;
+                          });
+                        const past = events
+                          .filter(
+                            (ev) =>
+                              ev.date_start &&
+                              new Date(ev.date_start).getTime() < nowMs
+                          )
+                          .sort((a, b) => {
+                            const aT = new Date(a.date_start!).getTime();
+                            const bT = new Date(b.date_start!).getTime();
+                            return bT - aT; // most recent first
+                          });
+                        const fmt = (ev: { name: string; date_start: string | null }) => {
+                          if (!ev.date_start) return ev.name;
+                          const d = new Date(ev.date_start);
+                          const sameYear = d.getFullYear() === new Date().getFullYear();
+                          return `${ev.name}  ·  ${d.toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            ...(sameYear ? {} : { year: "2-digit" }),
+                          })}`;
+                        };
+                        return (
+                          <select
+                            value={eventId}
+                            onChange={(e) => setEventId(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                          >
+                            <option value="">Always-on — every active rep sees it</option>
+                            {upcoming.length > 0 && (
+                              <optgroup label="Live & upcoming">
+                                {upcoming.map((ev) => (
+                                  <option key={ev.id} value={ev.id}>{fmt(ev)}</option>
+                                ))}
+                              </optgroup>
+                            )}
+                            {past.length > 0 && (
+                              <optgroup label="Past events">
+                                {past.map((ev) => (
+                                  <option key={ev.id} value={ev.id}>{fmt(ev)}</option>
+                                ))}
+                              </optgroup>
+                            )}
+                          </select>
+                        );
+                      })()}
                       <p className="text-[11px] text-muted-foreground">
                         {eventId
                           ? "Only reps assigned to this event will see the quest."
-                          : "Every active rep will see this quest."}
+                          : "Every active rep will see this quest — platform-wide."}
                       </p>
                     </div>
 
-                    {/* ── iOS appearance: cover + accent gradient ── */}
+                    {/* ── Cover image. iOS uses the promoter's accent for the
+                          gradient stops; no per-quest colour knobs — one brand
+                          colour cascades across everything. ── */}
                     <div className="flex items-center gap-3 pt-2">
                       <div className="h-px flex-1 bg-border" />
                       <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">
-                        Appearance (iOS)
+                        Cover
                       </span>
                       <div className="h-px flex-1 bg-border" />
                     </div>
                     <div className="space-y-2">
                       <ImageUpload
-                        label="Cover Image"
+                        label="Cover image"
                         value={coverImageUrl}
                         onChange={setCoverImageUrl}
                         uploadKey={editId ? `quest_${editId}_cover` : undefined}
                       />
                       <p className="text-[10px] text-muted-foreground">
-                        Full-bleed hero on the iOS quest card. Falls back to the downloadable image if empty.
+                        Full-bleed hero on the iOS quest card. Leave blank to show a
+                        gradient in your promoter&apos;s brand colour.
                       </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label>
-                          Accent colour{" "}
-                          <span className="text-[10px] text-muted-foreground font-normal">(top-left stop)</span>
-                        </Label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={accentHex || "#b845ff"}
-                            onChange={(e) => setAccentHex(e.target.value)}
-                            className="h-9 w-10 shrink-0 cursor-pointer rounded border border-border bg-background"
-                          />
-                          <Input
-                            value={accentHex}
-                            onChange={(e) => setAccentHex(e.target.value)}
-                            placeholder="Inherit promoter"
-                            className="font-mono text-xs"
-                          />
-                          {accentHex && (
-                            <button
-                              type="button"
-                              onClick={() => setAccentHex("")}
-                              className="text-[11px] text-muted-foreground hover:text-foreground"
-                              title="Clear — inherit promoter accent"
-                            >
-                              clear
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>
-                          Secondary{" "}
-                          <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
-                        </Label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={accentHexSecondary || "#b845ff"}
-                            onChange={(e) => setAccentHexSecondary(e.target.value)}
-                            className="h-9 w-10 shrink-0 cursor-pointer rounded border border-border bg-background"
-                          />
-                          <Input
-                            value={accentHexSecondary}
-                            onChange={(e) => setAccentHexSecondary(e.target.value)}
-                            placeholder="Single-stop"
-                            className="font-mono text-xs"
-                          />
-                          {accentHexSecondary && (
-                            <button
-                              type="button"
-                              onClick={() => setAccentHexSecondary("")}
-                              className="text-[11px] text-muted-foreground hover:text-foreground"
-                              title="Clear"
-                            >
-                              clear
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      The iOS quest card renders a gradient from the accent colour to the secondary. Leave blank to inherit your promoter accent.
-                    </p>
                   </div>
                 )}
 
@@ -1357,20 +1373,17 @@ export function QuestsTab() {
                   </div>
                 )}
 
-                {/* ── Tab: Content (story_share + social_post + content_creation) ── */}
+                {/* ── Tab: Content (story_share + social_post + content_creation) ──
+                      Still-image for download is the quest's cover (set on the
+                      Details tab — iOS uses one image). This tab now scopes to
+                      video-only, which is genuinely distinct from the card hero. */}
                 {currentTabLabel === "Content" && (
                   <div className="space-y-4">
                     <p className="text-xs text-muted-foreground">
                       {questType === "story_share"
-                        ? "Upload the image or video reps will download and share on their story. You can add one or both."
-                        : "Optionally upload an image or video for reps to download. Useful when they need specific content to post."}
+                        ? "Optional — upload a video reps can download and share. The cover image from Details doubles as the downloadable still."
+                        : "Optional — attach a reference video for reps to use as inspiration."}
                     </p>
-                    <ImageUpload
-                      label={questType === "story_share" ? "Story Image" : "Downloadable Image"}
-                      value={imageUrl}
-                      onChange={setImageUrl}
-                      uploadKey={editId ? `quest_${editId}_image` : undefined}
-                    />
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1.5"><Video size={12} /> {questType === "story_share" ? "Story Video" : "Downloadable Video"}</Label>
                       {videoUrl ? (
@@ -1480,16 +1493,6 @@ export function QuestsTab() {
                 {/* ── Tab: Publish (all types) ── */}
                 {currentTabLabel === "Publish" && (
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <ImageUpload
-                        label="Card Banner"
-                        value={bannerImageUrl}
-                        onChange={setBannerImageUrl}
-                        uploadKey={editId ? `quest_${editId}_banner` : undefined}
-                      />
-                      <p className="text-[10px] text-muted-foreground">Optional decorative image shown on the quest card background</p>
-                    </div>
-
                     <div className="flex items-center gap-3">
                       <div className="h-px flex-1 bg-border" />
                       <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Rewards</span>
@@ -1582,14 +1585,38 @@ export function QuestsTab() {
                   </>);
                 })()}
               </div>
+              </div>
 
-              <DialogFooter>
-                {formTab > 0 && (
-                  <Button variant="ghost" onClick={() => setFormTab(formTab - 1)} className="mr-auto">
-                    <ArrowLeft size={14} /> Back
-                  </Button>
-                )}
-                {formTab < QUEST_FORM_TABS[questType].length - 1 ? (
+              {/* ── Live preview column ── */}
+              <div className="shrink-0 lg:w-[280px] xl:w-[300px]">
+                <div className="lg:sticky lg:top-0">
+                  <QuestCardPreview
+                    title={title}
+                    subtitle={subtitle}
+                    coverImageUrl={coverImageUrl}
+                    promoterAccentHex={promoterAccentHex}
+                    questType={questType}
+                    xp={
+                      (platformConfig.xp_per_quest_type as Record<string, number>)[questType] ??
+                      Number(pointsReward) ??
+                      0
+                    }
+                    ep={Number(currencyReward) || 0}
+                    proofType={proofType}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer spans full dialog width, outside the 2-col layout */}
+            <DialogFooter>
+              {formTab > 0 && (
+                <Button variant="ghost" onClick={() => setFormTab(formTab - 1)} className="mr-auto">
+                  <ArrowLeft size={14} /> Back
+                </Button>
+              )}
+              {dialogStep === "form" &&
+                (formTab < QUEST_FORM_TABS[questType].length - 1 ? (
                   <Button onClick={() => setFormTab(formTab + 1)} disabled={formTab === 0 && !title.trim()}>
                     Next
                   </Button>
@@ -1601,8 +1628,8 @@ export function QuestsTab() {
                       {saving ? "Saving..." : editId ? "Save Changes" : "Create Quest"}
                     </Button>
                   </>
-                )}
-              </DialogFooter>
+                ))}
+            </DialogFooter>
             </>
           )}
         </DialogContent>

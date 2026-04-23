@@ -313,13 +313,14 @@ export function TeamTab() {
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
+      {/* Stats — "Pending Applications" intentionally removed. The amber
+          handoff banner below surfaces the same count as an actionable CTA,
+          so keeping a separate read-only StatCard was pure redundancy. */}
       {stats && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-3 gap-4">
           <StatCard label="Total Reps" value={String(stats.total_reps)} icon={UsersRound} />
           <StatCard label="Sales via Reps" value={String(stats.total_sales_via_reps)} icon={TrendingUp} />
           <StatCard label="Revenue via Reps" value={`£${stats.total_revenue_via_reps.toFixed(2)}`} icon={DollarSign} />
-          <StatCard label="Pending Applications" value={String(stats.pending_applications)} icon={UserPlus} />
         </div>
       )}
 

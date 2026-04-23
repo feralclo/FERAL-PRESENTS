@@ -209,9 +209,12 @@ describe("EP page: flow explainer disclaimer copy", () => {
     await waitFor(() =>
       expect(screen.getByText(/Entry Market/i)).toBeInTheDocument()
     );
-    expect(
-      screen.getByText(/don't touch your balance/i)
-    ).toBeInTheDocument();
+    // Core idea that needs to be visible: Entry Market spending is not the
+    // tenant's. Multiple sentences carry that meaning; assert at-least-one.
+    const matches = screen.getAllByText(
+      /they didn't buy from you|not shown here|not yours|Not shown here/i
+    );
+    expect(matches.length).toBeGreaterThan(0);
   });
 });
 

@@ -31,6 +31,7 @@ import {
   Shield,
   TrendingUp,
   Megaphone,
+  UsersRound,
 } from "lucide-react";
 
 /* ── Navigation — flat list (Shopify-style) ── */
@@ -81,6 +82,20 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { href: "/admin/ticketstore/", label: "Themes" },
       { href: "/admin/merch-store/online/", label: "Merch Store" },
+    ],
+  },
+  // ── Rep programme — lifted out of Marketing / Storefront into its own
+  //    section. The rep programme is its own product surface (quests, EP,
+  //    brand identity), not a sub-bucket of either. Promoter profile moved
+  //    here because it's rep-facing brand, nothing to do with ticket
+  //    storefront. EP moved here because it IS the rep programme's money.
+  {
+    href: "/admin/reps/",
+    label: "Rep Programme",
+    icon: UsersRound,
+    children: [
+      { href: "/admin/reps/", label: "Overview" },
+      { href: "/admin/ep/", label: "EP" },
       { href: "/admin/promoter/", label: "Promoter profile" },
     ],
   },
@@ -89,8 +104,6 @@ const NAV_ITEMS: NavItem[] = [
     label: "Marketing",
     icon: Megaphone,
     children: [
-      { href: "/admin/reps/", label: "Reps" },
-      { href: "/admin/ep/", label: "EP Economy" },
       { href: "/admin/campaigns/", label: "Campaigns" },
       { href: "/admin/campaigns/email/", label: "Email Campaigns" },
       { href: "/admin/communications/", label: "Communications" },

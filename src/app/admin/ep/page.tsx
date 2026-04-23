@@ -224,10 +224,10 @@ export default function EpAdminPage() {
           <Coins size={20} className="text-primary" />
           <div>
             <h1 className="font-mono text-sm font-bold uppercase tracking-[2px] text-foreground">
-              EP Economy
+              EP
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Buy EP, fund quest rewards, get paid when reps redeem.
+              Your rep-reward points — buy them, give them out, get paid when reps redeem.
             </p>
           </div>
         </div>
@@ -270,12 +270,29 @@ export default function EpAdminPage() {
             body="Monthly Stripe Transfer — 90% to you, 10% Entry retains."
           />
         </div>
-        <p className="mt-3 border-t border-border/60 pt-3 text-[11px] leading-relaxed text-muted-foreground">
-          Only EP spent on <span className="font-medium text-foreground">your</span> rewards
-          flows back to you. Reps can also spend EP in the Entry Market (global
-          partner shop) — those redemptions don&apos;t touch your balance and don&apos;t
-          involve your payout.
-        </p>
+        <div className="mt-3 space-y-2 border-t border-border/60 pt-3 text-[11px] leading-relaxed text-muted-foreground">
+          <p>
+            <span className="font-semibold text-foreground">Reps can spend EP in two places.</span>{" "}
+            The numbers on this page only track one of them.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-md border border-success/30 bg-success/5 p-2.5">
+              <p className="font-semibold text-success">Your rewards → you get paid</p>
+              <p className="mt-0.5 text-muted-foreground">
+                When reps spend on the rewards <em>you</em> listed (guest list,
+                drinks, merch), Entry pays you 90% at month end. Counts here.
+              </p>
+            </div>
+            <div className="rounded-md border border-border bg-muted/30 p-2.5">
+              <p className="font-semibold text-foreground">Entry Market → not yours</p>
+              <p className="mt-0.5 text-muted-foreground">
+                Reps can also spend EP on Entry-branded merch + cross-event
+                vouchers. Those are Entry&apos;s own sales — you get nothing
+                (because they didn&apos;t buy from you). Not shown here.
+              </p>
+            </div>
+          </div>
+        </div>
       </Card>
 
       {/* Low-float warning */}

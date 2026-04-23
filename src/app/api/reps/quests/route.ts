@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       instructions,
       quest_type,
       platform = "any",
-      proof_type = "none",
+      proof_type = "screenshot",
       image_url,
       cover_image_url,
       banner_image_url,
@@ -165,6 +165,33 @@ export async function POST(request: NextRequest) {
     if (!["tiktok", "instagram", "any"].includes(platform)) {
       return NextResponse.json(
         { error: "platform must be 'tiktok', 'instagram', or 'any'" },
+        { status: 400 }
+      );
+    }
+
+    // proof_type=none would create a quest the iOS client can't submit
+    // (QuestDetailSheet renders EmptyView → no submit button). Block at
+    // write time so we never ship a dead-end quest.
+    if (proof_type === "none") {
+      return NextResponse.json(
+        {
+          error: "proof_type_none_unsupported",
+          message:
+            "proof_type=none is not yet supported by the mobile client; use screenshot, url, or text",
+        },
+        { status: 400 }
+      );
+    }
+    if (
+      !["screenshot", "url", "text", "instagram_link", "tiktok_link"].includes(
+        proof_type
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "proof_type must be 'screenshot', 'url', 'text', 'instagram_link', or 'tiktok_link'",
+        },
         { status: 400 }
       );
     }

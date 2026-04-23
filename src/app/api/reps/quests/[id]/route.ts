@@ -134,6 +134,32 @@ export async function PUT(
         { status: 400 }
       );
     }
+    // Same proof_type guard as POST — see ../route.ts for rationale.
+    if ("proof_type" in updates) {
+      if (updates.proof_type === "none") {
+        return NextResponse.json(
+          {
+            error: "proof_type_none_unsupported",
+            message:
+              "proof_type=none is not yet supported by the mobile client; use screenshot, url, or text",
+          },
+          { status: 400 }
+        );
+      }
+      if (
+        !["screenshot", "url", "text", "instagram_link", "tiktok_link"].includes(
+          updates.proof_type as string
+        )
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "proof_type must be 'screenshot', 'url', 'text', 'instagram_link', or 'tiktok_link'",
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // Platform controls XP — override points_reward based on quest type
     if (updates.quest_type || updates.points_reward !== undefined) {

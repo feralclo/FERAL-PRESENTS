@@ -184,21 +184,21 @@ describe("EP page: flow explainer disclaimer copy", () => {
     );
   });
 
-  it("renders the four-step flow strip with accurate language (no 'cut' jargon)", async () => {
+  it("renders the four-step flow strip with plain-English language (no 'cut' or banker jargon)", async () => {
     const mod = await import("@/app/admin/ep/page");
     const EpAdminPage = mod.default;
     render(<EpAdminPage />);
 
-    // Four step titles must be present
-    await waitFor(() => expect(screen.getByText("You buy EP")).toBeInTheDocument());
-    expect(screen.getByText("Reps earn it")).toBeInTheDocument();
+    // Four step titles must be present — plain-English rewrite of v2.
+    await waitFor(() => expect(screen.getByText("You top up")).toBeInTheDocument());
+    expect(screen.getByText("Reps earn")).toBeInTheDocument();
     expect(screen.getByText("Reps redeem")).toBeInTheDocument();
     expect(screen.getByText("You get paid")).toBeInTheDocument();
 
-    // "cut" language was explicitly flagged by the user — the flow step now
-    // says "10% Entry retains" instead of "minus our 10% cut". Guard it.
-    expect(screen.getByText(/10% Entry retains/i)).toBeInTheDocument();
+    // Jargon the user flagged: no "cut", no "float" in the flow strip body.
+    // The 10% is described as a "service fee," nothing more.
     expect(screen.queryByText(/10% cut/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/service fee/i)).toBeInTheDocument();
   });
 
   it("renders the Entry-Market disclaimer so tenants aren't surprised", async () => {
@@ -207,14 +207,30 @@ describe("EP page: flow explainer disclaimer copy", () => {
     render(<EpAdminPage />);
 
     await waitFor(() =>
-      expect(screen.getByText(/Entry Market/i)).toBeInTheDocument()
+      // Entry Market is now called out in multiple places (flow strip callout
+      // + EarnedTab explainer); getAllByText keeps the test robust to that.
+      expect(screen.getAllByText(/Entry Market/i).length).toBeGreaterThan(0)
     );
     // Core idea that needs to be visible: Entry Market spending is not the
     // tenant's. Multiple sentences carry that meaning; assert at-least-one.
     const matches = screen.getAllByText(
-      /they didn't buy from you|not shown here|not yours|Not shown here/i
+      /not your sales|not shown here|not yours|Not shown here|you\s*'re not involved/i
     );
     expect(matches.length).toBeGreaterThan(0);
+  });
+
+  it("surfaces the FAQ card so tenants can unpack 'why am I paying?'", async () => {
+    const mod = await import("@/app/admin/ep/page");
+    const EpAdminPage = mod.default;
+    render(<EpAdminPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Common questions/i)).toBeInTheDocument()
+    );
+    // The top-of-mind question that motivated this rewrite
+    expect(
+      screen.getByText(/Why am I also paying\?/i)
+    ).toBeInTheDocument();
   });
 });
 

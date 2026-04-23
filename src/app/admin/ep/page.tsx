@@ -227,7 +227,7 @@ export default function EpAdminPage() {
               EP
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your rep-reward points — buy them, give them out, get paid when reps redeem.
+              Your rep programme&apos;s rewards budget. 1 EP = 1p.
             </p>
           </div>
         </div>
@@ -237,89 +237,103 @@ export default function EpAdminPage() {
         </Button>
       </div>
 
-      {/* ─────────────── How the economy flows ───────────────
-          Four-step strip at the top so every tenant grasps the loop
-          the moment they land on the page: money in, value out, money back. */}
+      {/* Thesis line — one plain sentence a tenant can read in 3 seconds and walk
+          away knowing the whole loop. Everything below reinforces it. */}
+      <Card className="border-primary/20 bg-primary/5 p-4">
+        <p className="text-sm leading-relaxed text-foreground">
+          <span className="font-semibold">You top up a rewards budget.</span>{" "}
+          Reps earn from it by promoting you. When they redeem the rewards
+          you&apos;ve set up,{" "}
+          <span className="font-semibold">90% flows back to you</span>{" "}
+          in next month&apos;s bank transfer.
+        </p>
+      </Card>
+
+      {/* How the loop works — the 4-step illustration of the thesis above.
+          Plain language only: no "float," no "ledger," £ values where possible. */}
       <Card className="border-border bg-card p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] sm:items-center">
           <FlowStep
             icon={Plus}
             tone="primary"
-            title="You buy EP"
-            body="Top up your float. 1 EP = £0.01."
+            title="You top up"
+            body="Add to your rewards budget. £50 = 5,000 EP."
           />
           <FlowArrow />
           <FlowStep
             icon={Coins}
             tone="primary"
-            title="Reps earn it"
-            body="Quest approvals pay out from your float."
+            title="Reps earn"
+            body="They complete missions you set (sell tickets, share your posts). Earnings come from your budget."
           />
           <FlowArrow />
           <FlowStep
             icon={Wallet}
             tone="info"
             title="Reps redeem"
-            body="When they spend EP on your rewards specifically."
+            body="They spend it on rewards you offer — free entry, drinks, merch at your events."
           />
           <FlowArrow />
           <FlowStep
             icon={ArrowDownToLine}
             tone="success"
             title="You get paid"
-            body="Monthly Stripe Transfer — 90% to you, 10% Entry retains."
+            body="Next month Entry sends a bank transfer for 90% of what reps redeemed. The 10% is our fee."
           />
         </div>
         <div className="mt-3 space-y-2 border-t border-border/60 pt-3 text-[11px] leading-relaxed text-muted-foreground">
           <p>
-            <span className="font-semibold text-foreground">Reps can spend EP in two places.</span>{" "}
-            The numbers on this page only track one of them.
+            <span className="font-semibold text-foreground">Where reps can spend their EP.</span>{" "}
+            This page only tracks spending that flows back to you.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="rounded-md border border-success/30 bg-success/5 p-2.5">
-              <p className="font-semibold text-success">Your rewards → you get paid</p>
+              <p className="font-semibold text-success">At your events → you get paid</p>
               <p className="mt-0.5 text-muted-foreground">
-                When reps spend on the rewards <em>you</em> listed (guest list,
-                drinks, merch), Entry pays you 90% at month end. Counts here.
+                Rewards <em>you</em> set up (guest list, drinks, merch, free
+                entry). When reps redeem, Entry sends you 90% of the value
+                next month. Shown here.
               </p>
             </div>
             <div className="rounded-md border border-border bg-muted/30 p-2.5">
               <p className="font-semibold text-foreground">Entry Market → not yours</p>
               <p className="mt-0.5 text-muted-foreground">
-                Reps can also spend EP on Entry-branded merch + cross-event
-                vouchers. Those are Entry&apos;s own sales — you get nothing
-                (because they didn&apos;t buy from you). Not shown here.
+                Entry-branded merch and cross-event vouchers reps can buy
+                themselves. Those are Entry&apos;s own sales — you&apos;re not
+                involved, so not shown here.
               </p>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* Low-float warning */}
+      {/* Low-budget warning */}
       {balance?.low_float_warning && (
         <Card className="border-destructive/40 bg-destructive/5 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle size={18} className="mt-0.5 text-destructive" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">You&apos;re running out of EP</p>
+              <p className="text-sm font-medium text-foreground">Your rewards budget is running low</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Your balance ({formatEp(balance.float)}) is below what you&apos;ve already
-                committed to active quests ({formatEp(balance.committed)}). Once you hit
-                zero, quest approvals will stop paying out — top up to keep the programme running.
+                You&apos;ve promised reps {formatEp(balance.committed)} across
+                active missions, but only {formatEp(balance.float)} is left in
+                the budget. Once it hits zero, reps stop earning — top up to
+                keep the programme live.
               </p>
             </div>
           </div>
         </Card>
       )}
 
-      {/* Tab nav */}
+      {/* Tab nav — internal ids (float/earned/ledger/payouts) unchanged so URLs
+          + state keep working; display labels are plain English. */}
       <div className="flex gap-1 border-b border-border">
         {(
           [
-            { id: "float", label: "Float", icon: Wallet },
-            { id: "earned", label: "Earned", icon: Coins },
-            { id: "ledger", label: "Ledger", icon: Scroll },
-            { id: "payouts", label: "Payouts", icon: ArrowDownToLine },
+            { id: "float", label: "Budget", icon: Wallet },
+            { id: "earned", label: "Coming back", icon: Coins },
+            { id: "ledger", label: "Activity", icon: Scroll },
+            { id: "payouts", label: "Paid to you", icon: ArrowDownToLine },
           ] as const
         ).map(({ id, label, icon: Icon }) => {
           const active = tab === id;
@@ -378,6 +392,10 @@ export default function EpAdminPage() {
         ) : (
           <PayoutsTab payouts={payouts} />
         ))}
+
+      {/* FAQ — the three questions every new tenant asks in their head the
+          first time they land here. Answered in one short paragraph each. */}
+      <EpFaq />
     </div>
   );
 }
@@ -480,6 +498,85 @@ function InlineError({ onRetry }: { onRetry: () => void }) {
         <RefreshCw size={14} />
         Retry
       </Button>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FAQ — tackles the three "wait, what?" questions tenants ask on first visit.
+// Plain English, no jargon.
+// ---------------------------------------------------------------------------
+
+function EpFaq() {
+  const items: { q: string; a: React.ReactNode }[] = [
+    {
+      q: "Wait — I'm already giving away the rewards (free entry, merch…). Why am I also paying?",
+      a: (
+        <>
+          You&apos;re not paying twice. The money you top up is a{" "}
+          <strong>float</strong>, not a cost — most of it comes back to you
+          when reps redeem. The only bit you don&apos;t get back is{" "}
+          <strong>Entry&apos;s 10% service fee</strong> for running the rep
+          network, apps, payment rails, and fulfilment. So your true cost is{" "}
+          <em>10% of what reps actually redeem</em>, plus the marginal cost
+          of whatever reward you hand over (often very low — e.g. an unsold
+          comp ticket).
+        </>
+      ),
+    },
+    {
+      q: "Why does the currency exist at all? Can't I just give things away for free?",
+      a: (
+        <>
+          EP is the promise-unit reps work for. It means a rep who puts in
+          the effort on your team has something <em>portable</em> — they can
+          see their earnings stack up in the app, feel the progress, and
+          trust that what they earned has real value. That motivation is
+          what makes the programme work. EP also keeps everyone honest:
+          you can&apos;t quietly run an infinite-reward programme without
+          the budget to back it.
+        </>
+      ),
+    },
+    {
+      q: "What's the difference between EP and XP?",
+      a: (
+        <>
+          <strong>XP</strong> = reputation. Reps earn it forever, it never
+          gets spent. It drives their level and ranking on leaderboards.{" "}
+          <strong>EP</strong> = spendable currency. It comes from your
+          budget when reps hit a milestone or complete a mission, and they
+          can redeem it for rewards you&apos;ve listed (or at Entry Market).
+          Most missions award both — XP for the status, EP for the wallet.
+        </>
+      ),
+    },
+  ];
+
+  return (
+    <Card className="border-border bg-card p-6">
+      <h2 className="font-mono text-xs font-semibold uppercase tracking-[2px] text-foreground">
+        Common questions
+      </h2>
+      <div className="mt-4 space-y-4">
+        {items.map((it, i) => (
+          <details
+            key={i}
+            className="group rounded-md border border-border/70 bg-background/40 p-3 open:bg-background/60"
+          >
+            <summary className="flex cursor-pointer items-center justify-between gap-3 text-sm font-medium text-foreground marker:hidden">
+              <span>{it.q}</span>
+              <Plus
+                size={14}
+                className="shrink-0 text-muted-foreground transition-transform group-open:rotate-45"
+              />
+            </summary>
+            <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+              {it.a}
+            </p>
+          </details>
+        ))}
+      </div>
     </Card>
   );
 }
@@ -646,7 +743,7 @@ function FloatTab({
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            EP you&apos;ve bought
+            Total budget
           </p>
           <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
             <span key={balance.float} className="numeric-change inline-block">
@@ -654,13 +751,12 @@ function FloatTab({
             </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            ≈ {formatPence(balance.float_pence)} at{" "}
-            {formatPence(balance.fiat_rate_pence)}/EP
+            ≈ {formatPence(balance.float_pence)}
           </p>
         </Card>
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Locked to active quests
+            Earmarked for live missions
           </p>
           <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
             <span key={balance.committed} className="numeric-change inline-block">
@@ -668,12 +764,12 @@ function FloatTab({
             </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Reserved for reps who approve their quest
+            Already promised to reps on live missions
           </p>
         </Card>
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Free to spend
+            Free to award
           </p>
           <p
             className={`mt-2 text-2xl font-bold tabular-nums ${
@@ -690,7 +786,7 @@ function FloatTab({
             </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            What you can still give away
+            What&apos;s left to put on new missions
           </p>
         </Card>
       </div>
@@ -703,7 +799,7 @@ function FloatTab({
               Top up
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Add EP to your balance so reps can earn it from quests. 1 EP ={" "}
+              Load your rewards budget so reps can earn. 1 EP ={" "}
               {formatPence(balance.fiat_rate_pence)}.
             </p>
           </div>
@@ -969,29 +1065,29 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
         </h2>
         <div className="space-y-2 text-xs text-muted-foreground">
           <p>
-            When a rep redeems one of <span className="font-medium text-foreground">your</span> rewards
-            (guest list, drink token, free ticket, merch…), the EP they spend
-            lands here — it&apos;s money you&apos;re owed for fulfilling that reward, not
-            a balance you can spend.
+            When a rep claims one of <span className="font-medium text-foreground">your</span>{" "}
+            rewards (guest list, drink, free ticket, merch…), the EP they
+            spent lands here. It&apos;s <span className="font-medium text-foreground">money
+            you&apos;re owed</span> — not a balance you can keep spending.
           </p>
           <p>
-            On the 1st of every month we send a Stripe Transfer to your connected
-            bank account for {100 - Number(cutPct)}% of the redeemed value. Entry
-            retains the remaining {cutPct}% as its share of the prepaid float
-            (not a fee taken from you — the EP was always ours to fulfil against).
-            You&apos;ll need a connected Stripe account — set that up in{" "}
-            <span className="font-mono">Payments</span> if you haven&apos;t yet.
+            On the 1st of each month we send a bank transfer for{" "}
+            {100 - Number(cutPct)}% of that value. The other {cutPct}% is
+            Entry&apos;s service fee for running the rep network, apps, and
+            fulfilment. You&apos;ll need a connected Stripe account — set
+            that up in <span className="font-mono">Payments</span> if you
+            haven&apos;t yet.
           </p>
           <p>
-            Reps can also spend EP in the <span className="font-medium text-foreground">Entry
-            Market</span> (global partner shop — ticket vouchers, Entry merch,
-            partner drink tokens). Those redemptions are Entry&apos;s own revenue
-            and don&apos;t appear here — your numbers reflect only your rewards.
+            Reps can also spend EP in <span className="font-medium text-foreground">Entry
+            Market</span> (platform-wide vouchers + merch). Those aren&apos;t
+            your sales, so they don&apos;t appear here — only your own
+            rewards do.
           </p>
           <p>
-            Anything under {formatPence(balance.min_payout_pence)} rolls over to
-            the next month&apos;s payout instead of paying out on its own — so
-            Stripe&apos;s fixed transfer fees don&apos;t eat the whole thing.
+            Anything under {formatPence(balance.min_payout_pence)} rolls over
+            to next month&apos;s transfer instead of paying out on its own —
+            so Stripe&apos;s fixed fees don&apos;t eat the whole thing.
           </p>
         </div>
       </Card>
@@ -1044,8 +1140,8 @@ function LedgerTab({ entries }: { entries: LedgerEntry[] }) {
     return (
       <Card className="border-border bg-card p-12 text-center">
         <p className="text-sm text-muted-foreground">
-          No EP movements yet. Buy EP or create a quest with a reward to get
-          started.
+          Nothing&apos;s happened yet. Top up your budget or create a mission
+          with a reward to get started.
         </p>
       </Card>
     );
@@ -1069,11 +1165,11 @@ function LedgerTab({ entries }: { entries: LedgerEntry[] }) {
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
         {(
           [
-            { id: "all" as const, label: "All" },
-            { id: "purchase" as const, label: "Purchases" },
-            { id: "quest" as const, label: "Quests" },
-            { id: "shop" as const, label: "Shop" },
-            { id: "payout" as const, label: "Payouts" },
+            { id: "all" as const, label: "Everything" },
+            { id: "purchase" as const, label: "Top-ups" },
+            { id: "quest" as const, label: "Reps earned" },
+            { id: "shop" as const, label: "Reps redeemed" },
+            { id: "payout" as const, label: "Paid to you" },
           ]
         ).map(({ id, label }) => (
           <button

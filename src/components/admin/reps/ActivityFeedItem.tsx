@@ -9,6 +9,10 @@ import {
   UserPlus,
   ShoppingBag,
   Zap,
+  RotateCw,
+  Ban,
+  AlertTriangle,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -16,8 +20,12 @@ export type ActivityKind =
   | "submission_pending"
   | "submission_approved"
   | "submission_rejected"
+  | "submission_requires_revision"
   | "claim_pending"
+  | "claim_fulfilling"
   | "claim_fulfilled"
+  | "claim_cancelled"
+  | "claim_failed"
   | "join_request"
   | "milestone";
 
@@ -40,15 +48,35 @@ const KIND_META: Record<
     tone: "text-destructive",
     label: "rejected",
   },
+  submission_requires_revision: {
+    icon: RotateCw,
+    tone: "text-warning",
+    label: "needs changes",
+  },
   claim_pending: {
     icon: ShoppingBag,
     tone: "text-info",
     label: "claimed",
   },
+  claim_fulfilling: {
+    icon: Truck,
+    tone: "text-info",
+    label: "claim — fulfilling",
+  },
   claim_fulfilled: {
     icon: Gift,
     tone: "text-success",
     label: "fulfilled",
+  },
+  claim_cancelled: {
+    icon: Ban,
+    tone: "text-muted-foreground",
+    label: "claim cancelled",
+  },
+  claim_failed: {
+    icon: AlertTriangle,
+    tone: "text-destructive",
+    label: "claim failed",
   },
   join_request: {
     icon: UserPlus,
@@ -69,6 +97,8 @@ export interface ActivityItem {
   actor: string; // e.g. rep name
   subject?: string | null; // e.g. quest title
   rewardSuffix?: string | null; // e.g. "+50 XP · +10 EP"
+  /** Secondary line — e.g. a join-request pitch preview. Truncated in UI. */
+  detail?: string | null;
   href?: string | null;
 }
 
@@ -118,6 +148,14 @@ export function ActivityFeedItem({ item }: { item: ActivityItem }) {
             </>
           )}
         </p>
+        {item.detail && (
+          <p
+            className="mt-0.5 line-clamp-2 text-[12px] italic text-muted-foreground/90"
+            title={item.detail}
+          >
+            &ldquo;{item.detail}&rdquo;
+          </p>
+        )}
         {item.rewardSuffix && (
           <p className="mt-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
             {item.rewardSuffix}

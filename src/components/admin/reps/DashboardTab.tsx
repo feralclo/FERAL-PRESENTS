@@ -36,7 +36,6 @@ import type {
   RepProgramStats,
   RepQuestSubmission,
   RepRewardClaim,
-  Rep,
 } from "@/types/reps";
 
 // ---------------------------------------------------------------------------
@@ -61,11 +60,6 @@ interface BalanceData {
   float_pence: number;
   fiat_rate_pence: number;
   low_float_warning: boolean;
-}
-
-interface RepsListResponse {
-  data: Rep[];
-  total: number;
 }
 
 function formatEp(n: number): string {
@@ -124,23 +118,57 @@ function submissionToActivity(s: RepQuestSubmission): ActivityItem {
       ? "submission_approved"
       : s.status === "rejected"
       ? "submission_rejected"
+      : s.status === "requires_revision"
+      ? "submission_requires_revision"
       : "submission_pending";
+  // XP is denormalised onto the submission row (points_awarded). EP is NOT —
+  // it lives in ep_ledger keyed by quest_submission_id. Until we join the
+  // ledger, use the quest's configured ep_reward as a stand-in when the
+  // submission was approved (since the ledger write is transactional with
+  // approval, quest.ep_reward === what the rep got).
   const xp = s.points_awarded || 0;
+  const ep =
+    kind === "submission_approved"
+      ? s.quest?.ep_reward ?? s.quest?.currency_reward ?? 0
+      : 0;
+  const parts: string[] = [];
+  if (xp > 0) parts.push(`+${xp} XP`);
+  if (ep > 0) parts.push(`+${ep} EP`);
   return {
     id: `sub-${s.id}`,
     kind,
     when: s.created_at,
     actor: s.rep ? repName(s.rep) : "A rep",
     subject: s.quest?.title ?? null,
-    rewardSuffix: xp > 0 ? `+${xp} XP` : null,
+    rewardSuffix: parts.length ? parts.join(" · ") : null,
     href: "/admin/reps?tab=quests",
   };
 }
 
 function claimToActivity(c: RepRewardClaim): ActivityItem {
+  // Claims status CHECK: claimed | fulfilling | fulfilled | cancelled | failed.
+  // Map all five — not just fulfilled-vs-pending — so the Dashboard can show
+  // a tenant when a claim is stuck in fulfilling or blew up in failed state.
+  let kind: ActivityKind = "claim_pending";
+  switch (c.status) {
+    case "fulfilled":
+      kind = "claim_fulfilled";
+      break;
+    case "fulfilling":
+      kind = "claim_fulfilling";
+      break;
+    case "cancelled":
+      kind = "claim_cancelled";
+      break;
+    case "failed":
+      kind = "claim_failed";
+      break;
+    default:
+      kind = "claim_pending";
+  }
   return {
     id: `claim-${c.id}`,
-    kind: c.status === "fulfilled" ? "claim_fulfilled" : "claim_pending",
+    kind,
     when: c.created_at,
     actor: c.rep ? repName(c.rep) : "A rep",
     subject: c.reward?.name ?? null,
@@ -149,13 +177,29 @@ function claimToActivity(c: RepRewardClaim): ActivityItem {
   };
 }
 
-function joinRequestToActivity(r: Rep): ActivityItem {
+interface PendingJoin {
+  id: string; // rep.id
+  source: "legacy" | "membership";
+  membership_id?: string;
+  rep: {
+    id: string;
+    display_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    photo_url: string | null;
+  };
+  pitch: string | null;
+  requested_at: string;
+}
+
+function joinRequestToActivity(j: PendingJoin): ActivityItem {
   return {
-    id: `join-${r.id}`,
+    id: `join-${j.id}`,
     kind: "join_request",
-    when: r.created_at,
-    actor: repName(r),
+    when: j.requested_at,
+    actor: repName(j.rep),
     subject: null,
+    detail: j.pitch,
     rewardSuffix: null,
     href: "/admin/reps?tab=team",
   };
@@ -169,7 +213,7 @@ export function DashboardTab() {
   const [stats, setStats] = useState<SectionState<RepProgramStats>>(initial());
   const [submissions, setSubmissions] = useState<SectionState<RepQuestSubmission[]>>(initial());
   const [claims, setClaims] = useState<SectionState<RepRewardClaim[]>>(initial());
-  const [joinRequests, setJoinRequests] = useState<SectionState<Rep[]>>(initial());
+  const [joinRequests, setJoinRequests] = useState<SectionState<PendingJoin[]>>(initial());
   const [leaderboard, setLeaderboard] = useState<SectionState<LeaderboardEntry[]>>(initial());
   const [quests, setQuests] = useState<SectionState<LiveQuestRowData[]>>(initial());
   const [refreshing, setRefreshing] = useState(false);
@@ -211,19 +255,12 @@ export function DashboardTab() {
       fetchJson<RepRewardClaim[]>("/api/reps/claims?status=claimed"),
     ]).then(([r]) => mark<RepRewardClaim[]>((s) => setClaims(s))(r));
 
+    // Pending joins unified across legacy (reps.status='pending') and v2
+    // (rep_promoter_memberships.status='pending' with pitch). See
+    // src/app/api/admin/reps/pending-joins/route.ts.
     Promise.allSettled([
-      fetchJson<RepsListResponse>("/api/reps?status=pending&limit=50", "root"),
-    ]).then(([r]) => {
-      if (r.status === "fulfilled") {
-        setJoinRequests({ data: r.value.data, loading: false, error: null });
-      } else {
-        setJoinRequests({
-          data: null,
-          loading: false,
-          error: r.reason instanceof Error ? r.reason.message : "Failed to load",
-        });
-      }
-    });
+      fetchJson<PendingJoin[]>("/api/admin/reps/pending-joins"),
+    ]).then(([r]) => mark<PendingJoin[]>((s) => setJoinRequests(s))(r));
 
     Promise.allSettled([
       fetchJson<LeaderboardEntry[]>("/api/reps/leaderboard?window=30d"),
@@ -264,7 +301,10 @@ export function DashboardTab() {
 
   const oldestJoin = joinRequests.data
     ?.slice()
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+    .sort(
+      (a, b) =>
+        new Date(a.requested_at).getTime() - new Date(b.requested_at).getTime()
+    )[0];
 
   const oldestClaim = claims.data
     ?.slice()
@@ -330,7 +370,7 @@ export function DashboardTab() {
             count={joinRequests.data?.length ?? 0}
             label="join requests"
             sublabel={
-              oldestJoin ? `Oldest: ${relativeAge(oldestJoin.created_at)}` : undefined
+              oldestJoin ? `Oldest: ${relativeAge(oldestJoin.requested_at)}` : undefined
             }
             ctaLabel="Review"
             href="/admin/reps?tab=reports&review=requests"

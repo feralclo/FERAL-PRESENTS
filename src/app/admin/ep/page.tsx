@@ -260,16 +260,22 @@ export default function EpAdminPage() {
             icon={Wallet}
             tone="info"
             title="Reps redeem"
-            body="They spend EP in your reward shop."
+            body="When they spend EP on your rewards specifically."
           />
           <FlowArrow />
           <FlowStep
             icon={ArrowDownToLine}
             tone="success"
             title="You get paid"
-            body="Monthly Stripe Transfer, minus our 10% cut."
+            body="Monthly Stripe Transfer — 90% to you, 10% Entry retains."
           />
         </div>
+        <p className="mt-3 border-t border-border/60 pt-3 text-[11px] leading-relaxed text-muted-foreground">
+          Only EP spent on <span className="font-medium text-foreground">your</span> rewards
+          flows back to you. Reps can also spend EP in the Entry Market (global
+          partner shop) — those redemptions don&apos;t touch your balance and don&apos;t
+          involve your payout.
+        </p>
       </Card>
 
       {/* Low-float warning */}
@@ -739,7 +745,7 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Earned since last payout
+            Redeemed from your rewards
           </p>
           <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
             <span key={balance.earned} className="numeric-change inline-block">
@@ -747,12 +753,12 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
             </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Reps have redeemed {formatPence(balance.earned_pence_gross)} from your shop
+            Worth {formatPence(balance.earned_pence_gross)} at 1 EP = £0.01
           </p>
         </Card>
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Entry fee ({cutPct}%)
+            Entry&apos;s share ({cutPct}%)
           </p>
           <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
             <span
@@ -763,12 +769,12 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
             </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Our cut for running the platform
+            Retained by Entry for running the platform
           </p>
         </Card>
         <Card className="border-border bg-card p-6">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Heading to your Stripe
+            Your share (to your Stripe)
           </p>
           <p className="mt-2 text-2xl font-bold text-foreground tabular-nums">
             <span key={balance.earned_pence_net} className="numeric-change inline-block">
@@ -789,14 +795,24 @@ function EarnedTab({ balance }: { balance: BalanceData }) {
         </h2>
         <div className="space-y-2 text-xs text-muted-foreground">
           <p>
-            When a rep redeems one of your rewards, the EP they spend lands
-            here — this is money you&apos;re owed, not a balance you can spend.
+            When a rep redeems one of <span className="font-medium text-foreground">your</span> rewards
+            (guest list, drink token, free ticket, merch…), the EP they spend
+            lands here — it&apos;s money you&apos;re owed for fulfilling that reward, not
+            a balance you can spend.
           </p>
           <p>
             On the 1st of every month we send a Stripe Transfer to your connected
-            bank account for everything you&apos;ve earned, minus our {cutPct}% platform fee.
+            bank account for {100 - Number(cutPct)}% of the redeemed value. Entry
+            retains the remaining {cutPct}% as its share of the prepaid float
+            (not a fee taken from you — the EP was always ours to fulfil against).
             You&apos;ll need a connected Stripe account — set that up in{" "}
             <span className="font-mono">Payments</span> if you haven&apos;t yet.
+          </p>
+          <p>
+            Reps can also spend EP in the <span className="font-medium text-foreground">Entry
+            Market</span> (global partner shop — ticket vouchers, Entry merch,
+            partner drink tokens). Those redemptions are Entry&apos;s own revenue
+            and don&apos;t appear here — your numbers reflect only your rewards.
           </p>
           <p>
             Anything under {formatPence(balance.min_payout_pence)} rolls over to

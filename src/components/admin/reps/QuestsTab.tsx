@@ -157,13 +157,17 @@ export function QuestsTab() {
   const [autoApprove, setAutoApprove] = useState(false);
 
   // Events list for event picker + date awareness + cover cascade.
-  // cover_image lets the admin preview + save fall back to the event's cover
-  // when the tenant doesn't upload a quest-specific one.
+  // v2 has three image slots per event — we ONLY want cover_image_url here
+  // (explicitly defined as "clean in-app" in the spec). Banner is 16:9 wrong
+  // aspect for the quest card, and poster has text baked in which would
+  // collide with the title overlay iOS renders on top. Legacy cover_image
+  // is kept as a fallback for events that haven't been migrated to v2 yet.
   const [events, setEvents] = useState<
     Array<{
       id: string;
       name: string;
       date_start: string | null;
+      cover_image_url: string | null;
       cover_image: string | null;
     }>
   >([]);
@@ -226,11 +230,13 @@ export function QuestsTab() {
                 id: string;
                 name: string;
                 date_start?: string | null;
+                cover_image_url?: string | null;
                 cover_image?: string | null;
               }) => ({
                 id: e.id,
                 name: e.name,
                 date_start: e.date_start ?? null,
+                cover_image_url: e.cover_image_url ?? null,
                 cover_image: e.cover_image ?? null,
               })
             )
@@ -335,13 +341,18 @@ export function QuestsTab() {
       // Dead on iOS: image_url (merged with cover server-side) + banner_image_url
       // (events-only). Write null so legacy rows get cleared.
       image_url: null,
-      // Cover cascade: quest upload → linked event's cover → null (iOS falls
-       // through to the promoter-accent gradient). Tenants stop re-uploading
-       // the same event cover for every quest they create.
+      // Cover cascade: quest upload → event.cover_image_url (v2 clean-in-app
+       // slot) → event.cover_image (legacy, pre-v2 events) → null (iOS falls
+       // through to the promoter-accent gradient). We deliberately do NOT pull
+       // event.banner_image_url (16:9, wrong aspect) or event.poster_image_url
+       // (text baked in, would collide with the iOS title overlay).
       cover_image_url:
         coverImageUrl.trim() ||
         (eventId
-          ? events.find((ev) => ev.id === eventId)?.cover_image ?? null
+          ? (() => {
+              const ev = events.find((e) => e.id === eventId);
+              return ev?.cover_image_url ?? ev?.cover_image ?? null;
+            })()
           : null),
       banner_image_url: null,
       video_url: videoUrl.trim() || null,
@@ -1345,10 +1356,28 @@ export function QuestsTab() {
                         onChange={setCoverImageUrl}
                         uploadKey={editId ? `quest_${editId}_cover` : undefined}
                       />
-                      <p className="text-[10px] text-muted-foreground">
-                        Full-bleed hero on the iOS quest card. Leave blank to show a
-                        gradient in your promoter&apos;s brand colour.
-                      </p>
+                      <div className="rounded-md border border-border/60 bg-muted/20 p-3 text-[11px] leading-relaxed text-muted-foreground">
+                        <p className="font-semibold text-foreground">
+                          Portrait, clean, no text baked in.
+                        </p>
+                        <p className="mt-1">
+                          iOS overlays your quest title + XP/EP chips on top —
+                          so a poster-style image with &ldquo;SATURDAY RAVE&rdquo;
+                          text already on it will collide with the overlay and
+                          look broken.
+                        </p>
+                        <p className="mt-1.5">
+                          {eventId
+                            ? "Leave blank and the linked event's cover will be used automatically."
+                            : "Leave blank to show a gradient in your promoter's brand colour."}
+                        </p>
+                        <p className="mt-1.5 text-[10px] opacity-80">
+                          Need a text-baked poster for reps to share to their
+                          Instagram story? That goes on the Event page&apos;s
+                          <span className="mx-1 font-mono">Poster image</span>
+                          slot, not here.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1661,11 +1690,14 @@ export function QuestsTab() {
                     title={title}
                     subtitle={subtitle}
                     coverImageUrl={
-                      // Preview cascade mirrors the save cascade: quest upload,
-                      // else linked event cover, else the promoter-accent gradient.
+                      // Preview cascade mirrors the save cascade: quest upload
+                      // → event.cover_image_url (v2) → legacy → promoter accent.
                       coverImageUrl ||
                       (eventId
-                        ? events.find((ev) => ev.id === eventId)?.cover_image ?? ""
+                        ? (() => {
+                            const ev = events.find((e) => e.id === eventId);
+                            return ev?.cover_image_url ?? ev?.cover_image ?? "";
+                          })()
                         : "")
                     }
                     promoterAccentHex={promoterAccentHex}

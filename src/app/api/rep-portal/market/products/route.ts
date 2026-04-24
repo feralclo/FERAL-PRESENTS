@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
       .from("platform_market_products")
       .select(
         `id, title, subtitle, description, category, image_urls, visible, sort_order, created_at,
+         vendor:platform_market_vendors(id, name, handle, tagline, logo_url, website_url),
          variants:platform_market_product_variants(id, title, option1, option2, option3, ep_price, stock, visible, sort_order)`,
         { count: "exact" }
       )
@@ -65,6 +66,14 @@ export async function GET(request: NextRequest) {
       visible: boolean;
       sort_order: number;
     };
+    type Vendor = {
+      id: string;
+      name: string;
+      handle: string;
+      tagline: string | null;
+      logo_url: string | null;
+      website_url: string | null;
+    };
     type Product = {
       id: string;
       title: string;
@@ -74,6 +83,8 @@ export async function GET(request: NextRequest) {
       image_urls: string[];
       visible: boolean;
       sort_order: number;
+      // Supabase returns joined 1:1 FKs as arrays; normalise below.
+      vendor: Vendor | Vendor[] | null;
       variants: Variant[] | null;
     };
 
@@ -88,6 +99,7 @@ export async function GET(request: NextRequest) {
           (min, v) => (v.ep_price < min ? v.ep_price : min),
           visibleVariants[0].ep_price
         );
+        const vendor = Array.isArray(p.vendor) ? p.vendor[0] ?? null : p.vendor;
         return {
           id: p.id,
           title: p.title,
@@ -96,6 +108,16 @@ export async function GET(request: NextRequest) {
           category: p.category,
           image_urls: p.image_urls ?? [],
           from_ep_price: fromPrice,
+          vendor: vendor
+            ? {
+                id: vendor.id,
+                name: vendor.name,
+                handle: vendor.handle,
+                tagline: vendor.tagline,
+                logo_url: vendor.logo_url,
+                website_url: vendor.website_url,
+              }
+            : null,
           variants: visibleVariants.map((v) => ({
             id: v.id,
             title: v.title,

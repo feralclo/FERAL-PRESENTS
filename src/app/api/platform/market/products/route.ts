@@ -41,9 +41,12 @@ interface ProductBody {
   external_url?: string | null;
   metadata?: Record<string, unknown>;
   variants?: VariantInput[];
+  /** Which vendor supplies/fulfils this product. Required on create. */
+  vendor_id?: string;
 }
 
 const URL_RE = /^https?:\/\/\S+$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function validateProductPayload(
   body: ProductBody,
@@ -95,6 +98,15 @@ function validateProductPayload(
       return { ok: false, error: "external_url must be a valid URL" };
     }
     out.external_url = body.external_url || null;
+  }
+  if (body.vendor_id !== undefined) {
+    if (typeof body.vendor_id !== "string" || !UUID_RE.test(body.vendor_id)) {
+      return { ok: false, error: "vendor_id must be a valid UUID" };
+    }
+    out.vendor_id = body.vendor_id;
+  } else if (!partial) {
+    // vendor_id is required on create. POST handler auto-defaults when
+    // only one active vendor exists, so this path is rarely hit.
   }
   if (body.metadata !== undefined) {
     if (body.metadata && typeof body.metadata !== "object") {
@@ -151,7 +163,9 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await db
       .from("platform_market_products")
       .select(
-        `*, variants:platform_market_product_variants(id, title, option1, option2, option3, external_variant_id, ep_price, stock, visible, sort_order, metadata, created_at, updated_at)`,
+        `*,
+         vendor:platform_market_vendors(id, name, handle, tagline, logo_url, website_url, visible, external_source, external_shop_domain),
+         variants:platform_market_product_variants(id, title, option1, option2, option3, external_variant_id, ep_price, stock, visible, sort_order, metadata, created_at, updated_at)`,
         { count: "exact" }
       )
       .order("created_at", { ascending: false })
@@ -195,11 +209,38 @@ export async function POST(request: NextRequest) {
     const db = await getSupabaseAdmin();
     if (!db) return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
 
+    // Resolve vendor_id — either provided by caller, or auto-defaulted when
+    // exactly one active vendor exists. Multi-vendor world: require the
+    // caller to choose explicitly (ambiguous otherwise).
+    let vendorId = validated.productPayload.vendor_id as string | undefined;
+    if (!vendorId) {
+      const { data: activeVendors } = await db
+        .from("platform_market_vendors")
+        .select("id")
+        .eq("visible", true)
+        .limit(2);
+      const vendors = (activeVendors ?? []) as Array<{ id: string }>;
+      if (vendors.length === 1) {
+        vendorId = vendors[0].id;
+      } else if (vendors.length === 0) {
+        return NextResponse.json(
+          { error: "no_vendors", message: "No active vendors — create one first" },
+          { status: 400 }
+        );
+      } else {
+        return NextResponse.json(
+          { error: "vendor_id_required", message: "Multiple vendors exist; specify vendor_id" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Insert product
     const { data: product, error: productError } = await db
       .from("platform_market_products")
       .insert({
         ...validated.productPayload,
+        vendor_id: vendorId,
         source: validated.productPayload.source ?? "shopify",
       })
       .select("*")

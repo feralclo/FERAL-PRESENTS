@@ -1,9 +1,71 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
+import { createClient, type User } from "@supabase/supabase-js";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, TABLES } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { setSentryUserContext, setSentryOrgContext } from "@/lib/sentry";
+
+/**
+ * Read the `Authorization: Bearer <token>` header, if present.
+ * Used by requireRepAuth to accept JWTs from native clients (iOS) that
+ * can't use cookie-based Supabase sessions.
+ */
+async function readBearerToken(): Promise<string | null> {
+  try {
+    const h = await headers();
+    const auth = h.get("authorization") || h.get("Authorization");
+    if (!auth) return null;
+    const match = auth.match(/^Bearer\s+(.+)$/i);
+    return match ? match[1].trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate a Supabase access token and return the user.
+ * Uses an anon-key client so the lookup doesn't touch the cookie session.
+ *
+ * CRITICAL: overrides the client's fetch with `cache: 'no-store'`. Without
+ * this, Next.js 16's Data Cache silently caches the /auth/v1/user call on
+ * Vercel production (dev is un-cached, which is why this worked locally
+ * but regressed on prod). A cached stale-or-failed response made every
+ * Bearer-authed rep-portal call return 401 "Authentication required".
+ */
+async function getUserFromBearerToken(token: string): Promise<User | null> {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error("[requireRepAuth] Bearer validation skipped — Supabase env vars missing");
+    return null;
+  }
+  try {
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: {
+        fetch: (url, options = {}) =>
+          fetch(url, { ...options, cache: "no-store" }),
+      },
+    });
+    const { data, error } = await client.auth.getUser(token);
+    if (error || !data.user) {
+      // Surface the real cause. Most common in prod: token expired / signed
+      // by a different Supabase project / anon key mismatch.
+      console.warn("[requireRepAuth] Bearer token rejected by Supabase:", {
+        code: error?.code,
+        message: error?.message,
+        status: error?.status,
+      });
+      return null;
+    }
+    return data.user;
+  } catch (err) {
+    // Network error reaching Supabase — log so future debugging doesn't
+    // have to guess whether the token was invalid or the call never fired.
+    console.error("[requireRepAuth] Bearer validation threw:", err);
+    return null;
+  }
+}
 
 /**
  * Auth helper for admin API routes.
@@ -115,11 +177,20 @@ export async function requireRepAuth(options?: { allowPending?: boolean }): Prom
     }
 
     const {
-      data: { user },
-      error,
+      data: { user: cookieUser },
     } = await supabase.auth.getUser();
 
-    if (error || !user) {
+    // Fallback: accept Authorization: Bearer <token> for native clients (iOS)
+    // that can't use cookie-based sessions.
+    let user = cookieUser;
+    if (!user) {
+      const bearer = await readBearerToken();
+      if (bearer) {
+        user = await getUserFromBearerToken(bearer);
+      }
+    }
+
+    if (!user) {
       return {
         rep: null,
         error: NextResponse.json(

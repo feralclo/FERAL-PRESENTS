@@ -480,7 +480,8 @@ export type RepNotificationType =
   | "team_request_rejected"
   | "poster_drop"
   | "peer_milestone"
-  | "general";
+  | "general"
+  | "rep_follow";
 
 export interface RepNotification {
   id: string;

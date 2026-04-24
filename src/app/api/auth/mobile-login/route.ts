@@ -9,11 +9,22 @@ import type { LevelingConfig, TierDefinition } from "@/lib/xp-levels";
 import { createRateLimiter } from "@/lib/rate-limit";
 import * as Sentry from "@sentry/nextjs";
 
-// 5 login attempts per 15 minutes per IP — matches /api/auth/login brute-force protection
+// 20 login attempts per 15 minutes per IP. Humans re-type single digits,
+// bots try thousands — 20 sits comfortably in between. App Store
+// reviewers regularly retry credentials; 5 would lock them out mid-pass.
 const loginLimiter = createRateLimiter("auth-mobile-login", {
-  limit: 5,
+  limit: 20,
   windowSeconds: 15 * 60,
 });
+
+/**
+ * Emails that bypass the rate limiter entirely. Exists so Apple reviewers
+ * (and any other external QA pass) can't be locked out no matter how
+ * aggressive their retry pattern is. Case-insensitive match.
+ */
+const LOGIN_BYPASS_EMAILS = new Set<string>([
+  "apple-review@entry.events",
+]);
 
 /**
  * POST /api/auth/mobile-login
@@ -35,13 +46,17 @@ const loginLimiter = createRateLimiter("auth-mobile-login", {
  */
 export async function POST(request: NextRequest) {
   try {
-    const blocked = loginLimiter(request);
-    if (blocked) return blocked;
-
+    // Parse body first so we can consult the bypass allowlist before
+    // hitting the rate limiter — reviewer accounts never get throttled.
     const orgId = getOrgIdFromRequest(request);
     const body = await request.json().catch(() => null);
     const email = typeof body?.email === "string" ? body.email : "";
     const password = typeof body?.password === "string" ? body.password : "";
+
+    if (!LOGIN_BYPASS_EMAILS.has(email.trim().toLowerCase())) {
+      const blocked = loginLimiter(request);
+      if (blocked) return blocked;
+    }
 
     if (!email || !password) {
       return NextResponse.json(

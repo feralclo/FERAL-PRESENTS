@@ -69,7 +69,10 @@ export async function PATCH(
 
     const validated = validateProductPayload(body, { partial: true });
     if (!validated.ok) return NextResponse.json({ error: validated.error }, { status: 400 });
-    if (Object.keys(validated.payload).length === 0) {
+    // PATCH at this endpoint touches only the product row. Variant edits
+    // go through /platform/market/products/:id/variants/:variant_id (a
+    // separate concern with its own cache/stock semantics).
+    if (Object.keys(validated.productPayload).length === 0) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
@@ -78,7 +81,7 @@ export async function PATCH(
 
     const { data, error } = await db
       .from("platform_market_products")
-      .update(validated.payload)
+      .update(validated.productPayload)
       .eq("id", id)
       .select("*")
       .single();

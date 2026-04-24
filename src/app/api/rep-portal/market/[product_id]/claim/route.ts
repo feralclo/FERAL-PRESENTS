@@ -7,13 +7,15 @@ import * as Sentry from "@sentry/nextjs";
 /**
  * POST /api/rep-portal/market/:product_id/claim
  *
- * Rep redeems EP for an Entry Market product. Atomic: balance check +
- * stock decrement + ledger write happen inside claim_market_product_atomic.
- * If the atomic piece succeeds, we hand off to the Shopify supplier
- * integration (stubbed today) to create the fulfilment order.
+ * Rep redeems EP for an Entry Market product variant. Atomic: balance
+ * check + stock decrement + ledger write happen inside
+ * claim_market_product_atomic. On success we hand off to the Shopify
+ * supplier integration — failure there does NOT roll back the ledger;
+ * the claim flips to 'failed' and platform staff can retry or refund.
  *
  * Body:
  *   {
+ *     variant_id: uuid,
  *     shipping_name, shipping_email,
  *     shipping_phone?,
  *     shipping_address: { line1, line2?, city, region?, postcode, country }
@@ -21,12 +23,14 @@ import * as Sentry from "@sentry/nextjs";
  *
  * Response: 201 {
  *   data: { claim_id, new_balance, stock_remaining, status,
- *           external_order_id?, supplier_stubbed }
+ *           external_order_id?, external_order_number?, external_order_url?,
+ *           supplier_stubbed }
  * }
  *
  * Errors (400 unless noted):
- *   rep_not_found, product_not_found (404), product_unavailable,
- *   out_of_stock, insufficient_balance (returns current balance).
+ *   rep_not_found (404), product_not_found (404), variant_not_found (404),
+ *   product_unavailable / variant_unavailable (410),
+ *   out_of_stock (409), insufficient_balance (402, returns balance).
  */
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -99,6 +103,11 @@ export async function POST(
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
+    const variantId = typeof body.variant_id === "string" ? body.variant_id : "";
+    if (!UUID_RE.test(variantId)) {
+      return NextResponse.json({ error: "variant_id must be a valid UUID" }, { status: 400 });
+    }
+
     const validated = validateShipping(body);
     if (!validated.ok) {
       return NextResponse.json({ error: validated.error }, { status: 400 });
@@ -107,10 +116,10 @@ export async function POST(
     const db = await getSupabaseAdmin();
     if (!db) return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
 
-    // Atomic debit + stock decrement + ledger write
     const { data: rpcData, error: rpcError } = await db.rpc("claim_market_product_atomic", {
       p_rep_id: auth.rep.id,
       p_product_id: productId,
+      p_variant_id: variantId,
       p_shipping_name: validated.name,
       p_shipping_email: validated.email,
       p_shipping_phone: validated.phone,
@@ -118,7 +127,9 @@ export async function POST(
     });
 
     if (rpcError) {
-      Sentry.captureException(rpcError, { extra: { repId: auth.rep.id, productId } });
+      Sentry.captureException(rpcError, {
+        extra: { repId: auth.rep.id, productId, variantId },
+      });
       return NextResponse.json({ error: "Failed to claim" }, { status: 500 });
     }
 
@@ -130,28 +141,38 @@ export async function POST(
       const statusMap: Record<string, number> = {
         rep_not_found: 404,
         product_not_found: 404,
+        variant_not_found: 404,
         product_unavailable: 410,
+        variant_unavailable: 410,
         out_of_stock: 409,
-        insufficient_balance: 402, // RFC 7231: payment required — matches semantics
+        insufficient_balance: 402,
       };
       const httpStatus = statusMap[result.error] ?? 400;
       return NextResponse.json(result, { status: httpStatus });
     }
 
-    // Fetch the full product for the Shopify submission payload
-    const { data: product } = await db
-      .from("platform_market_products")
-      .select("id, title, external_product_id, external_variant_id, ep_price")
-      .eq("id", productId)
-      .maybeSingle();
+    // Fetch product + variant for the Shopify submission payload.
+    // Done after the atomic claim succeeds so Shopify work never happens
+    // for a claim that's not in the ledger.
+    const [{ data: product }, { data: variant }] = await Promise.all([
+      db
+        .from("platform_market_products")
+        .select("id, title, external_product_id, source")
+        .eq("id", productId)
+        .maybeSingle(),
+      db
+        .from("platform_market_product_variants")
+        .select("id, title, external_variant_id, ep_price")
+        .eq("id", variantId)
+        .maybeSingle(),
+    ]);
 
-    // Submit to supplier (stubbed). Failure here does NOT roll back the
-    // ledger — claim.status is marked 'failed' instead so Entry staff
-    // can retry or cancel_and_refund via admin tooling.
     let externalOrderId: string | null = null;
     let externalOrderNumber: string | null = null;
     let externalOrderUrl: string | null = null;
-    let supplierStubbed = true;
+    // supplier_stubbed is only true if the stub code path actually ran.
+    // A failed live submission is NOT stubbed — initialize to false.
+    let supplierStubbed = false;
     let nextStatus: "submitted_to_supplier" | "failed" = "submitted_to_supplier";
     let errorMessage: string | null = null;
 
@@ -164,8 +185,8 @@ export async function POST(
           external_product_id:
             (product as { external_product_id?: string | null } | null)?.external_product_id ?? null,
           external_variant_id:
-            (product as { external_variant_id?: string | null } | null)?.external_variant_id ?? null,
-          ep_price: (product as { ep_price?: number } | null)?.ep_price ?? 0,
+            (variant as { external_variant_id?: string | null } | null)?.external_variant_id ?? null,
+          ep_price: (variant as { ep_price?: number } | null)?.ep_price ?? 0,
         },
         shipping: {
           name: validated.name,
@@ -186,7 +207,6 @@ export async function POST(
       });
     }
 
-    // Patch claim with supplier response.
     await db
       .from("platform_market_claims")
       .update({
@@ -206,6 +226,8 @@ export async function POST(
           stock_remaining: result.stock_remaining,
           status: nextStatus,
           external_order_id: externalOrderId,
+          external_order_number: externalOrderNumber,
+          external_order_url: externalOrderUrl,
           supplier_stubbed: supplierStubbed,
         },
       },

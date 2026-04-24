@@ -8,15 +8,17 @@ import * as Sentry from "@sentry/nextjs";
 /**
  * GET /api/rep-portal/market/products
  *
- * Curated platform-level marketplace. All tenants' reps see the same
- * listings — this is Entry editorial picks, NOT per-tenant inventory.
+ * Curated platform-level marketplace. Each product row returns its visible
+ * variants (size / colour) inline so iOS can render a size picker without
+ * a second round-trip. A product is only listed if it has at least one
+ * visible + in-stock variant.
  *
- * Response:
+ * Response row shape:
  *   {
- *     data: [{ id, title, subtitle, description, category, image_urls,
- *              ep_price, stock, visible, sort_order }],
- *     total, limit, offset, has_more,
- *     supplier: { mode: 'stub' | 'live', reason? }
+ *     id, title, subtitle, description, category, image_urls,
+ *     from_ep_price,        // cheapest visible variant — for list-view badge
+ *     variants: [{ id, title, option1, option2, option3, ep_price, stock }],
+ *     visible, sort_order
  *   }
  *
  * Query: ?limit=50 (1..100) &offset=0 &category=merch
@@ -36,7 +38,8 @@ export async function GET(request: NextRequest) {
     let query = db
       .from("platform_market_products")
       .select(
-        "id, title, subtitle, description, category, image_urls, ep_price, stock, visible, sort_order, created_at",
+        `id, title, subtitle, description, category, image_urls, visible, sort_order, created_at,
+         variants:platform_market_product_variants(id, title, option1, option2, option3, ep_price, stock, visible, sort_order)`,
         { count: "exact" }
       )
       .eq("visible", true)
@@ -51,6 +54,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to load products" }, { status: 500 });
     }
 
+    type Variant = {
+      id: string;
+      title: string;
+      option1: string | null;
+      option2: string | null;
+      option3: string | null;
+      ep_price: number;
+      stock: number | null;
+      visible: boolean;
+      sort_order: number;
+    };
     type Product = {
       id: string;
       title: string;
@@ -58,24 +72,44 @@ export async function GET(request: NextRequest) {
       description: string | null;
       category: string | null;
       image_urls: string[];
-      ep_price: number;
-      stock: number | null;
       visible: boolean;
       sort_order: number;
+      variants: Variant[] | null;
     };
 
-    const items = ((data ?? []) as Product[]).map((p) => ({
-      id: p.id,
-      title: p.title,
-      subtitle: p.subtitle,
-      description: p.description,
-      category: p.category,
-      image_urls: p.image_urls ?? [],
-      ep_price: p.ep_price,
-      stock: p.stock,
-      visible: p.visible,
-      sort_order: p.sort_order,
-    }));
+    const items = ((data ?? []) as Product[])
+      .map((p) => {
+        // Filter variants to visible + in-stock (null stock = unlimited)
+        const visibleVariants = (p.variants ?? [])
+          .filter((v) => v.visible && (v.stock == null || v.stock > 0))
+          .sort((a, b) => a.sort_order - b.sort_order);
+        if (visibleVariants.length === 0) return null;
+        const fromPrice = visibleVariants.reduce(
+          (min, v) => (v.ep_price < min ? v.ep_price : min),
+          visibleVariants[0].ep_price
+        );
+        return {
+          id: p.id,
+          title: p.title,
+          subtitle: p.subtitle,
+          description: p.description,
+          category: p.category,
+          image_urls: p.image_urls ?? [],
+          from_ep_price: fromPrice,
+          variants: visibleVariants.map((v) => ({
+            id: v.id,
+            title: v.title,
+            option1: v.option1,
+            option2: v.option2,
+            option3: v.option3,
+            ep_price: v.ep_price,
+            stock: v.stock,
+          })),
+          visible: p.visible,
+          sort_order: p.sort_order,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => !!x);
 
     const total = count ?? items.length;
     return NextResponse.json({

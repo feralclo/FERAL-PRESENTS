@@ -65,6 +65,7 @@ export async function PUT(request: NextRequest) {
       display_name,
       phone,
       photo_url,
+      banner_url,
       instagram,
       tiktok,
       bio,
@@ -150,6 +151,12 @@ export async function PUT(request: NextRequest) {
     if (photo_url !== undefined && typeof photo_url === "string" && photo_url.length > 2000) {
       return NextResponse.json({ error: "Photo URL too long" }, { status: 400 });
     }
+    if (banner_url !== undefined && banner_url !== null && typeof banner_url !== "string") {
+      return NextResponse.json({ error: "banner_url must be a string or null" }, { status: 400 });
+    }
+    if (typeof banner_url === "string" && banner_url.length > 2000) {
+      return NextResponse.json({ error: "Banner URL too long" }, { status: 400 });
+    }
     if (date_of_birth !== undefined && date_of_birth !== null && !/^\d{4}-\d{2}-\d{2}$/.test(date_of_birth)) {
       return NextResponse.json({ error: "date_of_birth must be YYYY-MM-DD format" }, { status: 400 });
     }
@@ -167,6 +174,7 @@ export async function PUT(request: NextRequest) {
     }
     if (phone !== undefined) updatePayload.phone = phone || null;
     if (photo_url !== undefined) updatePayload.photo_url = photo_url || null;
+    if (banner_url !== undefined) updatePayload.banner_url = banner_url || null;
     if (instagram !== undefined) updatePayload.instagram = instagram || null;
     if (tiktok !== undefined) updatePayload.tiktok = tiktok || null;
     if (bio !== undefined) updatePayload.bio = bio || null;

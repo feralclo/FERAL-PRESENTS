@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const { data: repRow } = await db
       .from(TABLES.REPS)
       .select(
-        "id, email, first_name, last_name, display_name, photo_url, bio, instagram, tiktok, level, points_balance, currency_balance, total_sales, total_revenue, onboarding_completed"
+        "id, email, first_name, last_name, display_name, photo_url, banner_url, bio, instagram, tiktok, level, points_balance, currency_balance, total_sales, total_revenue, onboarding_completed, follower_count, following_count"
       )
       .eq("id", repId)
       .single();
@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
       last_name: string | null;
       display_name: string | null;
       photo_url: string | null;
+      banner_url: string | null;
       bio: string | null;
       instagram: string | null;
       tiktok: string | null;
@@ -86,6 +87,8 @@ export async function GET(request: NextRequest) {
       total_sales: number | null;
       total_revenue: number | null;
       onboarding_completed: boolean | null;
+      follower_count: number | null;
+      following_count: number | null;
     };
     const rep = repRow as unknown as FullRep;
 
@@ -411,6 +414,7 @@ export async function GET(request: NextRequest) {
           last_name: rep.last_name ?? null,
           display_name: rep.display_name ?? null,
           photo_url: rep.photo_url ?? null,
+          banner_url: rep.banner_url ?? null,
           bio: rep.bio ?? null,
           instagram: rep.instagram ?? null,
           tiktok: rep.tiktok ?? null,
@@ -424,6 +428,8 @@ export async function GET(request: NextRequest) {
           status: isPending ? "pending" : "active",
           streak_current: streakCurrent,
           streak_best: streakBest,
+          follower_count: rep.follower_count ?? 0,
+          following_count: rep.following_count ?? 0,
         }
       : null;
 

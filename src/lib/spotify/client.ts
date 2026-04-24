@@ -16,6 +16,53 @@
 
 import * as Sentry from "@sentry/nextjs";
 
+// ─── Transient-failure-tolerant fetch ──────────────────────────────────────
+// Vercel cold starts + Spotify's OAuth occasionally 5xx or flake for a
+// second. Without a retry the iOS picker shows "Couldn't search — HTTP
+// 502" on that first request, which looks like a broken integration.
+// One retry after 200ms fixes that without masking genuine outages.
+//
+// Retries only on network errors / 5xx / timeouts. 4xx propagates
+// immediately — those are authentic caller mistakes (bad params, etc).
+
+const SPOTIFY_TIMEOUT_MS = 8_000;
+const SPOTIFY_RETRY_DELAY_MS = 200;
+
+async function spotifyFetch(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const attempt = async (): Promise<Response> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), SPOTIFY_TIMEOUT_MS);
+    try {
+      return await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        cache: "no-store",
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  try {
+    const first = await attempt();
+    if (first.status < 500) return first;
+    // 5xx → one retry
+    await new Promise((r) => setTimeout(r, SPOTIFY_RETRY_DELAY_MS));
+    return await attempt();
+  } catch (err) {
+    // Network error / abort / DNS — same retry semantics.
+    await new Promise((r) => setTimeout(r, SPOTIFY_RETRY_DELAY_MS));
+    try {
+      return await attempt();
+    } catch {
+      throw err;
+    }
+  }
+}
+
 // ─── Types — the iOS-facing DTO shape ──────────────────────────────────────
 
 export interface SpotifyArtist {
@@ -73,14 +120,13 @@ async function getAppToken(): Promise<string> {
   }
 
   const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const response = await fetch("https://accounts.spotify.com/api/token", {
+  const response = await spotifyFetch("https://accounts.spotify.com/api/token", {
     method: "POST",
     headers: {
       Authorization: `Basic ${basic}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: "grant_type=client_credentials",
-    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -215,9 +261,8 @@ export async function searchTracks(
   // query param later if we add other markets.
   url.searchParams.set("market", "GB");
 
-  const response = await fetch(url.toString(), {
+  const response = await spotifyFetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -251,9 +296,8 @@ export async function getTrack(id: string): Promise<SpotifyTrack | null> {
   const url = `https://api.spotify.com/v1/tracks/${encodeURIComponent(
     cleaned
   )}?market=GB`;
-  const response = await fetch(url, {
+  const response = await spotifyFetch(url, {
     headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
   });
 
   // Spotify returns 404 for "no such track" AND 400 for "malformed id"

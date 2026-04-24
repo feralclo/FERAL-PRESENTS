@@ -4,14 +4,17 @@ import { searchTracks, isConfigured } from "@/lib/spotify/client";
 import * as Sentry from "@sentry/nextjs";
 
 /**
- * GET /api/rep-portal/spotify/search?q=<query>&limit=<1..50>
+ * GET /api/rep-portal/spotify/search?q=<query>&limit=<1..10>&offset=<0..990>
  *
  * Proxy to Spotify's search API using the backend's client-credentials
  * token. Returns iOS-shaped track DTOs.
  *
  * Auth: rep bearer token required.
  * Validation: empty q or q < 2 chars → 400.
- * Cache: per (q, limit) ~5 min (inside lib/spotify/client).
+ * Limit: hard-capped at 10. Spotify silently tightened their search limit
+ *   from 50 → 10 in 2025 — requests with limit > 10 get 400 "Invalid limit".
+ *   iOS should paginate via `offset` to render "load more".
+ * Cache: per (q, limit, offset) ~5 min.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -20,8 +23,10 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const q = (url.searchParams.get("q") ?? "").trim();
-    const rawLimit = parseInt(url.searchParams.get("limit") ?? "20", 10);
-    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(50, rawLimit)) : 20;
+    const rawLimit = parseInt(url.searchParams.get("limit") ?? "10", 10);
+    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(10, rawLimit)) : 10;
+    const rawOffset = parseInt(url.searchParams.get("offset") ?? "0", 10);
+    const offset = Number.isFinite(rawOffset) ? Math.max(0, Math.min(990, rawOffset)) : 0;
 
     if (q.length < 2) {
       return NextResponse.json(
@@ -44,8 +49,8 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const tracks = await searchTracks(q, limit);
-      return NextResponse.json({ data: tracks });
+      const tracks = await searchTracks(q, limit, offset);
+      return NextResponse.json({ data: tracks, limit, offset });
     } catch (err) {
       Sentry.captureException(err, {
         level: "warning",

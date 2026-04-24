@@ -237,17 +237,23 @@ function cacheSet<T>(
 // ─── Public API ────────────────────────────────────────────────────────────
 
 /**
- * Search Spotify's track catalog. Returns up to `limit` tracks (max 50).
+ * Search Spotify's track catalog. Returns up to `limit` tracks
+ * (max 10 — Spotify's search endpoint silently tightened the limit from 50
+ * to 10 in 2025; the docs still say 50 but the API returns 400 "Invalid
+ * limit" at 11+). For larger result sets the caller paginates via `offset`.
+ *
  * Empty result when the query is too short — caller should validate length
  * before calling.
  */
 export async function searchTracks(
   query: string,
-  limit = 20
+  limit = 10,
+  offset = 0
 ): Promise<SpotifyTrack[]> {
   const q = query.trim();
-  const cappedLimit = Math.max(1, Math.min(50, Math.round(limit)));
-  const cacheKey = `${q}|${cappedLimit}`;
+  const cappedLimit = Math.max(1, Math.min(10, Math.round(limit)));
+  const cappedOffset = Math.max(0, Math.min(990, Math.round(offset))); // Spotify max offset is 1000
+  const cacheKey = `${q}|${cappedLimit}|${cappedOffset}`;
   const cached = cacheGet(_searchCache, cacheKey);
   if (cached) return cached;
 
@@ -256,6 +262,9 @@ export async function searchTracks(
   url.searchParams.set("type", "track");
   url.searchParams.set("q", q);
   url.searchParams.set("limit", String(cappedLimit));
+  if (cappedOffset > 0) {
+    url.searchParams.set("offset", String(cappedOffset));
+  }
   // UK market by default — Harry's audience is UK techno scene. Spotify
   // surfaces region-available tracks when `market` is set. Can be made a
   // query param later if we add other markets.

@@ -51,8 +51,15 @@ export async function GET(request: NextRequest) {
         level: "warning",
         extra: { step: "spotify/search", q, limit, repId: auth.rep.id },
       });
+      // Diagnostic: expose the Spotify error detail in dev/preview so we
+      // can see what's actually failing without round-tripping Sentry.
+      // Production still returns the clean spotify_unreachable shape but
+      // with a one-line message for visibility.
+      const detail =
+        err instanceof Error ? err.message.slice(0, 240) : String(err).slice(0, 240);
+      console.error("[rep-portal/spotify/search] Spotify call failed:", detail);
       return NextResponse.json(
-        { error: "spotify_unreachable" },
+        { error: "spotify_unreachable", detail },
         { status: 502 }
       );
     }

@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireRepAuth } from "@/lib/auth";
 import * as Sentry from "@sentry/nextjs";
+import {
+  REP_MEDIA_KINDS,
+  REP_MEDIA_IMAGE_TYPES,
+  REP_MEDIA_VIDEO_TYPES,
+  isMimeAllowedForKind,
+  type RepMediaKind,
+} from "@/lib/uploads/rep-media-config";
 
 /**
  * POST /api/rep-portal/uploads/signed-url
@@ -26,31 +33,14 @@ import * as Sentry from "@sentry/nextjs";
  *       expires_at: ISO8601
  *     }
  *   }
+ *
+ * MIME + size caps are defined in lib/uploads/rep-media-config.ts and
+ * MUST match the rep-media bucket's allowed_mime_types / file_size_limit
+ * in Supabase. Keeping those in one file prevents the
+ * "endpoint mints a signed URL, bucket 415s on PUT" failure mode.
  */
 
-const BUCKET = "rep-media";
-
-const KIND_CONFIG = {
-  avatar:       { prefix: "avatars",      max_bytes: 2  * 1024 * 1024, media: "image" as const },
-  banner:       { prefix: "banners",      max_bytes: 3  * 1024 * 1024, media: "image" as const },
-  quest_proof:  { prefix: "quest-proofs", max_bytes: 8  * 1024 * 1024, media: "image" as const },
-  story_image:  { prefix: "stories",      max_bytes: 10 * 1024 * 1024, media: "image" as const },
-  story_video:  { prefix: "stories",      max_bytes: 50 * 1024 * 1024, media: "video" as const },
-} as const;
-
-const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-]);
-const ALLOWED_VIDEO_CONTENT_TYPES = new Set([
-  "video/mp4",
-  "video/quicktime",
-]);
-
-type Kind = keyof typeof KIND_CONFIG;
+const KIND_NAMES = Object.keys(REP_MEDIA_KINDS) as RepMediaKind[];
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,20 +54,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    const kind = body.kind as Kind;
-    if (!kind || !(kind in KIND_CONFIG)) {
+    const kind = body.kind as RepMediaKind;
+    if (!kind || !(kind in REP_MEDIA_KINDS)) {
       return NextResponse.json(
-        { error: "kind must be one of: avatar, banner, quest_proof, story_image, story_video" },
+        { error: `kind must be one of: ${KIND_NAMES.join(", ")}` },
         { status: 400 }
       );
     }
 
     const contentType = typeof body.content_type === "string" ? body.content_type : "";
-    const kindConfig = KIND_CONFIG[kind];
-    const allowedForKind =
-      kindConfig.media === "video" ? ALLOWED_VIDEO_CONTENT_TYPES : ALLOWED_IMAGE_CONTENT_TYPES;
-    if (!allowedForKind.has(contentType)) {
-      const allowedStr = [...allowedForKind].join(", ");
+    if (!isMimeAllowedForKind(kind, contentType)) {
+      const allowedStr =
+        REP_MEDIA_KINDS[kind].media === "video"
+          ? (REP_MEDIA_VIDEO_TYPES as readonly string[]).join(", ")
+          : (REP_MEDIA_IMAGE_TYPES as readonly string[]).join(", ");
       return NextResponse.json(
         { error: `content_type for ${kind} must be one of: ${allowedStr}` },
         { status: 400 }
@@ -91,10 +81,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const config = kindConfig;
-    if (sizeBytes > config.max_bytes) {
+
+    const config = REP_MEDIA_KINDS[kind];
+    if (sizeBytes > config.maxBytes) {
       return NextResponse.json(
-        { error: `File too large for ${kind}. Max ${Math.round(config.max_bytes / 1024 / 1024)}MB.` },
+        { error: `File too large for ${kind}. Max ${Math.round(config.maxBytes / 1024 / 1024)}MB.` },
         { status: 413 }
       );
     }
@@ -110,7 +101,7 @@ export async function POST(request: NextRequest) {
     // Key layout: {kind_prefix}/{rep_id}/{uuid}.{ext}
     // Rep-id prefix lets us enforce ownership in /uploads/complete later.
     const rawExt = contentType.split("/")[1] ?? "jpg";
-    // quicktime maps to .mov — everything else maps 1:1 from the MIME subtype.
+    // quicktime maps to .mov; everything else uses the MIME subtype as-is.
     const ext = rawExt === "quicktime" ? "mov" : rawExt;
     const uuid = crypto.randomUUID();
     const key = `${config.prefix}/${auth.rep.id}/${uuid}.${ext}`;
@@ -118,7 +109,7 @@ export async function POST(request: NextRequest) {
     // Supabase Storage signed upload URL (expires in ~2 hours by default;
     // client should finish well before)
     const { data: signed, error: signError } = await db.storage
-      .from(BUCKET)
+      .from("rep-media")
       .createSignedUploadUrl(key);
 
     if (signError || !signed) {
@@ -131,7 +122,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const publicUrl = db.storage.from(BUCKET).getPublicUrl(key).data.publicUrl;
+    const publicUrl = db.storage.from("rep-media").getPublicUrl(key).data.publicUrl;
 
     return NextResponse.json({
       data: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireRepAuth } from "@/lib/auth";
 import * as Sentry from "@sentry/nextjs";
+import { REP_MEDIA_PREFIX_CAPS } from "@/lib/uploads/rep-media-config";
 
 /**
  * POST /api/rep-portal/uploads/complete
@@ -21,14 +22,11 @@ import * as Sentry from "@sentry/nextjs";
 
 const BUCKET = "rep-media";
 
-const KIND_CAPS: Record<string, number> = {
-  avatars: 2 * 1024 * 1024,
-  banners: 3 * 1024 * 1024,
-  "quest-proofs": 8 * 1024 * 1024,
-  // Stories share one prefix (image or video encoded in the filename ext).
-  // 50MB cap — the max from the sibling signed-url kind 'story_video'.
-  stories: 50 * 1024 * 1024,
-};
+// Per-prefix upload caps. Single source of truth in
+// lib/uploads/rep-media-config.ts — updating either the signed-URL
+// endpoint or this file without also updating the config would cause
+// a silent size-check drift.
+const KIND_CAPS = REP_MEDIA_PREFIX_CAPS;
 
 export async function POST(request: NextRequest) {
   try {

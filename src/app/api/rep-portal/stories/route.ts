@@ -1,31 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRepAuth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { verifyTrackForStory, isConfigured } from "@/lib/spotify/client";
 import * as Sentry from "@sentry/nextjs";
 
 /**
  * POST /api/rep-portal/stories — Create a new story
  *
- * Body (all Spotify fields REQUIRED — product decision, no silent-track posts):
+ * Body (FULL Spotify snapshot REQUIRED — product decision, no silent posts):
  *   {
- *     media_url: string,                 // upload via /uploads/signed-url (kind: story_image|story_video)
- *     media_kind: 'image' | 'video',
- *     media_width?: int, media_height?: int, duration_ms?: int,
- *     caption?: string,                  // <= 500 chars
- *     spotify_track_id:      string,     // mandatory
- *     spotify_preview_url:   string,     // mandatory (Spotify 30s preview)
- *     spotify_track_title:   string,
- *     spotify_track_artist:  string,
- *     spotify_album_image_url?: string,
- *     spotify_clip_start_ms?:  int (default 0),
- *     spotify_clip_length_ms?: int (default 30000, max 30000),
- *     event_id?: uuid,                   // optional scoping
- *     promoter_id?: uuid,
+ *     media_url, media_kind: 'image' | 'video',
+ *     media_width?, media_height?, video_duration_ms?,
+ *     caption?,
+ *
+ *     track: {
+ *       id, name, artists: [{id,name}], album: { name, image_url? },
+ *       preview_url, external_url, duration_ms
+ *     },
+ *     track_clip_start_ms?  (default 0),
+ *     track_clip_length_ms? (default 30000),
+ *
+ *     event_id?, promoter_id?,
  *     visibility?: 'public' | 'followers' (default 'public'),
- *     expires_at?: ISO8601               // default now + 24h
+ *     expires_at? (ISO8601, default now + 24h)
  *   }
  *
- * Response: 201 { id, created_at, expires_at }
+ * Track validation:
+ *   - Backend verifies track.id against Spotify's /v1/tracks endpoint.
+ *   - invalid_spotify_track (400) when Spotify returns 404.
+ *   - If Spotify is unreachable, fails OPEN — accepts the post with the
+ *     client-provided snapshot and logs a warning. Don't let Spotify
+ *     outages block rep posting.
+ *
+ * Response: 201 { id, created_at, expires_at, track_verified: bool }
  */
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -43,7 +50,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    // --- Media validation ---------------------------------------------------
+    // --- Media ---
     const mediaUrl = typeof body.media_url === "string" ? body.media_url : "";
     if (!URL_RE.test(mediaUrl) || mediaUrl.length > 2000) {
       return NextResponse.json({ error: "media_url must be a valid URL" }, { status: 400 });
@@ -55,51 +62,108 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const mediaWidth  = numOrNull(body.media_width);
+    const mediaWidth = numOrNull(body.media_width);
     const mediaHeight = numOrNull(body.media_height);
-    const durationMs  = numOrNull(body.duration_ms);
+    // Story video runtime (not the Spotify clip length — those are separate)
+    const videoDurationMs = numOrNull(body.video_duration_ms ?? body.duration_ms);
     const caption =
       typeof body.caption === "string" && body.caption.trim() ? body.caption.trim() : null;
     if (caption && caption.length > 500) {
       return NextResponse.json({ error: "caption must be 500 chars or fewer" }, { status: 400 });
     }
 
-    // --- Spotify (MANDATORY) -----------------------------------------------
-    // Product rule: every story has music. Reject any missing-track payload
-    // at the API boundary so iOS can't silently drop it and ship a broken UX.
-    const spotifyTrackId = typeof body.spotify_track_id === "string" ? body.spotify_track_id.trim() : "";
-    const spotifyPreviewUrl = typeof body.spotify_preview_url === "string" ? body.spotify_preview_url : "";
-    const spotifyTrackTitle = typeof body.spotify_track_title === "string" ? body.spotify_track_title.trim() : "";
-    const spotifyTrackArtist = typeof body.spotify_track_artist === "string" ? body.spotify_track_artist.trim() : "";
-    if (!spotifyTrackId || !spotifyPreviewUrl || !spotifyTrackTitle || !spotifyTrackArtist) {
+    // --- Spotify track (MANDATORY full snapshot) ---
+    const trackObj = body.track as Record<string, unknown> | undefined;
+    if (!trackObj || typeof trackObj !== "object") {
       return NextResponse.json(
         {
           error: "spotify_track_required",
-          message:
-            "spotify_track_id, spotify_preview_url, spotify_track_title and spotify_track_artist are required",
+          message: "track object with id/name/artists/album/preview_url/external_url/duration_ms is required",
         },
         { status: 400 }
       );
     }
-    if (!URL_RE.test(spotifyPreviewUrl)) {
-      return NextResponse.json({ error: "spotify_preview_url must be a valid URL" }, { status: 400 });
-    }
-    const spotifyAlbumImage =
-      typeof body.spotify_album_image_url === "string" && URL_RE.test(body.spotify_album_image_url)
-        ? body.spotify_album_image_url
+
+    const trackId = typeof trackObj.id === "string" ? trackObj.id.trim() : "";
+    const trackName = typeof trackObj.name === "string" ? trackObj.name.trim() : "";
+    const artistsRaw = Array.isArray(trackObj.artists) ? trackObj.artists : null;
+    const albumObj = trackObj.album as Record<string, unknown> | undefined;
+    const previewUrl = typeof trackObj.preview_url === "string" ? trackObj.preview_url : null;
+    const externalUrl = typeof trackObj.external_url === "string" ? trackObj.external_url : "";
+    const durationMs =
+      typeof trackObj.duration_ms === "number" && Number.isFinite(trackObj.duration_ms)
+        ? Math.max(0, Math.round(trackObj.duration_ms))
         : null;
-    const clipStartMs = clampInt(body.spotify_clip_start_ms, 0, 0, 30 * 60_000); // 30 min upper bound
-    const clipLengthMs = clampInt(body.spotify_clip_length_ms, 30_000, 1_000, 30_000);
 
-    // --- Optional scoping ---------------------------------------------------
-    const eventId = typeof body.event_id === "string" && UUID_RE.test(body.event_id) ? body.event_id : null;
+    if (!trackId || !trackName || !artistsRaw || !albumObj || !externalUrl || durationMs == null) {
+      return NextResponse.json(
+        {
+          error: "spotify_track_required",
+          message: "track.id, track.name, track.artists, track.album, track.external_url and track.duration_ms are required",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Normalise artists array — each element must have { id, name }. Tolerate
+    // missing id (some Spotify "various artists" entries have empty ids).
+    const artists = artistsRaw
+      .filter((a): a is Record<string, unknown> => !!a && typeof a === "object")
+      .map((a) => ({
+        id: typeof a.id === "string" ? a.id : "",
+        name: typeof a.name === "string" ? a.name.trim() : "",
+      }))
+      .filter((a) => a.name);
+    if (artists.length === 0) {
+      return NextResponse.json(
+        { error: "track.artists must contain at least one {id,name}" },
+        { status: 400 }
+      );
+    }
+
+    const albumName = typeof albumObj.name === "string" ? albumObj.name.trim() : "";
+    const albumImage = typeof albumObj.image_url === "string" && URL_RE.test(albumObj.image_url)
+      ? albumObj.image_url
+      : null;
+    if (!albumName) {
+      return NextResponse.json({ error: "track.album.name is required" }, { status: 400 });
+    }
+    if (previewUrl && !URL_RE.test(previewUrl)) {
+      return NextResponse.json({ error: "track.preview_url must be a valid URL" }, { status: 400 });
+    }
+    if (!URL_RE.test(externalUrl)) {
+      return NextResponse.json({ error: "track.external_url must be a valid URL" }, { status: 400 });
+    }
+
+    const clipStartMs = clampInt(body.track_clip_start_ms, 0, 0, 30 * 60_000);
+    const clipLengthMs = clampInt(body.track_clip_length_ms, 30_000, 1_000, 30_000);
+
+    // Server-side verification against Spotify — fail-open per the product rule.
+    // Only runs when credentials are present; skipped in local dev without them.
+    let trackVerified = false;
+    if (isConfigured()) {
+      const verification = await verifyTrackForStory(trackId);
+      if (verification.ok) {
+        trackVerified = true;
+      } else if (verification.reason === "not_found") {
+        return NextResponse.json(
+          { error: "invalid_spotify_track", message: `Spotify has no track with id ${trackId}` },
+          { status: 400 }
+        );
+      }
+      // reason === 'unreachable' falls through — accept the post anyway.
+    }
+
+    // --- Optional scoping ---
+    const eventId =
+      typeof body.event_id === "string" && UUID_RE.test(body.event_id) ? body.event_id : null;
     const promoterId =
-      typeof body.promoter_id === "string" && UUID_RE.test(body.promoter_id) ? body.promoter_id : null;
+      typeof body.promoter_id === "string" && UUID_RE.test(body.promoter_id)
+        ? body.promoter_id
+        : null;
 
-    // --- Visibility + expiry ------------------------------------------------
-    const visibilityRaw = body.visibility;
-    const visibility =
-      visibilityRaw === "followers" ? "followers" : "public";
+    // --- Visibility + expiry ---
+    const visibility = body.visibility === "followers" ? "followers" : "public";
 
     let expiresAt: string;
     if (typeof body.expires_at === "string") {
@@ -108,7 +172,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "expires_at must be a valid ISO timestamp" }, { status: 400 });
       }
       const now = Date.now();
-      // Clamp to at most 72h future, minimum 5 min future.
       const min = now + 5 * 60_000;
       const max = now + 72 * 3600_000;
       if (parsed < min || parsed > max) {
@@ -125,6 +188,9 @@ export async function POST(request: NextRequest) {
     const db = await getSupabaseAdmin();
     if (!db) return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
 
+    // Persist — columns use the legacy names (spotify_track_title, etc.) for
+    // back-compat with existing tooling, but also write the new columns so
+    // the feed/single endpoints can build the richer `track` shape iOS wants.
     const { data, error } = await db
       .from("rep_stories")
       .insert({
@@ -134,13 +200,17 @@ export async function POST(request: NextRequest) {
         media_kind: mediaKind,
         media_width: mediaWidth,
         media_height: mediaHeight,
-        duration_ms: durationMs,
+        duration_ms: videoDurationMs,
         caption,
-        spotify_track_id: spotifyTrackId,
-        spotify_preview_url: spotifyPreviewUrl,
-        spotify_track_title: spotifyTrackTitle,
-        spotify_track_artist: spotifyTrackArtist,
-        spotify_album_image_url: spotifyAlbumImage,
+        spotify_track_id: trackId,
+        spotify_track_title: trackName,
+        spotify_track_artist: artists.map((a) => a.name).join(", "),
+        spotify_artists: artists,
+        spotify_album_name: albumName,
+        spotify_album_image_url: albumImage,
+        spotify_preview_url: previewUrl ?? "",
+        spotify_external_url: externalUrl,
+        spotify_duration_ms: durationMs,
         spotify_clip_start_ms: clipStartMs,
         spotify_clip_length_ms: clipLengthMs,
         event_id: eventId,
@@ -157,7 +227,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { id: data.id, created_at: data.created_at, expires_at: data.expires_at },
+      {
+        id: data.id,
+        created_at: data.created_at,
+        expires_at: data.expires_at,
+        track_verified: trackVerified,
+      },
       { status: 201 }
     );
   } catch (err) {

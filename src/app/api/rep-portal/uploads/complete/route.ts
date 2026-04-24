@@ -25,6 +25,9 @@ const KIND_CAPS: Record<string, number> = {
   avatars: 2 * 1024 * 1024,
   banners: 3 * 1024 * 1024,
   "quest-proofs": 8 * 1024 * 1024,
+  // Stories share one prefix (image or video encoded in the filename ext).
+  // 50MB cap — the max from the sibling signed-url kind 'story_video'.
+  stories: 50 * 1024 * 1024,
 };
 
 export async function POST(request: NextRequest) {

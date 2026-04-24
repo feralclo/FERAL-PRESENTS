@@ -12,8 +12,8 @@ import * as Sentry from "@sentry/nextjs";
  *
  * Request:
  *   {
- *     kind: 'avatar' | 'banner' | 'quest_proof',
- *     content_type: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/heic',
+ *     kind: 'avatar' | 'banner' | 'quest_proof' | 'story_image' | 'story_video',
+ *     content_type: image/* or (for story_video) video/mp4 | video/quicktime,
  *     size_bytes: int
  *   }
  *
@@ -31,17 +31,23 @@ import * as Sentry from "@sentry/nextjs";
 const BUCKET = "rep-media";
 
 const KIND_CONFIG = {
-  avatar: { prefix: "avatars", max_bytes: 2 * 1024 * 1024 },
-  banner: { prefix: "banners", max_bytes: 3 * 1024 * 1024 },
-  quest_proof: { prefix: "quest-proofs", max_bytes: 8 * 1024 * 1024 },
+  avatar:       { prefix: "avatars",      max_bytes: 2  * 1024 * 1024, media: "image" as const },
+  banner:       { prefix: "banners",      max_bytes: 3  * 1024 * 1024, media: "image" as const },
+  quest_proof:  { prefix: "quest-proofs", max_bytes: 8  * 1024 * 1024, media: "image" as const },
+  story_image:  { prefix: "stories",      max_bytes: 10 * 1024 * 1024, media: "image" as const },
+  story_video:  { prefix: "stories",      max_bytes: 50 * 1024 * 1024, media: "video" as const },
 } as const;
 
-const ALLOWED_CONTENT_TYPES = new Set([
+const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/heic",
   "image/heif",
+]);
+const ALLOWED_VIDEO_CONTENT_TYPES = new Set([
+  "video/mp4",
+  "video/quicktime",
 ]);
 
 type Kind = keyof typeof KIND_CONFIG;
@@ -61,15 +67,19 @@ export async function POST(request: NextRequest) {
     const kind = body.kind as Kind;
     if (!kind || !(kind in KIND_CONFIG)) {
       return NextResponse.json(
-        { error: "kind must be one of: avatar, banner, quest_proof" },
+        { error: "kind must be one of: avatar, banner, quest_proof, story_image, story_video" },
         { status: 400 }
       );
     }
 
     const contentType = typeof body.content_type === "string" ? body.content_type : "";
-    if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
+    const kindConfig = KIND_CONFIG[kind];
+    const allowedForKind =
+      kindConfig.media === "video" ? ALLOWED_VIDEO_CONTENT_TYPES : ALLOWED_IMAGE_CONTENT_TYPES;
+    if (!allowedForKind.has(contentType)) {
+      const allowedStr = [...allowedForKind].join(", ");
       return NextResponse.json(
-        { error: "content_type must be one of: image/jpeg, image/png, image/webp, image/heic, image/heif" },
+        { error: `content_type for ${kind} must be one of: ${allowedStr}` },
         { status: 400 }
       );
     }
@@ -81,7 +91,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const config = KIND_CONFIG[kind];
+    const config = kindConfig;
     if (sizeBytes > config.max_bytes) {
       return NextResponse.json(
         { error: `File too large for ${kind}. Max ${Math.round(config.max_bytes / 1024 / 1024)}MB.` },
@@ -99,7 +109,9 @@ export async function POST(request: NextRequest) {
 
     // Key layout: {kind_prefix}/{rep_id}/{uuid}.{ext}
     // Rep-id prefix lets us enforce ownership in /uploads/complete later.
-    const ext = contentType.split("/")[1] ?? "jpg";
+    const rawExt = contentType.split("/")[1] ?? "jpg";
+    // quicktime maps to .mov — everything else maps 1:1 from the MIME subtype.
+    const ext = rawExt === "quicktime" ? "mov" : rawExt;
     const uuid = crypto.randomUUID();
     const key = `${config.prefix}/${auth.rep.id}/${uuid}.${ext}`;
 

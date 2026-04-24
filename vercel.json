@@ -36,6 +36,10 @@
     {
       "path": "/api/cron/rep-streak-reset/",
       "schedule": "5 0 * * *"
+    },
+    {
+      "path": "/api/cron/stories-expire/",
+      "schedule": "0 * * * *"
     }
   ],
   "headers": [

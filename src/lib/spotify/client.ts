@@ -256,7 +256,10 @@ export async function getTrack(id: string): Promise<SpotifyTrack | null> {
     cache: "no-store",
   });
 
-  if (response.status === 404) return null;
+  // Spotify returns 404 for "no such track" AND 400 for "malformed id"
+  // ("Invalid base62 id"). Both mean "this track id isn't valid" from
+  // the caller's perspective — don't fail open on either, tell iOS.
+  if (response.status === 404 || response.status === 400) return null;
   if (!response.ok) {
     const body = await response.text();
     throw new Error(

@@ -24,7 +24,19 @@ import * as Sentry from "@sentry/nextjs";
  *
  * Story DTO shape lives in lib/stories-mapper.ts; any field change there
  * automatically flows through here, /:id, and /reps/:id/stories.
+ *
+ * Caching: Forced dynamic. Reps need to see their own newly-posted stories
+ * the moment POST /stories returns 200 — there is no acceptable lag here.
+ * The admin Supabase client also bypasses Next's Data Cache (see
+ * lib/supabase/admin.ts), and the response carries no-store so no edge
+ * layer can hold a stale frame either.
  */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, must-revalidate",
+} as const;
 
 export async function GET(_request: NextRequest) {
   try {
@@ -70,30 +82,62 @@ export async function GET(_request: NextRequest) {
       }
     }
 
-    if (authorPool.size === 0) return NextResponse.json({ data: [] });
+    if (authorPool.size === 0) {
+      return NextResponse.json({ data: [] }, { headers: NO_STORE_HEADERS });
+    }
 
-    // 3. Active stories from the pool
-    const { data: storiesRaw, error } = await db
-      .from("rep_stories")
-      .select(STORY_SELECT)
-      .in("author_rep_id", [...authorPool])
-      .is("deleted_at", null)
-      .gt("expires_at", now)
-      .order("created_at", { ascending: false });
+    // 3. Active stories from the pool — split into "mine" and "others" and
+    //    issue them as parallel queries. Two reasons:
+    //      (a) `mine` *must* reflect reality the instant POST /stories
+    //          returns. Even after wiring cache:no-store everywhere, this
+    //          gives us a guarantee independent of any future cache layer
+    //          (CDN, edge middleware, etc): the self path simply has no
+    //          shareable cache key — it's filtered by the requester's id
+    //          alone — so it can't collide with another viewer's response.
+    //      (b) the parallelism roughly cancels the extra round-trip.
+    const otherAuthors = [...authorPool].filter((id) => id !== me);
 
-    if (error) {
-      Sentry.captureException(error, { extra: { me } });
+    const [myStoriesRes, otherStoriesRes] = await Promise.all([
+      db
+        .from("rep_stories")
+        .select(STORY_SELECT)
+        .eq("author_rep_id", me)
+        .is("deleted_at", null)
+        .gt("expires_at", now)
+        .order("created_at", { ascending: false }),
+      otherAuthors.length > 0
+        ? db
+            .from("rep_stories")
+            .select(STORY_SELECT)
+            .in("author_rep_id", otherAuthors)
+            .is("deleted_at", null)
+            .gt("expires_at", now)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] as StoryRow[], error: null }),
+    ]);
+
+    if (myStoriesRes.error || otherStoriesRes.error) {
+      Sentry.captureException(myStoriesRes.error ?? otherStoriesRes.error, {
+        extra: { me },
+      });
       return NextResponse.json({ error: "Failed to load feed" }, { status: 500 });
     }
 
-    // Filter followers-only stories from reps who aren't mutuals.
-    const visible = ((storiesRaw ?? []) as StoryRow[]).filter((s) => {
-      if (s.author_rep_id === me) return true;
+    const myStories = (myStoriesRes.data ?? []) as StoryRow[];
+    const otherStories = (otherStoriesRes.data ?? []) as StoryRow[];
+
+    // Filter followers-only stories from reps who aren't mutuals. Self
+    // stories are always visible to self.
+    const visibleOthers = otherStories.filter((s) => {
       if (s.visibility === "followers" && !mutualReps.has(s.author_rep_id)) return false;
       return true;
     });
 
-    if (visible.length === 0) return NextResponse.json({ data: [] });
+    const visible: StoryRow[] = [...myStories, ...visibleOthers];
+
+    if (visible.length === 0) {
+      return NextResponse.json({ data: [] }, { headers: NO_STORE_HEADERS });
+    }
 
     // 4. Which stories has the viewer already seen?
     const { data: viewsData } = await db
@@ -159,7 +203,7 @@ export async function GET(_request: NextRequest) {
       g.stories.sort((a, b) => a.created_at.localeCompare(b.created_at));
     }
 
-    return NextResponse.json({ data: grouped });
+    return NextResponse.json({ data: grouped }, { headers: NO_STORE_HEADERS });
   } catch (err) {
     Sentry.captureException(err);
     console.error("[rep-portal/stories/feed] Error:", err);

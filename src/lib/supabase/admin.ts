@@ -28,6 +28,18 @@ export async function getSupabaseAdmin(): Promise<SupabaseClient | null> {
           autoRefreshToken: false,
           persistSession: false,
         },
+        // Bypass Next.js Data Cache on every Supabase call. Without this,
+        // repeat queries with identical URLs (e.g. /stories/feed within
+        // a tight window — same author_pool, same `expires_at > now`
+        // rounded to the same instant) get served from a stale cache
+        // entry. Symptom: rep posts a story, the next /stories/feed
+        // request omits it for ~10–15 min until the cache entry rotates.
+        // Same pattern as getSupabaseServer() and the bearer-validation
+        // client (commit e54e284).
+        global: {
+          fetch: (url: RequestInfo | URL, options: RequestInit = {}) =>
+            fetch(url, { ...options, cache: "no-store" }),
+        },
       });
     }
     return adminClient;

@@ -83,6 +83,10 @@ export interface SpotifyTrack {
   preview_url: string | null;
   duration_ms: number;
   external_url: string;
+  // ISRC — passed straight through from Spotify when present. Lets the
+  // client hit `itunes.apple.com/lookup?isrc=…` for deterministic Apple
+  // Music matches instead of name/artist fuzzy search.
+  isrc: string | null;
 }
 
 // ─── Config ────────────────────────────────────────────────────────────────
@@ -171,6 +175,7 @@ interface RawSpotifyTrack {
   preview_url?: string | null;
   duration_ms?: number;
   external_urls?: { spotify?: string };
+  external_ids?: { isrc?: string; ean?: string; upc?: string };
 }
 
 function pickBestAlbumImage(
@@ -184,6 +189,7 @@ function pickBestAlbumImage(
 }
 
 function mapTrack(raw: RawSpotifyTrack): SpotifyTrack {
+  const isrcRaw = typeof raw.external_ids?.isrc === "string" ? raw.external_ids.isrc.trim() : "";
   return {
     id: raw.id,
     name: raw.name ?? "",
@@ -197,6 +203,7 @@ function mapTrack(raw: RawSpotifyTrack): SpotifyTrack {
     preview_url: raw.preview_url ?? null,
     duration_ms: raw.duration_ms ?? 0,
     external_url: raw.external_urls?.spotify ?? `https://open.spotify.com/track/${raw.id}`,
+    isrc: isrcRaw || null,
   };
 }
 

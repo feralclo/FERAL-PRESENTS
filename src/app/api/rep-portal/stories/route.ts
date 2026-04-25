@@ -19,6 +19,9 @@ import * as Sentry from "@sentry/nextjs";
  *     },
  *     track_clip_start_ms?  (default 0),
  *     track_clip_length_ms? (default 30000),
+ *     track_start_offset_ms? (default 0, 0..track.duration_ms) — where the
+ *       author scrubbed to in the composer; viewers cue the preview here
+ *       so everyone hears the same moment.
  *
  *     event_id?, promoter_id?,
  *     visibility?: 'public' | 'followers' (default 'public'),
@@ -137,6 +140,12 @@ export async function POST(request: NextRequest) {
 
     const clipStartMs = clampInt(body.track_clip_start_ms, 0, 0, 30 * 60_000);
     const clipLengthMs = clampInt(body.track_clip_length_ms, 30_000, 1_000, 30_000);
+    // Author scrub position — clamp to the track's own duration so we never
+    // store an offset past the end. Fall back to the 30-minute safety cap
+    // if duration_ms is missing (already validated above, so this is just
+    // defence-in-depth).
+    const startOffsetCap = Math.min(30 * 60_000, durationMs ?? 30 * 60_000);
+    const trackStartOffsetMs = clampInt(body.track_start_offset_ms, 0, 0, startOffsetCap);
 
     // Server-side verification against Spotify — fail-open per the product rule.
     // Only runs when credentials are present; skipped in local dev without them.
@@ -213,6 +222,7 @@ export async function POST(request: NextRequest) {
         spotify_duration_ms: durationMs,
         spotify_clip_start_ms: clipStartMs,
         spotify_clip_length_ms: clipLengthMs,
+        track_start_offset_ms: trackStartOffsetMs,
         event_id: eventId,
         promoter_id: promoterId,
         visibility,

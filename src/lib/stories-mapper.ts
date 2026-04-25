@@ -32,6 +32,10 @@ export interface StoryTrack {
   // Spotify clip window — what portion iOS should play (start + length ms)
   clip_start_ms: number;
   clip_length_ms: number;
+  // Author-selected scrub position within the track. Viewers cue the preview
+  // here so everyone hears the same drop as the poster. Null when the author
+  // didn't scrub (iOS can fall back to client-side drop detection).
+  start_offset_ms: number | null;
 }
 
 export interface StoryDTO {
@@ -78,6 +82,7 @@ export interface StoryRow {
   spotify_duration_ms: number | null;
   spotify_clip_start_ms: number;
   spotify_clip_length_ms: number;
+  track_start_offset_ms: number | null;
 
   event_id: string | null;
   promoter_id: string | null;
@@ -101,7 +106,7 @@ export const STORY_SELECT = `
   spotify_track_id, spotify_track_title, spotify_track_artist, spotify_artists,
   spotify_album_name, spotify_album_image_url, spotify_preview_url,
   spotify_external_url, spotify_duration_ms,
-  spotify_clip_start_ms, spotify_clip_length_ms,
+  spotify_clip_start_ms, spotify_clip_length_ms, track_start_offset_ms,
   event_id, promoter_id, visibility, view_count, expires_at, created_at
 ` as const;
 
@@ -169,6 +174,11 @@ function toStoryTrack(row: StoryRow): StoryTrack {
     duration_ms: row.spotify_duration_ms ?? 0,
     clip_start_ms: row.spotify_clip_start_ms,
     clip_length_ms: row.spotify_clip_length_ms,
+    // 0 is the default column value, so "never scrubbed" and "scrubbed to 0"
+    // are indistinguishable server-side. iOS treats 0 as "start at 0" anyway
+    // — the null escape hatch exists for future use (e.g. if we add a
+    // sentinel to mean "use drop detection").
+    start_offset_ms: row.track_start_offset_ms,
   };
 }
 

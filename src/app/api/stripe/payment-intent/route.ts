@@ -130,6 +130,14 @@ export async function POST(request: NextRequest) {
     // then fall back to global setting in site_settings.
     // This enables multi-tenant payments: each event/promoter can use their own Stripe account.
     let stripeAccountId: string | null = event.stripe_account_id || null;
+    // Track whether the org/event explicitly asked for a connected account.
+    // Critical for the post-verifyConnectedAccount check below: if a tenant
+    // configured an account but it's now unhealthy (deleted, revoked, or
+    // lacking the card_payments capability — e.g. KYC not finished), we
+    // MUST NOT silently route the charge to the platform Stripe. That
+    // would attribute money to Entry instead of the tenant. Fail loudly
+    // with a clear buyer-facing error instead.
+    const hadConfiguredStripeAccount = !!stripeAccountId;
 
     if (!stripeAccountId) {
       const { data: settingsRow } = await supabase
@@ -146,10 +154,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate the connected account is actually accessible from our platform key.
-    // If the account was deleted or access revoked, fall back to platform account
-    // so checkout still works (charges go directly to the platform).
+    const orgHasConfiguredStripeAccount =
+      hadConfiguredStripeAccount || !!stripeAccountId;
+
+    // Validate the connected account is accessible AND active. If the
+    // account was deleted, revoked, or hasn't completed enough KYC for
+    // card_payments to be active, this returns null.
     stripeAccountId = await verifyConnectedAccount(stripeAccountId, orgId);
+
+    if (orgHasConfiguredStripeAccount && !stripeAccountId) {
+      // Tenant configured Stripe but their account isn't ready (most likely
+      // KYC unfinished). Don't fall back to platform — that would route
+      // their tenant's revenue to Entry. Fail with a clear buyer error so
+      // the tenant gets the signal to fix their setup.
+      return NextResponse.json(
+        {
+          error:
+            "This organiser is finishing their payment setup. Please try again shortly or contact them directly.",
+          error_code: "connected_account_unhealthy",
+        },
+        { status: 503 }
+      );
+    }
 
     // Verify ticket types and calculate total
     const ticketTypeIds = items.map(

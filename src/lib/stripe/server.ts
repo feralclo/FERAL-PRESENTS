@@ -43,13 +43,26 @@ const verifiedAccountCache = new Map<string, VerifiedAccountEntry>();
 const VERIFY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Verify a connected Stripe account is accessible from the platform key.
- * Returns the account ID if valid, or null if the account doesn't exist /
- * access was revoked. This prevents checkout failures when a stale or
- * invalid account ID is stored in the database.
+ * Verify a connected Stripe account is accessible AND ready to take charges.
+ *
+ * Returns the account ID if:
+ *   - account is retrievable from the platform key
+ *   - card_payments capability is "active" (i.e. KYC is far enough along
+ *     for Stripe to actually accept charges on this account)
+ *
+ * Returns null if:
+ *   - the account was deleted / access revoked → caller falls back
+ *   - card_payments capability is anything other than "active" (inactive,
+ *     pending, unrequested) — most commonly: tenant created the account
+ *     via /admin/payments but hasn't completed KYC. Returning null here
+ *     lets the caller decide whether to fail loudly (correct for tenants
+ *     with a configured account) or fall back (correct only when no
+ *     account is configured at all).
  *
  * Results are cached in-memory for 5 minutes so repeated checkout loads
- * skip the Stripe API call (~100-300ms) after the first verification.
+ * skip the Stripe API call (~100-300ms) after the first verification. The
+ * cache is short enough that a tenant finishing KYC sees their checkout
+ * unblock within minutes, not hours.
  */
 export async function verifyConnectedAccount(
   accountId: string | null,
@@ -70,6 +83,31 @@ export async function verifyConnectedAccount(
         caps[key] = val;
       }
     }
+
+    const cardPaymentsActive = caps.card_payments === "active";
+
+    if (!cardPaymentsActive) {
+      // Account exists but can't take charges. Cache the null result so we
+      // don't hammer Stripe on every checkout while the tenant finishes
+      // KYC. Surface as connect_account_unhealthy so it shows up in the
+      // health dashboard and triggers a tenant-facing alert.
+      verifiedAccountCache.set(accountId, {
+        result: null,
+        capabilities: caps,
+        expiresAt: Date.now() + VERIFY_CACHE_TTL_MS,
+      });
+      if (orgId) {
+        logPaymentEvent({
+          orgId,
+          type: "connect_account_unhealthy",
+          stripeAccountId: accountId,
+          errorCode: "card_payments_inactive",
+          errorMessage: `card_payments=${caps.card_payments || "missing"}; transfers=${caps.transfers || "missing"}`,
+        });
+      }
+      return null;
+    }
+
     verifiedAccountCache.set(accountId, {
       result: accountId,
       capabilities: caps,

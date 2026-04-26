@@ -182,6 +182,7 @@ export function QuestsTab() {
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoStatus, setVideoStatus] = useState("");
   const [videoError, setVideoError] = useState("");
+  const [dragActive, setDragActive] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Platform XP config
@@ -525,18 +526,27 @@ export function QuestsTab() {
           body: JSON.stringify({ filename: file.name, contentType: blob.type }),
         });
         const signedJson = await signed.json();
-        if (!signed.ok || !signedJson.signedUrl || !signedJson.publicUrl) {
+        if (!signed.ok || !signedJson.path || !signedJson.token || !signedJson.publicUrl) {
           throw new Error(signedJson.error || "Failed to get upload URL");
         }
 
+        // Use the Supabase SDK's uploadToSignedUrl rather than a raw fetch
+        // PUT — raw PUTs need an x-upsert header which is non-CORS-safe and
+        // triggers an OPTIONS preflight that the bucket's CORS rejects
+        // ("Failed to fetch"). The SDK handles headers + auth correctly.
         setVideoStatus("Uploading image...");
-        const put = await fetch(signedJson.signedUrl, {
-          method: "PUT",
-          headers: { "Content-Type": blob.type, "x-upsert": "true" },
-          body: blob,
-        });
-        if (!put.ok) {
-          throw new Error(`Storage rejected upload (${put.status})`);
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+          throw new Error("Storage client unavailable");
+        }
+        const { error: uploadErr } = await supabase.storage
+          .from("artist-media")
+          .uploadToSignedUrl(signedJson.path, signedJson.token, blob, {
+            contentType: blob.type,
+            upsert: true,
+          });
+        if (uploadErr) {
+          throw new Error(`Storage rejected upload — ${uploadErr.message}`);
         }
 
         // Image URL into video_url; cover_image_url is left alone.
@@ -1570,9 +1580,27 @@ export function QuestsTab() {
                           )}
                         </div>
                       ) : (
-                        <label className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/20 py-6 cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30">
-                          <Upload size={18} className="text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground font-medium">Click to upload an image or video</span>
+                        <label
+                          className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed py-6 cursor-pointer transition-colors ${
+                            dragActive
+                              ? "border-primary bg-primary/10"
+                              : "border-border bg-muted/20 hover:border-primary/40 hover:bg-muted/30"
+                          }`}
+                          onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
+                          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
+                          onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(false); }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDragActive(false);
+                            const file = e.dataTransfer.files?.[0];
+                            if (file) handleMediaUpload(file);
+                          }}
+                        >
+                          <Upload size={18} className={dragActive ? "text-primary" : "text-muted-foreground"} />
+                          <span className={`text-xs font-medium ${dragActive ? "text-primary" : "text-muted-foreground"}`}>
+                            {dragActive ? "Drop to upload" : "Click or drop an image or video"}
+                          </span>
                           <span className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP, MP4, MOV, WebM — max 200MB for video</span>
                           <input
                             ref={videoInputRef}

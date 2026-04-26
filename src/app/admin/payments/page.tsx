@@ -97,7 +97,12 @@ type OnboardingState =
   | "needs-bank"
   | "live";
 
-type View = "loading" | "setup-form" | "waiting" | "connected";
+type View =
+  | "loading"
+  | "setup-form"
+  | "waiting"
+  | "connected"
+  | "platform-owner";
 
 export default function PaymentSettingsPage() {
   const orgId = useOrgId();
@@ -111,6 +116,12 @@ export default function PaymentSettingsPage() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [checkingNow, setCheckingNow] = useState(false);
+  // Platform owner mode: this user owns the platform itself, so they don't
+  // need a separate Connect account — their org's sales flow directly to
+  // the platform Stripe account that hosts the marketplace. Distinct from
+  // a regular admin: regular admins MUST set up Connect, platform owners
+  // MUST NOT (it would split their books off from the marketplace's).
+  const [isPlatformOwner, setIsPlatformOwner] = useState(false);
   // URL of the in-flight Stripe hosted KYC tab — used so the user can
   // reopen Stripe if they accidentally closed the tab.
   const [stripeUrl, setStripeUrl] = useState<string | null>(null);
@@ -135,6 +146,9 @@ export default function PaymentSettingsPage() {
         .getUser()
         .then(({ data }) => {
           if (data.user?.email) setEmail((prev) => prev || data.user.email!);
+          if (data.user?.app_metadata?.is_platform_owner === true) {
+            setIsPlatformOwner(true);
+          }
         })
         .catch(() => {});
     }
@@ -215,7 +229,10 @@ export default function PaymentSettingsPage() {
 
       if (!json.connected) {
         setStatus(null);
-        setView("setup-form");
+        // Platform owners route to platform Stripe by default (their org IS
+        // the marketplace) — show that explicitly rather than nudging them
+        // to create a Connect account they shouldn't have.
+        setView(isPlatformOwner ? "platform-owner" : "setup-form");
         return;
       }
 
@@ -262,7 +279,7 @@ export default function PaymentSettingsPage() {
       setError("Couldn't load payment status. Please refresh.");
       setView("setup-form");
     }
-  }, []);
+  }, [isPlatformOwner]);
 
   useEffect(() => {
     checkStatus();
@@ -531,9 +548,11 @@ export default function PaymentSettingsPage() {
             ? "Set up payments to start selling tickets."
             : view === "waiting"
               ? "Stripe is verifying your details in a new tab."
-              : status?.charges_enabled
-                ? "Your payments are live. You're ready to sell."
-                : "Almost there — finish verification to start selling."
+              : view === "platform-owner"
+                ? "Your tickets sell through the platform Stripe account."
+                : status?.charges_enabled
+                  ? "Your payments are live. You're ready to sell."
+                  : "Almost there — finish verification to start selling."
         }
       />
 
@@ -549,6 +568,8 @@ export default function PaymentSettingsPage() {
           <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
+
+      {view === "platform-owner" && <PlatformOwnerCard />}
 
       {view === "setup-form" && (
         <SetupForm
@@ -1157,6 +1178,44 @@ function ConnectedView({
 }
 
 // ─── Connected sub-views ────────────────────────────────────────────────
+
+/**
+ * Platform-owner state: the user is the platform owner and their org has
+ * no Connect account configured. That's the correct state — their org's
+ * sales flow directly through the platform Stripe account that hosts the
+ * marketplace, so they shouldn't be nudged to set up Connect (which would
+ * split their books off from the platform's). Distinct from a regular
+ * tenant who hasn't set up yet (those see SetupForm instead).
+ */
+function PlatformOwnerCard() {
+  return (
+    <Card className="gap-0 overflow-hidden border-success/20 py-0">
+      <div className="px-6 py-8 text-center">
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-success/10 ring-1 ring-success/20">
+          <CheckCircle2 className="size-7 text-success" />
+        </div>
+        <h2 className="text-lg font-bold text-foreground">
+          Active — Platform owner
+        </h2>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          Your tickets sell through the main platform Stripe account. You
+          don&apos;t need a separate Connect account — your org is the
+          marketplace.
+        </p>
+      </div>
+
+      <div className="border-t border-border/40 bg-muted/20 px-6 py-4">
+        <div className="mx-auto flex max-w-sm items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+          <Info className="mt-0.5 size-3 shrink-0 text-primary/70" />
+          <span>
+            Other tenants on the platform set up their own Stripe via
+            Settings → Payments. That doesn&apos;t apply to you.
+          </span>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function LiveCard({ status }: { status: AccountStatus }) {
   const schedule = (status as { payout_schedule?: { interval?: string } }).payout_schedule;

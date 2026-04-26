@@ -29,6 +29,7 @@ import { fmtMoney } from "@/lib/format";
 import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import { DEFAULT_VAT_SETTINGS, validateVatNumber } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export default function FinancePage() {
   return (
@@ -117,14 +118,22 @@ interface PayoutRow {
 
 type DashboardState =
   | "not-connected"
+  | "platform-owner"
   | "incomplete"
   | "action-needed"
   | "under-review"
   | "needs-bank"
   | "live";
 
-function getDashboardState(status: AccountStatus | null): DashboardState {
-  if (!status || !status.connected) return "not-connected";
+function getDashboardState(
+  status: AccountStatus | null,
+  isPlatformOwner: boolean,
+): DashboardState {
+  if (!status || !status.connected) {
+    // Platform owners route to the platform Stripe by default — show that
+    // explicitly rather than nudging them to set up a Connect account.
+    return isPlatformOwner ? "platform-owner" : "not-connected";
+  }
   if (status.charges_enabled && status.payouts_enabled) return "live";
   if (status.charges_enabled && !status.payouts_enabled) return "needs-bank";
   const blockingCount = status.requirements.currently_due.filter(
@@ -138,6 +147,7 @@ function getDashboardState(status: AccountStatus | null): DashboardState {
 function PaymentsTab() {
   const [status, setStatus] = useState<AccountStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [isPlatformOwner, setIsPlatformOwner] = useState(false);
 
   const [balance, setBalance] = useState<{
     available: BalanceEntry[];
@@ -146,6 +156,18 @@ function PaymentsTab() {
 
   const [charges, setCharges] = useState<ChargeRow[] | null>(null);
   const [payouts, setPayouts] = useState<PayoutRow[] | null>(null);
+
+  // Detect platform owner — they don't need a Connect account, their org's
+  // sales flow directly through the platform Stripe.
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.app_metadata?.is_platform_owner === true) {
+        setIsPlatformOwner(true);
+      }
+    });
+  }, []);
 
   // Status — always fetch
   useEffect(() => {
@@ -228,16 +250,18 @@ function PaymentsTab() {
     );
   }
 
-  const state = getDashboardState(status);
+  const state = getDashboardState(status, isPlatformOwner);
   const fallbackCurrency = status?.default_currency || "gbp";
 
   return (
     <div className="space-y-4">
       <StatusCard status={status} state={state} />
 
-      {state !== "not-connected" && state !== "incomplete" && (
-        <BalanceCard balance={balance} fallbackCurrency={fallbackCurrency} />
-      )}
+      {state !== "not-connected" &&
+        state !== "platform-owner" &&
+        state !== "incomplete" && (
+          <BalanceCard balance={balance} fallbackCurrency={fallbackCurrency} />
+        )}
 
       {status?.connected && (
         <>
@@ -287,7 +311,7 @@ function StatusCard({
   return (
     <Card
       className={`py-0 gap-0 ${
-        state === "live"
+        state === "live" || state === "platform-owner"
           ? "border-success/20"
           : state === "needs-bank" || state === "under-review"
             ? "border-info/20"
@@ -316,13 +340,15 @@ function StatusCard({
                 : config.subtitle}
             </p>
           </div>
-          <Link
-            href="/admin/payments/"
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
-          >
-            {config.cta}
-            <ArrowRight size={13} />
-          </Link>
+          {state !== "platform-owner" && (
+            <Link
+              href="/admin/payments/"
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
+            >
+              {config.cta}
+              <ArrowRight size={13} />
+            </Link>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -342,6 +368,17 @@ const STATE_CONFIG: Record<
     cta: string;
   }
 > = {
+  "platform-owner": {
+    Icon: CheckCircle2,
+    iconBg: "bg-success/10",
+    iconColor: "text-success",
+    title: "Active — Platform owner",
+    subtitle:
+      "Your tickets sell through the main platform Stripe account. No separate Connect account needed.",
+    badgeLabel: "Active",
+    badgeVariant: "success",
+    cta: "",
+  },
   "not-connected": {
     Icon: CreditCard,
     iconBg: "bg-muted/50",

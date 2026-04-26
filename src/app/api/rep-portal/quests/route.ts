@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import {
+  buildQuestShareUrl,
+  fetchPrimaryDomains,
+} from "@/lib/rep-share-url";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -96,9 +100,7 @@ export async function GET(request: NextRequest) {
       if (m.promoter) promoterByPromoterId.set(m.promoter_id, m.promoter);
     }
 
-    // Helpers for the share-card fields below — defined here so they close
-    // over codeByPromoterId / primaryCode without re-passing them.
-    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://entry.events").replace(/\/$/, "");
+    // Per-quest discount-code lookup. Per-promoter wins, primary fallback.
     const questDiscountCode = (promoterId: string | null): string | null => {
       if (promoterId) {
         const code = codeByPromoterId.get(promoterId);
@@ -106,10 +108,9 @@ export async function GET(request: NextRequest) {
       }
       return primaryCode;
     };
-    const questShareUrl = (eventSlug: string | null, code: string | null): string | null => {
-      if (!eventSlug || !code) return null;
-      return `${siteUrl}/event/${eventSlug}?ref=${encodeURIComponent(code)}`;
-    };
+    // share_url uses the event's tenant domain (for the "this is from MY
+    // promoter" emotional read) — primary domains are fetched in batch
+    // below once we know which org_ids the events span.
 
     // 2. Fetch quests: (promoter_id IN scoped) OR (promoter_id IS NULL,
     // platform-level — visible to everyone). Filter by event_id if given.
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
           cover_image_url, image_url, banner_image_url, video_url,
           accent_hex, accent_hex_secondary, status, promoter_id, event_id,
           auto_approve,
-          event:events(id, name, slug, date_start, cover_image_url, cover_image)
+          event:events(id, name, slug, date_start, cover_image_url, cover_image, org_id)
         `
       )
       .eq("status", statusFilter)
@@ -266,6 +267,7 @@ export async function GET(request: NextRequest) {
             date_start: string | null;
             cover_image_url: string | null;
             cover_image: string | null;
+            org_id: string;
           }
         | Array<{
             id: string;
@@ -274,11 +276,23 @@ export async function GET(request: NextRequest) {
             date_start: string | null;
             cover_image_url: string | null;
             cover_image: string | null;
+            org_id: string;
           }>
         | null;
     };
 
-    const shaped = (quests as unknown as RawQuest[]).map((q) => {
+    // Batch-fetch primary domains for every unique event-org so each
+    // quest's share_url uses the tenant's branded host instead of
+    // entry.events. One query, regardless of how many quests come back.
+    const rawQuests = quests as unknown as RawQuest[];
+    const eventOrgIds: string[] = [];
+    for (const q of rawQuests) {
+      const ev = Array.isArray(q.event) ? q.event[0] ?? null : q.event;
+      if (ev?.org_id) eventOrgIds.push(ev.org_id);
+    }
+    const domainsByOrgId = await fetchPrimaryDomains(eventOrgIds);
+
+    const shaped = rawQuests.map((q) => {
       const subs = submissionsByQuestId.get(q.id) ?? [];
       const approved = subs.filter((s) => s.status === "approved").length;
       const pending = subs.filter((s) => s.status === "pending").length;
@@ -342,12 +356,18 @@ export async function GET(request: NextRequest) {
         auto_approve: q.auto_approve,
         // Pre-built share payload — saves iOS a round trip to dashboard.
         // discount_code: per-promoter if the quest is promoter-scoped and
-        // the rep has a code on that membership; else primary (first
-        // approved membership's code). share_url: full deep-link to the
-        // event with the code already in ?ref=, ready for the share card.
-        // Both null when there's no code or no event to point at.
+        // the rep has a code on that membership; else primary. share_url:
+        // full deep-link with the code in ?ref=, served from the tenant's
+        // branded domain (custom or subdomain) for the "this is from MY
+        // promoter" emotional read — falls through to entry.events if
+        // the tenant has no primary domain registered.
         discount_code: questDiscountCode(q.promoter_id),
-        share_url: questShareUrl(eventRow?.slug ?? null, questDiscountCode(q.promoter_id)),
+        share_url: buildQuestShareUrl({
+          orgId: eventRow?.org_id ?? null,
+          eventSlug: eventRow?.slug ?? null,
+          code: questDiscountCode(q.promoter_id),
+          domainsByOrgId,
+        }),
         my_submissions: {
           total: subs.length,
           approved,

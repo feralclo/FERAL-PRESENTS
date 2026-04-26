@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import { buildQuestShareUrlOne } from "@/lib/rep-share-url";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -42,12 +43,12 @@ export async function POST(
       );
     }
 
-    // 1. Load quest + verify visibility scope for this rep. event(slug) is
-    //    pulled here so the response can build the share_url without a
-    //    second round trip.
+    // 1. Load quest + verify visibility scope for this rep. event(slug,
+    //    org_id) is pulled here so the response can build the share_url
+    //    on the tenant's branded domain without a second round trip.
     const { data: quest } = await db
       .from(TABLES.REP_QUESTS)
-      .select("id, status, promoter_id, event:events(slug)")
+      .select("id, status, promoter_id, event:events(slug, org_id)")
       .eq("id", questId)
       .maybeSingle();
 
@@ -133,16 +134,18 @@ export async function POST(
       discountCode = anyApproved?.discount_code ?? null;
     }
 
-    type EventRow = { slug: string | null } | Array<{ slug: string | null }> | null;
+    type EventRow =
+      | { slug: string | null; org_id: string | null }
+      | Array<{ slug: string | null; org_id: string | null }>
+      | null;
     const eventField = (quest as { event?: EventRow }).event;
     const eventRow = Array.isArray(eventField) ? eventField[0] ?? null : eventField;
-    const eventSlug = eventRow?.slug ?? null;
 
-    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://entry.events").replace(/\/$/, "");
-    const shareUrl =
-      eventSlug && discountCode
-        ? `${siteUrl}/event/${eventSlug}?ref=${encodeURIComponent(discountCode)}`
-        : null;
+    const shareUrl = await buildQuestShareUrlOne({
+      orgId: eventRow?.org_id ?? null,
+      eventSlug: eventRow?.slug ?? null,
+      code: discountCode,
+    });
 
     return NextResponse.json({
       data: {

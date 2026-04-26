@@ -28,7 +28,13 @@ const REASON_CODES = [
   "other",
 ] as const;
 
-const SURFACES = ["profile", "peer_activity", "leaderboard", "message"] as const;
+const SURFACES = [
+  "profile",
+  "peer_activity",
+  "leaderboard",
+  "message",
+  "story",
+] as const;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -52,6 +58,7 @@ export async function POST(request: NextRequest) {
 
     const obj = body as Record<string, unknown>;
     const targetRepId = obj.target_rep_id;
+    const targetStoryId = obj.target_story_id;
     const reasonCode = obj.reason_code;
     const surface = obj.surface;
     const freeText = obj.free_text;
@@ -75,6 +82,19 @@ export async function POST(request: NextRequest) {
         { error: `surface must be one of: ${SURFACES.join(", ")}` },
         { status: 400 }
       );
+    }
+    // Story reports must identify which story; everything else is rep-
+    // identified only. target_story_id is optional and ignored on
+    // non-story surfaces (we don't 400 on extra fields).
+    let cleanStoryId: string | null = null;
+    if (surface === "story") {
+      if (typeof targetStoryId !== "string" || !UUID_RE.test(targetStoryId)) {
+        return NextResponse.json(
+          { error: "target_story_id must be a valid UUID for story reports" },
+          { status: 400 }
+        );
+      }
+      cleanStoryId = targetStoryId;
     }
     if (freeText !== undefined && freeText !== null) {
       if (typeof freeText !== "string") {
@@ -125,6 +145,7 @@ export async function POST(request: NextRequest) {
       .insert({
         reporter_rep_id: auth.rep.id,
         target_rep_id: targetRepId,
+        target_story_id: cleanStoryId,
         reason_code: reasonCode,
         surface,
         free_text: cleanFreeText,

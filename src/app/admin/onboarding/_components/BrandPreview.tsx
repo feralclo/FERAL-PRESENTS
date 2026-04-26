@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { OnboardingWizardState } from "@/types/settings";
 import { getCountryInfo } from "@/lib/country-currency-map";
+import { SmartLogo } from "@/components/SmartLogo";
 
 /**
  * Live brand preview pane.
@@ -165,6 +166,7 @@ export function BrandPreview({ state }: { state: OnboardingWizardState | null })
                 currencySymbol={currencySymbol}
                 minPrice={SAMPLE_TICKETS[0].price}
                 country={identity.country || "GB"}
+                brandName={brandName}
               />
               <AboutBlock brandName={brandName} />
               <TicketWidget accent={accent} currencySymbol={currencySymbol} />
@@ -310,24 +312,26 @@ function BatteryIcon() {
 
 function Header({ brandName, logo }: { brandName: string; logo?: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-white/[0.04] px-5 py-3.5">
-      {logo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={logo}
-          alt={brandName}
-          className="max-h-6 max-w-[120px] object-contain"
-          style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}
-        />
-      ) : (
-        <span
-          className="font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-white/85"
-        >
-          {brandName}
+    <div className="flex items-center justify-between border-b border-white/[0.05] bg-black/40 px-5 py-3.5 backdrop-blur">
+      <div className="flex h-8 items-center">
+        {logo ? (
+          <SmartLogo
+            src={logo}
+            alt={brandName}
+            surface="dark"
+            className="block max-h-8 max-w-[140px] object-contain"
+          />
+        ) : (
+          <span className="font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-white">
+            {brandName}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.22em] text-white/65">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
         </span>
-      )}
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
-        <span className="h-1 w-1 rounded-full bg-white/40" />
         Live
       </div>
     </div>
@@ -339,11 +343,13 @@ function Hero({
   currencySymbol,
   minPrice,
   country,
+  brandName,
 }: {
   accent: string;
   currencySymbol: string;
   minPrice: number;
   country: string;
+  brandName: string;
 }) {
   const date = useMemo(() => nextSaturdayParts(country), [country]);
   return (
@@ -367,39 +373,45 @@ function Hero({
         }}
       />
 
-      <div className="relative px-5 pb-8 pt-10">
+      <div className="relative px-5 pb-9 pt-11">
         {/* Eyebrow tag */}
-        <div className="inline-flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-white/55">
+        <div className="inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-white/85">
           <span
-            className="h-1 w-1 rounded-full"
-            style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ background: accent, boxShadow: `0 0 10px ${accent}` }}
           />
           {date.full}
         </div>
 
-        {/* Title — mirrors MidnightHero's display font + tight tracking */}
+        {/* Title — editorial, generous, tight tracking */}
         <h1
-          className="mt-5 font-bold leading-[0.92] tracking-[-0.04em] text-white"
+          className="mt-4 font-bold leading-[0.9] tracking-[-0.045em] text-white [text-wrap:balance]"
           style={{
             fontFamily: "'Space Mono', monospace",
-            fontSize: "clamp(28px, 7vw, 38px)",
+            fontSize: "clamp(30px, 8vw, 42px)",
           }}
         >
           Summer Solstice
         </h1>
 
+        {/* "Presented by" — editorial subtitle */}
+        <div className="mt-3 text-[12px] italic text-white/65">
+          Presented by{" "}
+          <span className="font-semibold not-italic text-white/90">{brandName}</span>
+        </div>
+
         {/* Date · venue row */}
-        <div className="mt-5 flex items-center gap-2 text-[12px] font-medium text-white/75">
+        <div className="mt-5 flex items-center gap-2 text-[12px] font-medium text-white/85">
           <span>{date.short}</span>
-          <span className="h-[3px] w-[3px] rounded-full bg-white/30" />
+          <span className="h-[3px] w-[3px] rounded-full bg-white/45" />
           <span>Invisible Wind Factory · Liverpool</span>
         </div>
 
         {/* Doors / age */}
-        <div className="mt-1 text-[11px] text-white/35">Doors 9pm · 18+</div>
+        <div className="mt-1.5 text-[11px] text-white/55">Doors 9pm · 18+</div>
 
         {/* Price strip */}
-        <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.18em] text-white/45">
+        <div className="mt-7 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">
           From {currencySymbol}
           {minPrice}
         </div>
@@ -408,18 +420,18 @@ function Hero({
         <button
           type="button"
           tabIndex={-1}
-          className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-white/[0.18] bg-white/[0.10] px-7 text-[11px] font-bold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_0_18px_rgba(255,255,255,0.04)]"
+          className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-white/[0.22] bg-white/[0.12] px-7 text-[11px] font-bold uppercase tracking-[0.06em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_22px_rgba(255,255,255,0.05)]"
         >
           Get Tickets
-          <span className="ml-1.5 opacity-50">↓</span>
+          <span className="ml-1.5 opacity-65">↓</span>
         </button>
 
         {/* Tiny secondary trust line — mimics MidnightTrustBar */}
-        <div className="mt-6 flex items-center gap-3 text-[9px] uppercase tracking-[0.15em] text-white/30">
+        <div className="mt-7 flex items-center gap-3 text-[9px] font-semibold uppercase tracking-[0.18em] text-white/55">
           <span>Apple Pay</span>
-          <span className="h-1 w-1 rounded-full bg-white/15" />
+          <span className="h-1 w-1 rounded-full bg-white/25" />
           <span>Instant tickets</span>
-          <span className="h-1 w-1 rounded-full bg-white/15" />
+          <span className="h-1 w-1 rounded-full bg-white/25" />
           <span>Wallet ready</span>
         </div>
       </div>
@@ -437,8 +449,10 @@ function TicketWidget({
   accent: string;
   currencySymbol: string;
 }) {
+  const totalPrice = SAMPLE_TICKETS[1].price; // GA, the "selected" one in preview
+
   return (
-    <section className="px-5 py-7">
+    <section className="px-5 py-7" id="tickets">
       <div className="mb-4 flex items-center justify-between">
         <h2
           className="font-bold uppercase tracking-[0.04em] text-white"
@@ -446,7 +460,7 @@ function TicketWidget({
         >
           Tickets
         </h2>
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/40">
+        <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-white/55">
           3 tiers
         </span>
       </div>
@@ -465,7 +479,64 @@ function TicketWidget({
           />
         ))}
       </div>
+
+      {/* Checkout zone — matches MidnightTicketWidget's bottom action stack */}
+      <div className="mt-5 space-y-2">
+        {/* Apple Pay express button — black, white wordmark, exactly like
+            MidnightExpressCheckout renders Apple Pay on a buyer's phone. */}
+        <button
+          type="button"
+          tabIndex={-1}
+          className="flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-black text-white shadow-[0_1px_0_rgba(255,255,255,0.06)_inset]"
+          aria-label="Apple Pay"
+        >
+          <ApplePayMark />
+        </button>
+
+        {/* Primary checkout — accent-coloured, with computed total */}
+        <button
+          type="button"
+          tabIndex={-1}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[12px] font-bold uppercase tracking-[0.08em] text-white shadow-[0_8px_24px_-8px_var(--prev-accent),inset_0_1px_0_rgba(255,255,255,0.18)]"
+          style={{ background: accent }}
+        >
+          Checkout
+          <span className="font-mono text-[12px] font-semibold opacity-90">
+            · {currencySymbol}
+            {totalPrice}
+          </span>
+        </button>
+
+        <div className="pt-1 text-center text-[9px] font-medium uppercase tracking-[0.18em] text-white/55">
+          Secure checkout · powered by Stripe
+        </div>
+      </div>
     </section>
+  );
+}
+
+/** Black-pill Apple Pay mark that matches the Stripe Express Checkout button. */
+function ApplePayMark() {
+  return (
+    <svg
+      role="img"
+      aria-label="Apple Pay"
+      width="46"
+      height="20"
+      viewBox="0 0 46 20"
+      className="text-white"
+    >
+      {/* Apple */}
+      <path
+        d="M9.6 5.7c-.55.65-1.43 1.16-2.3 1.09-.11-.86.32-1.78.83-2.34.55-.67 1.5-1.13 2.27-1.17.09.9-.27 1.78-.8 2.42Zm.79 1.25c-1.27-.07-2.36.72-2.97.72-.62 0-1.55-.69-2.55-.67-1.32.02-2.55.76-3.22 1.94-1.38 2.37-.36 5.88 1 7.81.66.95 1.45 2.01 2.49 1.97 1-.04 1.39-.65 2.6-.65s1.55.65 2.61.63c1.08-.02 1.76-.96 2.42-1.92.76-1.09 1.07-2.15 1.09-2.21-.02-.01-2.09-.81-2.11-3.21-.02-2 1.62-2.96 1.7-3.01-.93-1.39-2.39-1.54-2.91-1.6Z"
+        fill="currentColor"
+      />
+      {/* Pay */}
+      <path
+        d="M19.86 5.7c2.05 0 3.48 1.42 3.48 3.48 0 2.07-1.46 3.5-3.53 3.5h-2.27v3.62h-1.62V5.7h3.94Zm-2.32 5.6h1.88c1.43 0 2.24-.77 2.24-2.11 0-1.34-.81-2.1-2.23-2.1H17.54v4.21Zm6.05 3.06c0-1.36 1.04-2.2 2.89-2.31l2.13-.13v-.6c0-.87-.59-1.39-1.57-1.39-.93 0-1.51.45-1.65 1.15h-1.49c.09-1.41 1.29-2.45 3.2-2.45 1.87 0 3.07.99 3.07 2.54v5.32h-1.51v-1.27h-.04c-.45.86-1.43 1.4-2.45 1.4-1.52 0-2.58-.94-2.58-2.26Zm5.02-.7v-.61l-1.92.12c-.96.07-1.5.49-1.5 1.16 0 .69.57 1.14 1.43 1.14 1.13 0 1.99-.78 1.99-1.81Zm3.07 5.55v-1.27c.12.03.39.03.52.03.73 0 1.12-.31 1.36-1.1l.14-.45-2.79-7.74h1.7l1.94 6.27h.04l1.94-6.27h1.65l-2.89 8.12c-.66 1.87-1.42 2.47-3.02 2.47-.13 0-.55-.01-.69-.06Z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
 
@@ -519,35 +590,33 @@ function TicketRow({
             )}
           </div>
           <div
-            className="mt-1 text-[11px] tracking-[0.01em] text-white/55"
+            className="mt-1 text-[11px] tracking-[0.01em] text-white/70"
             style={{ fontFamily: "'Space Mono', monospace" }}
           >
             {description}
           </div>
         </div>
-        <div
-          className="font-mono text-[14px] font-bold tracking-[0.02em] text-white"
-        >
+        <div className="font-mono text-[14px] font-bold tracking-[0.02em] text-white">
           {currencySymbol}
           {price}
         </div>
       </div>
       <div className="mt-3 flex items-center justify-end">
-        <div className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.03] p-0.5">
+        <div className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.04] p-0.5">
           <button
             type="button"
             tabIndex={-1}
-            className="h-7 w-7 rounded-md text-[14px] text-white/60"
+            className="h-7 w-7 rounded-md text-[14px] text-white/80 transition-colors"
           >
             −
           </button>
-          <span className="min-w-5 text-center font-mono text-[11px] font-bold text-white/50">
-            0
+          <span className="min-w-5 text-center font-mono text-[11px] font-bold text-white/75">
+            {highlighted ? 1 : 0}
           </span>
           <button
             type="button"
             tabIndex={-1}
-            className="h-7 w-7 rounded-md text-[14px] text-white/60"
+            className="h-7 w-7 rounded-md text-[14px] text-white/80 transition-colors"
           >
             +
           </button>
@@ -559,16 +628,15 @@ function TicketRow({
 
 function AboutBlock({ brandName }: { brandName: string }) {
   return (
-    <section className="border-t border-white/[0.04] px-5 py-7">
-      <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-white/40">
+    <section className="border-t border-white/[0.06] px-5 py-7">
+      <div className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-white/65">
         About
       </div>
-      <p
-        className="text-[12px] leading-[1.6] text-white/65"
-        style={{ fontFamily: "'Space Mono', monospace" }}
-      >
-        A night with a stacked lineup and a crowd that brings it. Doors 9pm,
-        last entry 11:30. Brought to you by {brandName}.
+      <p className="text-[13px] leading-[1.65] text-white/85 [text-wrap:pretty]">
+        Carefully curated, expertly hosted. Doors 9pm · last entry 11:30 · 18+.
+      </p>
+      <p className="mt-2.5 text-[12px] italic leading-[1.6] text-white/60">
+        Hosted by {brandName}.
       </p>
     </section>
   );
@@ -576,14 +644,16 @@ function AboutBlock({ brandName }: { brandName: string }) {
 
 function Footer({ brandName, slug }: { brandName: string; slug: string }) {
   return (
-    <footer className="border-t border-white/[0.04] px-5 py-6 text-center">
-      <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">
+    <footer className="border-t border-white/[0.06] px-5 py-6 text-center">
+      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-white/75">
         {brandName}
       </div>
-      <div className="mt-1.5 font-mono text-[9px] tracking-[0.04em] text-white/30">
+      <div className="mt-1.5 font-mono text-[9px] tracking-[0.04em] text-white/55">
         {slug}.entry.events
       </div>
-      <div className="mt-3 text-[9px] text-white/25">Powered by Entry</div>
+      <div className="mt-3 text-[9px] uppercase tracking-[0.18em] text-white/40">
+        Powered by Entry
+      </div>
     </footer>
   );
 }

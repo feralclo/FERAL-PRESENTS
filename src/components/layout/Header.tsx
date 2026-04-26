@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useBranding } from "@/hooks/useBranding";
 import { useOrgId } from "@/components/OrgProvider";
+import { SmartLogo } from "@/components/SmartLogo";
 import type { MerchStoreSettings } from "@/types/merch-store";
 import { DEFAULT_MERCH_STORE_SETTINGS } from "@/types/merch-store";
 import "@/styles/header.css";
@@ -139,12 +140,11 @@ export function Header() {
     <nav className="nav">
       <Link href="/" className="nav__logo" onClick={closeMenu}>
         {branding.logo_url ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
+          <SmartLogo
             src={branding.logo_url}
             alt={branding.org_name || "Entry"}
+            surface="dark"
             className="nav__logo-img"
-            data-branding="logo"
             style={branding.logo_height ? { height: Math.min(branding.logo_height, 56) } : undefined}
           />
         ) : (

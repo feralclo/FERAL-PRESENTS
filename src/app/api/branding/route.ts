@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, brandingKey } from "@/lib/constants";
+import { TABLES, brandingKey, emailKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 import type { BrandingSettings } from "@/types/settings";
@@ -150,6 +150,40 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Cascade the logo to email settings so a single upload flows everywhere
+    // a tenant's brand shows up. Skip when the tenant has explicitly set a
+    // different logo for transactional emails (logo_override flag).
+    if (typeof body?.logo_url === "string") {
+      try {
+        const eKey = emailKey(orgId);
+        const { data: existingEmail } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", eKey)
+          .maybeSingle();
+        const current = (existingEmail?.data as
+          | (Record<string, unknown> & { logo_override?: boolean; logo_url?: string })
+          | null) ?? {};
+        if (!current.logo_override) {
+          await supabase.from(TABLES.SITE_SETTINGS).upsert(
+            {
+              key: eKey,
+              data: {
+                ...current,
+                logo_url: body.logo_url,
+              },
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "key" }
+          );
+        }
+      } catch (cascadeErr) {
+        // Cascade failures must never block the primary save — the rest of
+        // the platform falls back to brand logo at send-time anyway.
+        Sentry.captureException(cascadeErr);
+      }
     }
 
     return NextResponse.json({ success: true });

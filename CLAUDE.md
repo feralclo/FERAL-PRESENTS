@@ -107,6 +107,18 @@ Per-group, reveal one-at-a-time on sellout. Computed from `sold`/`capacity`. Con
 ### Beta Signup
 `BETA_MODE = true` gates signup. Flow: `/admin/signup/` → invite code → `/admin/beta/` → owner approves → email → signup → `/admin/onboarding/` → dashboard. `provisionOrg()` in `lib/signup.ts` creates `org_users`, `domains`, `site_settings`.
 
+### Onboarding Wizard
+`/admin/onboarding/` — three sections: **Identity → Branding → Finish**, then `/admin/`. Long form (9 sections, binary VAT, Stripe-Connect-in-wizard, URL-paste brand import, first-event creator) was scrapped; those are anti-patterns no major commerce platform ships. Post-wizard setup lives on the dashboard via `OnboardingChecklist`.
+
+- Identity: name + country + brand name. Country sets currency/timezone/VAT defaults silently via `provisionOrg`. Pre-fills from `user_metadata`.
+- Branding: logo + 6 accent presets + custom hex + wallet sync.
+- Finish: address + dashboard handoff.
+- `BrandPreview.tsx`: live mobile event-page render in a phone frame (hero, ticket cards, footer). Don't replace with a stub card mockup — that was the rejected v1.
+- `Shell.tsx`: three-dot progress, no persistent "Step N of N".
+- `OnboardingChecklist` (`src/components/admin/`) wired into `/admin/page.tsx` — state from `/api/stripe/connect/my-account`, `/api/domains`, `/api/branding`, `/api/events`, `/api/team`. Items dismissable via localStorage; widget hides when empty.
+
+When extending: link to existing admin surfaces, don't reproduce them in-wizard. Tests: `src/__tests__/onboarding-wizard.test.tsx`.
+
 ### Request Flow (Event Pages)
 `/event/[slug]/` → middleware (org_id) → RootLayout (`<OrgProvider>`) → EventLayout (Server Component, parallel fetch event + settings + branding, CSS vars + `data-theme`) → `MidnightEventPage`.
 

@@ -177,14 +177,12 @@ export default function PaymentSettingsPage() {
       setStatus(acct);
       setLivemode(acct.livemode);
 
-      // Standard accounts complete onboarding in their own Stripe dashboard,
-      // so we never show our embedded onboarding for them — straight to the
-      // status dashboard regardless of details_submitted.
-      if (acct.account_type === "custom" && !acct.details_submitted) {
-        setView("onboarding");
-      } else {
-        setView("connected");
-      }
+      // Always go to the connected/status view. If the Custom account hasn't
+      // finished verification yet, the connected view shows a "Setup
+      // Incomplete" banner with a "Continue Setup" button that redirects to
+      // Stripe's hosted KYC page (more reliable than embedded ConnectJS,
+      // which had load-failure issues that left users stuck).
+      setView("connected");
 
       if (acct.charges_enabled) {
         fetch("/api/stripe/apple-pay-domain", {
@@ -262,13 +260,45 @@ export default function PaymentSettingsPage() {
         body: JSON.stringify({ domain: window.location.hostname }),
       }).catch(() => {});
 
-      setSuccess("Account created. Complete the verification below.");
-      await checkStatus();
-      setView("onboarding");
+      // Account exists in Stripe. Now generate a hosted onboarding link and
+      // redirect the browser to it. Stripe handles KYC, then redirects back
+      // to /admin/payments?onboarding=complete.
+      setSuccess("Sending you to Stripe to verify your details...");
+      const linkRes = await fetch("/api/stripe/connect/my-account/onboarding");
+      const linkJson = await linkRes.json();
+      if (!linkRes.ok || !linkJson.url) {
+        setError(
+          linkJson.error ||
+            "Account created, but couldn't open verification. Please refresh and click Continue Setup.",
+        );
+        await checkStatus();
+        setSettingUp(false);
+        return;
+      }
+      window.location.href = linkJson.url;
     } catch {
       setError("Network error. Please try again.");
     } finally {
       setSettingUp(false);
+    }
+  };
+
+  // ─── Hosted onboarding redirect ───
+  // Used when account exists but isn't fully verified — generates a fresh
+  // account_link and full-redirects the browser to Stripe.
+
+  const goToHostedOnboarding = async () => {
+    setError("");
+    try {
+      const res = await fetch("/api/stripe/connect/my-account/onboarding");
+      const json = await res.json();
+      if (!res.ok || !json.url) {
+        setError(json.error || "Failed to open Stripe verification");
+        return;
+      }
+      window.location.href = json.url;
+    } catch {
+      setError("Network error. Please try again.");
     }
   };
 
@@ -519,7 +549,7 @@ export default function PaymentSettingsPage() {
           status={status}
           confirmDisconnect={confirmDisconnect}
           disconnecting={disconnecting}
-          onContinueOnboarding={() => setView("onboarding")}
+          onContinueOnboarding={goToHostedOnboarding}
           onAskDisconnect={() => setConfirmDisconnect(true)}
           onCancelDisconnect={() => setConfirmDisconnect(false)}
           onConfirmDisconnect={handleDisconnect}

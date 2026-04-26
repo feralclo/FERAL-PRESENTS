@@ -180,6 +180,49 @@ export default async function EventLayout({
     ? JSON.stringify(branding)
     : null;
 
+  const previewScript = `
+(function(){
+  function run(){
+    try {
+      var q = new URLSearchParams(window.location.search);
+      if (q.get('__preview_clean')) {
+        try {
+          localStorage.setItem('feral_cookie_consent', JSON.stringify({
+            version: 1,
+            timestamp: new Date().toISOString(),
+            necessary: true, analytics: true, marketing: true
+          }));
+        } catch(_) {}
+        var css = document.createElement('style');
+        css.textContent = '.cookie-consent,.midnight-discount-popup,[class*="social-proof"],[class*="live-pulse"],[class*="SocialProof"],[data-cart-toast]{display:none!important}';
+        document.head.appendChild(css);
+      }
+      var root = document.querySelector('[data-theme-root]');
+      if (root) {
+        var map = {
+          __preview_accent: '--accent',
+          __preview_bg: '--bg-dark',
+          __preview_card: '--card-bg',
+          __preview_text: '--text-primary',
+          __preview_border: '--card-border'
+        };
+        Object.keys(map).forEach(function(k){
+          var v = q.get(k);
+          if (v) root.style.setProperty(map[k], v.indexOf('#')===0 ? v : '#'+v);
+        });
+      }
+      var name = q.get('__preview_name');
+      if (name) document.querySelectorAll('[data-brand-name]').forEach(function(el){ el.textContent = name; });
+    } catch(e) {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
+  run();
+})();`;
+
   return (
     <>
       {preconnectHints}
@@ -190,6 +233,7 @@ export default async function EventLayout({
           dangerouslySetInnerHTML={{ __html: brandingJson }}
         />
       )}
+      <script dangerouslySetInnerHTML={{ __html: previewScript }} />
       <div
         data-theme-root
         data-theme={dataThemeAttr}

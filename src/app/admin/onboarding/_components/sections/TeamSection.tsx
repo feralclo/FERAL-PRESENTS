@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, UserPlus, Loader2 } from "lucide-react";
+import { X, UserPlus } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { SectionFooter, SectionField, SectionHeading, HintCard } from "../Shell";
 import type { OnboardingApi } from "../../_state";
 
@@ -31,15 +34,15 @@ export function TeamSection({ api }: { api: OnboardingApi }) {
     const trimmed = draft.trim().toLowerCase();
     if (!trimmed) return;
     if (!isValidEmail(trimmed)) {
-      setError("That doesn't look like a valid email address");
+      setError("That doesn't look like a valid email.");
       return;
     }
     if (invitees.includes(trimmed)) {
-      setError("Already on the list");
+      setError("Already on the list.");
       return;
     }
     if (invitees.length >= MAX_INVITES) {
-      setError(`Up to ${MAX_INVITES} invites at once — you can add more later from Team Settings.`);
+      setError(`Up to ${MAX_INVITES} invites here — you can add more from Team Settings.`);
       return;
     }
     setInvitees([...invitees, trimmed]);
@@ -66,8 +69,6 @@ export function TeamSection({ api }: { api: OnboardingApi }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email,
-              // Default minimal first_name; the invitee fills in their own
-              // first/last name during accept-invite.
               first_name: email.split("@")[0],
               perm_events: true,
               perm_orders: true,
@@ -84,79 +85,85 @@ export function TeamSection({ api }: { api: OnboardingApi }) {
   }
 
   return (
-    <div>
+    <>
       <SectionHeading
         eyebrow="Step 8 of 9"
         title="Bring your team"
         subtitle="Invite anyone who'll help run events with you. They'll get a magic link to set up their account."
       />
 
-      <div className="space-y-5">
-        <SectionField
-          label="Invite by email"
-          hint={`Up to ${MAX_INVITES} for now — add more from Team Settings anytime.`}
-          error={error ?? undefined}
-        >
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                if (error) setError(null);
-              }}
-              placeholder="teammate@yourbrand.com"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addEmail();
-                }
-              }}
-              className="h-11 flex-1 rounded-xl border border-input bg-background/40 px-4 text-[14px] text-foreground outline-none transition-all duration-200 placeholder:text-muted-foreground/40 focus:border-primary/50 focus:bg-background focus:ring-[3px] focus:ring-primary/15"
-            />
-            <button
-              type="button"
-              onClick={addEmail}
-              disabled={!draft.trim() || invitees.length >= MAX_INVITES}
-              className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 text-[12px] font-semibold text-foreground transition-colors hover:bg-white/[0.04] disabled:opacity-40"
-            >
-              Add
-            </button>
-          </div>
-        </SectionField>
-
-        {invitees.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
-              {invitees.length} invite{invitees.length === 1 ? "" : "s"} ready to send
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Invite teammates</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SectionField
+            label="Email"
+            htmlFor="onb-team-email"
+            hint={`Up to ${MAX_INVITES} here — add more from Team Settings anytime.`}
+            error={error ?? undefined}
+          >
+            <div className="flex gap-2">
+              <Input
+                id="onb-team-email"
+                type="email"
+                value={draft}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  if (error) setError(null);
+                }}
+                placeholder="teammate@yourbrand.com"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addEmail();
+                  }
+                }}
+              />
+              <Button
+                variant="outline"
+                size="default"
+                onClick={addEmail}
+                disabled={!draft.trim() || invitees.length >= MAX_INVITES}
+              >
+                Add
+              </Button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {invitees.map((email) => (
-                <span
-                  key={email}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 py-1.5 pl-3 pr-1.5 text-[12px] text-primary"
-                >
-                  <UserPlus size={11} />
-                  {email}
-                  <button
-                    type="button"
-                    onClick={() => removeEmail(email)}
-                    className="rounded-full p-1 hover:bg-primary/15"
-                    aria-label={`Remove ${email}`}
+          </SectionField>
+
+          {invitees.length > 0 && (
+            <div className="space-y-2">
+              <div className="font-mono text-[10px] font-semibold uppercase tracking-[1.5px] text-muted-foreground">
+                {invitees.length} invite{invitees.length === 1 ? "" : "s"} ready
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {invitees.map((email) => (
+                  <span
+                    key={email}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 py-1 pl-2.5 pr-1 text-xs text-primary ring-1 ring-primary/15"
                   >
-                    <X size={10} />
-                  </button>
-                </span>
-              ))}
+                    <UserPlus size={11} />
+                    {email}
+                    <button
+                      type="button"
+                      onClick={() => removeEmail(email)}
+                      className="rounded-full p-1 transition-colors hover:bg-primary/15"
+                      aria-label={`Remove ${email}`}
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </CardContent>
+      </Card>
 
-        <HintCard>
-          New teammates start with access to events and orders. You can grant marketing or finance
-          permissions later from Settings → Team.
-        </HintCard>
-      </div>
+      <HintCard>
+        Teammates start with access to events and orders. Grant marketing or finance permissions
+        later in Settings → Team.
+      </HintCard>
 
       <SectionFooter
         primaryLabel={
@@ -177,6 +184,6 @@ export function TeamSection({ api }: { api: OnboardingApi }) {
             : undefined
         }
       />
-    </div>
+    </>
   );
 }

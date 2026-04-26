@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, AlertTriangle, Loader2, Sparkles } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { SectionHeading } from "../Shell";
 import type { OnboardingApi } from "../../_state";
 
@@ -28,7 +30,6 @@ interface ChecklistItem {
   id: string;
   label: string;
   status: "ok" | "pending" | "skipped";
-  hint?: string;
 }
 
 export function FinishSection({ api }: { api: OnboardingApi }) {
@@ -61,9 +62,7 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
             : "Custom domain — DNS pending"
           : "Subdomain",
       status:
-        domain.choice === "custom" && domain.status !== "active"
-          ? "pending"
-          : "ok",
+        domain.choice === "custom" && domain.status !== "active" ? "pending" : "ok",
     },
     {
       id: "vat",
@@ -79,16 +78,16 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
           ? "Stripe ready"
           : "Stripe — finish later",
       status:
-        payments.method === "external"
-          ? "ok"
-          : payments.charges_enabled
-          ? "ok"
-          : "pending",
+        payments.method === "external" || payments.charges_enabled ? "ok" : "pending",
     },
     {
       id: "first_event",
       label: firstEvent.event_id ? "First event saved as draft" : "First event",
-      status: firstEvent.event_id ? "ok" : api.getSection("first_event")?.skipped ? "skipped" : "pending",
+      status: firstEvent.event_id
+        ? "ok"
+        : api.getSection("first_event")?.skipped
+        ? "skipped"
+        : "pending",
     },
     {
       id: "team",
@@ -106,7 +105,6 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
     finishedRef.current = true;
     (async () => {
       try {
-        // Mark the finish section complete in wizard state…
         await fetch("/api/onboarding/state", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -116,7 +114,6 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
             extras: { completed_at: new Date().toISOString() },
           }),
         });
-        // …then fire the welcome email (idempotent on the server — sets a flag).
         await fetch("/api/onboarding/complete", { method: "POST" });
       } catch {
         /* non-fatal */
@@ -124,7 +121,6 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
         setFinalising(false);
       }
     })();
-    // Confetti phase animation
     const t1 = setTimeout(() => setConfettiPhase(1), 100);
     const t2 = setTimeout(() => setConfettiPhase(2), 1200);
     return () => {
@@ -141,7 +137,7 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
 
       <SectionHeading
         eyebrow="You're done"
-        title={`Welcome to Entry, ${greet} 🎉`}
+        title={`Welcome to Entry, ${greet}`}
         subtitle={
           identity.brand_name
             ? `${identity.brand_name} is live on the platform.`
@@ -149,79 +145,83 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
         }
       />
 
-      <div className="space-y-3 rounded-2xl border border-white/[0.05] bg-white/[0.015] p-5">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
-          What you've set up
-        </div>
-        <ul className="space-y-2.5">
-          {checklist.map((item) => (
-            <li key={item.id} className="flex items-start gap-3 text-[13px]">
-              <span
-                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                  item.status === "ok"
-                    ? "bg-success/20 text-success"
-                    : item.status === "pending"
-                    ? "bg-warning/20 text-warning"
-                    : "bg-muted/20 text-muted-foreground/60"
-                }`}
-              >
-                {item.status === "ok" ? (
-                  <Check size={11} strokeWidth={3} />
-                ) : item.status === "pending" ? (
-                  <AlertTriangle size={10} />
-                ) : (
-                  <span className="text-[8px]">—</span>
-                )}
-              </span>
-              <span className={item.status === "skipped" ? "text-muted-foreground/60" : "text-foreground"}>
-                {item.label}
-                {item.status === "skipped" && (
-                  <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground/50">
-                    skipped
-                  </span>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">What you&apos;ve set up</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2.5">
+            {checklist.map((item) => (
+              <li key={item.id} className="flex items-start gap-3 text-sm">
+                <span
+                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                    item.status === "ok"
+                      ? "bg-success/15 text-success"
+                      : item.status === "pending"
+                      ? "bg-warning/15 text-warning"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {item.status === "ok" ? (
+                    <Check size={11} strokeWidth={3} />
+                  ) : item.status === "pending" ? (
+                    <AlertTriangle size={10} />
+                  ) : (
+                    <span className="text-[8px]">—</span>
+                  )}
+                </span>
+                <span
+                  className={
+                    item.status === "skipped" ? "text-muted-foreground" : "text-foreground"
+                  }
+                >
+                  {item.label}
+                  {item.status === "skipped" && (
+                    <span className="ml-1 font-mono text-[10px] uppercase tracking-[1.5px] text-muted-foreground">
+                      skipped
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
 
       {firstEvent.event_id && firstEvent.slug && (
-        <div className="mt-5 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-            <Sparkles size={11} />
-            Next step
-          </div>
-          <div className="mt-1.5 text-[14px] font-semibold text-foreground">
-            Publish your first event
-          </div>
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            We saved it as a draft. Open it in the editor to add cover artwork and go live.
-          </p>
-        </div>
+        <Card className="border-primary/20 bg-primary/[0.03]">
+          <CardContent className="flex items-start gap-3 p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <Sparkles size={14} />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-foreground">
+                Publish your first event
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                We saved it as a draft. Open it in the editor to add cover artwork and go live.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="mt-7 flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {firstEvent.event_id && firstEvent.slug && (
-          <button
-            type="button"
-            onClick={() =>
-              router.push(`/admin/events/${firstEvent.slug}/`)
-            }
-            className="w-full rounded-xl bg-primary py-3 text-[14px] font-semibold text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] transition-all hover:bg-primary/90 hover:shadow-[0_1px_20px_rgba(139,92,246,0.35)] disabled:opacity-50"
+          <Button
+            size="lg"
+            className="w-full"
+            onClick={() => router.push(`/admin/events/${firstEvent.slug}/`)}
             disabled={finalising}
           >
             Open first event in editor
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
+        <Button
+          variant={firstEvent.event_id ? "outline" : "default"}
+          size="lg"
+          className="w-full"
           onClick={() => router.push("/admin/?welcome=1")}
-          className={`w-full rounded-xl py-3 text-[14px] font-semibold transition-all ${
-            firstEvent.event_id
-              ? "border border-white/[0.08] bg-transparent text-foreground hover:bg-white/[0.02]"
-              : "bg-primary text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] hover:bg-primary/90"
-          }`}
           disabled={finalising}
         >
           {finalising ? (
@@ -232,7 +232,7 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
           ) : (
             "Go to dashboard"
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Check, Copy } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SectionFooter, SectionField, SectionHeading, HintCard } from "../Shell";
 import type { OnboardingApi } from "../../_state";
 
@@ -28,6 +32,11 @@ export function DomainSection({ api }: { api: OnboardingApi }) {
     status: data.status as "pending" | "active" | "failed" | undefined,
   });
 
+  const slug =
+    ((api.getSection("identity")?.data ?? {}) as { slug?: string }).slug ||
+    api.orgId ||
+    "yourbrand";
+
   useEffect(() => {
     api.updateSectionData("domain", { choice });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -45,7 +54,7 @@ export function DomainSection({ api }: { api: OnboardingApi }) {
       });
       const json = await res.json();
       if (!res.ok) {
-        setError(json?.error || "Could not add domain");
+        setError(json?.error || "Could not add that domain.");
         return;
       }
       const domain = json.data ?? json.domain ?? json;
@@ -64,101 +73,109 @@ export function DomainSection({ api }: { api: OnboardingApi }) {
         status: domain.status,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add domain");
+      setError(err instanceof Error ? err.message : "Could not add that domain.");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div>
+    <>
       <SectionHeading
         eyebrow="Step 4 of 9"
         title="How will people find you?"
-        subtitle="Pick a free Entry subdomain or point your own domain at us — both work end-to-end."
+        subtitle="Use a free Entry subdomain or point your own domain at the platform."
       />
 
       <div className="space-y-3">
-        <ChoiceCard
+        <ChoiceRow
           active={choice === "subdomain"}
-          title={`${(((api.getSection("identity")?.data ?? {}) as { slug?: string }).slug || api.orgId || "yourbrand")}.entry.events`}
-          subtitle="Free, instant, fully white-label. We host it for you."
+          title={`${slug}.entry.events`}
+          subtitle="Free, instant, fully white-labelled. We host it for you."
           tag="Recommended"
           onClick={() => setChoice("subdomain")}
         />
-        <ChoiceCard
+        <ChoiceRow
           active={choice === "custom"}
           title="I have my own domain"
-          subtitle="Use yourbrand.com or tickets.yourbrand.com. We'll guide you through DNS in seconds."
+          subtitle="Use yourbrand.com or tickets.yourbrand.com — we'll guide you through DNS in a minute."
           onClick={() => setChoice("custom")}
         />
       </div>
 
       {choice === "custom" && !verification.status && (
-        <div className="mt-5 space-y-3">
-          <SectionField label="Domain you want to use">
-            <input
-              type="text"
-              value={hostname}
-              onChange={(e) => setHostname(e.target.value)}
-              placeholder="tickets.yourbrand.com"
-              className="h-11 w-full rounded-xl border border-input bg-background/40 px-4 text-[14px] text-foreground outline-none transition-all duration-200 placeholder:text-muted-foreground/40 focus:border-primary/50 focus:bg-background focus:ring-[3px] focus:ring-primary/15"
-            />
-          </SectionField>
-          {error && (
-            <div className="rounded-xl border border-destructive/15 bg-destructive/8 px-4 py-2.5 text-[12px] text-destructive">
-              {error}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={handleAddCustom}
-            disabled={!hostname.trim() || submitting}
-            className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-2.5 text-[12px] font-semibold text-primary transition-all hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {submitting ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Loader2 size={12} className="animate-spin" />
-                Adding…
-              </span>
-            ) : (
-              "Add this domain"
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Add your domain</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <SectionField
+              label="Domain you want to use"
+              htmlFor="onb-hostname"
+              hint="A subdomain like tickets.yourbrand.com is the most common setup."
+            >
+              <Input
+                id="onb-hostname"
+                value={hostname}
+                onChange={(e) => setHostname(e.target.value)}
+                placeholder="tickets.yourbrand.com"
+              />
+            </SectionField>
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
-          </button>
-        </div>
+            <Button
+              variant="outline"
+              size="default"
+              onClick={handleAddCustom}
+              disabled={!hostname.trim() || submitting}
+            >
+              {submitting ? <Loader2 size={12} className="animate-spin" /> : "Add this domain"}
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {choice === "custom" && verification.status === "pending" && (
-        <div className="mt-5 rounded-2xl border border-warning/15 bg-warning/[0.04] p-4">
-          <div className="text-[13px] font-medium text-foreground">
-            Add this DNS record at your registrar
-          </div>
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            Once it propagates we'll flip your domain live automatically — usually within 15 minutes — and email you to confirm.
-          </p>
-          <div className="mt-3 grid gap-2 text-[12px]">
-            <CopyRow label="Type" value={(verification.type ?? "CNAME").toUpperCase()} />
-            <CopyRow label="Host" value={verification.domain ?? hostname} />
-            <CopyRow label="Value" value={verification.value ?? "cname.vercel-dns.com"} />
-          </div>
-        </div>
+        <Card className="border-warning/30">
+          <CardHeader>
+            <CardTitle className="text-sm">Add this DNS record at your registrar</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Once it propagates we&apos;ll flip your domain live automatically — usually within
+              15 minutes — and email you to confirm.
+            </p>
+            <div className="grid gap-2">
+              <CopyRow label="Type" value={(verification.type ?? "CNAME").toUpperCase()} />
+              <CopyRow label="Host" value={verification.domain ?? hostname} />
+              <CopyRow label="Value" value={verification.value ?? "cname.vercel-dns.com"} />
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {choice === "custom" && verification.status === "active" && (
-        <div className="mt-5 flex items-center gap-2 rounded-2xl border border-success/20 bg-success/[0.06] p-4 text-[13px] text-foreground">
-          <Check size={14} className="text-success" />
-          <span>{hostname} is verified and live.</span>
-        </div>
+        <Alert variant="success">
+          <Check className="size-4" />
+          <AlertDescription>{hostname} is verified and live.</AlertDescription>
+        </Alert>
       )}
 
       <HintCard>
-        Already running events under your own brand? Pattern B — a subdomain like{" "}
-        <span className="text-foreground">tickets.yourbrand.com</span> — keeps your marketing site
-        separate while we handle just the ticketing.
+        Already running events under your own brand? Point a subdomain like{" "}
+        <span className="font-mono text-foreground">tickets.yourbrand.com</span> at Entry — your
+        marketing site stays separate, we handle just the ticketing.
       </HintCard>
 
       <SectionFooter
-        primaryLabel={choice === "custom" && verification.status === "pending" ? "Continue, we'll email you" : "Continue"}
+        primaryLabel={
+          choice === "custom" && verification.status === "pending"
+            ? "Continue, we'll email you when DNS verifies"
+            : "Continue"
+        }
         primaryLoading={api.saving}
         onPrimary={async () => {
           await api.completeAndAdvance("domain", { choice });
@@ -169,11 +186,11 @@ export function DomainSection({ api }: { api: OnboardingApi }) {
           await api.skipAndAdvance("domain");
         }}
       />
-    </div>
+    </>
   );
 }
 
-function ChoiceCard({
+function ChoiceRow({
   active,
   title,
   subtitle,
@@ -190,29 +207,29 @@ function ChoiceCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3.5 text-left transition-all ${
+      className={`flex w-full items-start gap-3 rounded-xl border bg-card px-4 py-3.5 text-left shadow-sm shadow-black/20 transition-all ${
         active
-          ? "border-primary/50 bg-primary/[0.06]"
-          : "border-white/[0.05] hover:border-white/[0.1]"
+          ? "border-primary/50 bg-primary/[0.04]"
+          : "border-border/60 hover:border-primary/30"
       }`}
     >
       <span
         className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-          active ? "border-primary bg-primary text-white" : "border-white/[0.15]"
+          active ? "border-primary" : "border-input"
         }`}
       >
-        {active && <Check size={9} strokeWidth={3} />}
+        {active && <span className="h-2 w-2 rounded-full bg-primary" />}
       </span>
       <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[14px] font-semibold text-foreground">{title}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-sm font-semibold text-foreground">{title}</span>
           {tag && (
-            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+            <span className="rounded-full bg-primary/12 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[1.5px] text-primary ring-1 ring-primary/15">
               {tag}
             </span>
           )}
         </div>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">{subtitle}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
       </div>
     </button>
   );
@@ -220,23 +237,24 @@ function ChoiceCard({
 
 function CopyRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-white/[0.05] bg-black/[0.3] px-3 py-2 font-mono">
-      <span className="w-12 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="flex items-center gap-2 rounded-md border border-border bg-background/60 px-3 py-2 font-mono">
+      <span className="w-12 shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[1.5px] text-muted-foreground">
         {label}
       </span>
-      <span className="flex-1 truncate text-[12px] text-foreground">{value}</span>
-      <button
+      <span className="flex-1 truncate text-xs text-foreground">{value}</span>
+      <Button
+        variant="ghost"
+        size="icon-xs"
         type="button"
         onClick={() => {
           if (typeof navigator !== "undefined" && navigator.clipboard) {
             navigator.clipboard.writeText(value).catch(() => {});
           }
         }}
-        className="text-muted-foreground hover:text-foreground"
         aria-label={`Copy ${label}`}
       >
         <Copy size={12} />
-      </button>
+      </Button>
     </div>
   );
 }

@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, ExternalLink, Loader2 } from "lucide-react";
+import { CreditCard, ExternalLink, Loader2, Check } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SectionFooter, SectionField, SectionHeading, HintCard } from "../Shell";
 import { previewTakeHome } from "@/lib/fee-preview";
 import { getDefaultCurrency } from "@/lib/country-currency-map";
@@ -43,21 +53,19 @@ export function PaymentsSection({ api }: { api: OnboardingApi }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [method, businessType]);
 
-  // Compute fee preview — uses Starter plan since that's the default for new orgs
   const sample = previewTakeHome({ ticket_price: 20, currency, plan_id: "starter" });
 
   async function handleStripeSetup() {
     setCreating(true);
     setError(null);
     try {
-      // Pop a window first (to avoid popup blockers when we get the link async).
       const popup = typeof window !== "undefined" ? window.open("", "_blank") : null;
 
       const createRes = await fetch("/api/stripe/connect/my-account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: undefined, // Server reads from auth user / org admin
+          email: undefined,
           business_name: identity.brand_name,
           country,
           business_type: businessType,
@@ -96,117 +104,116 @@ export function PaymentsSection({ api }: { api: OnboardingApi }) {
   }
 
   return (
-    <div>
+    <>
       <SectionHeading
         eyebrow="Step 6 of 9"
-        title="Take payments"
-        subtitle="Connect Stripe to accept card payments through Entry — or link an external ticketing provider."
+        title="Get paid for your tickets"
+        subtitle="Sell directly through your event page, or list events on Entry and send buyers to your existing ticket site."
       />
 
       <div className="space-y-3">
         <ChoiceCard
           active={method === "stripe"}
-          title="Take payments through Entry"
-          subtitle={`Buyers check out on your event page — funds settle to your Stripe account.`}
+          title="Sell tickets through Entry"
+          subtitle="Buyers check out on your event page. Funds settle to your Stripe account, with Apple/Google Pay built in."
           tag="Recommended"
           onClick={() => setMethod("stripe")}
         />
         <ChoiceCard
           active={method === "external"}
-          title="I use Skiddle / Eventbrite / another ticketing provider"
-          subtitle="Use Entry just for listings. We won't ask for payment details."
+          title="I sell tickets somewhere else"
+          subtitle="Skiddle, Eventbrite, your own site — Entry shows the listing and a “Get tickets” button that points to your URL."
           onClick={() => setMethod("external")}
         />
       </div>
 
       {method === "stripe" && (
-        <div className="mt-5 space-y-4 rounded-2xl border border-white/[0.05] bg-white/[0.015] p-4">
-          <SectionField label="Business type">
-            <select
-              value={businessType}
-              onChange={(e) =>
-                setBusinessType(e.target.value as "individual" | "company" | "non_profit")
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Stripe details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <SectionField
+              label="Business type"
+              hint={
+                businessType === "company"
+                  ? "Stripe will ask for your company registration number. If you trade alone without one, pick “Individual / sole trader” instead."
+                  : undefined
               }
-              className="h-10 w-full rounded-lg border border-input bg-background/40 px-3 text-[13px] text-foreground outline-none focus:border-primary/50 focus:ring-[3px] focus:ring-primary/15"
             >
-              <option value="individual">Individual / sole trader</option>
-              <option value="company">Company</option>
-              <option value="non_profit">Non-profit</option>
-            </select>
-            {businessType === "company" && (
-              <p className="mt-2 text-[11px] text-warning">
-                Stripe will ask for your company registration number. If you trade alone without
-                one, pick "Individual / sole trader" instead.
-              </p>
+              <Select
+                value={businessType}
+                onValueChange={(v) =>
+                  setBusinessType(v as "individual" | "company" | "non_profit")
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Individual / sole trader</SelectItem>
+                  <SelectItem value="company">Company</SelectItem>
+                  <SelectItem value="non_profit">Non-profit</SelectItem>
+                </SelectContent>
+              </Select>
+            </SectionField>
+
+            <FeeBreakdown sample={sample} currency={currency} />
+
+            {chargesEnabled ? (
+              <Alert variant="success">
+                <Check className="size-4" />
+                <AlertDescription>
+                  You can take payments now. Add a bank account anytime to receive payouts.
+                </AlertDescription>
+              </Alert>
+            ) : accountId ? (
+              <Alert variant="warning">
+                <AlertDescription>
+                  Stripe verification is in progress. You can keep going — finish anytime from
+                  Settings → Payments.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full"
+                onClick={handleStripeSetup}
+                disabled={creating}
+              >
+                {creating ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Opening Stripe…
+                  </>
+                ) : (
+                  <>
+                    <CreditCard size={14} />
+                    Set up Stripe (~2 min)
+                    <ExternalLink size={12} />
+                  </>
+                )}
+              </Button>
             )}
-          </SectionField>
-
-          {/* Fee transparency */}
-          <div className="rounded-xl border border-white/[0.05] bg-black/[0.2] p-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-              On a {currency} 20 ticket sold today
-            </div>
-            <div className="mt-2 space-y-1 text-[12px]">
-              <FeeRow label="Customer pays" value={sample.customer_pays} currency={currency} />
-              <FeeRow label="Entry fee" value={sample.entry_fee} negative currency={currency} />
-              <FeeRow
-                label="Stripe processing (est.)"
-                value={sample.stripe_fee_estimate}
-                negative
-                currency={currency}
-              />
-              <div className="my-1 h-px bg-white/[0.05]" />
-              <FeeRow label="You keep" value={sample.take_home} bold currency={currency} />
-            </div>
-            <p className="mt-2 text-[10px] text-muted-foreground/60">
-              Stripe processing varies by card type — this is a rough UK domestic estimate.
-              Pro plan reduces Entry's cut to 2% + 10p.
-            </p>
-          </div>
-
-          {chargesEnabled ? (
-            <div className="rounded-xl border border-success/20 bg-success/[0.06] px-4 py-3 text-[13px] text-foreground">
-              ✅ You can accept payments now. Bank details for payouts can be added anytime.
-            </div>
-          ) : accountId ? (
-            <div className="rounded-xl border border-warning/20 bg-warning/[0.06] px-4 py-3 text-[13px] text-foreground">
-              Stripe verification is in progress. We'll keep going — you can finish at any time
-              from <span className="font-mono text-[12px] text-muted-foreground">/admin/payments</span>.
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleStripeSetup}
-              disabled={creating}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2.5 text-[13px] font-semibold text-primary transition-all hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {creating ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Opening Stripe…
-                </>
-              ) : (
-                <>
-                  <CreditCard size={14} />
-                  Set up Stripe (~2 min)
-                  <ExternalLink size={12} />
-                </>
-              )}
-            </button>
-          )}
-          {error && <p className="text-[11px] text-destructive">{error}</p>}
-        </div>
+            {error && <p className="text-xs text-destructive">{error}</p>}
+          </CardContent>
+        </Card>
       )}
 
       {method === "external" && (
         <HintCard>
-          Your events will publish with a "Get tickets" link to wherever you sell. You can flip
-          back to Stripe-hosted checkout per event later.
+          Each event you create will have a “Get tickets” link to wherever you sell — you&apos;ll
+          paste that URL when you set up the event. Entry handles the listing, your existing
+          provider handles the checkout. You can switch any single event to Stripe-hosted
+          checkout later.
         </HintCard>
       )}
 
       <SectionFooter
-        primaryLabel={method === "stripe" && !chargesEnabled ? "Continue, finish Stripe later" : "Continue"}
+        primaryLabel={
+          method === "stripe" && !chargesEnabled ? "Continue, finish Stripe later" : "Continue"
+        }
         primaryLoading={api.saving}
         onPrimary={async () => {
           await api.completeAndAdvance("payments", {
@@ -218,7 +225,7 @@ export function PaymentsSection({ api }: { api: OnboardingApi }) {
           });
         }}
       />
-    </div>
+    </>
   );
 }
 
@@ -239,59 +246,75 @@ function ChoiceCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3.5 text-left transition-all ${
+      className={`flex w-full items-start gap-3 rounded-xl border bg-card px-4 py-3.5 text-left shadow-sm shadow-black/20 transition-all ${
         active
-          ? "border-primary/50 bg-primary/[0.06]"
-          : "border-white/[0.05] hover:border-white/[0.1]"
+          ? "border-primary/50 bg-primary/[0.04]"
+          : "border-border/60 hover:border-primary/30"
       }`}
     >
       <span
         className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-          active ? "border-primary" : "border-white/[0.15]"
+          active ? "border-primary" : "border-input"
         }`}
       >
         {active && <span className="h-2 w-2 rounded-full bg-primary" />}
       </span>
       <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[14px] font-semibold text-foreground">{title}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">{title}</span>
           {tag && (
-            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+            <span className="rounded-full bg-primary/12 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[1.5px] text-primary ring-1 ring-primary/15">
               {tag}
             </span>
           )}
         </div>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">{subtitle}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
       </div>
     </button>
   );
 }
 
-function FeeRow({
-  label,
-  value,
-  negative,
-  bold,
+function FeeBreakdown({
+  sample,
   currency,
 }: {
-  label: string;
-  value: number;
-  negative?: boolean;
-  bold?: boolean;
+  sample: ReturnType<typeof previewTakeHome>;
   currency: string;
 }) {
   const symbol =
     currency === "EUR" ? "€" : currency === "USD" ? "$" : currency === "JPY" ? "¥" : "£";
+  const fmt = (n: number) => `${symbol}${n.toFixed(2)}`;
   return (
-    <div className="flex justify-between">
-      <span className={bold ? "font-semibold text-foreground" : "text-muted-foreground"}>
-        {label}
-      </span>
-      <span className={`font-mono ${bold ? "font-semibold text-foreground" : "text-foreground/80"}`}>
-        {negative ? "−" : ""}
-        {symbol}
-        {value.toFixed(2)}
-      </span>
+    <div className="rounded-lg border border-border/60 bg-secondary/40 p-3">
+      <div className="font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+        On a {symbol}20 ticket sold today
+      </div>
+      <dl className="mt-2 space-y-1 text-xs">
+        <Row label="Customer pays" value={fmt(sample.customer_pays)} />
+        <Row label="Entry fee" value={`−${fmt(sample.entry_fee)}`} />
+        <Row label="Stripe processing (est.)" value={`−${fmt(sample.stripe_fee_estimate)}`} />
+        <div className="my-1 h-px bg-border/60" />
+        <Row label="You keep" value={fmt(sample.take_home)} bold />
+      </dl>
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        Stripe processing varies by card type — this is a UK domestic estimate. Pro plan reduces
+        Entry&apos;s cut to 2% + 10p.
+      </p>
+    </div>
+  );
+}
+
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className="flex items-center justify-between">
+      <dt className={bold ? "font-semibold text-foreground" : "text-muted-foreground"}>{label}</dt>
+      <dd
+        className={`font-mono ${
+          bold ? "font-semibold text-foreground" : "text-foreground/85"
+        }`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

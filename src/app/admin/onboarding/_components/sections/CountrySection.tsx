@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Globe } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 import { SectionFooter, SectionField, SectionHeading, HintCard } from "../Shell";
 import {
   COUNTRIES,
@@ -45,12 +54,10 @@ export function CountrySection({ api }: { api: OnboardingApi }) {
   async function handleContinue() {
     setError(null);
 
-    // After this section, we provision the org (if not already). Identity has
-    // captured brand_name + first/last name; country gives us the rest.
     if (!api.hasOrg) {
       const identity = (api.getSection("identity")?.data ?? {}) as IdentityData;
       if (!identity.brand_name) {
-        setError("Brand name missing — go back to step 1");
+        setError("Brand name missing — go back to step 1.");
         return;
       }
       setProvisioning(true);
@@ -71,7 +78,7 @@ export function CountrySection({ api }: { api: OnboardingApi }) {
         if (newOrgId) api.setOrgId(newOrgId);
       } catch (err) {
         setProvisioning(false);
-        setError(err instanceof Error ? err.message : "Could not provision your account");
+        setError(err instanceof Error ? err.message : "Could not set up your account.");
         return;
       } finally {
         setProvisioning(false);
@@ -82,48 +89,52 @@ export function CountrySection({ api }: { api: OnboardingApi }) {
   }
 
   return (
-    <div>
+    <>
       <SectionHeading
         eyebrow="Step 2 of 9"
         title="Where are you based?"
-        subtitle="This sets your default currency and time zone."
+        subtitle="This sets your default currency and time zone. You can override either per event."
       />
 
-      <div className="space-y-5">
-        <SectionField label="Country">
-          <div className="relative">
-            <Globe
-              size={16}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <select
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className="h-11 w-full appearance-none rounded-xl border border-input bg-background/40 pl-11 pr-4 text-[14px] text-foreground outline-none transition-all duration-200 focus:border-primary/50 focus:bg-background focus:ring-[3px] focus:ring-primary/15"
-            >
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Country</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SectionField label="Country" htmlFor="onb-country">
+            <Select value={country} onValueChange={setCountry}>
+              <SelectTrigger id="onb-country">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {COUNTRIES.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SectionField>
+
+          <div className="rounded-lg border border-border/60 bg-secondary/40 px-3 py-2.5 text-xs text-muted-foreground">
+            Default currency:{" "}
+            <span className="font-medium text-foreground">
+              {currency} ({symbol})
+            </span>
           </div>
-        </SectionField>
+        </CardContent>
+      </Card>
 
-        <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3 text-[12px] text-muted-foreground">
-          Default currency: <span className="text-foreground font-medium">{currency} ({symbol})</span>
-        </div>
+      <HintCard>
+        We&apos;ll ask whether you&apos;re {taxLabel.toLowerCase()} registered on the next steps.
+      </HintCard>
 
-        <HintCard>
-          We&apos;ll ask about {taxLabel.toLowerCase()} on the next steps. Individual events can have their own currency too.
-        </HintCard>
-
-        {error && (
-          <div className="rounded-xl border border-destructive/15 bg-destructive/8 px-4 py-2.5 text-[12px] text-destructive">
-            {error}
-          </div>
-        )}
-      </div>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <SectionFooter
         primaryLabel="Continue"
@@ -131,7 +142,6 @@ export function CountrySection({ api }: { api: OnboardingApi }) {
         primaryLoading={provisioning || api.saving}
         onPrimary={handleContinue}
       />
-    </div>
+    </>
   );
 }
-

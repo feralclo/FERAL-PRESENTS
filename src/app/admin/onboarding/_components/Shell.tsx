@@ -2,6 +2,8 @@
 
 import { ReactNode } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   WIZARD_ORDER,
   SECTION_LABEL,
@@ -20,25 +22,18 @@ interface ShellProps {
 export function WizardShell({ api, children, showPreview = true, preview }: ShellProps) {
   return (
     <div data-admin className="flex min-h-screen bg-background text-foreground">
-      {/* Background glow — matches existing onboarding aesthetic */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[120px]" />
-      </div>
-
-      {/* LEFT: form column */}
       <div className="relative z-[1] flex w-full flex-col lg:w-[560px] xl:w-[600px]">
         <Header api={api} />
 
         <div className="flex-1 overflow-y-auto px-5 pb-10 lg:px-10">
-          <div className="mx-auto w-full max-w-[480px]">{children}</div>
+          <div className="mx-auto w-full max-w-[480px] space-y-6">{children}</div>
         </div>
 
         <SaveStatus api={api} />
       </div>
 
-      {/* RIGHT: live preview (desktop only — hidden on mobile to keep focus) */}
       {showPreview && (
-        <div className="relative z-[1] hidden flex-1 border-l border-white/[0.04] bg-[#080808]/60 lg:block">
+        <div className="relative z-[1] hidden flex-1 border-l border-border/60 bg-card/30 lg:block">
           {preview}
         </div>
       )}
@@ -50,30 +45,22 @@ function Header({ api }: { api: OnboardingApi }) {
   return (
     <div className="px-5 pt-8 pb-6 lg:px-10 lg:pt-10">
       <div className="flex items-center justify-between">
-        <span
-          className="font-mono text-[20px] font-bold uppercase tracking-[6px] select-none"
-          style={{
-            background: "linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
+        <span className="text-gradient font-mono text-[20px] font-bold uppercase tracking-[6px] select-none">
           Entry
         </span>
 
         {api.sectionIndex > 0 && api.current !== "finish" && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => {
               const prev = WIZARD_ORDER[api.sectionIndex - 1];
               if (prev) api.goTo(prev);
             }}
-            className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft size={13} />
             Back
-          </button>
+          </Button>
         )}
       </div>
 
@@ -95,11 +82,11 @@ function ProgressDots({ api }: { api: OnboardingApi }) {
       aria-valuenow={api.sectionIndex + 1}
       aria-label={`Step ${api.sectionIndex + 1} of ${total}: ${currentLabel}`}
     >
-      <div className="mb-2 flex items-center justify-between text-[11px]">
-        <span className="font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
           Step {api.sectionIndex + 1} of {total}
         </span>
-        <span className="text-foreground/80">{currentLabel}</span>
+        <span className="text-[12px] font-medium text-foreground">{currentLabel}</span>
       </div>
       <div className="flex items-center gap-1">
         {WIZARD_ORDER.map((section, idx) => {
@@ -118,10 +105,10 @@ function ProgressDots({ api }: { api: OnboardingApi }) {
               }}
               className={`h-1.5 flex-1 rounded-full transition-all ${
                 isCurrent
-                  ? "bg-primary shadow-[0_0_10px_rgba(139,92,246,0.4)]"
+                  ? "bg-primary glow-primary"
                   : isPast
                   ? "bg-primary/60"
-                  : "bg-white/[0.06] hover:bg-white/[0.1]"
+                  : "bg-border hover:bg-muted"
               }`}
             />
           );
@@ -136,19 +123,20 @@ function SaveStatus({ api }: { api: OnboardingApi }) {
   return (
     <div className="px-5 py-3 lg:px-10">
       {api.saving ? (
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 size={11} className="animate-spin" />
           Saving…
         </div>
       ) : api.saveError ? (
-        <div className="text-[11px] text-destructive">Couldn't save: {api.saveError}</div>
+        <div className="text-xs text-destructive">Couldn&apos;t save: {api.saveError}</div>
       ) : null}
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────────────────────────────
-   Reusable section primitives — keep section files lean
+   Reusable section primitives — match the admin design language
+   (Card + CardHeader + CardContent, shadcn Button, Label)
    ───────────────────────────────────────────────────────────────────── */
 
 export function SectionHeading({
@@ -161,14 +149,14 @@ export function SectionHeading({
   subtitle?: string;
 }) {
   return (
-    <div className="mb-7">
+    <div>
       {eyebrow && (
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+        <div className="mb-2 font-mono text-[11px] font-semibold uppercase tracking-[2px] text-primary">
           {eyebrow}
         </div>
       )}
-      <h1 className="text-[26px] font-bold leading-tight text-foreground">{title}</h1>
-      {subtitle && <p className="mt-2 text-[14px] text-muted-foreground">{subtitle}</p>}
+      <h1 className="font-mono text-2xl font-bold tracking-tight text-foreground">{title}</h1>
+      {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
     </div>
   );
 }
@@ -191,13 +179,13 @@ export function SectionFooter({
   hint?: string;
 }) {
   return (
-    <div className="mt-8 flex flex-col gap-3">
-      {hint && <p className="text-[12px] text-muted-foreground/70">{hint}</p>}
-      <button
-        type="button"
+    <div className="flex flex-col gap-3">
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      <Button
+        size="lg"
+        className="w-full"
         onClick={onPrimary}
         disabled={primaryDisabled || primaryLoading}
-        className="w-full rounded-xl bg-primary py-3 text-[14px] font-semibold text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_1px_20px_rgba(139,92,246,0.35)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
       >
         {primaryLoading ? (
           <span className="inline-flex items-center justify-center gap-2">
@@ -207,15 +195,11 @@ export function SectionFooter({
         ) : (
           primaryLabel
         )}
-      </button>
+      </Button>
       {onSkip && (
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
+        <Button variant="ghost" size="sm" onClick={onSkip}>
           {skipLabel ?? "Skip for now"}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -223,29 +207,31 @@ export function SectionFooter({
 
 export function SectionField({
   label,
+  htmlFor,
   hint,
   error,
   children,
 }: {
   label: string;
+  htmlFor?: string;
   hint?: string;
   error?: string;
   children: ReactNode;
 }) {
   return (
     <div className="space-y-2">
-      <label className="block text-[13px] font-medium text-foreground">{label}</label>
+      <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-      {hint && !error && <p className="text-[11px] text-muted-foreground/70">{hint}</p>}
+      {hint && !error && <p className="text-[11px] text-muted-foreground">{hint}</p>}
       {error && <p className="text-[11px] text-destructive">{error}</p>}
     </div>
   );
 }
 
-/** Tiny shared helper: a soft-bordered hint card (e.g., for VAT/Stripe info). */
+/** Inline hint — info / context callout matching admin's primary-tinted hint pattern. */
 export function HintCard({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-4 rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3 text-[12px] leading-relaxed text-muted-foreground/80">
+    <div className="rounded-lg border border-primary/15 bg-primary/[0.03] px-4 py-3 text-xs leading-relaxed text-muted-foreground">
       {children}
     </div>
   );

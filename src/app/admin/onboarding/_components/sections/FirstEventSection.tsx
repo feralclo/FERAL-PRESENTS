@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Check } from "lucide-react";
 import { SectionFooter, SectionField, SectionHeading, HintCard } from "../Shell";
 import { getDefaultCurrency } from "@/lib/country-currency-map";
 import type { OnboardingApi } from "../../_state";
@@ -37,7 +48,8 @@ function slugify(text: string): string {
 export function FirstEventSection({ api }: { api: OnboardingApi }) {
   const stored = (api.getSection("first_event")?.data ?? {}) as FirstEventData;
   const country = ((api.getSection("country")?.data ?? {}) as CountryData).country ?? "GB";
-  const paymentsMethod = ((api.getSection("payments")?.data ?? {}) as PaymentsData).method ?? "stripe";
+  const paymentsMethod =
+    ((api.getSection("payments")?.data ?? {}) as PaymentsData).method ?? "stripe";
   const defaultCurrency = getDefaultCurrency(country);
 
   const [name, setName] = useState(stored.name ?? "");
@@ -68,7 +80,11 @@ export function FirstEventSection({ api }: { api: OnboardingApi }) {
   }, [name, dateIso, venue, city, ticketName, ticketPrice, currency, externalLink]);
 
   async function createEvent() {
-    if (!name.trim() || !dateIso || (paymentsMethod === "external" ? !externalLink.trim() : ticketPrice === "")) {
+    if (
+      !name.trim() ||
+      !dateIso ||
+      (paymentsMethod === "external" ? !externalLink.trim() : ticketPrice === "")
+    ) {
       return;
     }
     setCreating(true);
@@ -113,12 +129,9 @@ export function FirstEventSection({ api }: { api: OnboardingApi }) {
       const event = json.data ?? json.event ?? json;
       setCreatedId(event.id);
       setCreatedSlug(event.slug);
-      api.updateSectionData("first_event", {
-        event_id: event.id,
-        slug: event.slug,
-      });
+      api.updateSectionData("first_event", { event_id: event.id, slug: event.slug });
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Could not create event");
+      setCreateError(err instanceof Error ? err.message : "Could not create event.");
     } finally {
       setCreating(false);
     }
@@ -127,142 +140,158 @@ export function FirstEventSection({ api }: { api: OnboardingApi }) {
   const filledRequired =
     !!name.trim() &&
     !!dateIso &&
-    (paymentsMethod === "external" ? !!externalLink.trim() : ticketPrice !== "" && Number(ticketPrice) >= 0);
+    (paymentsMethod === "external"
+      ? !!externalLink.trim()
+      : ticketPrice !== "" && Number(ticketPrice) >= 0);
 
   return (
-    <div>
+    <>
       <SectionHeading
         eyebrow="Step 7 of 9"
         title="Your first event"
-        subtitle="Drop in the basics. We'll save it as a draft so you can preview before going live."
+        subtitle="The basics. We'll save it as a draft so you can preview before going live."
       />
 
-      <div className="space-y-5">
-        <SectionField label="Event name">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={120}
-            placeholder="e.g. Summer Solstice"
-            className={inputClass}
-          />
-        </SectionField>
-
-        <SectionField label="Date & time">
-          <div className="relative">
-            <Calendar
-              size={14}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              type="datetime-local"
-              value={dateIso}
-              onChange={(e) => setDateIso(e.target.value)}
-              className={`${inputClass} pl-10`}
-            />
-          </div>
-        </SectionField>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SectionField label="Venue (optional)">
-            <input
-              type="text"
-              value={venue}
-              onChange={(e) => setVenue(e.target.value)}
-              placeholder="Invisible Wind Factory"
-              className={inputClass}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Event details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SectionField label="Event name" htmlFor="onb-event-name">
+            <Input
+              id="onb-event-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={120}
+              placeholder="e.g. Summer Solstice"
             />
           </SectionField>
-          <SectionField label="City (optional)">
-            <input
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Liverpool"
-              className={inputClass}
-            />
-          </SectionField>
-        </div>
 
-        {paymentsMethod === "external" ? (
-          <SectionField
-            label="External ticket link"
-            hint="We'll publish a listing page that points buyers here."
-          >
-            <input
-              type="url"
-              value={externalLink}
-              onChange={(e) => setExternalLink(e.target.value)}
-              placeholder="https://www.skiddle.com/e/..."
-              className={inputClass}
-            />
+          <SectionField label="Date & time" htmlFor="onb-event-date">
+            <div className="relative">
+              <Calendar
+                size={14}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                id="onb-event-date"
+                type="datetime-local"
+                value={dateIso}
+                onChange={(e) => setDateIso(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </SectionField>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-3">
-            <SectionField label="Ticket name">
-              <input
-                type="text"
-                value={ticketName}
-                onChange={(e) => setTicketName(e.target.value)}
-                maxLength={60}
-                className={inputClass}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SectionField label="Venue (optional)" htmlFor="onb-event-venue">
+              <Input
+                id="onb-event-venue"
+                value={venue}
+                onChange={(e) => setVenue(e.target.value)}
+                placeholder="Invisible Wind Factory"
               />
             </SectionField>
-            <SectionField label="Price">
-              <input
-                type="number"
-                min={0}
-                step={0.5}
-                value={ticketPrice}
-                onChange={(e) =>
-                  setTicketPrice(e.target.value === "" ? "" : Number(e.target.value))
-                }
-                placeholder="15"
-                className={inputClass}
+            <SectionField label="City (optional)" htmlFor="onb-event-city">
+              <Input
+                id="onb-event-city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Liverpool"
               />
             </SectionField>
-            <SectionField label="Currency">
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className={inputClass}
-              >
-                <option value="GBP">GBP (£)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="USD">USD ($)</option>
-                <option value="JPY">JPY (¥)</option>
-              </select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">
+            {paymentsMethod === "external" ? "Ticket link" : "Ticket"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {paymentsMethod === "external" ? (
+            <SectionField
+              label="Where do buyers go?"
+              htmlFor="onb-event-link"
+              hint="We'll publish a listing page that points buyers to this URL."
+            >
+              <Input
+                id="onb-event-link"
+                type="url"
+                value={externalLink}
+                onChange={(e) => setExternalLink(e.target.value)}
+                placeholder="https://www.skiddle.com/e/..."
+              />
             </SectionField>
-          </div>
-        )}
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <SectionField label="Ticket name" htmlFor="onb-ticket-name">
+                <Input
+                  id="onb-ticket-name"
+                  value={ticketName}
+                  onChange={(e) => setTicketName(e.target.value)}
+                  maxLength={60}
+                />
+              </SectionField>
+              <SectionField label="Price" htmlFor="onb-ticket-price">
+                <Input
+                  id="onb-ticket-price"
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={ticketPrice}
+                  onChange={(e) =>
+                    setTicketPrice(e.target.value === "" ? "" : Number(e.target.value))
+                  }
+                  placeholder="15"
+                />
+              </SectionField>
+              <SectionField label="Currency" htmlFor="onb-ticket-currency">
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger id="onb-ticket-currency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GBP">GBP (£)</SelectItem>
+                    <SelectItem value="EUR">EUR (€)</SelectItem>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                    <SelectItem value="JPY">JPY (¥)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </SectionField>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {createError && (
-          <div className="rounded-xl border border-destructive/15 bg-destructive/8 px-4 py-2.5 text-[12px] text-destructive">
-            {createError}
-          </div>
-        )}
+      {createError && (
+        <Alert variant="destructive">
+          <AlertDescription>{createError}</AlertDescription>
+        </Alert>
+      )}
 
-        {createdId && createdSlug && (
-          <div className="rounded-xl border border-success/20 bg-success/[0.06] px-4 py-3 text-[13px] text-foreground">
-            Saved as draft. You'll be able to publish from your dashboard in one click.
-          </div>
-        )}
+      {createdId && createdSlug && (
+        <Alert variant="success">
+          <Check className="size-4" />
+          <AlertDescription>
+            Saved as a draft. You&apos;ll publish from your dashboard in one click.
+          </AlertDescription>
+        </Alert>
+      )}
 
-        <HintCard>
-          You can refine cover artwork, lineup, multiple ticket types, doors time, age policy and
-          much more later in the event editor.
-        </HintCard>
-      </div>
+      <HintCard>
+        Cover artwork, lineup, multiple ticket types, doors time, age policy and more all live in
+        the event editor after onboarding.
+      </HintCard>
 
       <SectionFooter
         primaryLabel={createdId ? "Continue" : "Save as draft & continue"}
         primaryDisabled={!filledRequired || creating}
         primaryLoading={creating || api.saving}
         onPrimary={async () => {
-          if (!createdId) {
-            await createEvent();
-          }
+          if (!createdId) await createEvent();
           await api.completeAndAdvance("first_event", {
             name,
             date_iso: dateIso,
@@ -279,9 +308,6 @@ export function FirstEventSection({ api }: { api: OnboardingApi }) {
           await api.skipAndAdvance("first_event");
         }}
       />
-    </div>
+    </>
   );
 }
-
-const inputClass =
-  "h-11 w-full rounded-xl border border-input bg-background/40 px-4 text-[14px] text-foreground outline-none transition-all duration-200 placeholder:text-muted-foreground/40 focus:border-primary/50 focus:bg-background focus:ring-[3px] focus:ring-primary/15";

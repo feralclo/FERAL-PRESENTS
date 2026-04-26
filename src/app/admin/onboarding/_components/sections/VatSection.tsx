@@ -1,6 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SectionFooter, SectionField, SectionHeading, HintCard } from "../Shell";
 import { getCountryVatInfo, getDefaultVatSettings, getTaxLabel } from "@/lib/country-vat";
 import { validateVatNumber } from "@/lib/vat";
@@ -53,7 +62,6 @@ export function VatSection({ api }: { api: OnboardingApi }) {
       }
     }
 
-    // Persist to vatKey via /api/settings — happens post-provision
     if (api.orgId) {
       setPersisting(true);
       try {
@@ -84,76 +92,88 @@ export function VatSection({ api }: { api: OnboardingApi }) {
   }
 
   return (
-    <div>
+    <>
       <SectionHeading
         eyebrow="Step 5 of 9"
         title={`Are you ${taxLabel} registered?`}
         subtitle={
           info.has_federal_tax
-            ? `Most small or new promoters aren't yet — you'd typically be told by your tax authority once you cross the threshold.`
-            : `${country} doesn't have a national ${taxLabel} regime — pick "Not registered" unless you handle state/provincial taxes separately.`
+            ? `Most small or new promoters aren't yet — your tax authority lets you know once you cross the threshold.`
+            : `${country} doesn't have a national ${taxLabel} regime — pick "Not registered" unless you handle state or provincial tax separately.`
         }
       />
 
       <div className="space-y-3">
-        <RadioCard
+        <ChoiceRow
           active={!registered}
           title="Not registered"
           subtitle={`We won't add ${taxLabel} to your tickets.`}
           onClick={() => setRegistered(false)}
         />
-        <RadioCard
+        <ChoiceRow
           active={registered}
           title={`Yes, I'm ${taxLabel} registered`}
-          subtitle={`Default rate ${info.default_rate}%, ${info.prices_include_default ? "inclusive" : "exclusive"} pricing.`}
+          subtitle={`Default rate ${info.default_rate}%, ${
+            info.prices_include_default ? "inclusive" : "exclusive"
+          } pricing.`}
           onClick={() => setRegistered(true)}
         />
       </div>
 
       {registered && (
-        <div className="mt-5 space-y-4 rounded-2xl border border-white/[0.05] bg-white/[0.015] p-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SectionField label={`${taxLabel} rate (%)`}>
-              <input
-                type="number"
-                value={rate}
-                min={0}
-                max={100}
-                step={0.5}
-                onChange={(e) => setRate(Number(e.target.value))}
-                className={inputSm}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">{taxLabel} details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SectionField label={`${taxLabel} rate (%)`} htmlFor="onb-vat-rate">
+                <Input
+                  id="onb-vat-rate"
+                  type="number"
+                  value={rate}
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  onChange={(e) => setRate(Number(e.target.value))}
+                />
+              </SectionField>
+              <SectionField label="Pricing" htmlFor="onb-vat-pricing">
+                <Select
+                  value={inclusive ? "inclusive" : "exclusive"}
+                  onValueChange={(v) => setInclusive(v === "inclusive")}
+                >
+                  <SelectTrigger id="onb-vat-pricing">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inclusive">Include {taxLabel} in price</SelectItem>
+                    <SelectItem value="exclusive">Add {taxLabel} on top</SelectItem>
+                  </SelectContent>
+                </Select>
+              </SectionField>
+            </div>
+            <SectionField
+              label={`${taxLabel} number (optional)`}
+              htmlFor="onb-vat-number"
+              hint={taxLabel === "VAT" ? "e.g. GB123456789" : undefined}
+              error={vatNumberError ?? undefined}
+            >
+              <Input
+                id="onb-vat-number"
+                value={vatNumber}
+                onChange={(e) => setVatNumber(e.target.value.toUpperCase())}
+                className="font-mono"
+                placeholder={taxLabel === "VAT" ? "GB123456789" : "Your registration number"}
               />
             </SectionField>
-            <SectionField label="Prices shown to customers">
-              <select
-                value={inclusive ? "inclusive" : "exclusive"}
-                onChange={(e) => setInclusive(e.target.value === "inclusive")}
-                className={inputSm}
-              >
-                <option value="inclusive">Include {taxLabel}</option>
-                <option value="exclusive">Add {taxLabel} on top</option>
-              </select>
-            </SectionField>
-          </div>
-          <SectionField
-            label={`${taxLabel} number (optional)`}
-            error={vatNumberError ?? undefined}
-            hint={taxLabel === "VAT" ? "e.g. GB123456789" : undefined}
-          >
-            <input
-              type="text"
-              value={vatNumber}
-              onChange={(e) => setVatNumber(e.target.value.toUpperCase())}
-              className={`${inputSm} font-mono`}
-              placeholder={taxLabel === "VAT" ? "GB123456789" : "Your registration number"}
-            />
-          </SectionField>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       <HintCard>
-        You can override {taxLabel} per event later — useful if you sometimes run events
-        in a country with different rules.
+        You can override {taxLabel.toLowerCase()} per event later — useful when an event runs in a
+        country with different rules.
       </HintCard>
 
       <SectionFooter
@@ -161,11 +181,11 @@ export function VatSection({ api }: { api: OnboardingApi }) {
         primaryLoading={api.saving || persisting}
         onPrimary={handleContinue}
       />
-    </div>
+    </>
   );
 }
 
-function RadioCard({
+function ChoiceRow({
   active,
   title,
   subtitle,
@@ -180,26 +200,23 @@ function RadioCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3.5 text-left transition-all ${
+      className={`flex w-full items-start gap-3 rounded-xl border bg-card px-4 py-3.5 text-left shadow-sm shadow-black/20 transition-all ${
         active
-          ? "border-primary/50 bg-primary/[0.06]"
-          : "border-white/[0.05] hover:border-white/[0.1]"
+          ? "border-primary/50 bg-primary/[0.04]"
+          : "border-border/60 hover:border-primary/30"
       }`}
     >
       <span
         className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-          active ? "border-primary" : "border-white/[0.15]"
+          active ? "border-primary" : "border-input"
         }`}
       >
         {active && <span className="h-2 w-2 rounded-full bg-primary" />}
       </span>
-      <div>
-        <div className="text-[14px] font-semibold text-foreground">{title}</div>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">{subtitle}</p>
+      <div className="flex-1">
+        <div className="text-sm font-semibold text-foreground">{title}</div>
+        <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
       </div>
     </button>
   );
 }
-
-const inputSm =
-  "h-10 w-full rounded-lg border border-input bg-background/40 px-3 text-[13px] text-foreground outline-none transition-all duration-200 focus:border-primary/50 focus:bg-background focus:ring-[3px] focus:ring-primary/15";

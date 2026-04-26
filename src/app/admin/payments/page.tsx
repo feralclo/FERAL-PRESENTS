@@ -62,7 +62,7 @@ interface AccountStatus {
   livemode: boolean;
 }
 
-type View = "loading" | "setup-form" | "connected";
+type View = "loading" | "setup-form" | "waiting" | "connected";
 
 export default function PaymentSettingsPage() {
   const orgId = useOrgId();
@@ -75,6 +75,9 @@ export default function PaymentSettingsPage() {
   const [continuing, setContinuing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  // URL of the in-flight Stripe hosted KYC tab — used so the user can
+  // reopen Stripe if they accidentally closed the tab.
+  const [stripeUrl, setStripeUrl] = useState<string | null>(null);
 
   // Setup form fields
   const [email, setEmail] = useState("");
@@ -111,14 +114,36 @@ export default function PaymentSettingsPage() {
       .catch(() => setCountry((prev) => prev || "GB"));
   }, [orgId]);
 
-  // Surface return-trip flags from Stripe's hosted onboarding
+  // Surface return-trip flags from Stripe's hosted onboarding.
+  // Auto-close the popup tab when it lands back here from Stripe — the
+  // tenant's main Entry tab is already polling and will pick up the new
+  // status. This makes the Stripe popup feel like a self-contained step.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const isPopupReturn =
+      typeof window !== "undefined" && window.opener && !window.opener.closed;
+
     if (params.get("onboarding") === "complete") {
+      if (isPopupReturn) {
+        try {
+          window.close();
+          return;
+        } catch {
+          // Some browsers refuse to close — fall through and just show the page
+        }
+      }
       setSuccess("Verification submitted. Checking your account...");
       window.history.replaceState({}, "", window.location.pathname);
     }
     if (params.get("refresh") === "true") {
+      if (isPopupReturn) {
+        try {
+          window.close();
+          return;
+        } catch {
+          // Fall through
+        }
+      }
       setError("Your session expired. Please continue setup again.");
       window.history.replaceState({}, "", window.location.pathname);
     }
@@ -175,14 +200,29 @@ export default function PaymentSettingsPage() {
   }, [checkStatus]);
 
   /**
-   * Form submit: create the Stripe Custom account, then immediately fetch a
-   * hosted onboarding link and full-page redirect to it. Stripe handles the
-   * KYC and redirects back to /admin/payments?onboarding=complete.
+   * Form submit: create the Stripe Custom account, open Stripe's hosted KYC
+   * in a new tab, and switch this tab to a waiting state that polls the
+   * account status. When Stripe finishes, the polling picks it up and we
+   * transition to the connected view automatically.
+   *
+   * The popup is opened synchronously inside the click handler (with
+   * about:blank as a placeholder) so popup blockers don't fire — modern
+   * browsers only allow window.open inside a user-gesture event.
    */
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
       setError("Email is required");
+      return;
+    }
+
+    // Open popup IMMEDIATELY (synchronous, inside the user gesture) so the
+    // browser doesn't block it. Update the URL after the async fetch.
+    const popup = window.open("about:blank", "stripe-onboarding");
+    if (!popup || popup.closed) {
+      setError(
+        "Looks like popups are blocked. Please allow popups for this site, then try again.",
+      );
       return;
     }
 
@@ -204,6 +244,7 @@ export default function PaymentSettingsPage() {
 
       const createJson = await createRes.json();
       if (!createRes.ok) {
+        popup.close();
         setError(
           createJson.error ||
             "Couldn't set up your Stripe account. Please try again.",
@@ -215,6 +256,7 @@ export default function PaymentSettingsPage() {
       const linkRes = await fetch("/api/stripe/connect/my-account/onboarding");
       const linkJson = await linkRes.json();
       if (!linkRes.ok || !linkJson.url) {
+        popup.close();
         setError(
           linkJson.error ||
             "Account created, but couldn't open Stripe verification. Please refresh and try again.",
@@ -224,38 +266,106 @@ export default function PaymentSettingsPage() {
         return;
       }
 
-      // Successful redirect to Stripe — keep the spinner visible during the
-      // brief navigation. setSettingUp(false) is intentionally not called.
-      window.location.href = linkJson.url;
+      // Hand the popup off to Stripe and switch this tab to waiting.
+      popup.location.href = linkJson.url;
+      setStripeUrl(linkJson.url);
+      setView("waiting");
+      setSettingUp(false);
     } catch {
+      popup.close();
       setError("Network error. Please try again.");
       setSettingUp(false);
     }
   };
 
   /**
-   * Continue an in-progress setup — generate a fresh hosted link and redirect.
+   * Continue an in-progress setup — same new-tab pattern as initial setup.
    * Used from the connected-but-incomplete view.
    */
   const goToHostedOnboarding = async () => {
+    const popup = window.open("about:blank", "stripe-onboarding");
+    if (!popup || popup.closed) {
+      setError(
+        "Looks like popups are blocked. Please allow popups for this site, then try again.",
+      );
+      return;
+    }
+
     setError("");
     setContinuing(true);
     try {
       const res = await fetch("/api/stripe/connect/my-account/onboarding");
       const json = await res.json();
       if (!res.ok || !json.url) {
+        popup.close();
         setError(
           json.error || "Couldn't open Stripe verification. Please try again.",
         );
         setContinuing(false);
         return;
       }
-      window.location.href = json.url;
+      popup.location.href = json.url;
+      setStripeUrl(json.url);
+      setView("waiting");
+      setContinuing(false);
     } catch {
+      popup.close();
       setError("Network error. Please try again.");
       setContinuing(false);
     }
   };
+
+  /** Reopen Stripe in a new tab — for tenants who accidentally closed it. */
+  const reopenStripe = () => {
+    if (!stripeUrl) return;
+    window.open(stripeUrl, "stripe-onboarding");
+  };
+
+  /** Cancel the waiting state and go back to the form. The Stripe account
+   * stays in their org — they can resume from "One more step" later. */
+  const cancelWaiting = () => {
+    setStripeUrl(null);
+    setError("");
+    setSuccess("");
+    checkStatus();
+  };
+
+  // Poll account status while in the waiting state. Refresh on tab focus too,
+  // so when the tenant clicks back to this tab from the Stripe tab we pick up
+  // their progress immediately.
+  useEffect(() => {
+    if (view !== "waiting") return;
+
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch("/api/stripe/connect/my-account");
+        if (!res.ok) return;
+        const json = await res.json();
+        if (
+          json.connected &&
+          (json.charges_enabled || json.details_submitted)
+        ) {
+          await checkStatus();
+        }
+      } catch {
+        // Silent — keep polling
+      }
+    };
+
+    const interval = window.setInterval(tick, 4000);
+    const onFocus = () => tick();
+    window.addEventListener("focus", onFocus);
+    // Immediate first check (no 4-second wait)
+    void tick();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [view, checkStatus]);
 
   const handleDisconnect = async () => {
     setDisconnecting(true);
@@ -301,9 +411,11 @@ export default function PaymentSettingsPage() {
         subtitle={
           view === "setup-form"
             ? "Set up payments to start selling tickets."
-            : status?.charges_enabled
-              ? "Your payments are live. You're ready to sell."
-              : "Almost there — finish verification to start selling."
+            : view === "waiting"
+              ? "Stripe is verifying your details in a new tab."
+              : status?.charges_enabled
+                ? "Your payments are live. You're ready to sell."
+                : "Almost there — finish verification to start selling."
         }
       />
 
@@ -333,6 +445,10 @@ export default function PaymentSettingsPage() {
           settingUp={settingUp}
           onSubmit={handleSetup}
         />
+      )}
+
+      {view === "waiting" && (
+        <WaitingView onReopen={reopenStripe} onCancel={cancelWaiting} />
       )}
 
       {view === "connected" && status && (
@@ -536,6 +652,77 @@ function SetupForm({
             Powered by Stripe — verification on Stripe&apos;s secure page
           </span>
         </div>
+      </div>
+    </Card>
+  );
+}
+
+// ─── Waiting ────────────────────────────────────────────────────────────
+// Cool animated holding pattern while Stripe KYC happens in another tab.
+// Polling in the parent component picks up completion automatically.
+
+function WaitingView({
+  onReopen,
+  onCancel,
+}: {
+  onReopen: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Card className="gap-0 overflow-hidden py-0">
+      <div className="px-6 py-12 text-center">
+        {/* Animated icon — concentric pulsing rings around a spinner */}
+        <div className="relative mx-auto mb-6 flex size-20 items-center justify-center">
+          <span className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+          <span className="absolute inset-2 animate-pulse rounded-full bg-primary/30" />
+          <span className="relative flex size-12 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/30">
+            <Loader2 className="size-6 animate-spin text-primary" />
+          </span>
+        </div>
+
+        <h2 className="text-lg font-bold text-foreground">
+          Verifying your details in Stripe
+        </h2>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          We&apos;ve opened Stripe in a new tab. Finish there — we&apos;ll
+          detect when you&apos;re done and update this page automatically.
+        </p>
+
+        {/* "Listening" indicator — three staggered pulsing dots */}
+        <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-[1.5px] text-muted-foreground/60">
+          <span className="flex gap-1">
+            <span
+              className="size-1.5 animate-pulse rounded-full bg-primary"
+              style={{ animationDelay: "0ms" }}
+            />
+            <span
+              className="size-1.5 animate-pulse rounded-full bg-primary"
+              style={{ animationDelay: "200ms" }}
+            />
+            <span
+              className="size-1.5 animate-pulse rounded-full bg-primary"
+              style={{ animationDelay: "400ms" }}
+            />
+          </span>
+          <span className="ml-1 font-mono">Listening</span>
+        </div>
+      </div>
+
+      <div className="border-t border-border/40 px-6 py-4">
+        <Button variant="secondary" className="w-full" onClick={onReopen}>
+          <ExternalLink className="size-4" />
+          Reopen Stripe tab
+        </Button>
+      </div>
+
+      <div className="px-6 pb-5 text-center">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-xs text-muted-foreground/70 underline-offset-4 transition-colors hover:text-muted-foreground hover:underline"
+        >
+          Cancel and start over
+        </button>
       </div>
     </Card>
   );

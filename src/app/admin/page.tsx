@@ -28,8 +28,6 @@ import {
   BarChart3,
   UserCheck,
   Users as UsersIcon,
-  X,
-  Rocket,
   Radar,
 } from "lucide-react";
 
@@ -66,44 +64,11 @@ function QuickLink({
   );
 }
 
-/* ── Welcome Banner ── */
-function WelcomeBanner({
-  onDismiss,
-  stripeConnected,
-}: {
-  onDismiss: () => void;
-  stripeConnected?: boolean;
-}) {
-  const needsStripe = stripeConnected === false;
-  return (
-    <div className="mb-5 flex items-center gap-4 rounded-xl border border-primary/20 bg-card p-4 shadow-sm">
-      <div className="h-full w-1 self-stretch rounded-full bg-gradient-to-b from-primary to-primary/50" />
-      <Rocket size={20} className="shrink-0 text-primary" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">Welcome to Entry!</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {needsStripe ? "Set up payments to start selling tickets." : "Create your first event to start selling tickets."}
-        </p>
-      </div>
-      <Link
-        href={needsStripe ? "/admin/payments/" : "/admin/events/"}
-        className="shrink-0 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary/85"
-      >
-        {needsStripe ? "Set Up Payments" : "Create Event"}
-      </Link>
-      <button onClick={onDismiss} className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted/20 hover:text-foreground">
-        <X size={14} />
-      </button>
-    </div>
-  );
-}
-
 /* ════════════════════════════════════════════════════════
    MISSION CONTROL DASHBOARD
    ════════════════════════════════════════════════════════ */
 
 export default function AdminDashboard() {
-  const [showWelcome, setShowWelcome] = useState(false);
   const [isPlatformOwner, setIsPlatformOwner] = useState(false);
   const { currency: orgCurrency, currencySymbol: orgCurrencySymbol } = useOrgCurrency();
   const [stripeStatus, setStripeStatus] = useState<{ connected: boolean; chargesEnabled: boolean } | null>(null);
@@ -113,10 +78,11 @@ export default function AdminDashboard() {
     last_error_message: string | null;
   } | null>(null);
 
+  // Strip the legacy ?welcome=1 hand-off param. The OnboardingChecklist below
+  // is the canonical "what's next" surface — no separate welcome banner.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("welcome") === "1") {
-      setShowWelcome(true);
       const url = new URL(window.location.href);
       url.searchParams.delete("welcome");
       window.history.replaceState({}, "", url.toString());
@@ -185,14 +151,6 @@ export default function AdminDashboard() {
           status={checkoutHealth.status}
           errors1h={checkoutHealth.errors_1h}
           lastErrorMessage={checkoutHealth.last_error_message}
-        />
-      )}
-
-      {/* Welcome banner */}
-      {showWelcome && (
-        <WelcomeBanner
-          onDismiss={() => setShowWelcome(false)}
-          stripeConnected={stripeStatus?.connected && stripeStatus?.chargesEnabled}
         />
       )}
 

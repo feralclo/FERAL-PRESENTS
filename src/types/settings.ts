@@ -229,18 +229,14 @@ export interface SiteSettingsRow {
 
 /**
  * Onboarding wizard sections, in display order.
- * Adding/removing sections here is a breaking change — bump the wizard URL when changed.
+ *
+ * Three sections only — minimum viable to land on a useful dashboard. Stripe,
+ * tax, team, custom domain, and first-event creation all happen inside the
+ * dashboard's persistent setup checklist (OnboardingChecklist), pointing at
+ * the real admin surfaces (`/admin/payments/`, `/admin/settings/finance/`,
+ * etc.) rather than parallel wizard reproductions.
  */
-export type WizardSection =
-  | "identity"
-  | "country"
-  | "branding"
-  | "domain"
-  | "vat"
-  | "payments"
-  | "first_event"
-  | "team"
-  | "finish";
+export type WizardSection = "identity" | "branding" | "finish";
 
 /** Per-section state persisted between visits so the wizard is fully resumable. */
 export interface WizardSectionState {

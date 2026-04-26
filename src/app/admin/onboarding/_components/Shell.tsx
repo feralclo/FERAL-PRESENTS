@@ -42,6 +42,7 @@ export function WizardShell({ api, children, showPreview = true, preview }: Shel
 }
 
 function Header({ api }: { api: OnboardingApi }) {
+  const showBack = api.sectionIndex > 0 && api.current !== "finish";
   return (
     <div className="px-5 pt-8 pb-6 lg:px-10 lg:pt-10">
       <div className="flex items-center justify-between">
@@ -49,7 +50,7 @@ function Header({ api }: { api: OnboardingApi }) {
           Entry
         </span>
 
-        {api.sectionIndex > 0 && api.current !== "finish" && (
+        {showBack && (
           <Button
             variant="ghost"
             size="sm"
@@ -64,9 +65,11 @@ function Header({ api }: { api: OnboardingApi }) {
         )}
       </div>
 
-      <div className="mt-7">
-        <ProgressDots api={api} />
-      </div>
+      {api.current !== "finish" && (
+        <div className="mt-8">
+          <ProgressDots api={api} />
+        </div>
+      )}
     </div>
   );
 }
@@ -81,14 +84,9 @@ function ProgressDots({ api }: { api: OnboardingApi }) {
       aria-valuemax={total}
       aria-valuenow={api.sectionIndex + 1}
       aria-label={`Step ${api.sectionIndex + 1} of ${total}: ${currentLabel}`}
+      className="space-y-2.5"
     >
-      <div className="mb-2 flex items-center justify-between">
-        <span className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
-          Step {api.sectionIndex + 1} of {total}
-        </span>
-        <span className="text-[12px] font-medium text-foreground">{currentLabel}</span>
-      </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         {WIZARD_ORDER.map((section, idx) => {
           const sectionState = api.getSection(section);
           const isCompleted = !!sectionState?.completed_at;
@@ -103,16 +101,20 @@ function ProgressDots({ api }: { api: OnboardingApi }) {
               onClick={() => {
                 if (idx <= api.sectionIndex || sectionState?.visited_at) api.goTo(section);
               }}
-              className={`h-1.5 flex-1 rounded-full transition-all ${
+              className={`h-1 flex-1 rounded-full transition-all ${
                 isCurrent
                   ? "bg-primary glow-primary"
                   : isPast
-                  ? "bg-primary/60"
+                  ? "bg-primary/55"
                   : "bg-border hover:bg-muted"
               }`}
             />
           );
         })}
+      </div>
+      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[2px] text-muted-foreground/80">
+        <span className="h-1 w-1 rounded-full bg-primary" />
+        {currentLabel}
       </div>
     </div>
   );
@@ -155,8 +157,12 @@ export function SectionHeading({
           {eyebrow}
         </div>
       )}
-      <h1 className="font-mono text-2xl font-bold tracking-tight text-foreground">{title}</h1>
-      {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
+      <h1 className="font-mono text-[28px] font-bold leading-[1.1] tracking-tight text-foreground">
+        {title}
+      </h1>
+      {subtitle && (
+        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{subtitle}</p>
+      )}
     </div>
   );
 }

@@ -2,34 +2,49 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, X, ChevronRight, Sparkles, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
-import type { OnboardingWizardState } from "@/types/settings";
+import {
+  Check,
+  X,
+  ChevronRight,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  CreditCard,
+  Calendar,
+  Globe,
+  Image as ImageIcon,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 /**
- * Persistent onboarding checklist on the admin dashboard.
+ * Persistent setup checklist on the admin dashboard.
  *
- * Shows the items a tenant still has to address after the wizard. Each item
- * is dismissable. The whole widget hides when:
- *  - everything is complete, OR
- *  - all visible items have been dismissed by the user.
+ * Surfaces the items a tenant still has to address after the 3-step
+ * wizard. Each item links to the real admin surface (no parallel
+ * wizard-style flow) and is dismissible. The whole widget hides when
+ * everything is complete or every visible item has been dismissed.
  *
- * State derived from:
- *  - /api/onboarding/state — wizard sections (completed / skipped)
- *  - /api/stripe/connect/my-account — Stripe health
- *  - /api/domains — pending domain status
- *  - /api/branding — branding completeness (logo present)
- *  - /api/events — has the tenant created an event?
+ * State is derived purely from live system signals — we don't trust the
+ * wizard's local state for completion. Detection sources:
+ *  - /api/stripe/connect/my-account → connected + charges_enabled
+ *  - /api/domains → custom domain status
+ *  - /api/branding → logo presence
+ *  - /api/events?limit=1 → at least one event exists
+ *  - /api/team → team has more than just the owner
  *
- * Dismissals persist in localStorage per-org.
+ * Dismissals persist in localStorage per-org so a fresh login doesn't
+ * resurrect items the user already chose to ignore.
  */
 
 interface ChecklistItem {
   id: string;
   label: string;
   description: string;
-  href?: string;
-  ctaLabel?: string;
-  status: "ok" | "pending" | "warning";
+  href: string;
+  ctaLabel: string;
+  icon: LucideIcon;
+  priority?: boolean;
 }
 
 interface DomainRow {
@@ -63,24 +78,22 @@ function saveDismissed(orgId: string, ids: Set<string>) {
 interface ChecklistState {
   loaded: boolean;
   orgId: string | null;
-  wizard: OnboardingWizardState | null;
   stripeHealthy: boolean;
   customDomainPending: boolean;
   hasLogo: boolean;
   hasEvent: boolean;
-  experience: "first-event" | "experienced" | "switching" | null;
+  hasTeammates: boolean;
 }
 
 export function OnboardingChecklist() {
   const [s, setState] = useState<ChecklistState>({
     loaded: false,
     orgId: null,
-    wizard: null,
     stripeHealthy: false,
     customDomainPending: false,
     hasLogo: false,
     hasEvent: false,
-    experience: null,
+    hasTeammates: false,
   });
   const [dismissed, setDismissedSet] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState(false);
@@ -89,19 +102,15 @@ export function OnboardingChecklist() {
     let cancelled = false;
     (async () => {
       try {
-        const [
-          stateRes,
-          stripeRes,
-          domainsRes,
-          brandingRes,
-          eventsRes,
-        ] = await Promise.all([
-          fetch("/api/onboarding/state").catch(() => null),
-          fetch("/api/stripe/connect/my-account").catch(() => null),
-          fetch("/api/domains").catch(() => null),
-          fetch("/api/branding").catch(() => null),
-          fetch("/api/events?limit=1").catch(() => null),
-        ]);
+        const [stateRes, stripeRes, domainsRes, brandingRes, eventsRes, teamRes] =
+          await Promise.all([
+            fetch("/api/onboarding/state").catch(() => null),
+            fetch("/api/stripe/connect/my-account").catch(() => null),
+            fetch("/api/domains").catch(() => null),
+            fetch("/api/branding").catch(() => null),
+            fetch("/api/events?limit=1").catch(() => null),
+            fetch("/api/team").catch(() => null),
+          ]);
 
         if (cancelled) return;
 
@@ -110,9 +119,9 @@ export function OnboardingChecklist() {
         const domainsJson = domainsRes?.ok ? await domainsRes.json() : null;
         const brandingJson = brandingRes?.ok ? await brandingRes.json() : null;
         const eventsJson = eventsRes?.ok ? await eventsRes.json() : null;
+        const teamJson = teamRes?.ok ? await teamRes.json() : null;
 
         const orgId = stateJson?.org_id ?? null;
-        const wizard: OnboardingWizardState | null = stateJson?.state ?? null;
         const stripeHealthy = !!stripeJson?.connected && !!stripeJson?.charges_enabled;
         const domainsArr = (domainsJson?.data ?? domainsJson?.domains ?? domainsJson) as
           | DomainRow[]
@@ -124,16 +133,21 @@ export function OnboardingChecklist() {
         const hasLogo = !!branding?.logo_url;
         const eventsArr = eventsJson?.data ?? eventsJson?.events ?? eventsJson;
         const hasEvent = Array.isArray(eventsArr) && eventsArr.length > 0;
+        const teamArr = (teamJson?.data ?? teamJson?.members ?? teamJson) as
+          | Array<{ status?: string }>
+          | null;
+        const hasTeammates = Array.isArray(teamArr)
+          ? teamArr.filter((m) => m?.status === "active" || m?.status === "invited").length > 1
+          : false;
 
         setState({
           loaded: true,
           orgId,
-          wizard,
           stripeHealthy,
           customDomainPending,
           hasLogo,
           hasEvent,
-          experience: (wizard?.experience_level as ChecklistState["experience"]) ?? null,
+          hasTeammates,
         });
 
         if (orgId) setDismissedSet(getDismissed(orgId));
@@ -147,60 +161,70 @@ export function OnboardingChecklist() {
   }, []);
 
   const items: ChecklistItem[] = useMemo(() => {
-    const items: ChecklistItem[] = [];
+    const out: ChecklistItem[] = [];
 
     if (!s.stripeHealthy) {
-      const paymentsSkipped = s.wizard?.sections?.payments?.skipped === true;
-      const isExternal =
-        (s.wizard?.sections?.payments?.data as { method?: string } | undefined)?.method ===
-        "external";
-      if (!isExternal) {
-        items.push({
-          id: "stripe",
-          label: paymentsSkipped ? "Set up payments" : "Finish your Stripe setup",
-          description:
-            "You'll need this before publishing events that take card payments.",
-          href: "/admin/payments/",
-          ctaLabel: "Set up Stripe",
-          status: paymentsSkipped ? "pending" : "warning",
-        });
-      }
-    }
-
-    if (s.customDomainPending) {
-      items.push({
-        id: "domain",
-        label: "Verify your custom domain",
-        description: "Add the DNS record at your registrar — we check every 15 minutes.",
-        href: "/admin/settings/domains/",
-        ctaLabel: "View instructions",
-        status: "pending",
-      });
-    }
-
-    if (!s.hasLogo) {
-      items.push({
-        id: "logo",
-        label: "Add your logo",
-        description: "Upload a logo so your event pages, emails and wallet passes look like yours.",
-        href: "/admin/settings/branding/",
-        ctaLabel: "Upload logo",
-        status: "pending",
+      out.push({
+        id: "stripe",
+        icon: CreditCard,
+        label: "Connect Stripe",
+        description:
+          "Add your bank details and verify your business so you can take card payments.",
+        href: "/admin/payments/",
+        ctaLabel: "Set up payments",
+        priority: true,
       });
     }
 
     if (!s.hasEvent) {
-      items.push({
+      out.push({
         id: "event",
+        icon: Calendar,
         label: "Create your first event",
-        description: "You're three fields away from a draft event you can preview and share.",
+        description:
+          "Cover artwork, ticket types, lineup — the editor has everything you need.",
         href: "/admin/events/",
-        ctaLabel: "Create event",
-        status: "pending",
+        ctaLabel: "Open editor",
       });
     }
 
-    return items;
+    if (s.customDomainPending) {
+      out.push({
+        id: "domain",
+        icon: Globe,
+        label: "Verify your custom domain",
+        description:
+          "Add the DNS record at your registrar. We re-check every 15 minutes and email you when it's live.",
+        href: "/admin/settings/domains/",
+        ctaLabel: "View instructions",
+      });
+    }
+
+    if (!s.hasLogo) {
+      out.push({
+        id: "logo",
+        icon: ImageIcon,
+        label: "Add your logo",
+        description:
+          "Shows up on event pages, emails, wallet passes — anywhere buyers see your brand.",
+        href: "/admin/settings/branding/",
+        ctaLabel: "Upload logo",
+      });
+    }
+
+    if (!s.hasTeammates) {
+      out.push({
+        id: "team",
+        icon: Users,
+        label: "Invite your team",
+        description:
+          "Add scanners, marketers, anyone who'll help you run events. Optional.",
+        href: "/admin/settings/users/",
+        ctaLabel: "Invite",
+      });
+    }
+
+    return out;
   }, [s]);
 
   if (!s.loaded || !s.orgId) return null;
@@ -210,7 +234,7 @@ export function OnboardingChecklist() {
 
   const totalCount = items.length;
   const remainingCount = visibleItems.length;
-  const compactTone = s.experience === "experienced";
+  const completedCount = totalCount - remainingCount;
 
   function dismiss(id: string) {
     if (!s.orgId) return;
@@ -225,24 +249,22 @@ export function OnboardingChecklist() {
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-primary/[0.02]"
+        className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-primary/[0.025]"
         aria-expanded={!collapsed}
       >
-        <Sparkles size={18} className="shrink-0 text-primary" />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+          <Sparkles size={16} />
+        </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-foreground">
-              {compactTone ? "A few things to finish" : "Finish setting up"}
-            </span>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-              {totalCount - remainingCount}/{totalCount}
+            <span className="text-sm font-semibold text-foreground">Finish setting up</span>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">
+              {completedCount}/{totalCount}
             </span>
           </div>
-          {!compactTone && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {remainingCount} item{remainingCount === 1 ? "" : "s"} left to wrap up your setup.
-            </p>
-          )}
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {remainingCount} {remainingCount === 1 ? "thing" : "things"} left to wrap up your setup.
+          </p>
         </div>
         {collapsed ? (
           <ChevronDown size={16} className="text-muted-foreground" />
@@ -252,51 +274,51 @@ export function OnboardingChecklist() {
       </button>
 
       {!collapsed && (
-        <ul className="divide-y divide-border/50 border-t border-border/50">
-          {visibleItems.map((item) => (
-            <li key={item.id} className="flex items-start gap-3 px-4 py-3">
-              <span
-                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                  item.status === "ok"
-                    ? "bg-success/15 text-success"
-                    : item.status === "warning"
-                    ? "bg-destructive/15 text-destructive"
-                    : "bg-warning/15 text-warning"
-                }`}
-              >
-                {item.status === "ok" ? (
-                  <Check size={11} strokeWidth={3} />
-                ) : item.status === "warning" ? (
-                  <AlertTriangle size={10} />
-                ) : (
-                  <span className="block h-1.5 w-1.5 rounded-full bg-current" />
-                )}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-foreground">{item.label}</div>
-                {!compactTone && (
-                  <p className="mt-0.5 text-xs text-muted-foreground">{item.description}</p>
-                )}
-              </div>
-              {item.href && (
+        <ul className="divide-y divide-border/40 border-t border-border/40">
+          {visibleItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <li key={item.id} className="flex items-start gap-3 px-5 py-4">
+                <span
+                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                    item.priority
+                      ? "bg-primary/10 text-primary ring-1 ring-primary/15"
+                      : "bg-muted/40 text-muted-foreground"
+                  }`}
+                >
+                  <Icon size={14} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-medium text-foreground">{item.label}</div>
+                    {item.priority && (
+                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.12em] text-primary">
+                        First
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+                    {item.description}
+                  </p>
+                </div>
                 <Link
                   href={item.href}
-                  className="shrink-0 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/10"
+                  className="shrink-0 self-center rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px] font-semibold text-primary transition-all hover:border-primary/50 hover:bg-primary/10"
                 >
-                  {item.ctaLabel ?? "Open"}
+                  {item.ctaLabel}
                   <ChevronRight size={12} className="-mr-1 ml-0.5 inline" />
                 </Link>
-              )}
-              <button
-                type="button"
-                onClick={() => dismiss(item.id)}
-                className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted/20 hover:text-foreground"
-                aria-label={`Dismiss ${item.label}`}
-              >
-                <X size={12} />
-              </button>
-            </li>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => dismiss(item.id)}
+                  className="shrink-0 self-center rounded-lg p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted/20 hover:text-foreground"
+                  aria-label={`Dismiss ${item.label}`}
+                >
+                  <X size={12} />
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

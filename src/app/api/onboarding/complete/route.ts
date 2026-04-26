@@ -78,14 +78,10 @@ export async function POST() {
       ? (domains as DomainRow[]).some((d) => d.type === "custom" && d.status === "pending")
       : false;
 
-    const firstEventSlug = (state.sections?.first_event?.data as { slug?: string } | undefined)
-      ?.slug;
-
     const result = await sendWelcomeEmail({
       orgId: auth.orgId,
       toEmail: ownerEmail,
       firstName: (ownerRow?.first_name as string | undefined) || undefined,
-      firstEventSlug,
       outstanding: {
         stripe: stripeOutstanding,
         domain: domainOutstanding,

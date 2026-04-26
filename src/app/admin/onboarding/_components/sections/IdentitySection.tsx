@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Loader2, Check, Sparkles, Globe } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Check, Lock } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SectionFooter, SectionField, SectionHeading } from "../Shell";
+import { COUNTRIES, detectCountryFromLocale } from "@/lib/country-currency-map";
 import type { OnboardingApi } from "../../_state";
 
 interface IdentityData {
@@ -14,43 +21,58 @@ interface IdentityData {
   last_name?: string;
   brand_name?: string;
   slug?: string;
-  source_url?: string;
+  country?: string;
 }
 
-interface ImportResult {
-  source_url?: string;
-  name?: string;
-  logo_url?: string;
-  accent_hex?: string;
-  og_image_url?: string;
-  partial?: boolean;
-}
-
+/**
+ * Step 1: Identity.
+ *
+ * One screen — name, brand, country. Country drives currency, timezone, and
+ * VAT defaults silently (provision-org applies them) so the user never sees
+ * a binary "Are you VAT registered?" question. Slug is derived from brand
+ * name with live availability check.
+ *
+ * On Continue (first time), provisions the org via /api/auth/provision-org
+ * with the chosen country, then advances to Branding. On Continue (resume,
+ * post-provision), the slug is locked and we just advance.
+ */
 export function IdentitySection({ api }: { api: OnboardingApi }) {
-  const data = (api.getSection("identity")?.data ?? {}) as IdentityData;
-  const [firstName, setFirstName] = useState(data.first_name ?? "");
-  const [lastName, setLastName] = useState(data.last_name ?? "");
-  const [brandName, setBrandName] = useState(data.brand_name ?? "");
-  const [websiteUrl, setWebsiteUrl] = useState(data.source_url ?? "");
-  const [slug, setSlug] = useState(data.slug ?? "");
+  const stored = (api.getSection("identity")?.data ?? {}) as IdentityData;
+
+  const initialCountry = useMemo(
+    () =>
+      stored.country ||
+      (typeof navigator !== "undefined"
+        ? detectCountryFromLocale(navigator.language)
+        : "GB"),
+    [stored.country]
+  );
+
+  const [firstName, setFirstName] = useState(stored.first_name ?? "");
+  const [lastName, setLastName] = useState(stored.last_name ?? "");
+  const [brandName, setBrandName] = useState(stored.brand_name ?? "");
+  const [country, setCountry] = useState(initialCountry);
+  const [slug, setSlug] = useState(stored.slug ?? "");
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [slugChecking, setSlugChecking] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [importNote, setImportNote] = useState<string | null>(null);
+  const [provisioning, setProvisioning] = useState(false);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
 
   const slugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLocked = api.hasOrg;
 
+  // Slug live-derived from brand name + availability check.
   useEffect(() => {
     if (slugTimerRef.current) clearTimeout(slugTimerRef.current);
-    const s = brandName
+    const next = brandName
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 40);
-    setSlug(s);
+    setSlug(next);
 
-    if (s.length < 3) {
+    if (isLocked || next.length < 3) {
       setSlugAvailable(null);
       setSlugChecking(false);
       return;
@@ -58,7 +80,7 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
     setSlugChecking(true);
     slugTimerRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/auth/check-slug?slug=${encodeURIComponent(s)}`);
+        const res = await fetch(`/api/auth/check-slug?slug=${encodeURIComponent(next)}`);
         const json = await res.json();
         setSlugAvailable(json.available === true);
         if (json.slug) setSlug(json.slug);
@@ -71,92 +93,95 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
     return () => {
       if (slugTimerRef.current) clearTimeout(slugTimerRef.current);
     };
-  }, [brandName]);
+  }, [brandName, isLocked]);
 
+  // Mirror form state into the wizard so Branding's preview can use brand_name + accent.
   useEffect(() => {
     api.updateSectionData("identity", {
       first_name: firstName,
       last_name: lastName,
       brand_name: brandName,
       slug,
+      country,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firstName, lastName, brandName, slug]);
-
-  async function handleImport() {
-    if (!websiteUrl.trim() || importing) return;
-    setImporting(true);
-    setImportNote(null);
-    try {
-      const res = await fetch("/api/onboarding/import-from-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: websiteUrl.trim() }),
-      });
-      const json = (await res.json()) as ImportResult & { error?: string };
-      if (!res.ok) {
-        setImportNote(null);
-        return;
-      }
-      if (!brandName && json.name) setBrandName(json.name);
-
-      const brandingPatch: Record<string, unknown> = {};
-      if (json.logo_url) brandingPatch.logo_data_uri = json.logo_url;
-      if (json.accent_hex) brandingPatch.accent_hex = json.accent_hex;
-      if (Object.keys(brandingPatch).length > 0) {
-        api.updateSectionData("branding", brandingPatch);
-      }
-
-      api.updateSectionData("identity", { source_url: json.source_url ?? websiteUrl.trim() });
-      const filled: string[] = [];
-      if (json.name) filled.push("name");
-      if (json.logo_url) filled.push("logo");
-      if (json.accent_hex) filled.push("colour");
-      if (filled.length > 0) {
-        setImportNote(`Loaded ${filled.join(", ")}.`);
-      } else {
-        setImportNote(null);
-      }
-    } catch {
-      setImportNote(null);
-    } finally {
-      setImporting(false);
-    }
-  }
-
-  const isLocked = api.hasOrg;
+  }, [firstName, lastName, brandName, slug, country]);
 
   const canContinue = isLocked
-    ? !!brandName.trim() && !!firstName.trim()
-    : !!brandName.trim() &&
+    ? !!firstName.trim() && !!brandName.trim()
+    : !!firstName.trim() &&
+      !!brandName.trim() &&
       slug.length >= 3 &&
       slugAvailable === true &&
-      !!firstName.trim();
+      !!country;
+
+  async function handleContinue() {
+    setProvisionError(null);
+
+    // Resume case — already provisioned, just advance.
+    if (isLocked) {
+      await api.completeAndAdvance("identity", {
+        first_name: firstName,
+        last_name: lastName,
+        brand_name: brandName,
+        slug,
+        country,
+      });
+      return;
+    }
+
+    // First-time case — provision the org now.
+    setProvisioning(true);
+    try {
+      const res = await fetch("/api/auth/provision-org", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          org_name: brandName.trim(),
+          country,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.error || `Could not create your account (${res.status})`);
+      }
+      const finalSlug = json?.data?.org_id ?? slug;
+      api.setOrgId(finalSlug);
+      await api.completeAndAdvance("identity", {
+        first_name: firstName,
+        last_name: lastName,
+        brand_name: brandName,
+        slug: finalSlug,
+        country,
+      });
+    } catch (err) {
+      setProvisionError(err instanceof Error ? err.message : "Could not create your account.");
+    } finally {
+      setProvisioning(false);
+    }
+  }
 
   return (
     <>
       <SectionHeading
-        title="Tell us who you are"
-        subtitle="Just the basics. We use your brand name to set up your address on the platform."
+        title="Welcome to Entry"
+        subtitle="A few quick details and we'll set up your storefront."
       />
 
       {isLocked && (
-        <Alert variant="success">
-          <Check className="size-4" />
+        <Alert>
+          <Lock className="size-4" />
           <AlertDescription>
-            <span className="font-medium text-foreground">Account already created.</span>{" "}
+            <span className="font-medium text-foreground">Your account is set up.</span>{" "}
             Your address is{" "}
-            <span className="font-mono text-foreground">{slug}.entry.events</span>. You can edit
-            your display name in Settings → Branding later.
+            <span className="font-mono text-foreground">{slug}.entry.events</span>. You can
+            edit names and country in Settings later.
           </AlertDescription>
         </Alert>
       )}
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Your details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-5 p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <SectionField label="First name" htmlFor="onb-first-name">
               <Input
@@ -166,7 +191,7 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
                 onChange={(e) => setFirstName(e.target.value)}
                 maxLength={40}
                 readOnly={isLocked}
-                placeholder="First name"
+                placeholder="Alex"
               />
             </SectionField>
             <SectionField label="Last name" htmlFor="onb-last-name">
@@ -176,15 +201,53 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
                 onChange={(e) => setLastName(e.target.value)}
                 maxLength={40}
                 readOnly={isLocked}
-                placeholder="Last name"
+                placeholder="Morgan"
               />
             </SectionField>
           </div>
 
           <SectionField
+            label="Country"
+            htmlFor="onb-country"
+            hint={
+              isLocked
+                ? undefined
+                : "Sets your default currency and timezone. You can override per event later."
+            }
+          >
+            <Select
+              value={country}
+              onValueChange={setCountry}
+              disabled={isLocked || provisioning}
+            >
+              <SelectTrigger id="onb-country">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {COUNTRIES.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.name}
+                    <span className="ml-2 font-mono text-[11px] text-muted-foreground">
+                      {c.currency}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SectionField>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-4 p-5">
+          <SectionField
             label="Brand name"
             htmlFor="onb-brand-name"
-            hint={isLocked ? undefined : "What customers will see on your event pages."}
+            hint={
+              isLocked
+                ? undefined
+                : "What buyers see at checkout, in your emails, and on your event pages."
+            }
           >
             <Input
               id="onb-brand-name"
@@ -192,91 +255,51 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
               onChange={(e) => setBrandName(e.target.value)}
               maxLength={50}
               readOnly={isLocked}
-              placeholder="e.g. Night Shift Events"
+              placeholder="Night Shift Events"
             />
-            {!isLocked && slug.length >= 3 && (
-              <div className="flex items-center gap-1.5 text-xs">
-                {slugChecking ? (
-                  <>
-                    <Loader2 size={12} className="animate-spin text-muted-foreground" />
-                    <span className="font-mono text-muted-foreground">{slug}.entry.events</span>
-                  </>
-                ) : slugAvailable ? (
-                  <>
-                    <Check size={12} className="text-success" strokeWidth={2.5} />
-                    <span className="font-mono text-success">{slug}.entry.events</span>
-                    <span className="text-success/70">— available</span>
-                  </>
-                ) : slugAvailable === false ? (
-                  <span className="text-destructive">
-                    {slug}.entry.events is taken — try a different name.
-                  </span>
-                ) : null}
-              </div>
-            )}
           </SectionField>
+
+          {!isLocked && brandName.trim().length > 0 && slug.length >= 3 && (
+            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-secondary/30 px-3 py-2 text-xs">
+              {slugChecking ? (
+                <>
+                  <Loader2 size={12} className="animate-spin text-muted-foreground" />
+                  <span className="font-mono text-muted-foreground">{slug}.entry.events</span>
+                </>
+              ) : slugAvailable ? (
+                <>
+                  <Check size={12} className="text-success" strokeWidth={2.5} />
+                  <span className="font-mono text-foreground">{slug}.entry.events</span>
+                  <span className="ml-auto text-success/80">available</span>
+                </>
+              ) : slugAvailable === false ? (
+                <span className="text-destructive">
+                  {slug}.entry.events is taken — try a slightly different name.
+                </span>
+              ) : null}
+            </div>
+          )}
+
+          {isLocked && slug && (
+            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-secondary/30 px-3 py-2 text-xs">
+              <Lock size={12} className="text-muted-foreground" />
+              <span className="font-mono text-foreground">{slug}.entry.events</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {!isLocked && (
-        <Card className="border-primary/20 bg-primary/[0.03]">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Sparkles size={14} className="text-primary" />
-              Got a website?
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Paste your URL and we&apos;ll grab your logo and colours automatically.
-            </p>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Globe
-                  size={14}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
-                  className="pl-9"
-                  value={websiteUrl}
-                  onChange={(e) => setWebsiteUrl(e.target.value)}
-                  placeholder="yourbrand.com"
-                  disabled={importing}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void handleImport();
-                    }
-                  }}
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="default"
-                onClick={handleImport}
-                disabled={!websiteUrl.trim() || importing}
-              >
-                {importing ? <Loader2 size={12} className="animate-spin" /> : "Load"}
-              </Button>
-            </div>
-            {importNote && <p className="text-xs text-muted-foreground">{importNote}</p>}
-          </CardContent>
-        </Card>
+      {provisionError && (
+        <Alert variant="destructive">
+          <AlertDescription>{provisionError}</AlertDescription>
+        </Alert>
       )}
 
       <SectionFooter
-        primaryLabel="Continue"
-        primaryDisabled={!canContinue}
-        primaryLoading={api.saving}
-        onPrimary={async () => {
-          await api.completeAndAdvance("identity", {
-            first_name: firstName,
-            last_name: lastName,
-            brand_name: brandName,
-            slug,
-            source_url: websiteUrl.trim() || undefined,
-          });
-        }}
+        primaryLabel={isLocked ? "Continue" : "Create my space"}
+        primaryDisabled={!canContinue || provisioning}
+        primaryLoading={provisioning || api.saving}
+        onPrimary={handleContinue}
       />
     </>
   );

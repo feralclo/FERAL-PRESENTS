@@ -2,102 +2,46 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, AlertTriangle, Loader2, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Loader2,
+  Copy,
+  ExternalLink,
+  CreditCard,
+  Calendar,
+  Users,
+  Globe,
+  ArrowRight,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SectionHeading } from "../Shell";
 import type { OnboardingApi } from "../../_state";
 
 interface IdentityData {
   first_name?: string;
   brand_name?: string;
-}
-interface PaymentsData {
-  method?: "stripe" | "external";
-  charges_enabled?: boolean;
-  deferred?: boolean;
-}
-interface DomainData {
-  choice?: "subdomain" | "custom";
-  status?: "pending" | "active" | "failed";
-}
-interface FirstEventData {
-  event_id?: string;
   slug?: string;
 }
 
-interface ChecklistItem {
-  id: string;
-  label: string;
-  status: "ok" | "pending" | "skipped";
-}
-
+/**
+ * Step 3: Finish.
+ *
+ * Celebrate, show the live address, hand off to the dashboard. The dashboard
+ * itself owns the persistent setup checklist (see OnboardingChecklist.tsx) —
+ * we just preview it here so the user knows where they're going.
+ *
+ * Side effects on mount: marks the wizard complete + fires the welcome email
+ * (idempotent via onboarding_email_sent flag in state extras).
+ */
 export function FinishSection({ api }: { api: OnboardingApi }) {
   const router = useRouter();
   const identity = (api.getSection("identity")?.data ?? {}) as IdentityData;
-  const payments = (api.getSection("payments")?.data ?? {}) as PaymentsData;
-  const domain = (api.getSection("domain")?.data ?? {}) as DomainData;
-  const firstEvent = (api.getSection("first_event")?.data ?? {}) as FirstEventData;
-  const branding = api.getSection("branding");
-  const team = api.getSection("team");
-  const vat = api.getSection("vat");
-
-  const checklist: ChecklistItem[] = [
-    {
-      id: "identity",
-      label: "Account",
-      status: api.getSection("identity")?.completed_at ? "ok" : "pending",
-    },
-    {
-      id: "branding",
-      label: "Brand",
-      status: branding?.completed_at ? "ok" : branding?.skipped ? "skipped" : "pending",
-    },
-    {
-      id: "domain",
-      label:
-        domain.choice === "custom"
-          ? domain.status === "active"
-            ? "Custom domain live"
-            : "Custom domain — DNS pending"
-          : "Subdomain",
-      status:
-        domain.choice === "custom" && domain.status !== "active" ? "pending" : "ok",
-    },
-    {
-      id: "vat",
-      label: "Tax",
-      status: vat?.completed_at ? "ok" : vat?.skipped ? "skipped" : "pending",
-    },
-    {
-      id: "payments",
-      label:
-        payments.method === "external"
-          ? "External ticketing"
-          : payments.charges_enabled
-          ? "Stripe ready"
-          : "Stripe — finish later",
-      status:
-        payments.method === "external" || payments.charges_enabled ? "ok" : "pending",
-    },
-    {
-      id: "first_event",
-      label: firstEvent.event_id ? "First event saved as draft" : "First event",
-      status: firstEvent.event_id
-        ? "ok"
-        : api.getSection("first_event")?.skipped
-        ? "skipped"
-        : "pending",
-    },
-    {
-      id: "team",
-      label: "Team",
-      status: team?.completed_at ? "ok" : team?.skipped ? "skipped" : "pending",
-    },
-  ];
+  const slug = identity.slug || api.orgId || "your-brand";
+  const subdomain = `${slug}.entry.events`;
+  const greet = identity.first_name || "there";
 
   const finishedRef = useRef(false);
   const [finalising, setFinalising] = useState(true);
+  const [copied, setCopied] = useState(false);
   const [confettiPhase, setConfettiPhase] = useState<0 | 1 | 2>(0);
 
   useEffect(() => {
@@ -116,109 +60,119 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
         });
         await fetch("/api/onboarding/complete", { method: "POST" });
       } catch {
-        /* non-fatal */
+        /* non-fatal — the dashboard surfaces any issues via the checklist */
       } finally {
         setFinalising(false);
       }
     })();
-    const t1 = setTimeout(() => setConfettiPhase(1), 100);
-    const t2 = setTimeout(() => setConfettiPhase(2), 1200);
+    const t1 = setTimeout(() => setConfettiPhase(1), 120);
+    const t2 = setTimeout(() => setConfettiPhase(2), 1400);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
   }, []);
 
-  const greet = identity.first_name || "there";
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(`https://${subdomain}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard blocked — fail silently */
+    }
+  }
 
   return (
     <div className="relative">
       <Confetti phase={confettiPhase} />
 
-      <SectionHeading
-        eyebrow="You're done"
-        title={`Welcome to Entry, ${greet}`}
-        subtitle={
-          identity.brand_name
-            ? `${identity.brand_name} is live on the platform.`
-            : "Your platform is set up."
-        }
-      />
+      <div className="space-y-6">
+        <div>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-success/25 bg-success/[0.06] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-success">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/60" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
+            </span>
+            You&apos;re live
+          </div>
+          <h1 className="font-mono text-[28px] font-bold leading-[1.1] tracking-tight text-foreground">
+            Welcome to Entry, {greet}.
+          </h1>
+          <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+            Your space is set up. Here&apos;s what&apos;s waiting.
+          </p>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">What you&apos;ve set up</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2.5">
-            {checklist.map((item) => (
-              <li key={item.id} className="flex items-start gap-3 text-sm">
-                <span
-                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                    item.status === "ok"
-                      ? "bg-success/15 text-success"
-                      : item.status === "pending"
-                      ? "bg-warning/15 text-warning"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {item.status === "ok" ? (
-                    <Check size={11} strokeWidth={3} />
-                  ) : item.status === "pending" ? (
-                    <AlertTriangle size={10} />
-                  ) : (
-                    <span className="text-[8px]">—</span>
-                  )}
-                </span>
-                <span
-                  className={
-                    item.status === "skipped" ? "text-muted-foreground" : "text-foreground"
+        <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/[0.04] via-card to-card">
+          <CardContent className="p-5">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Your address
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <span className="font-mono text-[18px] font-semibold tracking-[-0.01em] text-foreground">
+                {subdomain}
+              </span>
+              <div className="ml-auto flex items-center gap-1.5">
+                <Button variant="ghost" size="sm" onClick={handleCopy}>
+                  <Copy size={12} />
+                  {copied ? "Copied" : "Copy"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    window.open(`https://${subdomain}`, "_blank", "noopener,noreferrer")
                   }
                 >
-                  {item.label}
-                  {item.status === "skipped" && (
-                    <span className="ml-1 font-mono text-[10px] uppercase tracking-[1.5px] text-muted-foreground">
-                      skipped
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
-      {firstEvent.event_id && firstEvent.slug && (
-        <Card className="border-primary/20 bg-primary/[0.03]">
-          <CardContent className="flex items-start gap-3 p-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-              <Sparkles size={14} />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-foreground">
-                Publish your first event
+                  <ExternalLink size={12} />
+                  Open
+                </Button>
               </div>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                We saved it as a draft. Open it in the editor to add cover artwork and go live.
-              </p>
             </div>
+            <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+              This is your brand&apos;s home on Entry. Every event you publish lives here, and every
+              email and ticket points buyers to it.
+            </p>
           </CardContent>
         </Card>
-      )}
 
-      <div className="flex flex-col gap-3">
-        {firstEvent.event_id && firstEvent.slug && (
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={() => router.push(`/admin/events/${firstEvent.slug}/`)}
-            disabled={finalising}
-          >
-            Open first event in editor
-          </Button>
-        )}
+        <Card>
+          <CardContent className="p-5">
+            <div className="mb-1 text-sm font-semibold text-foreground">
+              Pick up on the dashboard
+            </div>
+            <p className="mb-4 text-[12px] leading-relaxed text-muted-foreground">
+              These are waiting for you in any order. Tackle them when you&apos;re ready.
+            </p>
+
+            <ul className="space-y-1">
+              <NextStep
+                icon={CreditCard}
+                title="Connect Stripe"
+                hint="So you can take card payments"
+                priority
+              />
+              <NextStep
+                icon={Calendar}
+                title="Create your first event"
+                hint="Cover artwork, ticket types, lineup, the lot"
+              />
+              <NextStep
+                icon={Users}
+                title="Invite your team"
+                hint="Owners, scanners, marketers"
+              />
+              <NextStep
+                icon={Globe}
+                title="Add a custom domain"
+                hint="Optional — your subdomain works straight away"
+              />
+            </ul>
+          </CardContent>
+        </Card>
+
         <Button
-          variant={firstEvent.event_id ? "outline" : "default"}
           size="lg"
           className="w-full"
           onClick={() => router.push("/admin/?welcome=1")}
@@ -230,7 +184,10 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
               Wrapping up…
             </span>
           ) : (
-            "Go to dashboard"
+            <>
+              Open dashboard
+              <ArrowRight size={14} />
+            </>
           )}
         </Button>
       </div>
@@ -238,9 +195,46 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
   );
 }
 
-/** Lightweight CSS-only confetti — three bursts over ~1.5s. No deps. */
+function NextStep({
+  icon: Icon,
+  title,
+  hint,
+  priority,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  title: string;
+  hint: string;
+  priority?: boolean;
+}) {
+  return (
+    <li className="flex items-start gap-3 rounded-lg px-1 py-2.5 text-sm">
+      <span
+        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+          priority
+            ? "bg-primary/10 text-primary ring-1 ring-primary/20"
+            : "bg-muted/40 text-muted-foreground"
+        }`}
+      >
+        <Icon size={13} />
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-foreground">{title}</span>
+          {priority && (
+            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.12em] text-primary">
+              First
+            </span>
+          )}
+        </div>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>
+      </div>
+    </li>
+  );
+}
+
+/** CSS-only confetti — three bursts over ~1.5s. */
 function Confetti({ phase }: { phase: 0 | 1 | 2 }) {
-  const items = Array.from({ length: 28 });
+  const items = Array.from({ length: 32 });
   return (
     <div className="pointer-events-none absolute inset-x-0 -top-12 z-0 h-40 overflow-hidden">
       {items.map((_, i) => {
@@ -263,7 +257,7 @@ function Confetti({ phase }: { phase: 0 | 1 | 2 }) {
               transform:
                 phase === 0
                   ? "translate3d(0, -20px, 0) rotate(0deg)"
-                  : `translate3d(${offsetX}px, 200px, 0) rotate(${i * 22}deg)`,
+                  : `translate3d(${offsetX}px, 220px, 0) rotate(${i * 22}deg)`,
               transition: `transform ${1.4 + delay}s cubic-bezier(0.32, 0.72, 0.4, 1), opacity 1s ease-out ${delay}s`,
             }}
           />

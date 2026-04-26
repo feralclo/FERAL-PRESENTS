@@ -5,29 +5,21 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useOnboarding } from "./_state";
 import { WizardShell } from "./_components/Shell";
-import { PreviewPane } from "./_components/PreviewPane";
+import { BrandPreview } from "./_components/BrandPreview";
 import { IdentitySection } from "./_components/sections/IdentitySection";
-import { CountrySection } from "./_components/sections/CountrySection";
 import { BrandingSection } from "./_components/sections/BrandingSection";
-import { DomainSection } from "./_components/sections/DomainSection";
-import { VatSection } from "./_components/sections/VatSection";
-import { PaymentsSection } from "./_components/sections/PaymentsSection";
-import { FirstEventSection } from "./_components/sections/FirstEventSection";
-import { TeamSection } from "./_components/sections/TeamSection";
 import { FinishSection } from "./_components/sections/FinishSection";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
 
 /**
- * Onboarding wizard.
+ * Onboarding wizard — three steps then dashboard.
  *
- * Replaces the previous 3-step (event types → experience → brand name) flow.
- * The new wizard is 9 sections with autosave, resume, live preview, and a
- * built-in first-event creator.
- *
- * Auth gating mirrors the old page: unauthenticated → /admin/signup,
- * already-onboarded users (org_users + completed_at) → /admin/.
+ * Auth gating: unauthenticated → /admin/signup. Already-onboarded users land
+ * at the Finish step which has explicit "Open dashboard" CTAs. Reactive
+ * redirects on completed_at were causing users to be bounced mid-wizard so
+ * we never auto-redirect — the wizard is always the right place to be.
  */
 export default function OnboardingPage() {
   const router = useRouter();
@@ -84,20 +76,8 @@ export default function OnboardingPage() {
     switch (api.current) {
       case "identity":
         return <IdentitySection api={api} />;
-      case "country":
-        return <CountrySection api={api} />;
       case "branding":
         return <BrandingSection api={api} />;
-      case "domain":
-        return <DomainSection api={api} />;
-      case "vat":
-        return <VatSection api={api} />;
-      case "payments":
-        return <PaymentsSection api={api} />;
-      case "first_event":
-        return <FirstEventSection api={api} />;
-      case "team":
-        return <TeamSection api={api} />;
       case "finish":
         return <FinishSection api={api} />;
       default:
@@ -109,7 +89,7 @@ export default function OnboardingPage() {
     <WizardShell
       api={api}
       showPreview={api.current !== "finish"}
-      preview={<PreviewPane state={api.state} />}
+      preview={<BrandPreview state={api.state} />}
     >
       {sectionNode}
     </WizardShell>

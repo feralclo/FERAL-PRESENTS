@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/auth";
 import { TABLES, stripeAccountKey } from "@/lib/constants";
+import { createRateLimiter } from "@/lib/rate-limit";
 import * as Sentry from "@sentry/nextjs";
 
 // Returns auth-scoped balance figures — must never be cached. The Vercel
@@ -10,6 +11,14 @@ import * as Sentry from "@sentry/nextjs";
 // funds to another.
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+// Generous limit — page polls + manual refreshes, but caps abuse. A single
+// tenant hammering this would burn Stripe API quota and delay real payment
+// flows. 60/min/IP keeps headroom while stopping casual loops.
+const balanceRateLimit = createRateLimiter("stripe-my-account-balance", {
+  limit: 60,
+  windowSeconds: 60,
+});
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, must-revalidate",
@@ -39,7 +48,10 @@ function noStoreJson(data: unknown, init?: ResponseInit): NextResponse {
  * Money sits here until the connected account adds an external_account; at
  * that point Stripe begins paying it out on the configured schedule.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const limited = balanceRateLimit(request);
+  if (limited) return limited;
+
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;

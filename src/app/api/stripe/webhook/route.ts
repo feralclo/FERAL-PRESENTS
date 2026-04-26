@@ -258,11 +258,44 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
 
   if (!eventId || !customerEmail || !itemsJson) {
     console.error("Webhook missing required metadata:", metadata);
+    logPaymentEvent({
+      orgId,
+      type: "webhook_error",
+      severity: "critical",
+      stripePaymentIntentId: paymentIntent.id,
+      errorCode: "missing_metadata",
+      errorMessage: `Required metadata missing — event_id=${!!eventId}, customer_email=${!!customerEmail}, items_json=${!!itemsJson}`,
+      customerEmail,
+    });
     return;
   }
 
-  // Parse items — supports both compact format {t,q,s} (new) and full format {ticket_type_id,qty,merch_size} (legacy)
-  const rawItems = JSON.parse(itemsJson) as Array<Record<string, unknown>>;
+  // Parse items — supports both compact format {t,q,s} (new) and full
+  // format {ticket_type_id,qty,merch_size} (legacy).
+  //
+  // Defensive: a malformed items_json on a real charge would otherwise
+  // throw and bubble up as a 500 → Stripe retries → orphan payment (money
+  // taken, no ticket, no recovery without manual ops). Catch the JSON
+  // failure, log it as a critical payment event so it surfaces in the
+  // health dashboard, and return — Stripe stops retrying once we 200.
+  let rawItems: Array<Record<string, unknown>>;
+  try {
+    rawItems = JSON.parse(itemsJson) as Array<Record<string, unknown>>;
+  } catch (parseErr) {
+    console.error("Webhook items_json parse failed:", parseErr, itemsJson);
+    logPaymentEvent({
+      orgId,
+      type: "webhook_error",
+      severity: "critical",
+      stripePaymentIntentId: paymentIntent.id,
+      errorCode: "items_json_malformed",
+      errorMessage:
+        parseErr instanceof Error ? parseErr.message : "JSON.parse failed",
+      customerEmail,
+      metadata: { items_json_preview: itemsJson.slice(0, 100) },
+    });
+    return;
+  }
   const items: { ticket_type_id: string; qty: number; merch_size?: string }[] =
     rawItems.map((i) => ({
       ticket_type_id: (i.t as string) || (i.ticket_type_id as string),

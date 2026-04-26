@@ -25,10 +25,14 @@ import {
 // Mocks — Stripe + side effects. Supabase and createOrder are REAL.
 // ---------------------------------------------------------------------------
 
+// Mock constructEvent so it returns whatever was sent as the body — the
+// route then proceeds as if Stripe verified the signature successfully.
+// (Real signature verification needs Stripe's signing secret + a true HMAC,
+// which integration tests don't have access to.)
 vi.mock("@/lib/stripe/server", () => ({
   getStripe: () => ({
     webhooks: {
-      constructEvent: vi.fn(),
+      constructEvent: (body: string) => JSON.parse(body),
     },
     paymentIntents: {},
   }),
@@ -78,6 +82,9 @@ function makeWebhookRequest(body: string): NextRequest {
     headers: {
       "Content-Type": "application/json",
       "x-org-id": TEST_ORG_ID,
+      // verifyWebhookEvent bails out without a signature header. The mocked
+      // constructEvent ignores the value — any non-empty string suffices.
+      "stripe-signature": "test_sig_no_real_verification",
     },
     body,
   });
@@ -120,8 +127,10 @@ describe("POST /api/stripe/webhook — integration", () => {
   let seed: SeedData;
 
   beforeAll(async () => {
-    // Ensure no webhook secret so dev mode path is taken (no signature verification)
-    delete process.env.STRIPE_WEBHOOK_SECRET;
+    // Set a dummy secret so verifyWebhookEvent enters the verification loop.
+    // The mocked constructEvent ignores the secret and just returns the
+    // parsed body — i.e. pretends Stripe approved the signature.
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_integration_dummy";
     await cleanupAllTestData();
     seed = await seedTestData();
   });

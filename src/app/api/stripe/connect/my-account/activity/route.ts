@@ -1,14 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/auth";
 import { TABLES, stripeAccountKey } from "@/lib/constants";
+import { createRateLimiter } from "@/lib/rate-limit";
 import * as Sentry from "@sentry/nextjs";
 
 // Auth-scoped — never cache. Vercel's Data Cache will key by URL alone
 // and serve one tenant's recent transactions to another otherwise.
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+// Tighter than balance because each call pulls TWO Stripe lists (charges +
+// payouts) — stricter caps avoid burning Stripe quota under abuse.
+const activityRateLimit = createRateLimiter("stripe-my-account-activity", {
+  limit: 30,
+  windowSeconds: 60,
+});
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, must-revalidate",
@@ -32,7 +40,10 @@ function noStoreJson(data: unknown, init?: ResponseInit): NextResponse {
  * show payouts) — Promise.allSettled keeps the dashboard rendering with
  * whatever is available rather than crashing the whole tab.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const limited = activityRateLimit(request);
+  if (limited) return limited;
+
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;

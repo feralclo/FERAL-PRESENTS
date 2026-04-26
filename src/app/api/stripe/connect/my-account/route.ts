@@ -102,7 +102,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Resolve the tenant's domain for the business profile URL
+    // Resolve the tenant's domain for the business profile URL.
+    //
+    // Order of preference:
+    //   1. Custom primary domain (acmetickets.com)        ← if set up
+    //   2. Their entry.events subdomain (acme.entry.events) ← always works
+    //   3. Platform URL (entry.events)                      ← test orgs only
+    //
+    // We CAN'T fall back to the platform URL for real tenants — Stripe uses
+    // business_profile.url for fraud screening and may crawl it. A generic
+    // marketing site is a yellow flag in their algorithm; their own subdomain
+    // (which renders their actual event listings) is much cleaner.
     const { data: domainRow } = await db
       .from(TABLES.DOMAINS)
       .select("hostname")
@@ -111,9 +121,15 @@ export async function POST(request: NextRequest) {
       .eq("is_primary", true)
       .single();
 
+    const platformHost = (process.env.NEXT_PUBLIC_SITE_URL || "https://entry.events")
+      .replace(/^https?:\/\//, "")
+      .replace(/\/$/, "");
+
     const businessUrl = domainRow?.hostname
       ? `https://${domainRow.hostname}`
-      : process.env.NEXT_PUBLIC_SITE_URL || "https://entry.events";
+      : auth.orgId.startsWith("__")
+        ? `https://${platformHost}` // Test/fixture orgs — no real subdomain
+        : `https://${auth.orgId}.${platformHost}`;
 
     const account = await stripe.accounts.create({
       type: "custom",

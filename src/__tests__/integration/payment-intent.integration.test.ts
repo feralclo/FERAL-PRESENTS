@@ -27,9 +27,23 @@ import {
 // ---------------------------------------------------------------------------
 
 const mockPaymentIntentsCreate = vi.fn();
+// Mirror the real PI's confirmable status so the post-create retrieve()
+// (added in commit ee86687 — "idempotent responses lie") doesn't throw or
+// trigger the dead-PI fresh-key fallback. Returns whatever .create returned
+// — same shape, same status — so the route flows straight through.
+const mockPaymentIntentsRetrieve = vi.fn().mockImplementation(() => {
+  const last = mockPaymentIntentsCreate.mock.results.at(-1);
+  if (last && last.type === "return") {
+    return Promise.resolve(last.value);
+  }
+  return Promise.resolve({ id: "pi_mock", status: "requires_payment_method" });
+});
 vi.mock("@/lib/stripe/server", () => ({
   getStripe: () => ({
-    paymentIntents: { create: mockPaymentIntentsCreate },
+    paymentIntents: {
+      create: mockPaymentIntentsCreate,
+      retrieve: mockPaymentIntentsRetrieve,
+    },
   }),
   verifyConnectedAccount: vi.fn().mockResolvedValue(null),
 }));

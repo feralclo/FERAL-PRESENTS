@@ -5,6 +5,23 @@ import { getOrgId } from "@/lib/org";
 import { verifyConnectedAccount, getAccountCapabilities } from "@/lib/stripe/server";
 import * as Sentry from "@sentry/nextjs";
 
+// Returns the org's connected Stripe account ID — auth-scoped via x-org-id
+// from middleware. Vercel Data Cache must not key by URL alone or it will
+// serve one tenant's account ID to another. See commit 9da97ba / e54e284.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, must-revalidate",
+} as const;
+
+function noStoreJson(data: unknown, init?: ResponseInit): NextResponse {
+  return noStoreJson(data, {
+    ...init,
+    headers: { ...(init?.headers || {}), ...NO_STORE_HEADERS },
+  });
+}
+
 /**
  * GET /api/stripe/account
  *
@@ -23,7 +40,7 @@ export async function GET() {
     const orgId = await getOrgId();
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
-      return NextResponse.json({ stripe_account_id: null, capabilities: {} });
+      return noStoreJson({ stripe_account_id: null, capabilities: {} });
     }
 
     const { data } = await supabase
@@ -38,9 +55,9 @@ export async function GET() {
     const accountId = await verifyConnectedAccount(rawAccountId);
     const capabilities = getAccountCapabilities(accountId);
 
-    return NextResponse.json({ stripe_account_id: accountId, capabilities });
+    return noStoreJson({ stripe_account_id: accountId, capabilities });
   } catch (err) {
     Sentry.captureException(err);
-    return NextResponse.json({ stripe_account_id: null, capabilities: {} });
+    return noStoreJson({ stripe_account_id: null, capabilities: {} });
   }
 }

@@ -4,6 +4,21 @@ import { DEFAULT_ACCOUNT_TYPE } from "@/lib/stripe/config";
 import { requirePlatformOwner } from "@/lib/auth";
 import * as Sentry from "@sentry/nextjs";
 
+// Platform-owner endpoint — auth-scoped, never cache.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, must-revalidate",
+} as const;
+
+function noStoreJson(data: unknown, init?: ResponseInit): NextResponse {
+  return noStoreJson(data, {
+    ...init,
+    headers: { ...(init?.headers || {}), ...NO_STORE_HEADERS },
+  });
+}
+
 /**
  * POST /api/stripe/connect — Create a new Stripe Connect account.
  *
@@ -27,7 +42,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!email) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Email is required" },
         { status: 400 }
       );
@@ -59,7 +74,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({
+      return noStoreJson({
         account_id: account.id,
         account_type: "custom",
         details_submitted: account.details_submitted,
@@ -86,7 +101,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({
+      return noStoreJson({
         account_id: account.id,
         account_type: "express",
         details_submitted: account.details_submitted,
@@ -95,7 +110,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(
+    return noStoreJson(
       { error: `Unsupported account type: ${account_type}` },
       { status: 400 }
     );
@@ -104,7 +119,7 @@ export async function POST(request: NextRequest) {
     console.error("Stripe Connect account creation error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to create account";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return noStoreJson({ error: message }, { status: 500 });
   }
 }
 
@@ -132,12 +147,12 @@ export async function GET() {
       created: acc.created,
     }));
 
-    return NextResponse.json({ data: simplified });
+    return noStoreJson({ data: simplified });
   } catch (err) {
     Sentry.captureException(err);
     console.error("Stripe Connect list error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to list accounts";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return noStoreJson({ error: message }, { status: 500 });
   }
 }

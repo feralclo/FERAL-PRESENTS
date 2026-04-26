@@ -7,6 +7,11 @@ import { getDefaultCurrency } from "@/lib/country-currency-map";
 import { isOAuthConfigured, verifyOAuthState } from "@/lib/stripe/oauth";
 import * as Sentry from "@sentry/nextjs";
 
+// Auth-scoped redirect that may carry oauth=success on a path observers'd
+// know. Force dynamic + no-store so no edge layer holds the redirect.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * GET /api/stripe/connect/oauth/callback
  *
@@ -21,7 +26,9 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const back = (params: Record<string, string>) => {
     const qs = new URLSearchParams(params).toString();
-    return NextResponse.redirect(new URL(`/admin/payments?${qs}`, url.origin));
+    const res = NextResponse.redirect(new URL(`/admin/payments?${qs}`, url.origin));
+    res.headers.set("Cache-Control", "no-store, must-revalidate");
+    return res;
   };
 
   const error = url.searchParams.get("error");

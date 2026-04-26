@@ -8,6 +8,24 @@ import { getDefaultCurrency } from "@/lib/country-currency-map";
 import { isOAuthConfigured } from "@/lib/stripe/oauth";
 import * as Sentry from "@sentry/nextjs";
 
+// CRITICAL: this route returns the tenant's connected-Stripe account info,
+// scoped by auth.orgId. Without these the Vercel Data Cache will key the
+// JSON response by URL alone and serve one tenant's account data to every
+// other admin who hits the same URL. See commits 9da97ba / e54e284.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, must-revalidate",
+} as const;
+
+function noStoreJson(data: unknown, init?: ResponseInit): NextResponse {
+  return noStoreJson(data, {
+    ...init,
+    headers: { ...(init?.headers || {}), ...NO_STORE_HEADERS },
+  });
+}
+
 /**
  * POST /api/stripe/connect/my-account — Create a Stripe Connect account for the tenant.
  *
@@ -22,7 +40,7 @@ export async function POST(request: NextRequest) {
     const stripe = getStripe();
     const db = await getSupabaseAdmin();
     if (!db) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Service unavailable" },
         { status: 503 }
       );
@@ -39,7 +57,7 @@ export async function POST(request: NextRequest) {
       // Verify the existing account is still accessible
       try {
         const acc = await stripe.accounts.retrieve(existing.data.account_id);
-        return NextResponse.json({
+        return noStoreJson({
           account_id: acc.id,
           account_type: existing.data.account_type || "custom",
           already_exists: true,
@@ -62,14 +80,14 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!email) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Email is required" },
         { status: 400 }
       );
     }
 
     if (account_type !== "custom") {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Only custom accounts are supported" },
         { status: 400 }
       );
@@ -78,7 +96,7 @@ export async function POST(request: NextRequest) {
     const validBusinessTypes = ["individual", "company", "non_profit"] as const;
     type BusinessType = (typeof validBusinessTypes)[number];
     if (!validBusinessTypes.includes(business_type as BusinessType)) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Invalid business type" },
         { status: 400 }
       );
@@ -138,7 +156,7 @@ export async function POST(request: NextRequest) {
     // Sync country + base_currency to org general settings
     await syncGeneralSettings(db, auth.orgId, country);
 
-    return NextResponse.json({
+    return noStoreJson({
       account_id: account.id,
       account_type: "custom",
       charges_enabled: account.charges_enabled,
@@ -150,7 +168,7 @@ export async function POST(request: NextRequest) {
     console.error("[my-account] Stripe Connect creation error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to create account";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return noStoreJson({ error: message }, { status: 500 });
   }
 }
 
@@ -168,7 +186,7 @@ export async function GET() {
     const stripe = getStripe();
     const db = await getSupabaseAdmin();
     if (!db) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Service unavailable" },
         { status: 503 }
       );
@@ -183,7 +201,7 @@ export async function GET() {
 
     const accountId = setting?.data?.account_id;
     if (!accountId) {
-      return NextResponse.json({
+      return noStoreJson({
         connected: false,
         oauth_available: isOAuthConfigured(),
       });
@@ -214,7 +232,7 @@ export async function GET() {
       const payoutSchedule = account.settings?.payouts?.schedule;
       const livemode = !process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_");
 
-      return NextResponse.json({
+      return noStoreJson({
         connected: true,
         account_id: account.id,
         account_type: accountType,
@@ -247,7 +265,7 @@ export async function GET() {
       });
     } catch {
       // Account no longer accessible — clear the stored reference
-      return NextResponse.json({
+      return noStoreJson({
         connected: false,
         stale_account: true,
         oauth_available: isOAuthConfigured(),
@@ -258,7 +276,7 @@ export async function GET() {
     console.error("[my-account] Stripe Connect status error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to check account status";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return noStoreJson({ error: message }, { status: 500 });
   }
 }
 
@@ -277,7 +295,7 @@ export async function DELETE() {
 
     const db = await getSupabaseAdmin();
     if (!db) {
-      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+      return noStoreJson({ error: "Service unavailable" }, { status: 503 });
     }
 
     const { data: setting } = await db
@@ -307,12 +325,12 @@ export async function DELETE() {
       .delete()
       .eq("key", stripeAccountKey(auth.orgId));
 
-    return NextResponse.json({ disconnected: true });
+    return noStoreJson({ disconnected: true });
   } catch (err) {
     Sentry.captureException(err);
     console.error("[my-account DELETE] error:", err);
     const message = err instanceof Error ? err.message : "Failed to disconnect";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return noStoreJson({ error: message }, { status: 500 });
   }
 }
 

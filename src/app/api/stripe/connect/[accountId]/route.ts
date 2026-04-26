@@ -3,6 +3,20 @@ import { getStripe } from "@/lib/stripe/server";
 import { requirePlatformOwner } from "@/lib/auth";
 import * as Sentry from "@sentry/nextjs";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, must-revalidate",
+} as const;
+
+function noStoreJson(data: unknown, init?: ResponseInit): NextResponse {
+  return noStoreJson(data, {
+    ...init,
+    headers: { ...(init?.headers || {}), ...NO_STORE_HEADERS },
+  });
+}
+
 /**
  * GET /api/stripe/connect/[accountId] — Get connected account details.
  */
@@ -19,7 +33,7 @@ export async function GET(
 
     const account = await stripe.accounts.retrieve(accountId);
 
-    return NextResponse.json({
+    return noStoreJson({
       account_id: account.id,
       email: account.email,
       business_name: account.business_profile?.name || null,
@@ -45,7 +59,7 @@ export async function GET(
     console.error("Stripe Connect account retrieve error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to retrieve account";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return noStoreJson({ error: message }, { status: 500 });
   }
 }
 
@@ -65,12 +79,12 @@ export async function DELETE(
 
     await stripe.accounts.del(accountId);
 
-    return NextResponse.json({ deleted: true, account_id: accountId });
+    return noStoreJson({ deleted: true, account_id: accountId });
   } catch (err) {
     Sentry.captureException(err);
     console.error("Stripe Connect account delete error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to delete account";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return noStoreJson({ error: message }, { status: 500 });
   }
 }

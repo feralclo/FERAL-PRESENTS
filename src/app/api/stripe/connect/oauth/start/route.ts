@@ -5,6 +5,22 @@ import { TABLES, stripeAccountKey, generalKey } from "@/lib/constants";
 import { buildAuthorizeUrl, isOAuthConfigured, signOAuthState } from "@/lib/stripe/oauth";
 import * as Sentry from "@sentry/nextjs";
 
+// Issues an org-scoped, single-use signed state token in the URL — must never
+// be cached, or one tenant's authorize-URL would leak to another.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, must-revalidate",
+} as const;
+
+function noStoreJson(data: unknown, init?: ResponseInit): NextResponse {
+  return noStoreJson(data, {
+    ...init,
+    headers: { ...(init?.headers || {}), ...NO_STORE_HEADERS },
+  });
+}
+
 /**
  * POST /api/stripe/connect/oauth/start
  *
@@ -23,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (auth.error) return auth.error;
 
     if (!isOAuthConfigured()) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Stripe OAuth is not configured on this platform." },
         { status: 503 }
       );
@@ -31,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     const db = await getSupabaseAdmin();
     if (!db) {
-      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+      return noStoreJson({ error: "Service unavailable" }, { status: 503 });
     }
 
     const { data: existing } = await db
@@ -41,7 +57,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existing?.data?.account_id) {
-      return NextResponse.json(
+      return noStoreJson(
         {
           error: "This org is already connected to a Stripe account.",
           account_id: existing.data.account_id,
@@ -66,11 +82,11 @@ export async function POST(request: NextRequest) {
       country: general?.data?.country || null,
     });
 
-    return NextResponse.json({ url });
+    return noStoreJson({ url });
   } catch (err) {
     Sentry.captureException(err);
     console.error("[stripe/connect/oauth/start] error:", err);
     const message = err instanceof Error ? err.message : "Failed to start OAuth";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return noStoreJson({ error: message }, { status: 500 });
   }
 }

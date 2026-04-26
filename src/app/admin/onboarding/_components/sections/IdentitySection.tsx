@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Check, Lock } from "lucide-react";
+import { Loader2, Check, Lock, RefreshCw, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -68,11 +69,29 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [slugChecking, setSlugChecking] = useState(false);
   const [provisioning, setProvisioning] = useState(false);
+  const [provisionMessage, setProvisionMessage] = useState("Reserving your address…");
   const [provisionError, setProvisionError] = useState<string | null>(null);
 
   const slugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefilledRef = useRef(false);
   const isLocked = api.hasOrg;
+
+  // Phased loading messages during provisioning. The actual call usually
+  // resolves in 600–1500ms; the messages cycle through warm copy so the
+  // user never stares at a generic "Working…" spinner at the moment of
+  // creating their org.
+  useEffect(() => {
+    if (!provisioning) {
+      setProvisionMessage("Reserving your address…");
+      return;
+    }
+    const t1 = setTimeout(() => setProvisionMessage("Setting up your storefront…"), 1300);
+    const t2 = setTimeout(() => setProvisionMessage("Almost there…"), 2800);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [provisioning]);
 
   // Pre-fill name from auth metadata (Google OAuth populates full_name /
   // given_name). Stripe Connect Express's redesign credits a 17% conversion
@@ -215,6 +234,13 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
     }
   }
 
+  // Auto-clear provision errors when the user edits anything — they're acting,
+  // we don't need to keep a stale red alert hanging around.
+  useEffect(() => {
+    if (provisionError) setProvisionError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstName, lastName, brandName, country]);
+
   return (
     <>
       <SectionHeading
@@ -248,7 +274,17 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
                 placeholder="Alex"
               />
             </SectionField>
-            <SectionField label="Last name" htmlFor="onb-last-name">
+            <SectionField
+              label={
+                <>
+                  Last name{" "}
+                  <span className="ml-1 text-[10px] font-normal uppercase tracking-[0.12em] text-muted-foreground/60">
+                    optional
+                  </span>
+                </>
+              }
+              htmlFor="onb-last-name"
+            >
               <Input
                 id="onb-last-name"
                 value={lastName}
@@ -345,16 +381,58 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
 
       {provisionError && (
         <Alert variant="destructive">
-          <AlertDescription>{provisionError}</AlertDescription>
+          <AlertTriangle className="size-4" />
+          <AlertDescription>
+            <div className="font-medium text-destructive-foreground">
+              {prettifyProvisionError(provisionError)}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setProvisionError(null);
+                  void handleContinue();
+                }}
+                disabled={provisioning || !canContinue}
+              >
+                <RefreshCw size={11} />
+                Try again
+              </Button>
+              <span className="text-[11px] text-muted-foreground">
+                Or pick a slightly different brand name above.
+              </span>
+            </div>
+          </AlertDescription>
         </Alert>
       )}
 
       <SectionFooter
         primaryLabel={isLocked ? "Continue" : "Create my space"}
+        primaryLoadingLabel={isLocked ? "Saving…" : provisionMessage}
         primaryDisabled={!canContinue || provisioning}
         primaryLoading={provisioning || api.saving}
         onPrimary={handleContinue}
       />
     </>
   );
+}
+
+/**
+ * Server errors come through verbose ("Could not find an available slug.
+ * Please try a different name."). Soften the most common ones for the
+ * panicked-merchant moment without losing specificity.
+ */
+function prettifyProvisionError(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (lower.includes("available slug") || lower.includes("already")) {
+    return "That brand name was just taken. Tweak it slightly and we'll grab it for you.";
+  }
+  if (lower.includes("authenticated") || lower.includes("session")) {
+    return "Your session timed out. Refresh the page and we'll pick up where you left off.";
+  }
+  if (lower.includes("rate") || lower.includes("limit")) {
+    return "We're being asked too many times — wait a few seconds and try again.";
+  }
+  return raw;
 }

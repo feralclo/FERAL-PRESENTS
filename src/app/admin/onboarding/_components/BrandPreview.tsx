@@ -76,6 +76,28 @@ const SAMPLE_TICKETS = [
   },
 ] as const;
 
+/** The next upcoming Saturday — gives the preview the feel of "your next event". */
+function nextSaturdayParts(): { weekday: string; full: string; short: string } {
+  const now = new Date();
+  const day = now.getDay();
+  const offset = (6 - day + 7) % 7 || 7;
+  const sat = new Date(now);
+  sat.setDate(now.getDate() + offset);
+  return {
+    weekday: sat.toLocaleDateString("en-GB", { weekday: "long" }),
+    full: sat.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }),
+    short: sat.toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    }),
+  };
+}
+
 export function BrandPreview({ state }: { state: OnboardingWizardState | null }) {
   const identity = read<IdentityData>(state, "identity");
   const branding = read<BrandingData>(state, "branding");
@@ -302,6 +324,7 @@ function Hero({
   currencySymbol: string;
   minPrice: number;
 }) {
+  const date = useMemo(() => nextSaturdayParts(), []);
   return (
     <section
       className="relative overflow-hidden"
@@ -330,7 +353,7 @@ function Hero({
             className="h-1 w-1 rounded-full"
             style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
           />
-          Saturday · June 14
+          {date.full}
         </div>
 
         {/* Title — mirrors MidnightHero's display font + tight tracking */}
@@ -346,7 +369,7 @@ function Hero({
 
         {/* Date · venue row */}
         <div className="mt-5 flex items-center gap-2 text-[12px] font-medium text-white/75">
-          <span>Sat 14 Jun</span>
+          <span>{date.short}</span>
           <span className="h-[3px] w-[3px] rounded-full bg-white/30" />
           <span>Invisible Wind Factory · Liverpool</span>
         </div>
@@ -523,8 +546,8 @@ function AboutBlock({ brandName }: { brandName: string }) {
         className="text-[12px] leading-[1.6] text-white/65"
         style={{ fontFamily: "'Space Mono', monospace" }}
       >
-        Long, sweaty night spanning two rooms with a stacked international lineup.
-        Doors at nine, last entry at eleven thirty. Powered by {brandName}.
+        A night with a stacked lineup and a crowd that brings it. Doors 9pm,
+        last entry 11:30. Brought to you by {brandName}.
       </p>
     </section>
   );

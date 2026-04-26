@@ -18,7 +18,7 @@
  * are scaled accordingly (¥50 ≈ 20p; we use ¥50 as a sane proxy).
  */
 
-import { PLANS } from "@/lib/plans";
+import { PLANS } from "@/lib/plans-data";
 import type { PlanId } from "@/types/plans";
 import type { VatSettings } from "@/types/settings";
 import { calculateCheckoutVat } from "@/lib/vat";

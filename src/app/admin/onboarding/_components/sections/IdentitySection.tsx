@@ -128,11 +128,18 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
     }
   }
 
-  const canContinue =
-    !!brandName.trim() &&
-    slug.length >= 3 &&
-    slugAvailable === true &&
-    !!firstName.trim();
+  // Once provisioning has run (i.e. the user advanced to Country and back),
+  // their account is locked. Slug is the URL identifier — can't be changed
+  // post-provision because everything (org_users.org_id, settings keys, domain
+  // hostname) keys off it. They can edit display name & branding from Settings.
+  const isLocked = api.hasOrg;
+
+  const canContinue = isLocked
+    ? !!brandName.trim() && !!firstName.trim()
+    : !!brandName.trim() &&
+      slug.length >= 3 &&
+      slugAvailable === true &&
+      !!firstName.trim();
 
   return (
     <div>
@@ -142,16 +149,31 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
         subtitle="Just the basics — we use this to set up your account and pre-fill what we can later."
       />
 
+      {isLocked && (
+        <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-success/20 bg-success/[0.05] px-4 py-3 text-[12px]">
+          <Check size={14} className="mt-0.5 shrink-0 text-success" strokeWidth={2.5} />
+          <div className="text-foreground/85">
+            <div className="font-medium text-foreground">Account already created.</div>
+            <div className="mt-0.5 text-muted-foreground">
+              Your address is{" "}
+              <span className="font-mono text-foreground">{slug}.entry.events</span>. Display name
+              and branding can be updated later in Settings → Branding.
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <SectionField label="First name">
             <input
-              autoFocus
+              autoFocus={!isLocked}
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               maxLength={40}
-              className={inputClass}
+              readOnly={isLocked}
+              className={`${inputClass} ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
               placeholder="First name"
             />
           </SectionField>
@@ -161,22 +183,27 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               maxLength={40}
-              className={inputClass}
+              readOnly={isLocked}
+              className={`${inputClass} ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
               placeholder="Last name"
             />
           </SectionField>
         </div>
 
-        <SectionField label="Brand name" hint="What customers will see on your event pages.">
+        <SectionField
+          label="Brand name"
+          hint={isLocked ? undefined : "What customers will see on your event pages."}
+        >
           <input
             type="text"
             value={brandName}
             onChange={(e) => setBrandName(e.target.value)}
             maxLength={50}
-            className={inputClass}
+            readOnly={isLocked}
+            className={`${inputClass} ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
             placeholder="e.g. Night Shift Events"
           />
-          {slug.length >= 3 && (
+          {!isLocked && slug.length >= 3 && (
             <div className="mt-2.5 flex items-center gap-1.5 text-[12px]">
               {slugChecking ? (
                 <>
@@ -196,6 +223,7 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
           )}
         </SectionField>
 
+        {!isLocked && (
         <div className="rounded-2xl border border-primary/15 bg-primary/[0.04] p-4">
           <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
             <Sparkles size={12} />
@@ -243,10 +271,13 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
             <p className="mt-2 text-[11px] text-muted-foreground">{importMessage}</p>
           )}
         </div>
+        )}
 
-        <HintCard>
-          We'll never share your name publicly without you wanting us to.
-        </HintCard>
+        {!isLocked && (
+          <HintCard>
+            We&apos;ll never share your name publicly without you wanting us to.
+          </HintCard>
+        )}
       </div>
 
       <SectionFooter

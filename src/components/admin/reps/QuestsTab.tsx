@@ -505,10 +505,16 @@ export function QuestsTab() {
     setVideoError("");
 
     if (file.type.startsWith("image/")) {
-      // ── Image branch — compress → Supabase Storage signed URL → public
-      // https URL into video_url. We deliberately bypass /api/upload (which
-      // returns a relative /api/media/{key} path) so iOS gets a CDN-served
-      // full URL it can fetch directly without proxying through us.
+      // ── Image branch — uses the same /api/upload flow as the cover
+      // image picker on this same form (ImageUpload). Proven, works.
+      // Storage is base64-in-site_settings, served via /api/media/{key}.
+      // We absoluteise the URL with window.location.origin so iOS gets a
+      // fetchable URL (it would otherwise see a bare /api/media/... path).
+      //
+      // Why not Supabase Storage signed URLs: every variant of the signed-
+      // URL upload (raw fetch PUT, SDK uploadToSignedUrl) hits a CORS
+      // preflight that the artist-media bucket rejects, surfacing as the
+      // unhelpful "Failed to fetch" TypeError.
       setVideoUploading(true);
       setVideoProgress(0);
       setVideoStatus("Compressing image...");
@@ -516,41 +522,24 @@ export function QuestsTab() {
         const compressed = await processImageFile(file);
         if (!compressed) throw new Error("Could not read image");
 
-        // Convert the compressed data URI back to a Blob for the PUT.
-        const blob = await (await fetch(compressed)).blob();
-
-        setVideoStatus("Requesting upload URL...");
-        const signed = await fetch("/api/upload-video", {
+        setVideoStatus("Uploading image...");
+        const key = `quest-${editId || "new"}-${Date.now()}`;
+        const res = await fetch("/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename: file.name, contentType: blob.type }),
+          body: JSON.stringify({ imageData: compressed, key }),
         });
-        const signedJson = await signed.json();
-        if (!signed.ok || !signedJson.path || !signedJson.token || !signedJson.publicUrl) {
-          throw new Error(signedJson.error || "Failed to get upload URL");
+        const json = await res.json();
+        if (!res.ok || !json.url) {
+          throw new Error(json.error || `Upload failed (${res.status})`);
         }
 
-        // Use the Supabase SDK's uploadToSignedUrl rather than a raw fetch
-        // PUT — raw PUTs need an x-upsert header which is non-CORS-safe and
-        // triggers an OPTIONS preflight that the bucket's CORS rejects
-        // ("Failed to fetch"). The SDK handles headers + auth correctly.
-        setVideoStatus("Uploading image...");
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-          throw new Error("Storage client unavailable");
-        }
-        const { error: uploadErr } = await supabase.storage
-          .from("artist-media")
-          .uploadToSignedUrl(signedJson.path, signedJson.token, blob, {
-            contentType: blob.type,
-            upsert: true,
-          });
-        if (uploadErr) {
-          throw new Error(`Storage rejected upload — ${uploadErr.message}`);
-        }
-
-        // Image URL into video_url; cover_image_url is left alone.
-        setVideoUrl(signedJson.publicUrl);
+        // /api/upload returns a relative path — make it absolute so iOS
+        // (and any other consumer of video_url) can fetch directly.
+        const absoluteUrl = json.url.startsWith("http")
+          ? json.url
+          : `${window.location.origin}${json.url}`;
+        setVideoUrl(absoluteUrl);
         setVideoStatus("");
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Unknown error";

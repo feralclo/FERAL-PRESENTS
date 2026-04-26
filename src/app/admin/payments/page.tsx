@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,9 +75,14 @@ export default function PaymentSettingsPage() {
   const [continuing, setContinuing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [checkingNow, setCheckingNow] = useState(false);
   // URL of the in-flight Stripe hosted KYC tab — used so the user can
   // reopen Stripe if they accidentally closed the tab.
   const [stripeUrl, setStripeUrl] = useState<string | null>(null);
+  // Reference to the popup window so the parent can detect close events
+  // and post-message replies — focus events alone aren't reliable when the
+  // parent tab never lost focus (e.g. user kept watching it on a wide screen).
+  const popupRef = useRef<Window | null>(null);
 
   // Setup form fields
   const [email, setEmail] = useState("");
@@ -115,9 +120,12 @@ export default function PaymentSettingsPage() {
   }, [orgId]);
 
   // Surface return-trip flags from Stripe's hosted onboarding.
-  // Auto-close the popup tab when it lands back here from Stripe — the
-  // tenant's main Entry tab is already polling and will pick up the new
-  // status. This makes the Stripe popup feel like a self-contained step.
+  //
+  // When this URL is loaded inside the popup tab, postMessage to the parent so
+  // it transitions out of the waiting state instantly — relying on the parent's
+  // focus event isn't reliable (the parent may never have lost focus), and the
+  // 4-second polling tick can leave the user staring at a stale spinner.
+  // Then close the popup. The parent picks up the message in handleParentMessage.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const isPopupReturn =
@@ -126,6 +134,10 @@ export default function PaymentSettingsPage() {
     if (params.get("onboarding") === "complete") {
       if (isPopupReturn) {
         try {
+          window.opener.postMessage(
+            { type: "stripe-onboarding-complete" },
+            window.location.origin,
+          );
           window.close();
           return;
         } catch {
@@ -138,6 +150,10 @@ export default function PaymentSettingsPage() {
     if (params.get("refresh") === "true") {
       if (isPopupReturn) {
         try {
+          window.opener.postMessage(
+            { type: "stripe-onboarding-refresh" },
+            window.location.origin,
+          );
           window.close();
           return;
         } catch {
@@ -199,6 +215,23 @@ export default function PaymentSettingsPage() {
     checkStatus();
   }, [checkStatus]);
 
+  // Listen for the popup's postMessage so the waiting view can exit instantly
+  // when Stripe redirects back, regardless of focus state.
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string } | null;
+      if (data?.type === "stripe-onboarding-complete") {
+        void checkStatus();
+      } else if (data?.type === "stripe-onboarding-refresh") {
+        setError("Your session expired. Please continue setup again.");
+        setView("setup-form");
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [checkStatus]);
+
   /**
    * Form submit: create the Stripe Custom account, open Stripe's hosted KYC
    * in a new tab, and switch this tab to a waiting state that polls the
@@ -225,6 +258,7 @@ export default function PaymentSettingsPage() {
       );
       return;
     }
+    popupRef.current = popup;
 
     setSettingUp(true);
     setError("");
@@ -290,6 +324,7 @@ export default function PaymentSettingsPage() {
       );
       return;
     }
+    popupRef.current = popup;
 
     setError("");
     setContinuing(true);
@@ -330,9 +365,16 @@ export default function PaymentSettingsPage() {
     checkStatus();
   };
 
-  // Poll account status while in the waiting state. Refresh on tab focus too,
-  // so when the tenant clicks back to this tab from the Stripe tab we pick up
-  // their progress immediately.
+  // Detect completion via four converging triggers so the user is never stuck:
+  //   1. postMessage from the popup (instant — see other useEffect above)
+  //   2. popup.closed flips to true (popup self-closed, user manually closed,
+  //      or browser killed it). Polled at 800ms while we're waiting.
+  //   3. Periodic 4s poll (fallback if the above somehow miss)
+  //   4. Manual "Check now" button in WaitingView (final escape hatch)
+  //
+  // Any successful poll showing connected: true exits the waiting view —
+  // even if details_submitted is false, ConnectedView has a clear "Continue
+  // setup" path so the user is never trapped.
   useEffect(() => {
     if (view !== "waiting") return;
 
@@ -360,12 +402,35 @@ export default function PaymentSettingsPage() {
     // Immediate first check (no 4-second wait)
     void tick();
 
+    // Watch popupRef so a popup close (any cause) forces a status recheck.
+    // Once detected, ConnectedView handles whatever state Stripe is in.
+    const popupWatch = window.setInterval(() => {
+      const popup = popupRef.current;
+      if (popup && popup.closed) {
+        popupRef.current = null;
+        window.clearInterval(popupWatch);
+        void checkStatus();
+      }
+    }, 800);
+
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      window.clearInterval(popupWatch);
       window.removeEventListener("focus", onFocus);
     };
   }, [view, checkStatus]);
+
+  /** Manual escape hatch from the waiting view. */
+  const handleCheckNow = async () => {
+    setCheckingNow(true);
+    setError("");
+    try {
+      await checkStatus();
+    } finally {
+      setCheckingNow(false);
+    }
+  };
 
   const handleDisconnect = async () => {
     setDisconnecting(true);
@@ -448,7 +513,12 @@ export default function PaymentSettingsPage() {
       )}
 
       {view === "waiting" && (
-        <WaitingView onReopen={reopenStripe} onCancel={cancelWaiting} />
+        <WaitingView
+          onReopen={reopenStripe}
+          onCheckNow={handleCheckNow}
+          checkingNow={checkingNow}
+          onCancel={cancelWaiting}
+        />
       )}
 
       {view === "connected" && status && (
@@ -663,9 +733,13 @@ function SetupForm({
 
 function WaitingView({
   onReopen,
+  onCheckNow,
+  checkingNow,
   onCancel,
 }: {
   onReopen: () => void;
+  onCheckNow: () => void;
+  checkingNow: boolean;
   onCancel: () => void;
 }) {
   return (
@@ -708,8 +782,26 @@ function WaitingView({
         </div>
       </div>
 
-      <div className="border-t border-border/40 px-6 py-4">
-        <Button variant="secondary" className="w-full" onClick={onReopen}>
+      <div className="space-y-2 border-t border-border/40 px-6 py-4">
+        <Button
+          className="w-full"
+          size="lg"
+          onClick={onCheckNow}
+          disabled={checkingNow}
+        >
+          {checkingNow ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Checking...
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="size-4" />
+              I&apos;ve finished — check now
+            </>
+          )}
+        </Button>
+        <Button variant="ghost" className="w-full" onClick={onReopen}>
           <ExternalLink className="size-4" />
           Reopen Stripe tab
         </Button>

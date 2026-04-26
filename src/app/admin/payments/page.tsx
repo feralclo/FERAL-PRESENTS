@@ -233,6 +233,16 @@ export default function PaymentSettingsPage() {
         // the marketplace) — show that explicitly rather than nudging them
         // to create a Connect account they shouldn't have.
         setView(isPlatformOwner ? "platform-owner" : "setup-form");
+
+        // Platform owners still need their domains registered with Apple
+        // Pay — on the platform Stripe account in their case. Same call,
+        // same idempotent sync as the connected-account path below.
+        if (isPlatformOwner) {
+          fetch("/api/stripe/apple-pay-domain", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          }).catch(() => {});
+        }
         return;
       }
 
@@ -267,12 +277,15 @@ export default function PaymentSettingsPage() {
       setView("connected");
 
       if (acct.charges_enabled) {
-        // Best-effort Apple Pay domain registration once charges are live.
-        // Failure is non-blocking and not surfaced to the tenant.
+        // Best-effort Apple Pay sync once charges are live. The endpoint
+        // (with no body) idempotently registers EVERY active domain for
+        // this org on the right Stripe account — covers their entry.events
+        // subdomain plus any custom domains they've added. Was previously
+        // sending window.location.hostname (= 'admin.entry.events') which
+        // is a domain buyers never visit. Failure is non-blocking.
         fetch("/api/stripe/apple-pay-domain", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ domain: window.location.hostname }),
         }).catch(() => {});
       }
     } catch {

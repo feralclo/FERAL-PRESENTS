@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { addDomainToVercel } from "@/lib/vercel-domains";
+import { syncOrgApplePayDomains } from "@/lib/apple-pay";
 
 /**
  * GET /api/domains — List all domains for the authenticated org.
@@ -104,6 +105,16 @@ export async function POST(request: NextRequest) {
         .update({ status: "active" })
         .eq("id", domain.id);
       domain.status = "active";
+
+      // New domain just went live — fire-and-forget Apple Pay registration
+      // so the button shows the moment a buyer arrives. Without this, the
+      // tenant would have to revisit /admin/payments to trigger the sync.
+      syncOrgApplePayDomains(auth.orgId).catch((err) => {
+        console.error(
+          "[domains] Apple Pay sync after domain create failed (non-blocking):",
+          err,
+        );
+      });
     } else if (vercelResult.verification && vercelResult.verification.length > 0) {
       const v = vercelResult.verification[0];
       await supabase

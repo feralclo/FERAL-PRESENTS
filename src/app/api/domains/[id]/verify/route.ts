@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { verifyDomainOnVercel } from "@/lib/vercel-domains";
+import { syncOrgApplePayDomains } from "@/lib/apple-pay";
 import * as Sentry from "@sentry/nextjs";
 
 interface RouteParams {
@@ -54,6 +55,18 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
           verification_reason: null,
         })
         .eq("id", id);
+
+      // Domain just transitioned to active — fire-and-forget Apple Pay
+      // registration so the button shows on this domain immediately.
+      // Without this, the tenant would have to revisit /admin/payments to
+      // trigger the sync, leaving a window where buyers see the card form
+      // only on a freshly-verified domain.
+      syncOrgApplePayDomains(auth.orgId).catch((err) => {
+        console.error(
+          "[domains/verify] Apple Pay sync after verify failed (non-blocking):",
+          err,
+        );
+      });
 
       return NextResponse.json({
         domain: { ...domain, status: "active", verification_reason: null },

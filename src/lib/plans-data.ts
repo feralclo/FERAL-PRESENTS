@@ -2,7 +2,7 @@
  * Pure plan data — no Supabase / Stripe / next/headers imports.
  *
  * Lives in its own file so client components (e.g. the onboarding wizard's
- * fee-preview panel) can read plan rates without dragging server-only
+ * settings UI) can read plan rates without dragging server-only
  * modules through Turbopack's bundling.
  *
  * `lib/plans.ts` re-exports `PLANS` from here for backwards compat.

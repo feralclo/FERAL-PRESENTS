@@ -8,39 +8,22 @@ import type {
 } from "@/types/settings";
 
 /**
- * Wizard order — also drives "next/back" navigation.
+ * Wizard order — drives next/back navigation and the progress dots.
  *
- * Identity must run first because it locks the brand name (used downstream by
- * Stripe, branding, domain). Finish is always last.
+ * Three sections: Identity captures who/where + provisions the org, Branding
+ * paints the storefront, Finish hands off to the dashboard's persistent
+ * setup checklist for everything else.
  */
-export const WIZARD_ORDER: WizardSection[] = [
-  "identity",
-  "country",
-  "branding",
-  "domain",
-  "vat",
-  "payments",
-  "first_event",
-  "team",
-  "finish",
-];
+export const WIZARD_ORDER: WizardSection[] = ["identity", "branding", "finish"];
 
-/** Sections the user MUST complete or skip before reaching Finish. */
-export const REQUIRED_SECTIONS: WizardSection[] = ["identity", "country"];
+/** Sections the user MUST complete before reaching Finish. */
+export const REQUIRED_SECTIONS: WizardSection[] = ["identity"];
 
-/**
- * Pretty labels for progress dots. Kept short for mobile.
- */
+/** Pretty labels for the progress indicator. */
 export const SECTION_LABEL: Record<WizardSection, string> = {
   identity: "You",
-  country: "Where",
   branding: "Brand",
-  domain: "Address",
-  vat: "Tax",
-  payments: "Payments",
-  first_event: "First event",
-  team: "Team",
-  finish: "Finish",
+  finish: "Done",
 };
 
 const PATCH_DEBOUNCE_MS = 600;

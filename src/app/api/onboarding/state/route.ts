@@ -12,13 +12,7 @@ import * as Sentry from "@sentry/nextjs";
 
 const VALID_SECTIONS: ReadonlySet<WizardSection> = new Set([
   "identity",
-  "country",
   "branding",
-  "domain",
-  "vat",
-  "payments",
-  "first_event",
-  "team",
   "finish",
 ]);
 

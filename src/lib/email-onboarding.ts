@@ -163,8 +163,6 @@ export interface WelcomeEmailContext {
   toEmail: string;
   /** First name to greet by — falls back to "there". */
   firstName?: string;
-  /** Did the wizard create a draft event? Linked in the body if so. */
-  firstEventSlug?: string;
   /** Outstanding setup items to nudge in the email */
   outstanding?: {
     stripe?: boolean;
@@ -182,34 +180,27 @@ export async function sendWelcomeEmail(ctx: WelcomeEmailContext): Promise<{ sent
   const dashboardUrl = `${siteUrl}/admin/`;
   const greet = ctx.firstName ? escapeHtml(ctx.firstName) : "there";
 
-  const outstandingBits: string[] = [];
+  const nextSteps: string[] = [
+    `<li>Open the dashboard to see your setup checklist — Stripe, your first event, your team</li>`,
+  ];
   if (ctx.outstanding?.stripe) {
-    outstandingBits.push(
-      `<li>Finish setting up payments — <a href="${siteUrl}/admin/payments/" style="color:${escapeHtml(brand.accent)};">complete Stripe</a></li>`
+    nextSteps.unshift(
+      `<li>Connect Stripe so you can take card payments — <a href="${siteUrl}/admin/payments/" style="color:${escapeHtml(brand.accent)};">set it up here</a></li>`
     );
   }
   if (ctx.outstanding?.domain) {
-    outstandingBits.push(
-      `<li>We're verifying your domain — we'll email you when it's live</li>`
+    nextSteps.push(
+      `<li>We're checking your custom domain — we'll email you the moment it's live</li>`
     );
   }
-
-  const eventLine = ctx.firstEventSlug
-    ? `<p style="margin:0 0 12px;">Your draft event is ready to preview — pick up where you left off in the dashboard.</p>`
-    : "";
-
-  const outstandingBlock =
-    outstandingBits.length > 0
-      ? `<p style="margin:16px 0 8px;font-weight:600;color:#fff;">A couple things to finish</p><ul style="padding-left:20px;margin:0 0 12px;color:rgba(255,255,255,0.78);">${outstandingBits.join("")}</ul>`
-      : `<p style="margin:0 0 12px;">You're fully set up.</p>`;
 
   const html = shellHtml({
     brand,
     heading: `Welcome to Entry, ${greet}`,
     bodyHtml: `
-      <p style="margin:0 0 12px;">${escapeHtml(brand.org_name)} is live on the platform.</p>
-      ${eventLine}
-      ${outstandingBlock}
+      <p style="margin:0 0 12px;">${escapeHtml(brand.org_name)} is live on Entry.</p>
+      <p style="margin:16px 0 8px;font-weight:600;color:#fff;">What to do next</p>
+      <ul style="padding-left:20px;margin:0 0 12px;color:rgba(255,255,255,0.78);">${nextSteps.join("")}</ul>
     `,
     cta: { label: "Open dashboard", url: dashboardUrl },
     preheader: `${brand.org_name} is live on Entry`,

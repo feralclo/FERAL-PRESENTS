@@ -28,7 +28,7 @@ export async function GET() {
 
     const { data: events, error } = await supabase
       .from(TABLES.TRAFFIC_EVENTS)
-      .select("session_id, event_type, event_name, product_name, timestamp")
+      .select("session_id, event_type, event_name, product_name, timestamp, latitude, longitude, country, city")
       .eq("org_id", orgId)
       .gte("timestamp", fifteenMinAgo)
       .in("event_type", [...STAGE_ORDER])
@@ -58,6 +58,7 @@ export async function GET() {
     const map = new Map<string, {
       stage: Stage; journeyPath: string[]; eventSlug?: string; eventName?: string;
       productName?: string; enteredAt: string; lastSeenAt: string; stageChangedAt: string;
+      latitude?: number; longitude?: number; country?: string; city?: string;
     }>();
 
     for (const evt of events || []) {
@@ -73,6 +74,10 @@ export async function GET() {
           eventName: slugMap[evt.event_name] || evt.event_name || undefined,
           productName: evt.product_name || undefined,
           enteredAt: ts, lastSeenAt: ts, stageChangedAt: ts,
+          latitude: evt.latitude || undefined,
+          longitude: evt.longitude || undefined,
+          country: evt.country || undefined,
+          city: evt.city || undefined,
         });
       } else {
         existing.lastSeenAt = ts;
@@ -81,6 +86,12 @@ export async function GET() {
           existing.eventName = slugMap[evt.event_name] || evt.event_name;
         }
         if (evt.product_name) existing.productName = evt.product_name;
+        if (evt.latitude && !existing.latitude) {
+          existing.latitude = evt.latitude;
+          existing.longitude = evt.longitude;
+          existing.country = evt.country;
+          existing.city = evt.city;
+        }
         if (stageIdx(stage) > stageIdx(existing.stage)) {
           existing.stage = stage;
           existing.stageChangedAt = ts;
@@ -93,6 +104,8 @@ export async function GET() {
       .map(([sessionId, d]) => ({
         sessionId, stage: d.stage, eventSlug: d.eventSlug, eventName: d.eventName,
         productName: d.productName, journeyPath: d.journeyPath,
+        latitude: d.latitude, longitude: d.longitude,
+        country: d.country, city: d.city,
         enteredAt: new Date(d.enteredAt).getTime(),
         lastSeenAt: new Date(d.lastSeenAt).getTime(),
         stageChangedAt: new Date(d.stageChangedAt).getTime(),

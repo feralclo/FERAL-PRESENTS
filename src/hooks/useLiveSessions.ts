@@ -19,6 +19,10 @@ export interface LiveSession {
   lastSeenAt: number;
   stageChangedAt: number;
   isPurchaseNew: boolean;
+  latitude?: number;
+  longitude?: number;
+  country?: string;
+  city?: string;
 }
 
 /* ── Constants ── */

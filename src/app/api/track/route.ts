@@ -33,6 +33,10 @@ const TRAFFIC_ALLOWED_FIELDS = new Set([
   "product_name",
   "product_price",
   "product_qty",
+  "latitude",
+  "longitude",
+  "country",
+  "city",
 ]);
 
 /**
@@ -103,13 +107,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Inject Vercel geo headers for popup events (only available on Vercel deployment)
-    if (isPopup) {
-      const city = request.headers.get("x-vercel-ip-city");
-      const country = request.headers.get("x-vercel-ip-country");
-      if (city) sanitized.city = decodeURIComponent(city);
-      if (country) sanitized.country = country;
-    }
+    // Inject Vercel geo headers (only available on Vercel deployment)
+    const geoCity = request.headers.get("x-vercel-ip-city");
+    const geoCountry = request.headers.get("x-vercel-ip-country");
+    const geoLat = request.headers.get("x-vercel-ip-latitude");
+    const geoLng = request.headers.get("x-vercel-ip-longitude");
+    if (geoCity) sanitized.city = decodeURIComponent(geoCity);
+    if (geoCountry) sanitized.country = geoCountry;
+    if (geoLat) sanitized.latitude = parseFloat(geoLat);
+    if (geoLng) sanitized.longitude = parseFloat(geoLng);
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {

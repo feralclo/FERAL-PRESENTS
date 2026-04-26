@@ -14,7 +14,7 @@ const NO_STORE_HEADERS = {
 } as const;
 
 function noStoreJson(data: unknown, init?: ResponseInit): NextResponse {
-  return noStoreJson(data, {
+  return NextResponse.json(data, {
     ...init,
     headers: { ...(init?.headers || {}), ...NO_STORE_HEADERS },
   });

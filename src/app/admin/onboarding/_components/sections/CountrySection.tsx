@@ -9,7 +9,7 @@ import {
   getCurrencySymbolFromMap,
   getDefaultCurrency,
 } from "@/lib/country-currency-map";
-import { getCountryVatInfo, getTaxLabel } from "@/lib/country-vat";
+import { getTaxLabel } from "@/lib/country-vat";
 import type { OnboardingApi } from "../../_state";
 
 interface CountryData {
@@ -40,7 +40,6 @@ export function CountrySection({ api }: { api: OnboardingApi }) {
 
   const currency = getDefaultCurrency(country);
   const symbol = getCurrencySymbolFromMap(currency);
-  const vatInfo = getCountryVatInfo(country);
   const taxLabel = getTaxLabel(country);
 
   async function handleContinue() {
@@ -88,7 +87,7 @@ export function CountrySection({ api }: { api: OnboardingApi }) {
       <SectionHeading
         eyebrow="Step 2 of 9"
         title="Where are you based?"
-        subtitle="This sets your default currency, time zone, and tax handling."
+        subtitle="This sets your default currency and time zone."
       />
 
       <div className="space-y-5">
@@ -112,17 +111,12 @@ export function CountrySection({ api }: { api: OnboardingApi }) {
           </div>
         </SectionField>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Stat label="Currency" value={`${currency} (${symbol})`} />
-          <Stat
-            label={taxLabel === "VAT" ? "Default VAT" : `Default ${taxLabel}`}
-            value={vatInfo.default_rate > 0 ? `${vatInfo.default_rate}%` : "None"}
-          />
-          <Stat label="Pricing" value={vatInfo.prices_include_default ? "Inclusive" : "Excluded"} />
+        <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3 text-[12px] text-muted-foreground">
+          Default currency: <span className="text-foreground font-medium">{currency} ({symbol})</span>
         </div>
 
         <HintCard>
-          You can change any of this later — and individual events can have their own currency or {taxLabel.toLowerCase()} settings.
+          We&apos;ll ask about {taxLabel.toLowerCase()} on the next steps. Individual events can have their own currency too.
         </HintCard>
 
         {error && (
@@ -142,13 +136,3 @@ export function CountrySection({ api }: { api: OnboardingApi }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] px-3 py-2.5">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
-        {label}
-      </div>
-      <div className="mt-1 text-[13px] font-medium text-foreground">{value}</div>
-    </div>
-  );
-}

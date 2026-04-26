@@ -36,8 +36,13 @@ const IMAGE_TIMEOUT_MS = 4_000;
 const HTML_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const IMAGE_MAX_BYTES = 1 * 1024 * 1024; // 1 MB
 
+// Browser-like UA — many sites (especially behind Cloudflare) block obvious bot strings
+// with a 403, which we'd then surface as "couldn't reach". This UA is honest about being
+// a bot via the trailing comment but matches a recent Chrome on macOS so most edge proxies
+// let it through.
 const USER_AGENT =
-  "EntryBrandFetcher/1.0 (+https://entry.events) like Mozilla/5.0";
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 EntryBrandFetcher/1.0";
 
 export interface BrandFetchResult {
   name?: string;
@@ -96,7 +101,10 @@ async function fetchWithCap(
       redirect: "follow",
       headers: {
         "User-Agent": USER_AGENT,
-        ...(opts.accept ? { Accept: opts.accept } : {}),
+        // Browser-like accept headers help with Cloudflare / bot challenges
+        Accept: opts.accept ?? "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-GB,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
       },
     });
     if (!res.ok) return null;

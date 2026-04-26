@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { Loader2, Check, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import {
   WIZARD_ORDER,
   SECTION_LABEL,
@@ -85,51 +85,48 @@ function Header({ api }: { api: OnboardingApi }) {
 }
 
 function ProgressDots({ api }: { api: OnboardingApi }) {
+  const total = WIZARD_ORDER.length;
+  const currentLabel = SECTION_LABEL[api.current];
   return (
-    <div className="flex items-center gap-1.5 overflow-x-auto" role="progressbar" aria-valuemin={0} aria-valuemax={WIZARD_ORDER.length} aria-valuenow={api.sectionIndex + 1}>
-      {WIZARD_ORDER.map((section, idx) => {
-        const isCurrent = section === api.current;
-        const sectionState = api.getSection(section);
-        const isCompleted = !!sectionState?.completed_at;
-        const isSkipped = sectionState?.skipped === true;
-        const isPast = idx < api.sectionIndex || isCompleted || isSkipped;
-
-        return (
-          <button
-            key={section}
-            type="button"
-            onClick={() => {
-              // Allow jumping back to any visited section
-              if (idx <= api.sectionIndex || sectionState?.visited_at) api.goTo(section);
-            }}
-            className={`group flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition-all ${
-              isCurrent
-                ? "bg-primary/12 text-primary"
-                : isPast
-                ? "text-foreground/70 hover:text-foreground"
-                : "text-muted-foreground/45"
-            }`}
-            aria-current={isCurrent ? "step" : undefined}
-          >
-            <span
-              className={`flex h-4 w-4 items-center justify-center rounded-full transition-all ${
+    <div
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-valuenow={api.sectionIndex + 1}
+      aria-label={`Step ${api.sectionIndex + 1} of ${total}: ${currentLabel}`}
+    >
+      <div className="mb-2 flex items-center justify-between text-[11px]">
+        <span className="font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+          Step {api.sectionIndex + 1} of {total}
+        </span>
+        <span className="text-foreground/80">{currentLabel}</span>
+      </div>
+      <div className="flex items-center gap-1">
+        {WIZARD_ORDER.map((section, idx) => {
+          const sectionState = api.getSection(section);
+          const isCompleted = !!sectionState?.completed_at;
+          const isSkipped = sectionState?.skipped === true;
+          const isPast = idx < api.sectionIndex || isCompleted || isSkipped;
+          const isCurrent = idx === api.sectionIndex;
+          return (
+            <button
+              key={section}
+              type="button"
+              aria-label={SECTION_LABEL[section]}
+              onClick={() => {
+                if (idx <= api.sectionIndex || sectionState?.visited_at) api.goTo(section);
+              }}
+              className={`h-1.5 flex-1 rounded-full transition-all ${
                 isCurrent
-                  ? "bg-primary text-white shadow-[0_0_10px_rgba(139,92,246,0.4)]"
+                  ? "bg-primary shadow-[0_0_10px_rgba(139,92,246,0.4)]"
                   : isPast
-                  ? "bg-foreground/15 text-foreground/80"
-                  : "bg-muted/30 text-muted-foreground/40"
+                  ? "bg-primary/60"
+                  : "bg-white/[0.06] hover:bg-white/[0.1]"
               }`}
-            >
-              {isCompleted ? (
-                <Check size={9} strokeWidth={3} />
-              ) : (
-                <span className="text-[8px]">{idx + 1}</span>
-              )}
-            </span>
-            <span className="hidden sm:inline">{SECTION_LABEL[section]}</span>
-          </button>
-        );
-      })}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

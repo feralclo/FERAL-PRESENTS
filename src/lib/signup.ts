@@ -145,14 +145,15 @@ function buildDefaultSettingsRows(opts: {
   orgName: string;
   country: string;
   now: string;
-}): Array<{ key: string; data: Record<string, unknown>; org_id: string; updated_at: string }> {
+}): Array<{ key: string; data: Record<string, unknown>; updated_at: string }> {
   const { orgSlug, orgName, country, now } = opts;
 
+  // NOTE: site_settings has only (key, data, updated_at) — no org_id column.
+  // Tenancy is encoded in the key prefix (e.g. "feral_branding").
   return [
     {
       key: vatKey(orgSlug),
       data: getDefaultVatSettings(country) as unknown as Record<string, unknown>,
-      org_id: orgSlug,
       updated_at: now,
     },
     {
@@ -164,7 +165,6 @@ function buildDefaultSettingsRows(opts: {
         reply_to: "",
         support_email: "",
       },
-      org_id: orgSlug,
       updated_at: now,
     },
     {
@@ -173,8 +173,6 @@ function buildDefaultSettingsRows(opts: {
         apple_wallet_enabled: false,
         google_wallet_enabled: false,
         organization_name: orgName,
-        // Inherit branding visuals when wizard's "Use my brand on wallet passes" toggle fires.
-        // Until then, wallet passes use platform defaults via fallback in lib/wallet-passes.ts.
         accent_color: "",
         bg_color: "",
         text_color: "",
@@ -187,44 +185,37 @@ function buildDefaultSettingsRows(opts: {
         show_terms: false,
         terms_text: "",
       },
-      org_id: orgSlug,
       updated_at: now,
     },
     {
       key: marketingKey(orgSlug),
       data: {
-        // Empty but valid — wizard / settings page fills these in
         gtm_id: "",
         meta_pixel_id: "",
         meta_capi_token: "",
         klaviyo_public_key: "",
         klaviyo_private_key: "",
       },
-      org_id: orgSlug,
       updated_at: now,
     },
     {
       key: popupKey(orgSlug),
       data: { enabled: false },
-      org_id: orgSlug,
       updated_at: now,
     },
     {
       key: abandonedCartAutomationKey(orgSlug),
       data: { enabled: false },
-      org_id: orgSlug,
       updated_at: now,
     },
     {
       key: announcementAutomationKey(orgSlug),
       data: { enabled: false },
-      org_id: orgSlug,
       updated_at: now,
     },
     {
       key: eventsListKey(orgSlug),
       data: { sort: "date_asc", show_past: false },
-      org_id: orgSlug,
       updated_at: now,
     },
   ];
@@ -323,7 +314,6 @@ export async function provisionOrg(params: ProvisionOrgParams): Promise<{
         {
           key: brandingKey(orgSlug),
           data: { org_name: orgName },
-          org_id: orgSlug,
           updated_at: now,
         },
         { onConflict: "key" }

@@ -110,13 +110,13 @@ export async function patchWizardSection(opts: {
     ...(opts.extras ?? {}),
   };
 
-  // org-scoped rows include org_id; platform rows leave it null
+  // site_settings has only (key, data, updated_at) — multi-tenancy is via key prefix
+  void isOrgScoped;
   const row: Record<string, unknown> = {
     key,
     data: next,
     updated_at: now,
   };
-  if (isOrgScoped && opts.orgId) row.org_id = opts.orgId;
 
   const { error } = await supabase
     .from(TABLES.SITE_SETTINGS)
@@ -170,7 +170,6 @@ export async function migrateWizardStateToOrg(opts: {
     {
       key: orgKey,
       data: merged,
-      org_id: opts.orgId,
       updated_at: now,
     },
     { onConflict: "key" }

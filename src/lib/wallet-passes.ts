@@ -1056,7 +1056,6 @@ export async function syncBrandToWalletPasses(orgId: string): Promise<void> {
     {
       key: walletPassesKey(orgId),
       data: merged,
-      org_id: orgId,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "key" }

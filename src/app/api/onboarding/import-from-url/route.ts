@@ -116,7 +116,6 @@ export async function POST(request: NextRequest) {
           {
             key,
             data: { result, cached_at: new Date().toISOString() } as CachedResult,
-            org_id: "platform",
             updated_at: new Date().toISOString(),
           },
           { onConflict: "key" }

@@ -261,7 +261,8 @@ describe("migrateWizardStateToOrg", () => {
     const orgRow = store.get("acme_onboarding");
     expect(orgRow).toBeDefined();
     expect((orgRow!.data as OnboardingWizardState).sections.identity?.completed_at).toBe("x");
-    expect(orgRow!.org_id).toBe("acme");
+    // site_settings has no org_id column — multi-tenancy via key prefix only
+    expect(orgRow!.org_id).toBeUndefined();
   });
 
   it("is a no-op if no platform state exists", async () => {

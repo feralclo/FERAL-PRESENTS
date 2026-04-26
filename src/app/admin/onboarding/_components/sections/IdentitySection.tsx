@@ -95,13 +95,13 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
       });
       const json = (await res.json()) as ImportResult & { error?: string };
       if (!res.ok) {
-        setImportMessage(json.error || "Could not load that site");
+        setImportMessage(
+          "Couldn't auto-load — that's fine, fill anything in below or upload a logo on the next step."
+        );
         return;
       }
-      // Pre-fill brand name if blank
       if (!brandName && json.name) setBrandName(json.name);
 
-      // Save logo + accent into BRANDING section so Branding/Preview pick them up
       const brandingPatch: Record<string, unknown> = {};
       if (json.logo_url) brandingPatch.logo_data_uri = json.logo_url;
       if (json.accent_hex) brandingPatch.accent_hex = json.accent_hex;
@@ -114,9 +114,15 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
       if (json.name) filled.push("name");
       if (json.logo_url) filled.push("logo");
       if (json.accent_hex) filled.push("colour");
-      setImportMessage(filled.length ? `Loaded ${filled.join(", ")}.` : "Site reached, no metadata found");
+      setImportMessage(
+        filled.length
+          ? `Loaded ${filled.join(", ")}.`
+          : "Site loaded but no logo/colour found — upload your own on the branding step."
+      );
     } catch {
-      setImportMessage("Couldn't reach that site");
+      setImportMessage(
+        "Couldn't auto-load — that's fine, fill anything in below or upload a logo on the next step."
+      );
     } finally {
       setImporting(false);
     }
@@ -146,7 +152,7 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
               onChange={(e) => setFirstName(e.target.value)}
               maxLength={40}
               className={inputClass}
-              placeholder="Harry"
+              placeholder="First name"
             />
           </SectionField>
           <SectionField label="Last name">
@@ -156,7 +162,7 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
               onChange={(e) => setLastName(e.target.value)}
               maxLength={40}
               className={inputClass}
-              placeholder="Gordon"
+              placeholder="Last name"
             />
           </SectionField>
         </div>

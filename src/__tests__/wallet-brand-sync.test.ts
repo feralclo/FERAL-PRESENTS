@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyBrandingToWalletPasses } from "@/lib/wallet-passes";
+import { applyBrandingToWalletPasses } from "@/lib/wallet-brand-sync";
 import type { BrandingSettings } from "@/types/settings";
 import type { WalletPassSettings } from "@/types/email";
 

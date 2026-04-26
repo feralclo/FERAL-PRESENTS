@@ -6,6 +6,10 @@ import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
 import type { BrandingSettings } from "@/types/settings";
 import { TABLES, brandingKey, walletPassesKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { applyBrandingToWalletPasses } from "@/lib/wallet-brand-sync";
+
+// Re-export for callers that import from wallet-passes.ts
+export { applyBrandingToWalletPasses } from "@/lib/wallet-brand-sync";
 
 /* ═══════════════════════════════════════════════════════════
    SHARED TYPES
@@ -1012,34 +1016,9 @@ function hexToComponents(hex: string): { r: number; g: number; b: number } {
 
 /* ═══════════════════════════════════════════════════════════
    BRAND SYNC — copy main branding visuals into wallet-pass settings
+   (Pure mapper extracted to lib/wallet-brand-sync.ts so tests can
+    import it without transitively loading node:crypto / supabase.)
    ═══════════════════════════════════════════════════════════ */
-
-/**
- * Map a `BrandingSettings` row onto a `WalletPassSettings` shape.
- *
- * Pure (no I/O) — used both server-side from `syncBrandToWalletPasses`
- * and from tests. Merges over an existing wallet settings row to preserve
- * tenant-set fields (terms_text, descriptions, enabled toggles, certs).
- */
-export function applyBrandingToWalletPasses(
-  branding: BrandingSettings,
-  existing?: Partial<WalletPassSettings> | null
-): WalletPassSettings {
-  const base: WalletPassSettings = {
-    ...DEFAULT_WALLET_PASS_SETTINGS,
-    ...(existing ?? {}),
-  };
-
-  return {
-    ...base,
-    organization_name: branding.org_name || base.organization_name,
-    logo_url: branding.logo_url || base.logo_url,
-    accent_color: branding.accent_color || base.accent_color,
-    label_color: branding.accent_color || base.label_color,
-    bg_color: branding.background_color || base.bg_color,
-    text_color: branding.text_color || base.text_color,
-  };
-}
 
 /**
  * Read the org's branding row, copy the visual fields into wallet-pass settings,

@@ -5,6 +5,7 @@ import { TABLES, SUPABASE_URL } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendRepEmail } from "@/lib/rep-emails";
 import { autoAssignRepToAllEvents } from "@/lib/rep-auto-assign";
+import { approveRepMembershipsForOrg } from "@/lib/rep-membership-approval";
 import { createNotification } from "@/lib/rep-notifications";
 import * as Sentry from "@sentry/nextjs";
 
@@ -141,6 +142,25 @@ export async function PUT(
     // Send welcome email, push notification + auto-assign when approving a pending rep
     if (updates.status === "active" && oldStatus && oldStatus !== "active") {
       console.info(`[reps/${id}] Approving rep (was ${oldStatus}). Sending email + push + auto-assign.`);
+
+      // v2 — also approve any pending rep_promoter_memberships for this
+      // tenant's promoter and stamp a discount_code on each. Without this,
+      // the membership stays pending and dashboard.discount.primary_code is
+      // null for every brand-new rep, breaking the iOS share-card flow.
+      // Awaited because the iOS dashboard refetch happens immediately after
+      // the admin approves; non-awaited would race the read.
+      const approvalResult = await approveRepMembershipsForOrg({
+        repId: id,
+        orgId,
+        firstName: data.first_name || "Rep",
+        displayName: data.display_name,
+      });
+      if (approvalResult.approved > 0) {
+        console.info(
+          `[reps/${id}] Approved ${approvalResult.approved} membership(s), code=${approvalResult.code ?? "none"}`,
+        );
+      }
+
       sendRepEmail({ type: "welcome", repId: id, orgId }).catch((err) => {
         console.error(`[reps/${id}] Welcome email failed:`, err);
       });

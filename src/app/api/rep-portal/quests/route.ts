@@ -45,9 +45,12 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. Resolve scope — which promoters does this rep have active on?
+    //    `discount_code` is selected so the response can include a
+    //    pre-built share_url per quest (saves iOS a per-quest lookup
+    //    against dashboard.discount.per_promoter[]).
     const { data: memberships } = await db
       .from("rep_promoter_memberships")
-      .select("promoter_id, promoter:promoters(id, org_id, handle, display_name, accent_hex)")
+      .select("promoter_id, discount_code, promoter:promoters(id, org_id, handle, display_name, accent_hex)")
       .eq("rep_id", repId)
       .eq("status", "approved");
 
@@ -60,14 +63,28 @@ export async function GET(request: NextRequest) {
     };
     type MembershipRow = {
       promoter_id: string;
+      discount_code: string | null;
       promoter: PromoterShort | PromoterShort[] | null;
     };
     const approved = ((memberships ?? []) as unknown as MembershipRow[]).map(
       (m) => ({
         promoter_id: m.promoter_id,
+        discount_code: m.discount_code,
         promoter: Array.isArray(m.promoter) ? m.promoter[0] ?? null : m.promoter,
       })
     );
+
+    // Discount-code lookup tables: per-promoter (the precise code for a
+    // promoter-scoped quest) and primary (any approved membership's code,
+    // used as fallback for platform-level / unmatched quests).
+    const codeByPromoterId = new Map<string, string>();
+    let primaryCode: string | null = null;
+    for (const m of approved) {
+      if (m.discount_code) {
+        codeByPromoterId.set(m.promoter_id, m.discount_code);
+        if (!primaryCode) primaryCode = m.discount_code;
+      }
+    }
 
     // Apply ?promoter_id= scoping if set
     const scoped = promoterIdParam
@@ -78,6 +95,21 @@ export async function GET(request: NextRequest) {
     for (const m of scoped) {
       if (m.promoter) promoterByPromoterId.set(m.promoter_id, m.promoter);
     }
+
+    // Helpers for the share-card fields below — defined here so they close
+    // over codeByPromoterId / primaryCode without re-passing them.
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://entry.events").replace(/\/$/, "");
+    const questDiscountCode = (promoterId: string | null): string | null => {
+      if (promoterId) {
+        const code = codeByPromoterId.get(promoterId);
+        if (code) return code;
+      }
+      return primaryCode;
+    };
+    const questShareUrl = (eventSlug: string | null, code: string | null): string | null => {
+      if (!eventSlug || !code) return null;
+      return `${siteUrl}/event/${eventSlug}?ref=${encodeURIComponent(code)}`;
+    };
 
     // 2. Fetch quests: (promoter_id IN scoped) OR (promoter_id IS NULL,
     // platform-level — visible to everyone). Filter by event_id if given.
@@ -308,6 +340,14 @@ export async function GET(request: NextRequest) {
         starts_at: q.starts_at,
         expires_at: q.expires_at,
         auto_approve: q.auto_approve,
+        // Pre-built share payload — saves iOS a round trip to dashboard.
+        // discount_code: per-promoter if the quest is promoter-scoped and
+        // the rep has a code on that membership; else primary (first
+        // approved membership's code). share_url: full deep-link to the
+        // event with the code already in ?ref=, ready for the share card.
+        // Both null when there's no code or no event to point at.
+        discount_code: questDiscountCode(q.promoter_id),
+        share_url: questShareUrl(eventRow?.slug ?? null, questDiscountCode(q.promoter_id)),
         my_submissions: {
           total: subs.length,
           approved,

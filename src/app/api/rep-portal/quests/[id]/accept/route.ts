@@ -42,10 +42,12 @@ export async function POST(
       );
     }
 
-    // 1. Load quest + verify visibility scope for this rep
+    // 1. Load quest + verify visibility scope for this rep. event(slug) is
+    //    pulled here so the response can build the share_url without a
+    //    second round trip.
     const { data: quest } = await db
       .from(TABLES.REP_QUESTS)
-      .select("id, status, promoter_id")
+      .select("id, status, promoter_id, event:events(slug)")
       .eq("id", questId)
       .maybeSingle();
 
@@ -96,7 +98,10 @@ export async function POST(
       );
     }
 
-    // 3. Return the (possibly existing) acceptance
+    // 3. Return the (possibly existing) acceptance + share payload, so iOS
+    //    can transition straight from "Accepted" to the share-card moment
+    //    in the same request cycle (no dashboard refetch). Mirrors the
+    //    discount_code / share_url shape on /api/rep-portal/quests.
     const { data: row } = await db
       .from("rep_quest_acceptances")
       .select("accepted_at")
@@ -104,10 +109,47 @@ export async function POST(
       .eq("quest_id", questId)
       .single();
 
+    // Resolve discount_code: per-promoter membership wins, primary fallback.
+    let discountCode: string | null = null;
+    if (quest.promoter_id) {
+      const { data: membership } = await db
+        .from("rep_promoter_memberships")
+        .select("discount_code")
+        .eq("rep_id", auth.rep.id)
+        .eq("promoter_id", quest.promoter_id)
+        .eq("status", "approved")
+        .maybeSingle();
+      discountCode = membership?.discount_code ?? null;
+    }
+    if (!discountCode) {
+      const { data: anyApproved } = await db
+        .from("rep_promoter_memberships")
+        .select("discount_code")
+        .eq("rep_id", auth.rep.id)
+        .eq("status", "approved")
+        .not("discount_code", "is", null)
+        .limit(1)
+        .maybeSingle();
+      discountCode = anyApproved?.discount_code ?? null;
+    }
+
+    type EventRow = { slug: string | null } | Array<{ slug: string | null }> | null;
+    const eventField = (quest as { event?: EventRow }).event;
+    const eventRow = Array.isArray(eventField) ? eventField[0] ?? null : eventField;
+    const eventSlug = eventRow?.slug ?? null;
+
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://entry.events").replace(/\/$/, "");
+    const shareUrl =
+      eventSlug && discountCode
+        ? `${siteUrl}/event/${eventSlug}?ref=${encodeURIComponent(discountCode)}`
+        : null;
+
     return NextResponse.json({
       data: {
         accepted: true,
         accepted_at: row?.accepted_at ?? new Date().toISOString(),
+        discount_code: discountCode,
+        share_url: shareUrl,
       },
     });
   } catch (err) {

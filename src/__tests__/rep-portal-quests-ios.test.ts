@@ -30,6 +30,7 @@ function makeQueryChain(result: {
   chain.eq = stub;
   chain.in = stub;
   chain.or = stub;
+  chain.not = stub;
   chain.contains = stub;
   chain.gte = stub;
   chain.order = stub;

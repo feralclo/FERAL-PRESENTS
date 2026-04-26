@@ -60,7 +60,42 @@ interface AccountStatus {
   payouts_enabled: boolean;
   details_submitted: boolean;
   livemode: boolean;
+  business_type: string | null;
+  default_currency: string | null;
+  requirements: {
+    currently_due: string[];
+    eventually_due: string[];
+    past_due: string[];
+    disabled_reason: string | null;
+  };
+  capabilities: {
+    card_payments: string;
+    transfers: string;
+  };
 }
+
+interface BalanceEntry {
+  amount: number;
+  currency: string;
+}
+
+/**
+ * Five-state machine that drives ConnectedView. Computed from the raw
+ * Stripe account state; covers every combination the tenant can land in:
+ *
+ *  - "incomplete"     KYC barely started — they need to fill the form
+ *  - "action-needed"  KYC submitted but Stripe is asking for one more thing
+ *  - "under-review"   Submitted, no outstanding asks, waiting on Stripe
+ *  - "needs-bank"     Charges live but bank account missing → money piles up
+ *                     in their Stripe balance until they add it (Phase 2)
+ *  - "live"           Fully operational — charges + payouts both enabled
+ */
+type OnboardingState =
+  | "incomplete"
+  | "action-needed"
+  | "under-review"
+  | "needs-bank"
+  | "live";
 
 type View = "loading" | "setup-form" | "waiting" | "connected";
 
@@ -191,6 +226,24 @@ export default function PaymentSettingsPage() {
         payouts_enabled: Boolean(json.payouts_enabled),
         details_submitted: Boolean(json.details_submitted),
         livemode: json.livemode !== false,
+        business_type: json.business_type || null,
+        default_currency: json.default_currency || null,
+        requirements: {
+          currently_due: Array.isArray(json.requirements?.currently_due)
+            ? json.requirements.currently_due
+            : [],
+          eventually_due: Array.isArray(json.requirements?.eventually_due)
+            ? json.requirements.eventually_due
+            : [],
+          past_due: Array.isArray(json.requirements?.past_due)
+            ? json.requirements.past_due
+            : [],
+          disabled_reason: json.requirements?.disabled_reason || null,
+        },
+        capabilities: {
+          card_payments: json.capabilities?.card_payments || "inactive",
+          transfers: json.capabilities?.transfers || "inactive",
+        },
       };
       setStatus(acct);
       setLivemode(acct.livemode);
@@ -822,6 +875,195 @@ function WaitingView({
 
 // ─── Connected ──────────────────────────────────────────────────────────
 
+/**
+ * Group raw Stripe requirement field paths into plain-English categories.
+ * Each group has a `blocksSelling` flag:
+ *   true  → must be filled before charges_enabled can flip true
+ *   false → only blocks payouts (i.e. external_account / bank)
+ *
+ * Field paths come from Stripe's account.requirements.currently_due array.
+ * Patterns are prefix-based, so the same logic handles `individual.*`,
+ * `company.*`, and `representative.*` variants automatically.
+ */
+const REQUIREMENT_GROUPS: ReadonlyArray<{
+  label: string;
+  test: (field: string) => boolean;
+  blocksSelling: boolean;
+}> = [
+  // Bank account — payout-only, doesn't block charges
+  {
+    label: "Bank account for payouts",
+    test: (f) => f === "external_account" || f.startsWith("external_account."),
+    blocksSelling: false,
+  },
+  // Individual identity
+  {
+    label: "Your full name",
+    test: (f) => f === "individual.first_name" || f === "individual.last_name",
+    blocksSelling: true,
+  },
+  {
+    label: "Date of birth",
+    test: (f) => f.startsWith("individual.dob"),
+    blocksSelling: true,
+  },
+  {
+    label: "Home address",
+    test: (f) => f.startsWith("individual.address"),
+    blocksSelling: true,
+  },
+  {
+    label: "Phone number",
+    test: (f) => f === "individual.phone",
+    blocksSelling: true,
+  },
+  {
+    label: "Email address",
+    test: (f) => f === "individual.email",
+    blocksSelling: true,
+  },
+  {
+    label: "ID verification",
+    test: (f) =>
+      f === "individual.id_number" ||
+      f.startsWith("individual.verification") ||
+      f.startsWith("individual.political_exposure"),
+    blocksSelling: true,
+  },
+  // Company identity
+  {
+    label: "Business name",
+    test: (f) => f === "company.name" || f === "company.name_kana" || f === "company.name_kanji",
+    blocksSelling: true,
+  },
+  {
+    label: "Business address",
+    test: (f) => f.startsWith("company.address"),
+    blocksSelling: true,
+  },
+  {
+    label: "Business registration",
+    test: (f) =>
+      f === "company.tax_id" ||
+      f === "company.registration_number" ||
+      f === "company.vat_id",
+    blocksSelling: true,
+  },
+  {
+    label: "Business phone",
+    test: (f) => f === "company.phone",
+    blocksSelling: true,
+  },
+  {
+    label: "Confirm directors and owners",
+    test: (f) =>
+      f === "company.directors_provided" ||
+      f === "company.owners_provided" ||
+      f === "company.executives_provided" ||
+      f === "company.ownership_declaration",
+    blocksSelling: true,
+  },
+  {
+    label: "Business verification documents",
+    test: (f) => f.startsWith("company.verification"),
+    blocksSelling: true,
+  },
+  // Representative (one director's personal details — companies/non-profits)
+  {
+    label: "Director's full name",
+    test: (f) => f === "representative.first_name" || f === "representative.last_name",
+    blocksSelling: true,
+  },
+  {
+    label: "Director's date of birth",
+    test: (f) => f.startsWith("representative.dob"),
+    blocksSelling: true,
+  },
+  {
+    label: "Director's home address",
+    test: (f) => f.startsWith("representative.address"),
+    blocksSelling: true,
+  },
+  {
+    label: "Director's phone & email",
+    test: (f) => f === "representative.phone" || f === "representative.email",
+    blocksSelling: true,
+  },
+  {
+    label: "Director ID verification",
+    test: (f) =>
+      f === "representative.id_number" ||
+      f.startsWith("representative.verification") ||
+      f.startsWith("representative.relationship"),
+    blocksSelling: true,
+  },
+  // Business profile
+  {
+    label: "About your business",
+    test: (f) => f.startsWith("business_profile."),
+    blocksSelling: true,
+  },
+  // Universal
+  {
+    label: "Accept Stripe's terms",
+    test: (f) => f.startsWith("tos_acceptance."),
+    blocksSelling: true,
+  },
+  {
+    label: "Settings",
+    test: (f) => f.startsWith("settings."),
+    blocksSelling: true,
+  },
+];
+
+interface RequirementGroup {
+  label: string;
+  blocksSelling: boolean;
+}
+
+/**
+ * Collapse an array of Stripe field paths into deduplicated plain-English
+ * groups, preserving the declaration order in REQUIREMENT_GROUPS.
+ */
+function groupRequirements(fields: string[]): RequirementGroup[] {
+  const out: RequirementGroup[] = [];
+  const seen = new Set<string>();
+  for (const group of REQUIREMENT_GROUPS) {
+    if (fields.some((f) => group.test(f))) {
+      if (!seen.has(group.label)) {
+        out.push({ label: group.label, blocksSelling: group.blocksSelling });
+        seen.add(group.label);
+      }
+    }
+  }
+  // Catch unrecognised field paths (rare — Stripe occasionally adds new ones)
+  // so we never silently drop something that's blocking the tenant.
+  const recognised = new Set(
+    fields.filter((f) => REQUIREMENT_GROUPS.some((g) => g.test(f))),
+  );
+  const unknown = fields.filter((f) => !recognised.has(f));
+  if (unknown.length > 0) {
+    out.push({
+      label: `Other: ${unknown.join(", ")}`,
+      blocksSelling: true,
+    });
+  }
+  return out;
+}
+
+function getOnboardingState(status: AccountStatus): OnboardingState {
+  if (status.charges_enabled && status.payouts_enabled) return "live";
+  if (status.charges_enabled && !status.payouts_enabled) return "needs-bank";
+
+  const blocking = groupRequirements(status.requirements.currently_due).filter(
+    (g) => g.blocksSelling,
+  );
+
+  if (status.details_submitted && blocking.length === 0) return "under-review";
+  if (status.details_submitted && blocking.length > 0) return "action-needed";
+  return "incomplete";
+}
+
 function ConnectedView({
   status,
   continuing,
@@ -842,79 +1084,38 @@ function ConnectedView({
   onConfirmDisconnect: () => void;
 }) {
   const isStandard = status.account_type === "standard";
-  const isLive = status.charges_enabled;
+  const onboardingState = getOnboardingState(status);
+  const allGroups = groupRequirements(status.requirements.currently_due);
+  const sellingBlockers = allGroups.filter((g) => g.blocksSelling);
+  const payoutBlockers = allGroups.filter((g) => !g.blocksSelling);
 
   return (
     <>
-      <Card
-        className={cn(
-          "gap-0 overflow-hidden py-0",
-          isLive ? "border-success/20" : "border-warning/20",
-        )}
-      >
-        <div className="px-6 py-8 text-center">
-          <div
-            className={cn(
-              "mx-auto mb-4 flex size-14 items-center justify-center rounded-full",
-              isLive
-                ? "bg-success/10 ring-1 ring-success/20"
-                : "bg-warning/10 ring-1 ring-warning/20",
-            )}
-          >
-            {isLive ? (
-              <CheckCircle2 className="size-7 text-success" />
-            ) : (
-              <Zap className="size-6 text-warning" />
-            )}
-          </div>
-          <h2 className="text-lg font-bold text-foreground">
-            {isLive ? "You're set up to accept payments" : "One more step"}
-          </h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            {isLive
-              ? "Customers can buy tickets now. Funds land in your bank account automatically."
-              : isStandard
-                ? "Your Stripe account needs a few more details. Finish in your Stripe dashboard."
-                : "Stripe needs to verify a few details before you can take payments. Takes about 2 minutes."}
-          </p>
-        </div>
+      {onboardingState === "live" && <LiveCard status={status} />}
 
-        {!isLive && (
-          <div className="border-t border-border/40 px-6 py-4">
-            {isStandard ? (
-              <Button className="w-full" variant="secondary" asChild>
-                <a
-                  href="https://dashboard.stripe.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open Stripe Dashboard
-                  <ExternalLink className="size-4" />
-                </a>
-              </Button>
-            ) : (
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={onContinue}
-                disabled={continuing}
-              >
-                {continuing ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Opening Stripe...
-                  </>
-                ) : (
-                  <>
-                    Continue setup
-                    <ArrowRight className="size-4" />
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        )}
-      </Card>
+      {onboardingState === "needs-bank" && (
+        <NeedsBankCard
+          status={status}
+          continuing={continuing}
+          onContinue={onContinue}
+          payoutBlockers={payoutBlockers}
+        />
+      )}
+
+      {onboardingState === "under-review" && <UnderReviewCard />}
+
+      {(onboardingState === "incomplete" ||
+        onboardingState === "action-needed") && (
+        <IncompleteCard
+          status={status}
+          continuing={continuing}
+          isStandard={isStandard}
+          onContinue={onContinue}
+          sellingBlockers={sellingBlockers}
+          payoutBlockers={payoutBlockers}
+          actionNeeded={onboardingState === "action-needed"}
+        />
+      )}
 
       <div className="pt-2 text-center">
         {!confirmDisconnect ? (
@@ -953,4 +1154,415 @@ function ConnectedView({
       </div>
     </>
   );
+}
+
+// ─── Connected sub-views ────────────────────────────────────────────────
+
+function LiveCard({ status }: { status: AccountStatus }) {
+  const schedule = (status as { payout_schedule?: { interval?: string } }).payout_schedule;
+  return (
+    <Card className="gap-0 overflow-hidden border-success/20 py-0">
+      <div className="px-6 py-8 text-center">
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-success/10 ring-1 ring-success/20">
+          <CheckCircle2 className="size-7 text-success" />
+        </div>
+        <h2 className="text-lg font-bold text-foreground">
+          You&apos;re set up to accept payments
+        </h2>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          Customers can buy tickets now. Funds land in your bank account
+          {schedule?.interval ? ` ${humaniseSchedule(schedule.interval)}` : " automatically"}.
+        </p>
+      </div>
+    </Card>
+  );
+}
+
+function humaniseSchedule(interval: string): string {
+  switch (interval) {
+    case "daily":
+      return "every day";
+    case "weekly":
+      return "every week";
+    case "monthly":
+      return "every month";
+    case "manual":
+      return "when you trigger payouts";
+    default:
+      return "automatically";
+  }
+}
+
+/**
+ * Charges live, but no bank account yet → money is held in their Stripe
+ * balance until they add one. Show the held amount so they can see exactly
+ * what's waiting for them, with a clear CTA to add the bank.
+ */
+function NeedsBankCard({
+  status,
+  continuing,
+  onContinue,
+  payoutBlockers,
+}: {
+  status: AccountStatus;
+  continuing: boolean;
+  onContinue: () => void;
+  payoutBlockers: RequirementGroup[];
+}) {
+  const [balance, setBalance] = useState<{
+    available: BalanceEntry[];
+    pending: BalanceEntry[];
+  } | null>(null);
+  const [balanceError, setBalanceError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/stripe/connect/my-account/balance")
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((json) => {
+        if (cancelled) return;
+        setBalance({
+          available: json.available || [],
+          pending: json.pending || [],
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setBalanceError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const totals = totalisePerCurrency(balance);
+  const fallbackCurrency = status.default_currency || "gbp";
+  const showZeroState = balance !== null && totals.length === 0;
+
+  return (
+    <Card className="gap-0 overflow-hidden border-success/20 py-0">
+      <div className="px-6 py-7 text-center">
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-success/10 ring-1 ring-success/20">
+          <CheckCircle2 className="size-7 text-success" />
+        </div>
+        <h2 className="text-lg font-bold text-foreground">
+          You can sell tickets now
+        </h2>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          Add a bank account to receive your earnings. Until then, money sits
+          safely in your Stripe balance — nothing is lost.
+        </p>
+      </div>
+
+      <div className="border-t border-border/40 bg-muted/10 px-6 py-5">
+        <div className="text-center">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground">
+            Held in Stripe
+          </p>
+          <div className="mt-2 space-y-1">
+            {balance === null && !balanceError && (
+              <Loader2 className="mx-auto size-4 animate-spin text-muted-foreground" />
+            )}
+            {balanceError && (
+              <p className="text-xs text-muted-foreground">
+                Couldn&apos;t load balance. Refresh to retry.
+              </p>
+            )}
+            {showZeroState && (
+              <p className="text-2xl font-bold text-foreground">
+                {formatMoney(0, fallbackCurrency)}
+              </p>
+            )}
+            {totals.map((t) => (
+              <div key={t.currency}>
+                <p className="text-2xl font-bold text-foreground">
+                  {formatMoney(t.total, t.currency)}
+                </p>
+                {t.pending > 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {formatMoney(t.available, t.currency)} ready ·{" "}
+                    {formatMoney(t.pending, t.currency)} settling
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {payoutBlockers.length > 0 && (
+        <div className="border-t border-border/40 px-6 py-4">
+          <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground">
+            To get paid, Stripe needs
+          </p>
+          <ul className="space-y-1.5">
+            {payoutBlockers.map((g) => (
+              <li
+                key={g.label}
+                className="flex items-center gap-2 text-sm text-foreground"
+              >
+                <span className="size-1.5 shrink-0 rounded-full bg-warning" />
+                {g.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="border-t border-border/40 px-6 py-4">
+        <Button
+          className="w-full"
+          size="lg"
+          onClick={onContinue}
+          disabled={continuing}
+        >
+          {continuing ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Opening Stripe...
+            </>
+          ) : (
+            <>
+              Add bank account
+              <ArrowRight className="size-4" />
+            </>
+          )}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function UnderReviewCard() {
+  return (
+    <Card className="gap-0 overflow-hidden border-info/20 py-0">
+      <div className="px-6 py-9 text-center">
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-info/10 ring-1 ring-info/20">
+          <Loader2 className="size-6 animate-spin text-info" />
+        </div>
+        <h2 className="text-lg font-bold text-foreground">
+          Stripe is reviewing your account
+        </h2>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          You&apos;ve submitted everything Stripe needs. Reviews usually take
+          1–2 business days. We&apos;ll email you the moment payments go live —
+          you don&apos;t need to do anything else.
+        </p>
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Either KYC was barely started (no submit yet) or Stripe has come back
+ * asking for one more thing. Show the missing fields in plain English with
+ * the bank-account requirement (if any) called out separately so it's clear
+ * the rest is what's blocking sales.
+ */
+function IncompleteCard({
+  status,
+  continuing,
+  isStandard,
+  onContinue,
+  sellingBlockers,
+  payoutBlockers,
+  actionNeeded,
+}: {
+  status: AccountStatus;
+  continuing: boolean;
+  isStandard: boolean;
+  onContinue: () => void;
+  sellingBlockers: RequirementGroup[];
+  payoutBlockers: RequirementGroup[];
+  actionNeeded: boolean;
+}) {
+  const stripeReason = status.requirements.disabled_reason;
+  // Disabled reasons that aren't just "fill in the form" — surface these
+  // to the tenant directly because they often need human action.
+  const opaqueReason =
+    stripeReason &&
+    !stripeReason.startsWith("requirements.") &&
+    stripeReason !== "rejected.requirements"
+      ? stripeReason
+      : null;
+
+  return (
+    <Card className="gap-0 overflow-hidden border-warning/20 py-0">
+      <div className="px-6 py-8 text-center">
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-warning/10 ring-1 ring-warning/20">
+          <Zap className="size-6 text-warning" />
+        </div>
+        <h2 className="text-lg font-bold text-foreground">
+          {actionNeeded
+            ? "Stripe needs a bit more from you"
+            : sellingBlockers.length === 0
+              ? "Almost there"
+              : "Verify your identity to start selling"}
+        </h2>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          {isStandard
+            ? "Your Stripe account needs a few more details. Finish in your Stripe dashboard."
+            : actionNeeded
+              ? "You're nearly through — Stripe just needs one more detail before payments can go live."
+              : "Stripe verifies every business that takes payments. Takes about 5 minutes — you can come back any time if you need to step away."}
+        </p>
+      </div>
+
+      {opaqueReason && (
+        <div className="border-t border-destructive/20 bg-destructive/[0.04] px-6 py-3">
+          <p className="text-xs text-foreground">
+            <span className="font-mono font-bold uppercase tracking-[1px] text-destructive">
+              Stripe says:
+            </span>{" "}
+            {humaniseDisabledReason(opaqueReason)}
+          </p>
+        </div>
+      )}
+
+      {sellingBlockers.length > 0 && (
+        <div className="border-t border-border/40 px-6 py-4">
+          <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground">
+            Required to sell tickets
+          </p>
+          <ul className="space-y-1.5">
+            {sellingBlockers.map((g) => (
+              <li
+                key={g.label}
+                className="flex items-center gap-2 text-sm text-foreground"
+              >
+                <span className="size-1.5 shrink-0 rounded-full bg-warning" />
+                {g.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {payoutBlockers.length > 0 && (
+        <div className="border-t border-border/40 px-6 py-4">
+          <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground">
+            Required to get paid
+          </p>
+          <ul className="space-y-1.5">
+            {payoutBlockers.map((g) => (
+              <li
+                key={g.label}
+                className="flex items-center gap-2 text-sm text-foreground"
+              >
+                <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+                {g.label}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/80">
+            You can fill this in now or later — selling works as soon as the
+            top section is done.
+          </p>
+        </div>
+      )}
+
+      <div className="border-t border-border/40 px-6 py-4">
+        {isStandard ? (
+          <Button className="w-full" variant="secondary" asChild>
+            <a
+              href="https://dashboard.stripe.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open Stripe Dashboard
+              <ExternalLink className="size-4" />
+            </a>
+          </Button>
+        ) : (
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={onContinue}
+            disabled={continuing}
+          >
+            {continuing ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Opening Stripe...
+              </>
+            ) : (
+              <>
+                {status.details_submitted ? "Resume verification" : "Continue to Stripe"}
+                <ArrowRight className="size-4" />
+              </>
+            )}
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+// ─── Money + reason helpers ─────────────────────────────────────────────
+
+interface CurrencyTotal {
+  currency: string;
+  available: number;
+  pending: number;
+  total: number;
+}
+
+function totalisePerCurrency(
+  balance: { available: BalanceEntry[]; pending: BalanceEntry[] } | null,
+): CurrencyTotal[] {
+  if (!balance) return [];
+  const map = new Map<string, CurrencyTotal>();
+  const ensure = (cur: string) => {
+    if (!map.has(cur)) {
+      map.set(cur, { currency: cur, available: 0, pending: 0, total: 0 });
+    }
+    return map.get(cur)!;
+  };
+  for (const entry of balance.available) {
+    const row = ensure(entry.currency);
+    row.available += entry.amount;
+    row.total += entry.amount;
+  }
+  for (const entry of balance.pending) {
+    const row = ensure(entry.currency);
+    row.pending += entry.amount;
+    row.total += entry.amount;
+  }
+  return Array.from(map.values()).filter((r) => r.total !== 0);
+}
+
+/** Format Stripe minor units into a localised currency string. */
+function formatMoney(amountMinor: number, currency: string): string {
+  const cur = currency.toUpperCase();
+  const value = amountMinor / 100;
+  try {
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: cur,
+    }).format(value);
+  } catch {
+    return `${cur} ${value.toFixed(2)}`;
+  }
+}
+
+/**
+ * Stripe's disabled_reason values are designed for developers, not tenants.
+ * Translate the common ones into plain language. Falls back to the raw value
+ * for unknown reasons so we never silently swallow a Stripe-side block.
+ */
+function humaniseDisabledReason(reason: string): string {
+  const map: Record<string, string> = {
+    rejected: "Your account was rejected. Contact Stripe support to appeal.",
+    "rejected.fraud":
+      "Stripe rejected the account for suspected fraud. Contact Stripe support to appeal.",
+    "rejected.terms_of_service":
+      "Stripe rejected the account for violating their terms. Contact Stripe support.",
+    "rejected.listed":
+      "Your account was flagged as listed (sanctions / watchlist). Contact Stripe support.",
+    "rejected.other":
+      "Your account was rejected. Contact Stripe support to appeal.",
+    listed: "Your account is on a verification watchlist. Stripe is reviewing.",
+    under_review: "Stripe is doing extra verification — usually takes 1-2 days.",
+    other: "Stripe needs more information. Continue to Stripe to find out what.",
+  };
+  return map[reason] || `Stripe blocked the account: ${reason}.`;
 }

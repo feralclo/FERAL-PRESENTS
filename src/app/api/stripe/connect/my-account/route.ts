@@ -238,6 +238,7 @@ export async function GET() {
         account_type: accountType,
         email: account.email,
         business_name: account.business_profile?.name || null,
+        business_type: account.business_type || null,
         country: account.country,
         default_currency: account.default_currency || null,
         charges_enabled: account.charges_enabled,

@@ -170,6 +170,38 @@ export interface WelcomeEmailContext {
   };
 }
 
+/**
+ * Pure helper — builds the "What to do next" bullet list for the welcome
+ * email. Exposed for unit tests so we can verify outstanding-item ordering
+ * without spinning up the full Resend/Supabase send path.
+ *
+ * Ordering matters:
+ *   - Outstanding Stripe is hoisted to the top (highest-priority action)
+ *   - Always-present "open the dashboard" line in the middle
+ *   - Domain pending appended last (informational, not actionable)
+ */
+export function buildWelcomeNextSteps(opts: {
+  outstanding?: { stripe?: boolean; domain?: boolean };
+  siteUrl: string;
+  accent: string;
+}): string[] {
+  const { outstanding, siteUrl, accent } = opts;
+  const lines: string[] = [
+    `<li>Open the dashboard to see your setup checklist — Stripe, your first event, your team</li>`,
+  ];
+  if (outstanding?.stripe) {
+    lines.unshift(
+      `<li>Connect Stripe so you can take card payments — <a href="${siteUrl}/admin/payments/" style="color:${escapeHtml(accent)};">set it up here</a></li>`
+    );
+  }
+  if (outstanding?.domain) {
+    lines.push(
+      `<li>We're checking your custom domain — we'll email you the moment it's live</li>`
+    );
+  }
+  return lines;
+}
+
 export async function sendWelcomeEmail(ctx: WelcomeEmailContext): Promise<{ sent: boolean; reason?: string }> {
   const resend = getResendClient();
   if (!resend) return { sent: false, reason: "RESEND_API_KEY not configured" };
@@ -180,19 +212,11 @@ export async function sendWelcomeEmail(ctx: WelcomeEmailContext): Promise<{ sent
   const dashboardUrl = `${siteUrl}/admin/`;
   const greet = ctx.firstName ? escapeHtml(ctx.firstName) : "there";
 
-  const nextSteps: string[] = [
-    `<li>Open the dashboard to see your setup checklist — Stripe, your first event, your team</li>`,
-  ];
-  if (ctx.outstanding?.stripe) {
-    nextSteps.unshift(
-      `<li>Connect Stripe so you can take card payments — <a href="${siteUrl}/admin/payments/" style="color:${escapeHtml(brand.accent)};">set it up here</a></li>`
-    );
-  }
-  if (ctx.outstanding?.domain) {
-    nextSteps.push(
-      `<li>We're checking your custom domain — we'll email you the moment it's live</li>`
-    );
-  }
+  const nextSteps = buildWelcomeNextSteps({
+    outstanding: ctx.outstanding,
+    siteUrl,
+    accent: brand.accent,
+  });
 
   const html = shellHtml({
     brand,

@@ -6,6 +6,14 @@ import { requireAuth } from "@/lib/auth";
 import type { BrandingSettings } from "@/types/settings";
 import * as Sentry from "@sentry/nextjs";
 
+// CRITICAL: this endpoint is org-scoped via the x-org-id header set by
+// middleware, but the URL itself ("/api/branding") is identical for every
+// tenant. Public Cache-Control here was keying by URL alone, so the first
+// admin's branding got cached and served to every other tenant. Same root
+// cause as commits 9da97ba / e54e284 / 64cc085. Force dynamic + no-store.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /** Platform-neutral default branding — tenants override via {org_id}_branding settings */
 const DEFAULT_BRANDING: BrandingSettings = {
   org_name: "Entry",
@@ -42,7 +50,7 @@ export async function GET() {
       .single();
 
     const headers = {
-      "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+      "Cache-Control": "no-store, must-revalidate",
     };
 
     if (row?.data && typeof row.data === "object") {

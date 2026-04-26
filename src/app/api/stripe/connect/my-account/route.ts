@@ -5,6 +5,7 @@ import { DEFAULT_ACCOUNT_TYPE } from "@/lib/stripe/config";
 import { requireAuth } from "@/lib/auth";
 import { TABLES, stripeAccountKey, generalKey } from "@/lib/constants";
 import { getDefaultCurrency } from "@/lib/country-currency-map";
+import { isOAuthConfigured } from "@/lib/stripe/oauth";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
         const acc = await stripe.accounts.retrieve(existing.data.account_id);
         return NextResponse.json({
           account_id: acc.id,
+          account_type: existing.data.account_type || "custom",
           already_exists: true,
           charges_enabled: acc.charges_enabled,
           payouts_enabled: acc.payouts_enabled,
@@ -112,7 +114,7 @@ export async function POST(request: NextRequest) {
       settings: {
         payouts: {
           schedule: {
-            interval: "manual",
+            interval: "daily",
           },
         },
       },
@@ -122,7 +124,12 @@ export async function POST(request: NextRequest) {
     await db.from(TABLES.SITE_SETTINGS).upsert(
       {
         key: stripeAccountKey(auth.orgId),
-        data: { account_id: account.id, country },
+        data: {
+          account_id: account.id,
+          account_type: "custom",
+          country,
+          connected_at: new Date().toISOString(),
+        },
         updated_at: new Date().toISOString(),
       },
       { onConflict: "key" }
@@ -133,6 +140,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       account_id: account.id,
+      account_type: "custom",
       charges_enabled: account.charges_enabled,
       payouts_enabled: account.payouts_enabled,
       details_submitted: account.details_submitted,
@@ -175,7 +183,10 @@ export async function GET() {
 
     const accountId = setting?.data?.account_id;
     if (!accountId) {
-      return NextResponse.json({ connected: false });
+      return NextResponse.json({
+        connected: false,
+        oauth_available: isOAuthConfigured(),
+      });
     }
 
     // Retrieve the full account from Stripe
@@ -196,15 +207,33 @@ export async function GET() {
         await syncGeneralSettings(db, auth.orgId, account.country);
       }
 
+      const accountType =
+        setting?.data?.account_type ||
+        (account.type === "standard" ? "standard" : "custom");
+
+      const payoutSchedule = account.settings?.payouts?.schedule;
+      const livemode = !process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_");
+
       return NextResponse.json({
         connected: true,
         account_id: account.id,
+        account_type: accountType,
         email: account.email,
         business_name: account.business_profile?.name || null,
         country: account.country,
+        default_currency: account.default_currency || null,
         charges_enabled: account.charges_enabled,
         payouts_enabled: account.payouts_enabled,
         details_submitted: account.details_submitted,
+        livemode,
+        payout_schedule: payoutSchedule
+          ? {
+              interval: payoutSchedule.interval,
+              delay_days: payoutSchedule.delay_days,
+              weekly_anchor: payoutSchedule.weekly_anchor || null,
+              monthly_anchor: payoutSchedule.monthly_anchor || null,
+            }
+          : null,
         requirements: {
           currently_due: account.requirements?.currently_due || [],
           eventually_due: account.requirements?.eventually_due || [],
@@ -221,6 +250,7 @@ export async function GET() {
       return NextResponse.json({
         connected: false,
         stale_account: true,
+        oauth_available: isOAuthConfigured(),
       });
     }
   } catch (err) {
@@ -228,6 +258,60 @@ export async function GET() {
     console.error("[my-account] Stripe Connect status error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to check account status";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/stripe/connect/my-account — Unlink the tenant's connected account.
+ *
+ * For Standard accounts, also deauthorizes the OAuth grant so the platform
+ * loses permission to charge on the user's existing Stripe (clean revoke).
+ * For Custom accounts, the linked account remains in the platform's Connect
+ * directory; this just removes the per-org pointer so a fresh setup can begin.
+ */
+export async function DELETE() {
+  try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
+    const db = await getSupabaseAdmin();
+    if (!db) {
+      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+    }
+
+    const { data: setting } = await db
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", stripeAccountKey(auth.orgId))
+      .single();
+
+    const accountId: string | undefined = setting?.data?.account_id;
+    const accountType: string = setting?.data?.account_type || "custom";
+
+    if (accountId && accountType === "standard" && process.env.STRIPE_CONNECT_CLIENT_ID) {
+      try {
+        const stripe = getStripe();
+        await stripe.oauth.deauthorize({
+          client_id: process.env.STRIPE_CONNECT_CLIENT_ID,
+          stripe_user_id: accountId,
+        });
+      } catch (err) {
+        // Already deauthorized or revoked from Stripe's side — log and continue
+        console.warn("[my-account DELETE] deauthorize failed (continuing):", err);
+      }
+    }
+
+    await db
+      .from(TABLES.SITE_SETTINGS)
+      .delete()
+      .eq("key", stripeAccountKey(auth.orgId));
+
+    return NextResponse.json({ disconnected: true });
+  } catch (err) {
+    Sentry.captureException(err);
+    console.error("[my-account DELETE] error:", err);
+    const message = err instanceof Error ? err.message : "Failed to disconnect";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

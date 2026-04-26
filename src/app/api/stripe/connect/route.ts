@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         settings: {
           payouts: {
             schedule: {
-              interval: "manual",
+              interval: "daily",
             },
           },
         },

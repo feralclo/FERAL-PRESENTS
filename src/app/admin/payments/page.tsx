@@ -37,19 +37,32 @@ import {
   Shield,
   Zap,
   Info,
+  ArrowLeft,
+  ArrowRight,
+  Loader2,
+  Lock,
 } from "lucide-react";
 
-// ─── Types ───
+type AccountType = "standard" | "custom";
 
 interface AccountStatus {
   connected: boolean;
   account_id: string | null;
+  account_type: AccountType;
   email: string | null;
   business_name: string | null;
   country: string | null;
+  default_currency: string | null;
   charges_enabled: boolean;
   payouts_enabled: boolean;
   details_submitted: boolean;
+  livemode: boolean;
+  payout_schedule: {
+    interval: string;
+    delay_days: number | null;
+    weekly_anchor: string | null;
+    monthly_anchor: number | null;
+  } | null;
   requirements_currently_due: string[];
   requirements_past_due: string[];
   disabled_reason: string | null;
@@ -62,38 +75,33 @@ interface AccountStatus {
 
 type PageView =
   | "loading"
-  | "setup" // No account — show the creation form
-  | "onboarding" // Account created, embedded onboarding in progress
-  | "hosted-link" // Fallback: hosted onboarding link
-  | "connected"; // Account fully set up
+  | "chooser"
+  | "setup-form"
+  | "onboarding"
+  | "hosted-link"
+  | "connected";
 
-// ─── Page ───
-
-/**
- * Payment Settings — the tenant-facing page.
- *
- * Tenants see this to set up and manage their Stripe Connect account.
- * Uses tenant-scoped /api/stripe/connect/my-account routes (requireAuth).
- * Embedded ConnectJS onboarding for branded, in-page experience.
- */
 export default function PaymentSettingsPage() {
   const orgId = useOrgId();
   const [view, setView] = useState<PageView>("loading");
   const [status, setStatus] = useState<AccountStatus | null>(null);
+  const [oauthAvailable, setOauthAvailable] = useState(false);
+  const [livemode, setLivemode] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [settingUp, setSettingUp] = useState(false);
+  const [redirectingToOAuth, setRedirectingToOAuth] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [connectInstance, setConnectInstance] =
     useState<StripeConnectInstance | null>(null);
   const [hostedUrl, setHostedUrl] = useState<string | null>(null);
 
-  // Setup form
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("");
   const [businessType, setBusinessType] = useState("individual");
 
-  // Pre-fill country from org general settings
   useEffect(() => {
     if (!orgId) return;
     fetch(`/api/settings?key=${generalKey(orgId)}`)
@@ -106,21 +114,27 @@ export default function PaymentSettingsPage() {
       .catch(() => setCountry((prev) => prev || "GB"));
   }, [orgId]);
 
-  // Check URL params on mount (return from hosted onboarding)
+  // Surface return-trip flags from hosted onboarding + OAuth callback
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("onboarding") === "complete") {
       setSuccess("Verification submitted. Checking your account status...");
-      // Clean URL
       window.history.replaceState({}, "", window.location.pathname);
     }
     if (params.get("refresh") === "true") {
       setError("Your session expired. Please try again.");
       window.history.replaceState({}, "", window.location.pathname);
     }
+    if (params.get("oauth") === "success") {
+      setSuccess("Stripe account connected. You’re ready to sell.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    if (params.get("oauth") === "error") {
+      const reason = params.get("reason") || "Stripe couldn't complete the connection.";
+      setError(reason);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
-
-  // ─── Fetch account status ───
 
   const checkStatus = useCallback(async () => {
     try {
@@ -128,44 +142,50 @@ export default function PaymentSettingsPage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         setError(err.error || "Failed to check payment status");
-        setView("setup");
+        setView("chooser");
         return;
       }
 
       const json = await res.json();
+      setOauthAvailable(Boolean(json.oauth_available));
 
       if (!json.connected) {
         setStatus(null);
-        setView("setup");
+        setView("chooser");
         return;
       }
 
       const acct: AccountStatus = {
         connected: true,
         account_id: json.account_id,
+        account_type: (json.account_type as AccountType) || "custom",
         email: json.email,
         business_name: json.business_name,
         country: json.country,
+        default_currency: json.default_currency || null,
         charges_enabled: json.charges_enabled,
         payouts_enabled: json.payouts_enabled,
         details_submitted: json.details_submitted,
-        requirements_currently_due:
-          json.requirements?.currently_due || [],
+        livemode: json.livemode !== false,
+        payout_schedule: json.payout_schedule || null,
+        requirements_currently_due: json.requirements?.currently_due || [],
         requirements_past_due: json.requirements?.past_due || [],
         disabled_reason: json.requirements?.disabled_reason || null,
         capabilities: json.capabilities || null,
         stale_account: json.stale_account,
       };
       setStatus(acct);
+      setLivemode(acct.livemode);
 
-      // If account exists but onboarding incomplete, show embedded onboarding
-      if (!acct.details_submitted) {
+      // Standard accounts complete onboarding in their own Stripe dashboard,
+      // so we never show our embedded onboarding for them — straight to the
+      // status dashboard regardless of details_submitted.
+      if (acct.account_type === "custom" && !acct.details_submitted) {
         setView("onboarding");
       } else {
         setView("connected");
       }
 
-      // Auto-register Apple Pay domain
       if (acct.charges_enabled) {
         fetch("/api/stripe/apple-pay-domain", {
           method: "POST",
@@ -175,7 +195,7 @@ export default function PaymentSettingsPage() {
       }
     } catch {
       setError("Failed to check payment status");
-      setView("setup");
+      setView("chooser");
     }
   }, []);
 
@@ -183,7 +203,27 @@ export default function PaymentSettingsPage() {
     checkStatus();
   }, [checkStatus]);
 
-  // ─── Create account ───
+  // ─── Connect existing Stripe (OAuth / Standard) ───
+
+  const handleConnectExisting = async () => {
+    setError("");
+    setRedirectingToOAuth(true);
+    try {
+      const res = await fetch("/api/stripe/connect/oauth/start", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok || !json.url) {
+        setError(json.error || "Couldn't open Stripe. Please try again.");
+        setRedirectingToOAuth(false);
+        return;
+      }
+      window.location.assign(json.url);
+    } catch {
+      setError("Network error. Please try again.");
+      setRedirectingToOAuth(false);
+    }
+  };
+
+  // ─── Set up new account (Custom) ───
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,7 +256,6 @@ export default function PaymentSettingsPage() {
         return;
       }
 
-      // Register Apple Pay domain
       fetch("/api/stripe/apple-pay-domain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -224,8 +263,6 @@ export default function PaymentSettingsPage() {
       }).catch(() => {});
 
       setSuccess("Account created. Complete the verification below.");
-
-      // Refresh status then show embedded onboarding
       await checkStatus();
       setView("onboarding");
     } catch {
@@ -235,23 +272,22 @@ export default function PaymentSettingsPage() {
     }
   };
 
-  // ─── Initialize embedded ConnectJS ───
+  // ─── Embedded ConnectJS (Custom onboarding) ───
 
   const stripeConnectInstance = useMemo(() => {
-    const publishableKey =
-      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     if (!publishableKey || view !== "onboarding" || !status?.account_id) {
       return null;
     }
+    if (status.account_type !== "custom") return null;
 
     try {
       return loadConnectAndInitialize({
         publishableKey,
         fetchClientSecret: async () => {
-          const res = await fetch(
-            "/api/stripe/connect/my-account/onboarding",
-            { method: "POST" }
-          );
+          const res = await fetch("/api/stripe/connect/my-account/onboarding", {
+            method: "POST",
+          });
           const json = await res.json();
           if (!res.ok || !json.client_secret) {
             throw new Error(json.error || "Failed to create onboarding session");
@@ -278,9 +314,8 @@ export default function PaymentSettingsPage() {
       console.error("[PaymentSettings] ConnectJS init error:", err);
       return null;
     }
-  }, [view, status?.account_id]);
+  }, [view, status?.account_id, status?.account_type]);
 
-  // Update instance state when the memoized value changes
   useEffect(() => {
     if (stripeConnectInstance) {
       setConnectInstance(stripeConnectInstance);
@@ -292,9 +327,7 @@ export default function PaymentSettingsPage() {
   const handleHostedFallback = async () => {
     setError("");
     try {
-      const res = await fetch(
-        "/api/stripe/connect/my-account/onboarding"
-      );
+      const res = await fetch("/api/stripe/connect/my-account/onboarding");
       const json = await res.json();
       if (json.url) {
         setHostedUrl(json.url);
@@ -307,35 +340,57 @@ export default function PaymentSettingsPage() {
     }
   };
 
+  // ─── Disconnect ───
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/stripe/connect/my-account", { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json.error || "Failed to disconnect");
+        setDisconnecting(false);
+        return;
+      }
+      setStatus(null);
+      setConfirmDisconnect(false);
+      setSuccess("Account disconnected. You can connect a different account whenever you're ready.");
+      setView("chooser");
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
   // ─── Render ───
 
   if (view === "loading") {
     return (
       <div className="mx-auto max-w-2xl">
-        <h1 className="font-mono text-sm font-bold uppercase tracking-[2px]">
-          Payments
-        </h1>
-        <p className="mt-12 text-center text-sm text-muted-foreground">
-          Loading...
-        </p>
+        <PageHeader livemode={livemode} subtitle="Loading your payment status..." />
+        <div className="mt-8 flex justify-center">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="font-mono text-sm font-bold uppercase tracking-[2px]">
-          Payments
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          {view === "setup"
-            ? "Connect your account to start getting paid."
+      <PageHeader
+        livemode={livemode}
+        subtitle={
+          view === "chooser"
+            ? "Connect Stripe to start accepting payments."
             : view === "connected" && status?.charges_enabled
-              ? "Your payments are live. You\u2019re ready to sell."
-              : "Finish setting up to start accepting payments."}
-        </p>
-      </div>
+              ? "Your payments are live. You’re ready to sell."
+              : view === "setup-form"
+                ? "We’ll create your Stripe account inside Entry."
+                : "Finish setting up to start accepting payments."
+        }
+      />
 
       {error && (
         <Alert variant="destructive">
@@ -350,8 +405,16 @@ export default function PaymentSettingsPage() {
         </Alert>
       )}
 
-      {/* ─── Setup Form (no account yet) ─── */}
-      {view === "setup" && (
+      {view === "chooser" && (
+        <ChooserView
+          oauthAvailable={oauthAvailable}
+          redirectingToOAuth={redirectingToOAuth}
+          onConnectExisting={handleConnectExisting}
+          onSetUpNew={() => setView("setup-form")}
+        />
+      )}
+
+      {view === "setup-form" && (
         <SetupForm
           email={email}
           setEmail={setEmail}
@@ -362,11 +425,12 @@ export default function PaymentSettingsPage() {
           businessType={businessType}
           setBusinessType={setBusinessType}
           settingUp={settingUp}
+          oauthAvailable={oauthAvailable}
+          onBack={() => setView("chooser")}
           onSubmit={handleSetup}
         />
       )}
 
-      {/* ─── Embedded Onboarding ─── */}
       {view === "onboarding" && (
         <Card className="gap-0 py-0 overflow-hidden">
           <div className="px-6 py-5">
@@ -381,24 +445,24 @@ export default function PaymentSettingsPage() {
 
           {connectInstance ? (
             <div className="min-h-[400px] border-t border-border/40 px-6 pt-5 pb-6">
-              <ConnectComponentsProvider
-                connectInstance={connectInstance}
-              >
+              <ConnectComponentsProvider connectInstance={connectInstance}>
                 <ConnectAccountOnboarding
                   onExit={() => {
-                    setSuccess(
-                      "Verification submitted. Checking your account..."
-                    );
+                    setSuccess("Verification submitted. Checking your account...");
                     checkStatus();
                   }}
                   onLoadError={() => {
-                    // Embedded component not available for this country — fall back to hosted
                     handleHostedFallback();
                   }}
                 />
               </ConnectComponentsProvider>
               <div className="mt-4 pt-4 border-t border-border/30 text-center">
-                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={handleHostedFallback}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground"
+                  onClick={handleHostedFallback}
+                >
                   Having trouble? Open verification in a new tab
                   <ExternalLink className="size-3 ml-1" />
                 </Button>
@@ -417,7 +481,6 @@ export default function PaymentSettingsPage() {
         </Card>
       )}
 
-      {/* ─── Hosted Onboarding Link (fallback) ─── */}
       {view === "hosted-link" && hostedUrl && (
         <Card className="gap-0 border-primary/30 py-0">
           <div className="px-6 py-6 text-center">
@@ -429,11 +492,7 @@ export default function PaymentSettingsPage() {
               details. You&apos;ll be redirected back here when finished.
             </p>
             <Button className="mt-5" size="lg" asChild>
-              <a
-                href={hostedUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href={hostedUrl} target="_blank" rel="noopener noreferrer">
                 Complete Verification
                 <ExternalLink className="size-4" />
               </a>
@@ -455,242 +514,219 @@ export default function PaymentSettingsPage() {
         </Card>
       )}
 
-      {/* ─── Account Connected ─── */}
       {view === "connected" && status && (
-        <>
-          {/* Status Banner */}
-          <Card
-            className={cn(
-              "gap-0 py-0",
-              status.charges_enabled
-                ? "border-success/20"
-                : "border-warning/20"
-            )}
-          >
-            <CardContent className="flex items-center gap-4 px-6 py-5">
-              <div
-                className={cn(
-                  "flex size-12 shrink-0 items-center justify-center rounded-full",
-                  status.charges_enabled
-                    ? "bg-success/10"
-                    : "bg-warning/10"
-                )}
-              >
-                {status.charges_enabled ? (
-                  <CheckCircle2 className="size-6 text-success" />
-                ) : (
-                  <AlertTriangle className="size-6 text-warning" />
-                )}
-              </div>
-              <div className="flex-1">
-                <h2 className="font-mono text-xs font-bold uppercase tracking-[2px]">
-                  {status.charges_enabled
-                    ? "Payments Active"
-                    : "Setup Incomplete"}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {status.charges_enabled
-                    ? "You can accept payments. Funds will be deposited to your bank account."
-                    : "Complete the verification to start accepting payments."}
-                </p>
-              </div>
-            </CardContent>
-
-            {(!status.charges_enabled || status.requirements_currently_due.length > 0) && (
-              <div className="border-t border-border/40 px-6 py-4">
-                <Button className="w-full" onClick={() => setView("onboarding")}>
-                  {status.details_submitted
-                    ? "Update Verification"
-                    : "Continue Setup"}
-                </Button>
-              </div>
-            )}
-          </Card>
-
-          {/* Business Details */}
-          <Card className="gap-0 py-0">
-            <CardHeader className="px-6 py-4">
-              <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
-                Business Details
-              </CardTitle>
-            </CardHeader>
-            <Separator />
-            <CardContent className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-5">
-              <DetailField label="Business Name" value={status.business_name} />
-              <DetailField label="Email" value={status.email} />
-              <DetailField label="Country" value={status.country} />
-              <DetailField
-                label="Account ID"
-                value={status.account_id}
-                mono
-                accent
-              />
-            </CardContent>
-          </Card>
-
-          {/* Capabilities */}
-          <Card className="gap-0 py-0">
-            <CardHeader className="px-6 py-4">
-              <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
-                Capabilities
-              </CardTitle>
-            </CardHeader>
-            <Separator />
-            <CardContent className="space-y-0 px-6 py-2">
-              <CapabilityRow
-                label="Card Payments"
-                status={status.charges_enabled ? "active" : "inactive"}
-              />
-              <CapabilityRow
-                label="Payouts"
-                status={status.payouts_enabled ? "active" : status.disabled_reason === "requirements.pending_verification" ? "pending" : "inactive"}
-              />
-              <CapabilityRow
-                label="Identity Verified"
-                status={status.details_submitted ? "active" : "inactive"}
-                last
-              />
-            </CardContent>
-          </Card>
-
-          {/* Pending Requirements */}
-          {status.requirements_currently_due.length > 0 && (
-            <Card className="gap-0 py-0">
-              <CardHeader className="px-6 py-4">
-                <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
-                  Action Required
-                </CardTitle>
-              </CardHeader>
-              <Separator />
-              <CardContent className="space-y-2 px-6 py-5">
-                <p className="text-sm text-muted-foreground">
-                  Complete these items to fully activate your account:
-                </p>
-                <ul className="space-y-1.5">
-                  {status.requirements_currently_due.map((req) => (
-                    <li
-                      key={req}
-                      className="flex items-center gap-2 rounded-md bg-warning/[0.04] px-3 py-2 ring-1 ring-warning/10"
-                    >
-                      <span className="text-sm text-warning">&#9679;</span>
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        {formatRequirement(req)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <Button className="mt-3 w-full" onClick={() => setView("onboarding")}>
-                  Complete Verification
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Past-due requirements (urgent) */}
-          {status.requirements_past_due.length > 0 && (
-            <Card className="gap-0 border-destructive/30 py-0">
-              <CardHeader className="px-6 py-4">
-                <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px] text-destructive">
-                  Overdue Requirements
-                </CardTitle>
-              </CardHeader>
-              <Separator />
-              <CardContent className="space-y-2 px-6 py-5">
-                <p className="text-sm text-muted-foreground">
-                  These items are overdue. Your account may be restricted
-                  until they are resolved:
-                </p>
-                <ul className="space-y-1.5">
-                  {status.requirements_past_due.map((req) => (
-                    <li
-                      key={req}
-                      className="flex items-center gap-2 rounded-md bg-destructive/[0.04] px-3 py-2 ring-1 ring-destructive/15"
-                    >
-                      <span className="text-sm text-destructive">&#9679;</span>
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        {formatRequirement(req)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <Button className="mt-3 w-full" onClick={() => setView("onboarding")}>
-                  Resolve Now
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Disabled reason — distinguish pending verification (normal) from actual restrictions */}
-          {status.disabled_reason && status.disabled_reason === "requirements.pending_verification" && status.charges_enabled ? (
-            <Card className="gap-0 border-info/20 py-0">
-              <CardContent className="flex items-center gap-3 px-6 py-5">
-                <Shield className="size-5 shrink-0 text-info" />
-                <div>
-                  <h2 className="font-mono text-xs font-bold uppercase tracking-[2px] text-info">
-                    Verification In Progress
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Your account is under review. You can accept payments now — payouts will begin once verification is complete (usually 1-3 business days).
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : status.disabled_reason ? (
-            <Card className="gap-0 border-destructive/30 py-0">
-              <CardContent className="flex items-center gap-3 px-6 py-5">
-                <AlertTriangle className="size-5 shrink-0 text-destructive" />
-                <div>
-                  <h2 className="font-mono text-xs font-bold uppercase tracking-[2px] text-destructive">
-                    Account Restricted
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {formatDisabledReason(status.disabled_reason)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {/* Next Steps */}
-          {status.charges_enabled && (
-            <Card className="gap-0 py-0">
-              <CardHeader className="px-6 py-4">
-                <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
-                  Next Steps
-                </CardTitle>
-              </CardHeader>
-              <Separator />
-              <CardContent className="px-6 py-5">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Your payment account is linked automatically. To start
-                  accepting payments for an event:
-                </p>
-                <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
-                  <li>
-                    Go to{" "}
-                    <Link
-                      href="/admin/events/"
-                      className="text-primary hover:underline"
-                    >
-                      Events
-                    </Link>
-                  </li>
-                  <li>
-                    Edit your event and set Payment Method to
-                    &quot;Stripe&quot;
-                  </li>
-                  <li>Save — that&apos;s it, you&apos;re live</li>
-                </ol>
-              </CardContent>
-            </Card>
-          )}
-        </>
+        <ConnectedView
+          status={status}
+          confirmDisconnect={confirmDisconnect}
+          disconnecting={disconnecting}
+          onContinueOnboarding={() => setView("onboarding")}
+          onAskDisconnect={() => setConfirmDisconnect(true)}
+          onCancelDisconnect={() => setConfirmDisconnect(false)}
+          onConfirmDisconnect={handleDisconnect}
+        />
       )}
     </div>
   );
 }
 
-// ─── Sub-components ───
+// ─── Header ───
+
+function PageHeader({ livemode, subtitle }: { livemode: boolean; subtitle: string }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <h1 className="font-mono text-sm font-bold uppercase tracking-[2px]">
+          Payments
+        </h1>
+        {!livemode && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[1.5px] text-warning ring-1 ring-warning/20">
+            Test Mode
+          </span>
+        )}
+      </div>
+      <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>
+    </div>
+  );
+}
+
+// ─── Chooser ───
+
+function ChooserView({
+  oauthAvailable,
+  redirectingToOAuth,
+  onConnectExisting,
+  onSetUpNew,
+}: {
+  oauthAvailable: boolean;
+  redirectingToOAuth: boolean;
+  onConnectExisting: () => void;
+  onSetUpNew: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Hero */}
+      <Card className="gap-0 py-0 overflow-hidden">
+        <div className="px-6 py-7 text-center">
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
+            <Banknote className="size-6 text-primary" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground">Get paid for your tickets</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+            {oauthAvailable
+              ? "Pick how you want to handle payments. Both options accept cards, Apple Pay, and Google Pay, and pay out directly to your bank."
+              : "Accept cards, Apple Pay, and Google Pay, with funds paid out directly to your bank."}
+          </p>
+        </div>
+      </Card>
+
+      {/* Chooser */}
+      <div className={cn("grid gap-4", oauthAvailable && "lg:grid-cols-2")}>
+        {oauthAvailable && (
+          <ChoiceCard
+            recommended
+            badge="30 seconds"
+            icon={<StripeMark className="h-5 w-auto" />}
+            title="Connect existing Stripe"
+            body="Sign in to your Stripe account, approve the link, and you're done. Use the dashboard, bank account, and details you already have."
+            features={[
+              "Use your existing Stripe dashboard",
+              "Refunds & disputes managed by you",
+              "No new account to verify",
+            ]}
+            ctaLabel={redirectingToOAuth ? "Opening Stripe..." : "Connect with Stripe"}
+            ctaIcon={redirectingToOAuth ? <Loader2 className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}
+            footer="We'll redirect you to Stripe's secure login."
+            disabled={redirectingToOAuth}
+            onClick={onConnectExisting}
+          />
+        )}
+
+        <ChoiceCard
+          badge="About 5 minutes"
+          icon={<Zap className="size-5 text-primary" />}
+          title={oauthAvailable ? "Set up new with Entry" : "Set up payments"}
+          body={
+            oauthAvailable
+              ? "We'll guide you through creating a Stripe account inside Entry. You'll need your business details, an ID, and a bank account."
+              : "We'll set you up to take payments inside Entry — no separate Stripe signup needed. You'll need your business details, an ID, and a bank account."
+          }
+          features={[
+            "Stays inside Entry — no Stripe login needed",
+            "Guided, step-by-step verification",
+            "Powered by Stripe Connect",
+          ]}
+          ctaLabel={oauthAvailable ? "Set up with Entry" : "Get started"}
+          ctaIcon={<ArrowRight className="size-4" />}
+          footer="Powered by Stripe Connect."
+          onClick={onSetUpNew}
+        />
+      </div>
+
+      {/* Trust strip */}
+      <Card className="gap-0 py-0">
+        <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-5 sm:grid-cols-4">
+          {[
+            { icon: CreditCard, label: "Cards" },
+            { icon: Smartphone, label: "Apple & Google Pay" },
+            { icon: Banknote, label: "Direct payouts" },
+            { icon: Shield, label: "PCI-DSS secure" },
+          ].map(({ icon: Icon, label }) => (
+            <div key={label} className="flex items-center gap-2">
+              <Icon className="size-3.5 shrink-0 text-primary" />
+              <span className="text-xs text-muted-foreground">{label}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Stripe credit + transparency */}
+      <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+        <Lock className="size-3" />
+        <span>Powered by</span>
+        <StripeMark className="h-3.5 w-auto opacity-80" />
+        <span>&middot; PCI-DSS Level 1 certified</span>
+      </div>
+    </div>
+  );
+}
+
+function ChoiceCard({
+  recommended,
+  badge,
+  icon,
+  title,
+  body,
+  features,
+  ctaLabel,
+  ctaIcon,
+  footer,
+  disabled,
+  onClick,
+}: {
+  recommended?: boolean;
+  badge: string;
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  features: string[];
+  ctaLabel: string;
+  ctaIcon: React.ReactNode;
+  footer: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Card
+      className={cn(
+        "gap-0 py-0 overflow-hidden transition-shadow hover:shadow-lg",
+        recommended ? "border-primary/30 ring-1 ring-primary/15" : ""
+      )}
+    >
+      <div className="flex items-start justify-between px-6 pt-6">
+        <div className="flex size-10 items-center justify-center rounded-md bg-primary/10 ring-1 ring-primary/15">
+          {icon}
+        </div>
+        <div className="flex flex-col items-end gap-1.5">
+          {recommended && (
+            <Badge variant="default" className="bg-primary/10 text-primary ring-1 ring-primary/20">
+              Recommended
+            </Badge>
+          )}
+          <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-muted-foreground">
+            {badge}
+          </span>
+        </div>
+      </div>
+
+      <div className="px-6 pt-4">
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+      </div>
+
+      <ul className="mt-4 space-y-2 px-6">
+        {features.map((f) => (
+          <li key={f} className="flex items-start gap-2 text-xs text-foreground/80">
+            <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-primary" />
+            <span>{f}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-6 px-6">
+        <Button className="w-full" size="lg" onClick={onClick} disabled={disabled}>
+          {ctaIcon}
+          {ctaLabel}
+        </Button>
+      </div>
+
+      <p className="px-6 pb-5 pt-3 text-center text-[11px] text-muted-foreground/70">
+        {footer}
+      </p>
+    </Card>
+  );
+}
+
+// ─── Setup form (Custom path) ───
 
 function SetupForm({
   email,
@@ -702,6 +738,8 @@ function SetupForm({
   businessType,
   setBusinessType,
   settingUp,
+  oauthAvailable,
+  onBack,
   onSubmit,
 }: {
   email: string;
@@ -713,42 +751,30 @@ function SetupForm({
   businessType: string;
   setBusinessType: (v: string) => void;
   settingUp: boolean;
+  oauthAvailable: boolean;
+  onBack: () => void;
   onSubmit: (e: React.FormEvent) => void;
 }) {
   const isIndividual = businessType === "individual";
 
   return (
     <Card className="gap-0 py-0">
-      {/* Hero section */}
-      <div className="px-6 py-8 text-center">
-        <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
-          <Zap className="size-7 text-primary" />
+      <div className="px-6 py-7 text-center">
+        {oauthAvailable && (
+          <div className="mb-4 flex justify-center">
+            <Button variant="ghost" size="sm" onClick={onBack} className="text-xs text-muted-foreground">
+              <ArrowLeft className="size-3" />
+              Back to options
+            </Button>
+          </div>
+        )}
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
+          <Zap className="size-6 text-primary" />
         </div>
-        <h2 className="text-lg font-bold text-foreground">
-          Start Getting Paid
-        </h2>
+        <h2 className="text-lg font-bold text-foreground">Set up payments with Entry</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          Connect your account and you&apos;re ready to sell tickets.
-          Takes about 2 minutes.
+          We&apos;ll create a Stripe account for you and walk you through verification.
         </p>
-
-        {/* Feature pills */}
-        <div className="mx-auto mt-5 flex flex-wrap items-center justify-center gap-2">
-          {[
-            { icon: CreditCard, label: "Cards" },
-            { icon: Smartphone, label: "Apple Pay & Google Pay" },
-            { icon: Banknote, label: "Direct Payouts" },
-            { icon: Shield, label: "Secure & Encrypted" },
-          ].map(({ icon: Icon, label }) => (
-            <span
-              key={label}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary/[0.06] px-3 py-1 text-xs text-primary ring-1 ring-primary/10"
-            >
-              <Icon className="size-3" />
-              {label}
-            </span>
-          ))}
-        </div>
       </div>
 
       <Separator />
@@ -824,16 +850,341 @@ function SetupForm({
         )}
 
         <Button type="submit" className="w-full" size="lg" disabled={settingUp}>
-          {settingUp ? "Connecting..." : "Start Getting Paid"}
+          {settingUp ? "Creating your account..." : "Continue to Verification"}
         </Button>
 
         <p className="text-center text-[11px] text-muted-foreground/60">
-          Payments are processed securely. You can update your details anytime.
+          Powered by Stripe Connect. PCI-DSS Level 1 certified.
         </p>
       </form>
     </Card>
   );
 }
+
+// ─── Connected state ───
+
+function ConnectedView({
+  status,
+  confirmDisconnect,
+  disconnecting,
+  onContinueOnboarding,
+  onAskDisconnect,
+  onCancelDisconnect,
+  onConfirmDisconnect,
+}: {
+  status: AccountStatus;
+  confirmDisconnect: boolean;
+  disconnecting: boolean;
+  onContinueOnboarding: () => void;
+  onAskDisconnect: () => void;
+  onCancelDisconnect: () => void;
+  onConfirmDisconnect: () => void;
+}) {
+  const isStandard = status.account_type === "standard";
+
+  return (
+    <>
+      {/* Status banner */}
+      <Card
+        className={cn(
+          "gap-0 py-0",
+          status.charges_enabled ? "border-success/20" : "border-warning/20"
+        )}
+      >
+        <CardContent className="flex items-center gap-4 px-6 py-5">
+          <div
+            className={cn(
+              "flex size-12 shrink-0 items-center justify-center rounded-full",
+              status.charges_enabled ? "bg-success/10" : "bg-warning/10"
+            )}
+          >
+            {status.charges_enabled ? (
+              <CheckCircle2 className="size-6 text-success" />
+            ) : (
+              <AlertTriangle className="size-6 text-warning" />
+            )}
+          </div>
+          <div className="flex-1">
+            <h2 className="font-mono text-xs font-bold uppercase tracking-[2px]">
+              {status.charges_enabled ? "Payments Active" : "Setup Incomplete"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {status.charges_enabled
+                ? `${isStandard ? "Connected to your Stripe account" : "Funds will deposit to your bank account"}. ${describePayoutSchedule(status.payout_schedule)}`
+                : isStandard
+                  ? "Your Stripe account isn’t fully set up yet. Finish in your Stripe dashboard, then refresh."
+                  : "Complete the verification to start accepting payments."}
+            </p>
+          </div>
+        </CardContent>
+
+        {!isStandard && (!status.charges_enabled || status.requirements_currently_due.length > 0) && (
+          <div className="border-t border-border/40 px-6 py-4">
+            <Button className="w-full" onClick={onContinueOnboarding}>
+              {status.details_submitted ? "Update Verification" : "Continue Setup"}
+            </Button>
+          </div>
+        )}
+
+        {isStandard && (
+          <div className="border-t border-border/40 px-6 py-4">
+            <Button className="w-full" variant="secondary" asChild>
+              <a href="https://dashboard.stripe.com/" target="_blank" rel="noopener noreferrer">
+                Open Stripe Dashboard
+                <ExternalLink className="size-4" />
+              </a>
+            </Button>
+          </div>
+        )}
+      </Card>
+
+      {/* Account header card */}
+      <Card className="gap-0 py-0">
+        <CardHeader className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
+              Connected Account
+            </CardTitle>
+            <Badge variant={isStandard ? "default" : "secondary"} className={cn("text-[10px]", isStandard && "bg-primary/10 text-primary ring-1 ring-primary/20")}>
+              {isStandard ? "Stripe (linked)" : "Entry-managed"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <Separator />
+        <CardContent className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-5">
+          <DetailField label="Business" value={status.business_name} />
+          <DetailField label="Email" value={status.email} />
+          <DetailField label="Country" value={status.country} />
+          <DetailField
+            label="Currency"
+            value={status.default_currency ? status.default_currency.toUpperCase() : null}
+          />
+          <DetailField
+            label="Account ID"
+            value={status.account_id}
+            mono
+            accent
+          />
+          <DetailField
+            label="Payout schedule"
+            value={status.payout_schedule ? capitalize(status.payout_schedule.interval) : "—"}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Capabilities */}
+      <Card className="gap-0 py-0">
+        <CardHeader className="px-6 py-4">
+          <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
+            Capabilities
+          </CardTitle>
+        </CardHeader>
+        <Separator />
+        <CardContent className="space-y-0 px-6 py-2">
+          <CapabilityRow
+            label="Card Payments"
+            status={status.charges_enabled ? "active" : "inactive"}
+          />
+          <CapabilityRow
+            label="Payouts"
+            status={
+              status.payouts_enabled
+                ? "active"
+                : status.disabled_reason === "requirements.pending_verification"
+                  ? "pending"
+                  : "inactive"
+            }
+          />
+          <CapabilityRow
+            label="Identity Verified"
+            status={status.details_submitted ? "active" : "inactive"}
+            last
+          />
+        </CardContent>
+      </Card>
+
+      {/* Pending requirements (Custom only — Standard users see these in their own dashboard) */}
+      {!isStandard && status.requirements_currently_due.length > 0 && (
+        <Card className="gap-0 py-0">
+          <CardHeader className="px-6 py-4">
+            <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
+              Action Required
+            </CardTitle>
+          </CardHeader>
+          <Separator />
+          <CardContent className="space-y-2 px-6 py-5">
+            <p className="text-sm text-muted-foreground">
+              Complete these items to fully activate your account:
+            </p>
+            <ul className="space-y-1.5">
+              {status.requirements_currently_due.map((req) => (
+                <li
+                  key={req}
+                  className="flex items-center gap-2 rounded-md bg-warning/[0.04] px-3 py-2 ring-1 ring-warning/10"
+                >
+                  <span className="text-sm text-warning">&#9679;</span>
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {formatRequirement(req)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Button className="mt-3 w-full" onClick={onContinueOnboarding}>
+              Complete Verification
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isStandard && status.requirements_past_due.length > 0 && (
+        <Card className="gap-0 border-destructive/30 py-0">
+          <CardHeader className="px-6 py-4">
+            <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px] text-destructive">
+              Overdue Requirements
+            </CardTitle>
+          </CardHeader>
+          <Separator />
+          <CardContent className="space-y-2 px-6 py-5">
+            <p className="text-sm text-muted-foreground">
+              These items are overdue. Your account may be restricted until
+              they are resolved:
+            </p>
+            <ul className="space-y-1.5">
+              {status.requirements_past_due.map((req) => (
+                <li
+                  key={req}
+                  className="flex items-center gap-2 rounded-md bg-destructive/[0.04] px-3 py-2 ring-1 ring-destructive/15"
+                >
+                  <span className="text-sm text-destructive">&#9679;</span>
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {formatRequirement(req)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Button className="mt-3 w-full" onClick={onContinueOnboarding}>
+              Resolve Now
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Disabled reason context */}
+      {status.disabled_reason &&
+      status.disabled_reason === "requirements.pending_verification" &&
+      status.charges_enabled ? (
+        <Card className="gap-0 border-info/20 py-0">
+          <CardContent className="flex items-center gap-3 px-6 py-5">
+            <Shield className="size-5 shrink-0 text-info" />
+            <div>
+              <h2 className="font-mono text-xs font-bold uppercase tracking-[2px] text-info">
+                Verification In Progress
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Your account is under review. You can accept payments now —
+                payouts will begin once verification is complete (usually 1-3
+                business days).
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : status.disabled_reason ? (
+        <Card className="gap-0 border-destructive/30 py-0">
+          <CardContent className="flex items-center gap-3 px-6 py-5">
+            <AlertTriangle className="size-5 shrink-0 text-destructive" />
+            <div>
+              <h2 className="font-mono text-xs font-bold uppercase tracking-[2px] text-destructive">
+                Account Restricted
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {formatDisabledReason(status.disabled_reason)}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Next steps */}
+      {status.charges_enabled && (
+        <Card className="gap-0 py-0">
+          <CardHeader className="px-6 py-4">
+            <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
+              Next Steps
+            </CardTitle>
+          </CardHeader>
+          <Separator />
+          <CardContent className="px-6 py-5">
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Your payment account is linked automatically. To start accepting
+              payments for an event:
+            </p>
+            <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
+              <li>
+                Go to{" "}
+                <Link href="/admin/events/" className="text-primary hover:underline">
+                  Events
+                </Link>
+              </li>
+              <li>
+                Edit your event and set Payment Method to &quot;Stripe&quot;
+              </li>
+              <li>Save — that&apos;s it, you&apos;re live</li>
+            </ol>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Disconnect zone */}
+      <Card className="gap-0 border-border/40 py-0">
+        <CardContent className="space-y-3 px-6 py-5">
+          <div>
+            <h3 className="font-mono text-xs font-bold uppercase tracking-[2px] text-muted-foreground">
+              Disconnect
+            </h3>
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              {isStandard
+                ? "Revoke Entry's permission to charge on this Stripe account. Your Stripe account itself is not affected. New ticket sales won't be processed until you reconnect."
+                : "Unlink this Entry-managed account from your org. The account stays in our Stripe directory; reconnect anytime. New ticket sales won't be processed until you set up payments again."}
+            </p>
+          </div>
+
+          {!confirmDisconnect ? (
+            <Button variant="outline" size="sm" onClick={onAskDisconnect}>
+              Disconnect account
+            </Button>
+          ) : (
+            <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/[0.04] p-3">
+              <p className="text-xs text-foreground">
+                Are you sure? You won&apos;t be able to take payments until you
+                reconnect.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={disconnecting}
+                  onClick={onConfirmDisconnect}
+                >
+                  {disconnecting ? "Disconnecting..." : "Yes, disconnect"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={disconnecting}
+                  onClick={onCancelDisconnect}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+// ─── Building blocks ───
 
 function DetailField({
   label,
@@ -858,7 +1209,7 @@ function DetailField({
           mono ? "font-mono text-[11px]" : "text-sm"
         )}
       >
-        {value || "\u2014"}
+        {value || "—"}
       </div>
     </div>
   );
@@ -888,7 +1239,33 @@ function CapabilityRow({
   );
 }
 
+function StripeMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 60 25" fill="currentColor" className={className} aria-label="Stripe">
+      <path d="M59.5 14.7c0-4.1-2-7.4-5.8-7.4-3.8 0-6.1 3.3-6.1 7.4 0 4.8 2.7 7.3 6.6 7.3 1.9 0 3.4-.4 4.5-1V18c-1.1.5-2.3.9-3.9.9-1.5 0-2.9-.5-3.1-2.4h7.7c0-.2.1-.9.1-1.8zm-7.8-1.5c0-1.8 1.1-2.6 2.1-2.6.9 0 2 .8 2 2.6h-4.1zm-9.9-5.9c-1.5 0-2.5.7-3 1.2l-.2-1H35V25l4.1-.9v-4.3c.6.4 1.5 1.1 3 1.1 3 0 5.7-2.4 5.7-7.5 0-4.7-2.7-7.1-5.7-7.1zm-1 11c-1 0-1.6-.4-2-.8V11.6c.4-.5 1.1-.8 2-.8 1.5 0 2.6 1.7 2.6 3.7 0 2.1-1 3.8-2.6 3.8zm-9.5-12c0 1.2 1 2.2 2.2 2.2s2.2-1 2.2-2.2-1-2.2-2.2-2.2-2.2 1-2.2 2.2zM27.4 7.6h4.1v14.4h-4.1zm-4.5 1.2L23 7.6h-3.5V22h4.1V12.2c1-1.3 2.6-1 3.1-.9V7.6c-.5-.2-2.4-.5-3.8 1.2zM15.2 4l-4 1V19c0 2.6 1.9 4.5 4.5 4.5 1.4 0 2.5-.3 3-.6V19c-.6.2-3.5 1-3.5-1.6V11h3.5V7.6h-3.5V4zM4.1 11.6c0-.6.5-.9 1.4-.9 1.3 0 2.9.4 4.2 1.1V8c-1.4-.6-2.8-.8-4.2-.8C2 7.2 0 9 0 11.7c0 4.5 6.2 3.9 6.2 5.8 0 .8-.7 1-1.6 1-1.4 0-3.2-.6-4.7-1.4v3.9c1.6.7 3.3 1 4.7 1 3.7 0 5.7-1.7 5.7-4.5 0-4.9-6.2-4.2-6.2-5.9z"></path>
+    </svg>
+  );
+}
+
 // ─── Helpers ───
+
+function describePayoutSchedule(
+  schedule: AccountStatus["payout_schedule"]
+): string {
+  if (!schedule) return "Payouts run on a daily schedule by default.";
+  const interval = schedule.interval;
+  if (interval === "manual") return "Payouts are released manually.";
+  if (interval === "daily") return "Payouts arrive daily after a short rolling delay.";
+  if (interval === "weekly")
+    return `Payouts arrive weekly${schedule.weekly_anchor ? ` on ${capitalize(schedule.weekly_anchor)}` : ""}.`;
+  if (interval === "monthly")
+    return `Payouts arrive monthly${schedule.monthly_anchor ? ` on day ${schedule.monthly_anchor}` : ""}.`;
+  return `Payouts run on a ${interval} schedule.`;
+}
+
+function capitalize(s: string): string {
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
+}
 
 function formatRequirement(req: string): string {
   const map: Record<string, string> = {
@@ -934,9 +1311,7 @@ function formatRequirement(req: string): string {
 
   return (
     map[req] ||
-    req
-      .replace(/[._]/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase())
+    req.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
   );
 }
 
@@ -951,8 +1326,7 @@ function formatDisabledReason(reason: string): string {
       "Your account has been paused by the platform. Please contact support.",
     rejected_fraud:
       "Your account was rejected due to suspected fraud. Please contact support.",
-    rejected_listed:
-      "Your account was rejected. Please contact support.",
+    rejected_listed: "Your account was rejected. Please contact support.",
     rejected_terms_of_service:
       "Your account was rejected for terms of service violation.",
     rejected_other: "Your account was rejected. Please contact support.",

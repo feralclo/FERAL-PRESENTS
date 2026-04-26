@@ -42,8 +42,10 @@ export function isMuxPlaybackId(value: string): boolean {
 
 /**
  * Construct a Mux static MP4 download URL from a playback ID.
- * Requires mp4_support: "standard" on the asset.
+ * Requires mp4_support: "capped-1080p" on the asset (the value we set in
+ * /api/mux/upload). Capped 1080p matches Instagram/TikTok's upload ceiling
+ * so reps lose nothing vs. the deprecated "standard" tier.
  */
 export function getMuxDownloadUrl(playbackId: string): string {
-  return `https://stream.mux.com/${playbackId}/high.mp4`;
+  return `https://stream.mux.com/${playbackId}/capped-1080p.mp4`;
 }

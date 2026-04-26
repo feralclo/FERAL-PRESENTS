@@ -58,6 +58,7 @@ import dynamic from "next/dynamic";
 import * as tus from "tus-js-client";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { isMuxPlaybackId } from "@/lib/mux";
+import { processImageFile } from "@/lib/image-utils";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
@@ -175,7 +176,8 @@ export function QuestsTab() {
   // Past-events section is collapsed by default (the whole point of this view)
   const [showPast, setShowPast] = useState(false);
 
-  // Video upload state
+  // Shareable media upload state (image OR video — see handleMediaUpload).
+  // Names kept on `video*` for diff readability; both pipelines feed it.
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoStatus, setVideoStatus] = useState("");
@@ -492,13 +494,72 @@ export function QuestsTab() {
     setProofType(deriveProofType(questType, newPlatform));
   };
 
-  // Video upload handler (adapted from artists page)
-  const handleVideoUpload = useCallback(async (file: File) => {
+  // Unified shareable-media upload — image OR video, both end up in the
+  // SAME column (video_url). iOS distinguishes by checking whether the
+  // value starts with http: full URL ⇒ image, bare token ⇒ Mux playback ID
+  // (see isMuxPlaybackId in lib/mux). cover_image_url is intentionally
+  // untouched here — that's the in-app hero, a separate concept owned by
+  // the Details tab.
+  const handleMediaUpload = useCallback(async (file: File) => {
     setVideoError("");
-    if (!file.type.startsWith("video/")) {
-      setVideoError("Please select a video file (MP4, MOV, or WebM).");
+
+    if (file.type.startsWith("image/")) {
+      // ── Image branch — compress → Supabase Storage signed URL → public
+      // https URL into video_url. We deliberately bypass /api/upload (which
+      // returns a relative /api/media/{key} path) so iOS gets a CDN-served
+      // full URL it can fetch directly without proxying through us.
+      setVideoUploading(true);
+      setVideoProgress(0);
+      setVideoStatus("Compressing image...");
+      try {
+        const compressed = await processImageFile(file);
+        if (!compressed) throw new Error("Could not read image");
+
+        // Convert the compressed data URI back to a Blob for the PUT.
+        const blob = await (await fetch(compressed)).blob();
+
+        setVideoStatus("Requesting upload URL...");
+        const signed = await fetch("/api/upload-video", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: file.name, contentType: blob.type }),
+        });
+        const signedJson = await signed.json();
+        if (!signed.ok || !signedJson.signedUrl || !signedJson.publicUrl) {
+          throw new Error(signedJson.error || "Failed to get upload URL");
+        }
+
+        setVideoStatus("Uploading image...");
+        const put = await fetch(signedJson.signedUrl, {
+          method: "PUT",
+          headers: { "Content-Type": blob.type, "x-upsert": "true" },
+          body: blob,
+        });
+        if (!put.ok) {
+          throw new Error(`Storage rejected upload (${put.status})`);
+        }
+
+        // Image URL into video_url; cover_image_url is left alone.
+        setVideoUrl(signedJson.publicUrl);
+        setVideoStatus("");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Unknown error";
+        setVideoError(`Upload failed — ${msg}`);
+        setVideoStatus("");
+      }
+      setVideoUploading(false);
+      setVideoProgress(0);
       return;
     }
+
+    if (!file.type.startsWith("video/")) {
+      setVideoError(
+        "Unsupported file. Upload an image (JPG, PNG, WebP) or video (MP4, MOV, WebM)."
+      );
+      return;
+    }
+
+    // ── Video branch ──────────────────────────────────────────────────
     const MAX_FILE_SIZE = 200 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
       setVideoError(`Video is ${Math.round(file.size / 1024 / 1024)}MB — max is 200MB.`);
@@ -548,12 +609,19 @@ export function QuestsTab() {
       const muxData = await muxRes.json();
       if (!muxRes.ok) throw new Error(muxData.error || "Failed to start processing");
 
-      // Poll until ready
+      // Poll until ready (60 × 3s = up to 3 minutes for Mux to encode)
       for (let i = 0; i < 60; i++) {
         await new Promise((r) => setTimeout(r, 3000));
         const res = await fetch(`/api/mux/status?assetId=${muxData.assetId}`);
         const data = await res.json();
-        if (data.status === "ready" && data.playbackId) { setVideoUrl(data.playbackId); setVideoProgress(100); setVideoStatus(""); setVideoUploading(false); return; }
+        if (data.status === "ready" && data.playbackId) {
+          // Both branches write to video_url — replacing it is enough.
+          setVideoUrl(data.playbackId);
+          setVideoProgress(100);
+          setVideoStatus("");
+          setVideoUploading(false);
+          return;
+        }
         if (data.status === "errored") throw new Error("Mux processing failed");
         setVideoStatus("Processing video...");
       }
@@ -565,7 +633,7 @@ export function QuestsTab() {
     }
     setVideoUploading(false);
     setVideoProgress(0);
-  }, [orgId]);
+  }, [orgId, editId]);
 
   // Apply both status and event filters
   const statusFiltered = filter === "all" ? quests : quests.filter((q) => q.status === filter);
@@ -1339,9 +1407,10 @@ export function QuestsTab() {
                       </p>
                     </div>
 
-                    {/* ── Cover image. iOS uses the promoter's accent for the
-                          gradient stops; no per-quest colour knobs — one brand
-                          colour cascades across everything. ── */}
+                    {/* ── Cover image — the in-app card hero, separate from
+                          anything reps download. Image-only. Always shown,
+                          for every quest type. The shareable asset reps save
+                          to their camera roll lives on the Content tab. ── */}
                     <div className="flex items-center gap-3 pt-2">
                       <div className="h-px flex-1 bg-border" />
                       <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">
@@ -1358,24 +1427,23 @@ export function QuestsTab() {
                       />
                       <div className="rounded-md border border-border/60 bg-muted/20 p-3 text-[11px] leading-relaxed text-muted-foreground">
                         <p className="font-semibold text-foreground">
-                          Portrait, clean, no text baked in.
+                          In-app hero only — not what reps download.
                         </p>
                         <p className="mt-1">
-                          iOS overlays your quest title + XP/EP chips on top —
-                          so a poster-style image with &ldquo;SATURDAY RAVE&rdquo;
-                          text already on it will collide with the overlay and
-                          look broken.
+                          This shows as the card hero in the rep app. iOS
+                          overlays your quest title + XP/EP chips on top, so
+                          keep it portrait and clean — no text baked in.
+                        </p>
+                        <p className="mt-1.5">
+                          The shareable asset reps save to their camera roll
+                          (image or video) goes on the
+                          <span className="mx-1 font-mono">Content</span>
+                          tab — it&apos;s a separate concept.
                         </p>
                         <p className="mt-1.5">
                           {eventId
                             ? "Leave blank and the linked event's cover will be used automatically."
                             : "Leave blank to show a gradient in your promoter's brand colour."}
-                        </p>
-                        <p className="mt-1.5 text-[10px] opacity-80">
-                          Need a text-baked poster for reps to share to their
-                          Instagram story? That goes on the Event page&apos;s
-                          <span className="mx-1 font-mono">Poster image</span>
-                          slot, not here.
                         </p>
                       </div>
                     </div>
@@ -1451,31 +1519,42 @@ export function QuestsTab() {
                 )}
 
                 {/* ── Tab: Content (story_share + social_post + content_creation) ──
-                      Still-image for download is the quest's cover (set on the
-                      Details tab — iOS uses one image). This tab now scopes to
-                      video-only, which is genuinely distinct from the card hero. */}
+                      One unified shareable-media slot. Both image and video
+                      end up in the SAME column (video_url). iOS detects
+                      which it is by checking isMuxPlaybackId — bare token =
+                      Mux video, full http URL = image. cover_image_url is
+                      separate (Details tab, in-app hero only). */}
                 {currentTabLabel === "Content" && (
                   <div className="space-y-4">
                     <p className="text-xs text-muted-foreground">
-                      {questType === "story_share"
-                        ? "Optional — upload a video reps can download and share. The cover image from Details doubles as the downloadable still."
-                        : "Optional — attach a reference video for reps to use as inspiration."}
+                      Upload <span className="font-medium text-foreground">one</span> shareable asset — either an image or a video. Reps download this and post it to their TikTok/Instagram with their personal discount link. This is separate from the in-app cover image on Details.
                     </p>
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-1.5"><Video size={12} /> {questType === "story_share" ? "Story Video" : "Downloadable Video"}</Label>
-                      {videoUrl ? (
+                      <Label className="flex items-center gap-1.5">
+                        <Upload size={12} />
+                        {questType === "story_share" ? "Story asset" : "Shareable asset"}
+                      </Label>
+                      {videoUrl && isMuxPlaybackId(videoUrl) ? (
                         <div className="space-y-2">
-                          {isMuxPlaybackId(videoUrl) ? (
-                            <div className="rounded-lg overflow-hidden border border-border">
-                              <MuxPlayer playbackId={videoUrl} streamType="on-demand" autoPlay={false} muted className="w-full aspect-video" />
-                            </div>
-                          ) : (
-                            <div className="rounded-lg overflow-hidden border border-border">
-                              <video src={videoUrl} controls className="w-full aspect-video" />
-                            </div>
-                          )}
+                          <div className="rounded-lg overflow-hidden border border-border">
+                            <MuxPlayer playbackId={videoUrl} streamType="on-demand" autoPlay={false} muted className="w-full aspect-video" />
+                          </div>
                           <Button variant="outline" size="sm" onClick={() => setVideoUrl("")}>
-                            <X size={12} /> Remove Video
+                            <X size={12} /> Remove video
+                          </Button>
+                        </div>
+                      ) : videoUrl ? (
+                        <div className="space-y-2">
+                          <div className="rounded-lg overflow-hidden border border-border bg-[#0e0e0e] p-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={videoUrl}
+                              alt="Shareable asset"
+                              className="max-w-full max-h-[260px] object-contain mx-auto block"
+                            />
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => setVideoUrl("")}>
+                            <X size={12} /> Remove image
                           </Button>
                         </div>
                       ) : videoUploading ? (
@@ -1493,14 +1572,14 @@ export function QuestsTab() {
                       ) : (
                         <label className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/20 py-6 cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30">
                           <Upload size={18} className="text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground font-medium">Click to upload a video</span>
-                          <span className="text-[10px] text-muted-foreground/60">MP4, MOV, WebM — max 200MB</span>
+                          <span className="text-xs text-muted-foreground font-medium">Click to upload an image or video</span>
+                          <span className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP, MP4, MOV, WebM — max 200MB for video</span>
                           <input
                             ref={videoInputRef}
                             type="file"
-                            accept="video/*"
+                            accept="image/*,video/*"
                             className="hidden"
-                            onChange={(e) => { const file = e.target.files?.[0]; if (file) handleVideoUpload(file); e.target.value = ""; }}
+                            onChange={(e) => { const file = e.target.files?.[0]; if (file) handleMediaUpload(file); e.target.value = ""; }}
                           />
                         </label>
                       )}
@@ -1510,6 +1589,9 @@ export function QuestsTab() {
                           <p className="text-xs text-destructive">{videoError}</p>
                         </div>
                       )}
+                      <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+                        We pick the right pipeline automatically — images go straight to Supabase Storage, videos go through Mux for streaming + a downloadable 1080p MP4. Picking a new file replaces the previous one. Leave blank for quests with no downloadable asset.
+                      </p>
                     </div>
                   </div>
                 )}

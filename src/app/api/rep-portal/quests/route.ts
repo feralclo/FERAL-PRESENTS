@@ -88,8 +88,9 @@ export async function GET(request: NextRequest) {
           id, title, subtitle, description, instructions, quest_type,
           platform, proof_type, xp_reward, points_reward, currency_reward,
           ep_reward, sales_target, max_completions, starts_at, expires_at,
-          cover_image_url, image_url, banner_image_url, accent_hex,
-          accent_hex_secondary, status, promoter_id, event_id, auto_approve,
+          cover_image_url, image_url, banner_image_url, video_url,
+          accent_hex, accent_hex_secondary, status, promoter_id, event_id,
+          auto_approve,
           event:events(id, name, slug, date_start, cover_image_url, cover_image)
         `
       )
@@ -219,6 +220,7 @@ export async function GET(request: NextRequest) {
       cover_image_url: string | null;
       image_url: string | null;
       banner_image_url: string | null;
+      video_url: string | null;
       accent_hex: number | null;
       accent_hex_secondary: number | null;
       promoter_id: string | null;
@@ -300,6 +302,7 @@ export async function GET(request: NextRequest) {
           : null,
         cover_image_url: q.cover_image_url ?? q.image_url ?? null,
         banner_image_url: q.banner_image_url,
+        video_url: q.video_url,
         accent_hex: q.accent_hex,
         accent_hex_secondary: q.accent_hex_secondary,
         starts_at: q.starts_at,

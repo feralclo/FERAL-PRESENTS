@@ -106,7 +106,6 @@ export function PaymentsSection({ api }: { api: OnboardingApi }) {
   return (
     <>
       <SectionHeading
-        eyebrow="Step 6 of 9"
         title="Get paid for your tickets"
         subtitle="Sell directly through your event page, or list events on Entry and send buyers to your existing ticket site."
       />

@@ -94,7 +94,6 @@ export function VatSection({ api }: { api: OnboardingApi }) {
   return (
     <>
       <SectionHeading
-        eyebrow="Step 5 of 9"
         title={`Are you ${taxLabel} registered?`}
         subtitle={
           info.has_federal_tax

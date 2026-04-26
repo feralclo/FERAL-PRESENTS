@@ -107,7 +107,6 @@ export function BrandingSection({ api }: { api: OnboardingApi }) {
   return (
     <>
       <SectionHeading
-        eyebrow="Step 3 of 9"
         title="Make it look like you"
         subtitle="Upload your logo and pick a colour. The preview on the right updates live."
       />

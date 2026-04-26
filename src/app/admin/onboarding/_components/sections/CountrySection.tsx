@@ -91,7 +91,6 @@ export function CountrySection({ api }: { api: OnboardingApi }) {
   return (
     <>
       <SectionHeading
-        eyebrow="Step 2 of 9"
         title="Where are you based?"
         subtitle="This sets your default currency and time zone. You can override either per event."
       />

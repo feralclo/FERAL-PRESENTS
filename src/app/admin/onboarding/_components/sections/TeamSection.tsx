@@ -87,7 +87,6 @@ export function TeamSection({ api }: { api: OnboardingApi }) {
   return (
     <>
       <SectionHeading
-        eyebrow="Step 8 of 9"
         title="Bring your team"
         subtitle="Invite anyone who'll help run events with you. They'll get a magic link to set up their account."
       />

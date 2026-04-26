@@ -136,7 +136,6 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
   return (
     <>
       <SectionHeading
-        eyebrow="Step 1 of 9"
         title="Tell us who you are"
         subtitle="Just the basics. We use your brand name to set up your address on the platform."
       />

@@ -147,7 +147,6 @@ export function FirstEventSection({ api }: { api: OnboardingApi }) {
   return (
     <>
       <SectionHeading
-        eyebrow="Step 7 of 9"
         title="Your first event"
         subtitle="The basics. We'll save it as a draft so you can preview before going live."
       />

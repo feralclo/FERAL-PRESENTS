@@ -82,7 +82,6 @@ export function DomainSection({ api }: { api: OnboardingApi }) {
   return (
     <>
       <SectionHeading
-        eyebrow="Step 4 of 9"
         title="How will people find you?"
         subtitle="Use a free Entry subdomain or point your own domain at the platform."
       />

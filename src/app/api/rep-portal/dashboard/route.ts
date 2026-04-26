@@ -10,6 +10,7 @@ import {
   DEFAULT_TIERS,
 } from "@/lib/xp-levels";
 import type { LevelingConfig, TierDefinition } from "@/lib/xp-levels";
+import { buildRepShareUrl, fetchPrimaryDomains } from "@/lib/rep-share-url";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -675,14 +676,13 @@ export async function GET(request: NextRequest) {
     }
 
     // discount — per-membership codes + primary (first approved membership)
+    const primaryMembership =
+      approvedMemberships.find((m) => m.discount_code) ?? null;
+
     const discountBlock = want("discount")
       ? {
-          primary_code:
-            approvedMemberships.find((m) => m.discount_code)?.discount_code ??
-            null,
-          primary_percent:
-            approvedMemberships.find((m) => m.discount_code)
-              ?.discount_percent ?? null,
+          primary_code: primaryMembership?.discount_code ?? null,
+          primary_percent: primaryMembership?.discount_percent ?? null,
           per_promoter: approvedMemberships
             .filter((m) => m.discount_code)
             .map((m) => ({
@@ -692,6 +692,22 @@ export async function GET(request: NextRequest) {
             })),
         }
       : null;
+
+    // Top-level rep share URL — tenant root with ?ref=primary_code applied.
+    // Mirrors discount.primary_code rather than the ?promoter_id= scope,
+    // so the field is stable across tab switches in the iOS client and so
+    // brand-new reps with zero quests still get a working share link
+    // without the client having to lift the host from quest.share_url.
+    // Null when the rep has no approved membership carrying a discount.
+    const primaryOrgId = primaryMembership?.promoter?.org_id ?? null;
+    const primaryDomains = await fetchPrimaryDomains(
+      primaryOrgId ? [primaryOrgId] : [],
+    );
+    const shareUrl = buildRepShareUrl({
+      orgId: primaryOrgId,
+      code: primaryMembership?.discount_code ?? null,
+      domainsByOrgId: primaryDomains,
+    });
 
     // Deferred sections — present but empty so iOS mapper is happy.
     const storyRailBlock = want("story_rail") ? [] : null;
@@ -716,6 +732,7 @@ export async function GET(request: NextRequest) {
         ...(recentSalesBlock && { recent_sales: recentSalesBlock }),
         ...(featuredRewardsBlock && { featured_rewards: featuredRewardsBlock }),
         ...(discountBlock && { discount: discountBlock }),
+        share_url: shareUrl,
       },
     });
   } catch (err) {

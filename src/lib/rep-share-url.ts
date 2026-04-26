@@ -87,3 +87,26 @@ export async function buildQuestShareUrlOne(params: {
   const domains = await fetchPrimaryDomains([orgId]);
   return buildQuestShareUrl({ orgId, eventSlug, code, domainsByOrgId: domains });
 }
+
+/**
+ * Build a rep-level share URL for the dashboard masthead — root of the
+ * tenant with ?ref= applied. Distinct from buildQuestShareUrl, which
+ * targets a specific event page; this one is "share my promoter" rather
+ * than "share this event". Returns null if no code (rep has no approved
+ * membership with a discount_code yet — iOS hides the CTA).
+ *
+ * Same domain-resolution contract as the quest builder so iOS doesn't
+ * have to lift the host from a quest entry to find the rep's own tenant.
+ */
+export function buildRepShareUrl(params: {
+  orgId: string | null;
+  code: string | null;
+  domainsByOrgId?: Map<string, string>;
+}): string | null {
+  const { orgId, code, domainsByOrgId } = params;
+  if (!code) return null;
+
+  const hostname = orgId ? domainsByOrgId?.get(orgId) : undefined;
+  const base = hostname ? `https://${hostname}` : DEFAULT_BASE;
+  return `${base}/?ref=${encodeURIComponent(code)}`;
+}

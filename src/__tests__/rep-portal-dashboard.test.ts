@@ -277,6 +277,10 @@ describe("GET /api/rep-portal/dashboard", () => {
     expect(json.data.featured_rewards).toEqual([]);
     expect(json.data.discount.primary_code).toBe("MAYA10");
     expect(json.data.discount.primary_percent).toBe(10);
+    // Top-level share_url mirrors discount.primary_code applied to the
+    // primary membership's tenant root. With no domains fixture seeded,
+    // it falls back to the platform default base — same shape iOS expects.
+    expect(json.data.share_url).toBe("https://entry.events/?ref=MAYA10");
   });
 
   it("?include= scopes the response to requested sections", async () => {
@@ -335,5 +339,8 @@ describe("GET /api/rep-portal/dashboard", () => {
       primary_percent: null,
       per_promoter: [],
     });
+    // No approved membership with a code → no share_url either. iOS hides
+    // the share CTA when this is null rather than rendering a broken link.
+    expect(json.data.share_url).toBeNull();
   });
 });

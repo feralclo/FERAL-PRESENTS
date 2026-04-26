@@ -139,16 +139,18 @@ export async function PUT(
       return NextResponse.json({ error: "Rep not found" }, { status: 404 });
     }
 
-    // Send welcome email, push notification + auto-assign when approving a pending rep
-    if (updates.status === "active" && oldStatus && oldStatus !== "active") {
-      console.info(`[reps/${id}] Approving rep (was ${oldStatus}). Sending email + push + auto-assign.`);
-
-      // v2 — also approve any pending rep_promoter_memberships for this
-      // tenant's promoter and stamp a discount_code on each. Without this,
-      // the membership stays pending and dashboard.discount.primary_code is
-      // null for every brand-new rep, breaking the iOS share-card flow.
-      // Awaited because the iOS dashboard refetch happens immediately after
-      // the admin approves; non-awaited would race the read.
+    // v2 membership approval — runs whenever an admin sets status='active',
+    // regardless of the rep's prior status. Reps who self-signed-up under
+    // auto_approve already have reps.status='active', so a later join-request
+    // creates rep_promoter_memberships.status='pending' for a rep whose
+    // top-level status never changes. Gating this on oldStatus !== 'active'
+    // (the historical guard for the welcome-email branch below) silently
+    // skipped membership approval AND the discount_code stamp for every
+    // such rep — which is why dashboard.discount.primary_code returned null
+    // and iOS hid every share CTA. Idempotent: no-op when no memberships
+    // are pending for this org. Awaited because iOS refetches the dashboard
+    // immediately after approval; non-awaited would race the read.
+    if (updates.status === "active") {
       const approvalResult = await approveRepMembershipsForOrg({
         repId: id,
         orgId,
@@ -160,6 +162,11 @@ export async function PUT(
           `[reps/${id}] Approved ${approvalResult.approved} membership(s), code=${approvalResult.code ?? "none"}`,
         );
       }
+    }
+
+    // Welcome email, push notification + auto-assign — first-time activation only.
+    if (updates.status === "active" && oldStatus && oldStatus !== "active") {
+      console.info(`[reps/${id}] Approving rep (was ${oldStatus}). Sending email + push + auto-assign.`);
 
       sendRepEmail({ type: "welcome", repId: id, orgId }).catch((err) => {
         console.error(`[reps/${id}] Welcome email failed:`, err);

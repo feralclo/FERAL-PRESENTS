@@ -5,6 +5,7 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
+import { verifyConnectedAccount } from "@/lib/stripe/server";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -96,9 +97,25 @@ export async function PUT(
             .eq("key", stripeAccountKey(orgId))
             .single();
 
-          if (!stripeRow?.data?.account_id) {
+          const accountId = stripeRow?.data?.account_id;
+          if (!accountId) {
             return NextResponse.json(
               { error: "Connect your payment account before going live. Go to Settings → Payments to set up." },
+              { status: 400 }
+            );
+          }
+
+          // Account exists in our DB — but is it actually able to take charges?
+          // verifyConnectedAccount returns null if the account is deleted/revoked
+          // OR if card_payments capability is anything other than 'active' (most
+          // commonly: KYC half-finished — name + address provided but no bank
+          // account or no ToS yet). Letting the tenant publish in that state
+          // means buyers hit a 503 at checkout time, which is a much worse
+          // experience than blocking the publish here.
+          const verified = await verifyConnectedAccount(accountId, orgId);
+          if (!verified) {
+            return NextResponse.json(
+              { error: "Your Stripe account isn't fully set up yet. Go to Settings → Payments to finish verification, then come back to publish." },
               { status: 400 }
             );
           }

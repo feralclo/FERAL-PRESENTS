@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, OrderCreationError, type OrderVat, type OrderDiscount } from "@/lib/orders";
 // Dynamic import to avoid pulling crypto into test environment
@@ -24,6 +24,43 @@ const connectWebhookSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
  * Account and Connect webhooks share this URL but have different secrets.
  * Returns the verified event, or null if verification fails.
  */
+/**
+ * Cross-check that a tenant's claimed org_id (from PI metadata) actually
+ * owns the connected Stripe account a webhook event came from.
+ *
+ * Looks up site_settings.{orgId}_stripe_account.account_id and compares.
+ * Returns true only if the org's stored account matches event.account.
+ *
+ * If the org has no connected account stored at all (e.g. platform-owner
+ * org running events on the platform Stripe), event.account would normally
+ * be null — meaning we wouldn't even call this. So the function is only
+ * invoked for actual Connect events, and a missing match means something
+ * is wrong.
+ */
+async function verifyOrgOwnsConnectedAccount(
+  orgId: string,
+  connectedAccountId: string,
+): Promise<boolean> {
+  try {
+    const supabase = await getSupabaseAdmin();
+    if (!supabase) return false;
+    const { data } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", stripeAccountKey(orgId))
+      .single();
+    const storedAccountId =
+      data?.data && typeof data.data === "object"
+        ? (data.data as { account_id?: string }).account_id
+        : undefined;
+    return storedAccountId === connectedAccountId;
+  } catch {
+    // Failing closed: a DB blip should refuse the cross-check rather than
+    // assuming OK. The legitimate caller can retry; an attacker can't.
+    return false;
+  }
+}
+
 async function verifyWebhookEvent(
   stripe: Stripe,
   body: string,
@@ -103,12 +140,49 @@ export async function POST(request: NextRequest) {
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const fallbackOrgId = getOrgIdFromRequest(request);
+
+        // Connect cross-check: if the event came from a connected account,
+        // verify that metadata.org_id (the org we'll attribute the order to)
+        // actually owns that connected account in our DB. Mismatched values
+        // would route a tenant's revenue to the wrong tenant — extremely
+        // unlikely (Stripe sig verification + we set both ourselves), but
+        // worth auditing because the failure mode is silent money loss.
+        const connectedAccount =
+          typeof event.account === "string" ? event.account : null;
+        if (connectedAccount && paymentIntent.metadata?.org_id) {
+          const ok = await verifyOrgOwnsConnectedAccount(
+            paymentIntent.metadata.org_id,
+            connectedAccount,
+          );
+          if (!ok) {
+            console.error(
+              "[webhook] org_id / event.account mismatch — REFUSING to attribute.",
+              {
+                metadata_org_id: paymentIntent.metadata.org_id,
+                event_account: connectedAccount,
+                pi: paymentIntent.id,
+              },
+            );
+            logPaymentEvent({
+              orgId: paymentIntent.metadata.org_id,
+              type: "webhook_error",
+              severity: "critical",
+              stripePaymentIntentId: paymentIntent.id,
+              stripeAccountId: connectedAccount,
+              errorCode: "org_account_mismatch",
+              errorMessage: `metadata.org_id=${paymentIntent.metadata.org_id} does not own event.account=${connectedAccount}. Manual reconciliation required.`,
+            });
+            // Acknowledge to Stripe (so they stop retrying) — manual fix.
+            return NextResponse.json({ received: true, skipped: true });
+          }
+        }
+
         await handlePaymentSuccess(paymentIntent, fallbackOrgId);
         logPaymentEvent({
           orgId: paymentIntent.metadata?.org_id || fallbackOrgId,
           type: "payment_succeeded",
           stripePaymentIntentId: paymentIntent.id,
-          stripeAccountId: typeof event.account === "string" ? event.account : undefined,
+          stripeAccountId: connectedAccount || undefined,
           customerEmail: paymentIntent.metadata?.customer_email,
           metadata: { amount: paymentIntent.amount, currency: paymentIntent.currency },
         });
@@ -261,12 +335,46 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
   }
 
   const eventId = metadata.event_id;
-  const orgId = metadata.org_id || fallbackOrgId;
+  // SECURITY: require metadata.org_id explicitly. The previous version fell
+  // back to fallbackOrgId (derived from x-org-id header / hostname), which
+  // could mis-attribute a charge if a webhook arrived without the header set
+  // (e.g. from a misconfigured edge worker). Every PI we create writes
+  // org_id to metadata, so its absence is a real bug worth surfacing rather
+  // than silently routing the order to the platform-default org.
+  const orgId = metadata.org_id;
   const customerEmail = metadata.customer_email;
   const customerFirstName = metadata.customer_first_name;
   const customerLastName = metadata.customer_last_name;
   const customerPhone = metadata.customer_phone;
   const itemsJson = metadata.items_json;
+
+  if (!orgId) {
+    console.error(
+      "[webhook] payment_intent.succeeded missing metadata.org_id — REFUSING to attribute via fallback. PI:",
+      paymentIntent.id,
+    );
+    logPaymentEvent({
+      orgId: fallbackOrgId,
+      type: "webhook_error",
+      severity: "critical",
+      stripePaymentIntentId: paymentIntent.id,
+      errorCode: "missing_org_id_metadata",
+      errorMessage:
+        "PaymentIntent succeeded but metadata.org_id was missing — payment NOT attributed (would have been mis-routed). Manual reconciliation required.",
+      customerEmail,
+    });
+    return;
+  }
+
+  // SECURITY (Connect events): if this charge came from a connected account
+  // (event.account is set), verify the metadata.org_id actually owns that
+  // connected account in our DB. Defends against developer error or any
+  // future code path that puts the wrong org_id on a PI's metadata. Stripe
+  // signature verification already rules out forgery; this is belt and
+  // braces over THAT.
+  // (We can't access `event.account` from inside this function; the caller
+  // does the cross-check below before delegating here. Kept as a comment
+  // for future maintainers — see the case "payment_intent.succeeded" block.)
 
   if (!eventId || !customerEmail || !itemsJson) {
     console.error("Webhook missing required metadata:", metadata);

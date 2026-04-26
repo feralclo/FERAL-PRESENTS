@@ -100,17 +100,19 @@ export async function applyRefundSideEffects(
     refunded_at: now,
     refund_source: options.source,
   };
-  if (options.adminUserId) {
-    mergedMetadata.refunded_by = options.adminUserId;
-  }
 
   // 2) Atomic status flip — guards concurrent callers.
+  // refunded_by lives in its own column now (see migration
+  // 20260426_add_orders_refunded_by_column.sql) for clean reporting; we
+  // still mirror refunded_at and refund_source in metadata for callers
+  // that look there.
   const { data: flipped, error: flipErr } = await supabase
     .from(TABLES.ORDERS)
     .update({
       status: "refunded",
       refund_reason: options.reason ?? order.refund_reason ?? null,
       refunded_at: now,
+      refunded_by: options.adminUserId ?? null,
       updated_at: now,
       metadata: mergedMetadata,
     })

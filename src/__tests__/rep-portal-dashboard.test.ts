@@ -279,8 +279,11 @@ describe("GET /api/rep-portal/dashboard", () => {
     expect(json.data.discount.primary_percent).toBe(10);
     // Top-level share_url mirrors discount.primary_code applied to the
     // primary membership's tenant root. With no domains fixture seeded,
-    // it falls back to the platform default base — same shape iOS expects.
-    expect(json.data.share_url).toBe("https://entry.events/?ref=MAYA10");
+    // it falls back to NEXT_PUBLIC_SITE_URL (or the entry.events default)
+    // — assert structurally rather than against a literal because the
+    // CI build env sets NEXT_PUBLIC_SITE_URL to the prod host while
+    // local dev leaves it unset.
+    expect(json.data.share_url).toMatch(/^https:\/\/[^/]+\/\?ref=MAYA10$/);
   });
 
   it("?include= scopes the response to requested sections", async () => {

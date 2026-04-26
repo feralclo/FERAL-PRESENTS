@@ -190,10 +190,18 @@ export async function POST(request: NextRequest) {
           { onConflict: "key" }
         );
 
-        // Save legacy onboarding fields (event_types, experience_level) into the
-        // org-scoped onboarding row. provisionOrg() has already migrated any
-        // wizard state from the platform-scoped key, so this merges into it.
-        if (event_types || experience_level) {
+        // Save legacy telemetry fields (event_types, experience_level) into the
+        // org-scoped onboarding row IF non-empty. provisionOrg() has already
+        // migrated any wizard state from the platform-scoped key, so this
+        // merges into it.
+        //
+        // CRITICAL: do NOT write completed_at here — that's the wizard's
+        // finish signal and is set by FinishSection / /api/onboarding/complete
+        // only. Writing it here was causing the page-level effect to
+        // immediately redirect users to /admin/ mid-wizard.
+        const hasEventTypes = Array.isArray(event_types) && event_types.length > 0;
+        const hasExperienceLevel = typeof experience_level === "string" && experience_level.length > 0;
+        if (hasEventTypes || hasExperienceLevel) {
           const { data: existingRow } = await supabaseAdmin
             .from(TABLES.SITE_SETTINGS)
             .select("data")
@@ -205,9 +213,8 @@ export async function POST(request: NextRequest) {
               key: onboardingKey(slug),
               data: {
                 ...existing,
-                event_types: event_types || [],
-                experience_level: experience_level || null,
-                completed_at: new Date().toISOString(),
+                ...(hasEventTypes ? { event_types } : {}),
+                ...(hasExperienceLevel ? { experience_level } : {}),
               },
               updated_at: new Date().toISOString(),
             },

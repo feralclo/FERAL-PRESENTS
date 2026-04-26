@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Check, Sparkles, Globe } from "lucide-react";
-import { SectionFooter, SectionField, SectionHeading, HintCard } from "../Shell";
+import { SectionFooter, SectionField, SectionHeading } from "../Shell";
 import type { OnboardingApi } from "../../_state";
 
 interface IdentityData {
@@ -271,12 +271,6 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
             <p className="mt-2 text-[11px] text-muted-foreground">{importMessage}</p>
           )}
         </div>
-        )}
-
-        {!isLocked && (
-          <HintCard>
-            We&apos;ll never share your name publicly without you wanting us to.
-          </HintCard>
         )}
       </div>
 

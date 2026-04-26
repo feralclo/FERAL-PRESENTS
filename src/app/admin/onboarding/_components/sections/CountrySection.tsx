@@ -61,7 +61,6 @@ export function CountrySection({ api }: { api: OnboardingApi }) {
           body: JSON.stringify({
             org_name: identity.brand_name,
             country,
-            event_types: ((api.state as { event_types?: string[] } | null)?.event_types ?? []),
           }),
         });
         const json = await res.json();

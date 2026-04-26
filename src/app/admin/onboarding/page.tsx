@@ -48,14 +48,11 @@ export default function OnboardingPage() {
           return;
         }
 
-        // If they already have an org AND have completed onboarding, send them
-        // home. If they have an org but haven't finished, drop them into
-        // resume mode.
-        if (json.has_org && api.state?.completed_at) {
-          router.replace("/admin/");
-          return;
-        }
-
+        // We never redirect logged-in users away from /admin/onboarding/ —
+        // if they already finished, the wizard resumes at the Finish section,
+        // which has explicit "Open dashboard" CTAs. A reactive redirect on
+        // `completed_at` was causing users to be bounced mid-wizard the moment
+        // any code path set that flag.
         setAuthReady(true);
 
         // Track invite-code usage for OAuth signups (mirrors old page).
@@ -77,7 +74,7 @@ export default function OnboardingPage() {
     return () => {
       cancelled = true;
     };
-  }, [router, api.state?.completed_at]);
+  }, [router]);
 
   if (!authReady || api.loading) {
     return <FullPageLoader />;

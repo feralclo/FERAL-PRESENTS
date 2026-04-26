@@ -135,21 +135,27 @@ function getPageTitle(pathname: string): string {
 
 /* ── ENTRY wordmark ── */
 function EntryWordmark({ size = "default" }: { size?: "default" | "sm" }) {
+  // White Entry wordmark — admin chrome is dark mode.
+  // Source: /public/entry-logo-white.svg
   return (
-    <span
-      className={cn(
-        "font-mono font-bold uppercase tracking-[4px] text-gradient select-none",
-        size === "default" ? "text-[13px]" : "text-[10px] tracking-[3px]"
-      )}
-      style={{
-        background: "linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)",
-        WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        backgroundClip: "text",
-      }}
+    <svg
+      viewBox="0 0 240 80"
+      className={cn("select-none", size === "default" ? "h-5 w-auto" : "h-4 w-auto")}
+      aria-label="entry"
+      role="img"
     >
-      Entry
-    </span>
+      <text
+        x="0"
+        y="64"
+        fontFamily="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        fontWeight="700"
+        fontSize="80"
+        letterSpacing="-2.4"
+        fill="#FFFFFF"
+      >
+        entry
+      </text>
+    </svg>
   );
 }
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 80" width="240" height="80">
+  <text x="0" y="64"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-weight="700"
+    font-size="80"
+    letter-spacing="-2.4"
+    fill="#000000">entry</text>
+</svg>

@@ -911,305 +911,90 @@ function ConnectedView({
   onConfirmDisconnect: () => void;
 }) {
   const isStandard = status.account_type === "standard";
+  // "Live" = can accept charges. Payouts may still be pending review for a
+  // day or two but tickets can be sold — we don't want to scare with that
+  // edge case here.
+  const isLive = status.charges_enabled;
 
   return (
     <>
-      {/* Status banner */}
+      {/* Single status card — friendly copy, one action. No technical noise. */}
       <Card
         className={cn(
-          "gap-0 py-0",
-          status.charges_enabled ? "border-success/20" : "border-warning/20"
+          "gap-0 overflow-hidden py-0",
+          isLive ? "border-success/20" : "border-warning/20",
         )}
       >
-        <CardContent className="flex items-center gap-4 px-6 py-5">
+        <div className="px-6 py-8 text-center">
           <div
             className={cn(
-              "flex size-12 shrink-0 items-center justify-center rounded-full",
-              status.charges_enabled ? "bg-success/10" : "bg-warning/10"
+              "mx-auto mb-4 flex size-14 items-center justify-center rounded-full",
+              isLive ? "bg-success/10 ring-1 ring-success/20" : "bg-warning/10 ring-1 ring-warning/20",
             )}
           >
-            {status.charges_enabled ? (
-              <CheckCircle2 className="size-6 text-success" />
+            {isLive ? (
+              <CheckCircle2 className="size-7 text-success" />
             ) : (
-              <AlertTriangle className="size-6 text-warning" />
+              <Zap className="size-6 text-warning" />
             )}
           </div>
-          <div className="flex-1">
-            <h2 className="font-mono text-xs font-bold uppercase tracking-[2px]">
-              {status.charges_enabled ? "Payments Active" : "Setup Incomplete"}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {status.charges_enabled
-                ? `${isStandard ? "Connected to your Stripe account" : "Funds will deposit to your bank account"}. ${describePayoutSchedule(status.payout_schedule)}`
-                : isStandard
-                  ? "Your Stripe account isn’t fully set up yet. Finish in your Stripe dashboard, then refresh."
-                  : "Complete the verification to start accepting payments."}
-            </p>
-          </div>
-        </CardContent>
+          <h2 className="text-lg font-bold text-foreground">
+            {isLive ? "You're set up to accept payments" : "One more step"}
+          </h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            {isLive
+              ? "Customers can buy tickets now. Funds land in your bank account automatically."
+              : isStandard
+                ? "Your Stripe account needs a few more details. Finish in your Stripe dashboard."
+                : "Stripe needs to verify a few details before you can take payments. It only takes a couple of minutes."}
+          </p>
+        </div>
 
-        {!isStandard && (!status.charges_enabled || status.requirements_currently_due.length > 0) && (
+        {!isLive && (
           <div className="border-t border-border/40 px-6 py-4">
-            <Button className="w-full" onClick={onContinueOnboarding}>
-              {status.details_submitted ? "Update Verification" : "Continue Setup"}
-            </Button>
-          </div>
-        )}
-
-        {isStandard && (
-          <div className="border-t border-border/40 px-6 py-4">
-            <Button className="w-full" variant="secondary" asChild>
-              <a href="https://dashboard.stripe.com/" target="_blank" rel="noopener noreferrer">
-                Open Stripe Dashboard
-                <ExternalLink className="size-4" />
-              </a>
-            </Button>
+            {isStandard ? (
+              <Button className="w-full" variant="secondary" asChild>
+                <a href="https://dashboard.stripe.com/" target="_blank" rel="noopener noreferrer">
+                  Open Stripe Dashboard
+                  <ExternalLink className="size-4" />
+                </a>
+              </Button>
+            ) : (
+              <Button className="w-full" size="lg" onClick={onContinueOnboarding}>
+                Continue setup
+                <ArrowRight className="size-4" />
+              </Button>
+            )}
           </div>
         )}
       </Card>
 
-      {/* Account header card */}
-      <Card className="gap-0 py-0">
-        <CardHeader className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
-              Connected Account
-            </CardTitle>
-            <Badge variant={isStandard ? "default" : "secondary"} className={cn("text-[10px]", isStandard && "bg-primary/10 text-primary ring-1 ring-primary/20")}>
-              {isStandard ? "Stripe (linked)" : "Entry-managed"}
-            </Badge>
+      {/* Quiet disconnect zone — small, at the bottom, no scary copy */}
+      <div className="pt-2 text-center">
+        {!confirmDisconnect ? (
+          <button
+            type="button"
+            onClick={onAskDisconnect}
+            className="text-xs text-muted-foreground/70 underline-offset-4 transition-colors hover:text-muted-foreground hover:underline"
+          >
+            Disconnect Stripe account
+          </button>
+        ) : (
+          <div className="mx-auto inline-flex flex-col items-center gap-2 rounded-md border border-destructive/30 bg-destructive/[0.04] px-4 py-3">
+            <p className="text-xs text-foreground">
+              You won&apos;t be able to take payments until you reconnect.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="destructive" size="sm" disabled={disconnecting} onClick={onConfirmDisconnect}>
+                {disconnecting ? "Disconnecting..." : "Yes, disconnect"}
+              </Button>
+              <Button variant="ghost" size="sm" disabled={disconnecting} onClick={onCancelDisconnect}>
+                Cancel
+              </Button>
+            </div>
           </div>
-        </CardHeader>
-        <Separator />
-        <CardContent className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-5">
-          <DetailField label="Business" value={status.business_name} />
-          <DetailField label="Email" value={status.email} />
-          <DetailField label="Country" value={status.country} />
-          <DetailField
-            label="Currency"
-            value={status.default_currency ? status.default_currency.toUpperCase() : null}
-          />
-          <DetailField
-            label="Account ID"
-            value={status.account_id}
-            mono
-            accent
-          />
-          <DetailField
-            label="Payout schedule"
-            value={status.payout_schedule ? capitalize(status.payout_schedule.interval) : "—"}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Capabilities */}
-      <Card className="gap-0 py-0">
-        <CardHeader className="px-6 py-4">
-          <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
-            Capabilities
-          </CardTitle>
-        </CardHeader>
-        <Separator />
-        <CardContent className="space-y-0 px-6 py-2">
-          <CapabilityRow
-            label="Card Payments"
-            status={status.charges_enabled ? "active" : "inactive"}
-          />
-          <CapabilityRow
-            label="Payouts"
-            status={
-              status.payouts_enabled
-                ? "active"
-                : status.disabled_reason === "requirements.pending_verification"
-                  ? "pending"
-                  : "inactive"
-            }
-          />
-          <CapabilityRow
-            label="Identity Verified"
-            status={status.details_submitted ? "active" : "inactive"}
-            last
-          />
-        </CardContent>
-      </Card>
-
-      {/* Pending requirements (Custom only — Standard users see these in their own dashboard) */}
-      {!isStandard && status.requirements_currently_due.length > 0 && (
-        <Card className="gap-0 py-0">
-          <CardHeader className="px-6 py-4">
-            <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
-              Action Required
-            </CardTitle>
-          </CardHeader>
-          <Separator />
-          <CardContent className="space-y-2 px-6 py-5">
-            <p className="text-sm text-muted-foreground">
-              Complete these items to fully activate your account:
-            </p>
-            <ul className="space-y-1.5">
-              {status.requirements_currently_due.map((req) => (
-                <li
-                  key={req}
-                  className="flex items-center gap-2 rounded-md bg-warning/[0.04] px-3 py-2 ring-1 ring-warning/10"
-                >
-                  <span className="text-sm text-warning">&#9679;</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {formatRequirement(req)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <Button className="mt-3 w-full" onClick={onContinueOnboarding}>
-              Complete Verification
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {!isStandard && status.requirements_past_due.length > 0 && (
-        <Card className="gap-0 border-destructive/30 py-0">
-          <CardHeader className="px-6 py-4">
-            <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px] text-destructive">
-              Overdue Requirements
-            </CardTitle>
-          </CardHeader>
-          <Separator />
-          <CardContent className="space-y-2 px-6 py-5">
-            <p className="text-sm text-muted-foreground">
-              These items are overdue. Your account may be restricted until
-              they are resolved:
-            </p>
-            <ul className="space-y-1.5">
-              {status.requirements_past_due.map((req) => (
-                <li
-                  key={req}
-                  className="flex items-center gap-2 rounded-md bg-destructive/[0.04] px-3 py-2 ring-1 ring-destructive/15"
-                >
-                  <span className="text-sm text-destructive">&#9679;</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {formatRequirement(req)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <Button className="mt-3 w-full" onClick={onContinueOnboarding}>
-              Resolve Now
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Disabled reason context */}
-      {status.disabled_reason &&
-      status.disabled_reason === "requirements.pending_verification" &&
-      status.charges_enabled ? (
-        <Card className="gap-0 border-info/20 py-0">
-          <CardContent className="flex items-center gap-3 px-6 py-5">
-            <Shield className="size-5 shrink-0 text-info" />
-            <div>
-              <h2 className="font-mono text-xs font-bold uppercase tracking-[2px] text-info">
-                Verification In Progress
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Your account is under review. You can accept payments now —
-                payouts will begin once verification is complete (usually 1-3
-                business days).
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : status.disabled_reason ? (
-        <Card className="gap-0 border-destructive/30 py-0">
-          <CardContent className="flex items-center gap-3 px-6 py-5">
-            <AlertTriangle className="size-5 shrink-0 text-destructive" />
-            <div>
-              <h2 className="font-mono text-xs font-bold uppercase tracking-[2px] text-destructive">
-                Account Restricted
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {formatDisabledReason(status.disabled_reason)}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {/* Next steps */}
-      {status.charges_enabled && (
-        <Card className="gap-0 py-0">
-          <CardHeader className="px-6 py-4">
-            <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
-              Next Steps
-            </CardTitle>
-          </CardHeader>
-          <Separator />
-          <CardContent className="px-6 py-5">
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Your payment account is linked automatically. To start accepting
-              payments for an event:
-            </p>
-            <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
-              <li>
-                Go to{" "}
-                <Link href="/admin/events/" className="text-primary hover:underline">
-                  Events
-                </Link>
-              </li>
-              <li>
-                Edit your event and set Payment Method to &quot;Stripe&quot;
-              </li>
-              <li>Save — that&apos;s it, you&apos;re live</li>
-            </ol>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Disconnect zone */}
-      <Card className="gap-0 border-border/40 py-0">
-        <CardContent className="space-y-3 px-6 py-5">
-          <div>
-            <h3 className="font-mono text-xs font-bold uppercase tracking-[2px] text-muted-foreground">
-              Disconnect
-            </h3>
-            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-              {isStandard
-                ? "Revoke Entry's permission to charge on this Stripe account. Your Stripe account itself is not affected. New ticket sales won't be processed until you reconnect."
-                : "Unlink this Entry-managed account from your org. The account stays in our Stripe directory; reconnect anytime. New ticket sales won't be processed until you set up payments again."}
-            </p>
-          </div>
-
-          {!confirmDisconnect ? (
-            <Button variant="outline" size="sm" onClick={onAskDisconnect}>
-              Disconnect account
-            </Button>
-          ) : (
-            <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/[0.04] p-3">
-              <p className="text-xs text-foreground">
-                Are you sure? You won&apos;t be able to take payments until you
-                reconnect.
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={disconnecting}
-                  onClick={onConfirmDisconnect}
-                >
-                  {disconnecting ? "Disconnecting..." : "Yes, disconnect"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={disconnecting}
-                  onClick={onCancelDisconnect}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </>
   );
 }

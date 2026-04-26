@@ -8,6 +8,7 @@ import { createOrder, OrderCreationError, type OrderVat, type OrderDiscount } fr
 // Dynamic import to avoid pulling crypto into test environment
 // import { issueGuestListTicket } from "@/lib/guest-list";
 import { sendOrderConfirmationEmail } from "@/lib/email";
+import { applyRefundSideEffects } from "@/lib/refund";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import { updateOrgPlanSettings } from "@/lib/plans";
 import { fromSmallestUnit } from "@/lib/stripe/config";
@@ -111,6 +112,17 @@ export async function POST(request: NextRequest) {
           customerEmail: paymentIntent.metadata?.customer_email,
           metadata: { amount: paymentIntent.amount, currency: paymentIntent.currency },
         });
+        break;
+      }
+
+      case "charge.refunded": {
+        // A charge was refunded — could be from our /api/orders/[id]/refund
+        // (already synced our DB), or from the Stripe Dashboard (haven't
+        // synced yet). applyRefundSideEffects is idempotent: if the order's
+        // already flagged refunded it's a no-op, so calling on every event
+        // is safe.
+        const charge = event.data.object as Stripe.Charge;
+        await handleChargeRefunded(charge, event);
         break;
       }
 
@@ -580,6 +592,89 @@ async function fireWebhookPurchaseEvent(orgId: string, data: {
     console.error("[Meta CAPI] Webhook Purchase failed:", result.error);
   } else {
     console.log("[Meta CAPI] Webhook Purchase sent:", eventId);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Charge refunded webhook handler — fires for refunds initiated either via
+// our /api/orders/[id]/refund OR directly in the Stripe Dashboard. The
+// shared applyRefundSideEffects() is idempotent (atomic status flip with
+// .neq("status","refunded")), so the case where our route already synced
+// the DB is a safe no-op.
+// ---------------------------------------------------------------------------
+
+async function handleChargeRefunded(
+  charge: Stripe.Charge,
+  event: Stripe.Event,
+) {
+  const paymentIntentId =
+    typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : charge.payment_intent?.id;
+
+  if (!paymentIntentId) {
+    console.warn(
+      "[webhook] charge.refunded with no payment_intent — ignoring",
+      charge.id,
+    );
+    return;
+  }
+
+  const supabase = await getSupabaseAdmin();
+  if (!supabase) {
+    console.error(
+      "[webhook] Supabase not configured for charge.refunded handler",
+    );
+    return;
+  }
+
+  // Find the order by payment_ref. Don't filter by org_id here — webhooks
+  // come unscoped from Stripe; the order itself carries org_id which we
+  // pass into applyRefundSideEffects for downstream tenant-scoped writes.
+  const { data: order } = await supabase
+    .from(TABLES.ORDERS)
+    .select("id, org_id, status")
+    .eq("payment_ref", paymentIntentId)
+    .single();
+
+  if (!order) {
+    // No matching order — could be a non-Entry charge on the connected
+    // account, or our own /api/stripe/confirm-order hasn't created the
+    // order yet. Either way, nothing to do.
+    console.log(
+      "[webhook] charge.refunded — no matching order for PI",
+      paymentIntentId,
+    );
+    return;
+  }
+
+  if (order.status === "refunded") {
+    // Already synced (our /api/orders/[id]/refund did the work). No-op.
+    return;
+  }
+
+  try {
+    const result = await applyRefundSideEffects(order.id, order.org_id, {
+      reason:
+        (charge.refunds?.data?.[0]?.reason as string | undefined) ||
+        "stripe_dashboard",
+      adminUserId: null,
+      source: "webhook",
+    });
+    console.log(
+      `[webhook] charge.refunded synced for PI ${paymentIntentId}: applied=${result.applied}, email_sent=${result.email_sent}, account=${typeof event.account === "string" ? event.account : "platform"}`,
+    );
+  } catch (err) {
+    Sentry.captureException(err);
+    logPaymentEvent({
+      orgId: order.org_id,
+      type: "webhook_error",
+      severity: "critical",
+      stripePaymentIntentId: paymentIntentId,
+      errorCode: "refund_sync_failed",
+      errorMessage:
+        err instanceof Error ? err.message : "Unknown error",
+    });
   }
 }
 

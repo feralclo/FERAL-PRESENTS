@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, brandingKey } from "@/lib/constants";
 import { getCurrencySymbol, isZeroDecimalCurrency } from "@/lib/stripe/config";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
-import { buildOrderConfirmationEmail, buildAbandonedCartRecoveryEmail, buildAnnouncementEmail, type EmailWalletLinks, type AbandonedCartEmailData, type AnnouncementEmailOpts } from "@/lib/email-templates";
+import { buildOrderConfirmationEmail, buildAbandonedCartRecoveryEmail, buildAnnouncementEmail, escapeHtml, type EmailWalletLinks, type AbandonedCartEmailData, type AnnouncementEmailOpts } from "@/lib/email-templates";
 import type { EmailSettings, OrderEmailData, PdfTicketSettings, WalletPassSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS, DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
 
@@ -1263,3 +1263,169 @@ export async function sendWaitlistNotificationEmail(params: WaitlistNotification
     return false;
   }
 }
+
+/**
+ * Send a refund-confirmation email to the buyer.
+ *
+ * Triggered from /api/orders/[id]/refund AND from the charge.refunded
+ * webhook so refunds initiated in the Stripe Dashboard also send a buyer
+ * notification. Idempotency is enforced upstream — by the time we land
+ * here, the order's already been flipped to "refunded" exactly once.
+ *
+ * Returns true on send, false on failure or skip — caller can log but
+ * should never block the refund response on this. Resend not configured
+ * is a graceful skip, not an error.
+ */
+export async function sendOrderRefundEmail(params: {
+  orgId: string;
+  order: {
+    order_number: string;
+    total: number;
+    currency: string;
+  };
+  customer: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  event: {
+    name: string;
+    venue_name?: string;
+  } | null;
+  /** Optional reason from admin — included in the email body if provided. */
+  reason?: string | null;
+}): Promise<boolean> {
+  try {
+    const resend = getResendClient();
+    if (!resend) {
+      console.log(
+        "[email] RESEND_API_KEY not configured — skipping refund email",
+      );
+      return false;
+    }
+
+    const settings = await getEmailSettings(params.orgId);
+
+    const accentColor = settings.accent_color || "#8B5CF6";
+    const fromName = settings.from_name || params.orgId;
+    const currency = params.order.currency || "GBP";
+    const symbol = getCurrencySymbol(currency);
+    const zd = isZeroDecimalCurrency(currency);
+    const fmtAmt = (n: number) =>
+      zd ? String(Math.round(n)) : Number(n).toFixed(2);
+    const totalDisplay = `${symbol}${fmtAmt(params.order.total)}`;
+
+    const subject = `Refund processed — order ${params.order.order_number}`;
+
+    const eventLine = params.event?.name
+      ? `<p style="margin: 0 0 12px; color: #6b7280; font-size: 14px;">For your order at <strong style="color: #111827;">${escapeHtml(params.event.name)}</strong>${params.event.venue_name ? ` (${escapeHtml(params.event.venue_name)})` : ""}.</p>`
+      : "";
+
+    const reasonLine = params.reason
+      ? `<p style="margin: 16px 0 0; color: #6b7280; font-size: 13px;"><em>Reason: ${escapeHtml(params.reason)}</em></p>`
+      : "";
+
+    const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(subject)}</title>
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased; color-scheme: light only;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
+            <tr>
+              <td style="background-color: ${accentColor}; padding: 4px 0;"></td>
+            </tr>
+            <tr>
+              <td style="padding: 32px 32px 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <h1 style="margin: 0 0 8px; color: #111827; font-size: 22px; font-weight: 700;">Your refund is on its way</h1>
+                <p style="margin: 0 0 12px; color: #6b7280; font-size: 14px;">Hi ${escapeHtml(params.customer.first_name)}, we've processed a full refund for your order.</p>
+                ${eventLine}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 16px 32px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                  <tr>
+                    <td style="padding: 16px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                      <p style="margin: 0 0 4px; color: #6b7280; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Refund amount</p>
+                      <p style="margin: 0; color: #111827; font-size: 28px; font-weight: 700;">${escapeHtml(totalDisplay)}</p>
+                      <p style="margin: 12px 0 0; color: #6b7280; font-size: 13px;">Order ${escapeHtml(params.order.order_number)}</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 32px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <p style="margin: 0; color: #374151; font-size: 14px; line-height: 1.6;">
+                  The refund is back to the same card or wallet you paid with. It typically appears within 5–10 business days, depending on your bank.
+                </p>
+                <p style="margin: 16px 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+                  If you have questions, reply to this email and we'll help.
+                </p>
+                ${reasonLine}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 16px 32px 24px; border-top: 1px solid #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <p style="margin: 0; color: #9ca3af; font-size: 11px; text-align: center;">${escapeHtml(fromName)}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+    const text = [
+      `Hi ${params.customer.first_name},`,
+      "",
+      `We've processed a full refund of ${totalDisplay} for your order ${params.order.order_number}${params.event?.name ? ` at ${params.event.name}` : ""}.`,
+      "",
+      "The refund is back to the same card or wallet you paid with. It typically appears within 5-10 business days, depending on your bank.",
+      "",
+      params.reason ? `Reason: ${params.reason}` : "",
+      "",
+      "If you have questions, reply to this email and we'll help.",
+      "",
+      `— ${fromName}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const { error } = await resend.emails.send({
+      from: `${settings.from_name} <${settings.from_email}>`,
+      replyTo: settings.reply_to || undefined,
+      to: [params.customer.email],
+      subject,
+      html,
+      text,
+    });
+
+    if (error) {
+      console.error(
+        `[email] Refund email failed for ${params.customer.email}:`,
+        error,
+      );
+      return false;
+    }
+
+    console.log(
+      `[email] Refund email sent to ${params.customer.email} for ${params.order.order_number}`,
+    );
+    return true;
+  } catch (err) {
+    console.error(
+      `[email] Failed to send refund email to ${params.customer.email}:`,
+      err,
+    );
+    return false;
+  }
+}
+

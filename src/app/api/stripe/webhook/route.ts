@@ -268,6 +268,25 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case "invoice.payment_succeeded": {
+        // Successful renewal (or first invoice). Recover from past_due if needed
+        // and ensure subscription_status reflects reality.
+        const invoice = event.data.object as Stripe.Invoice;
+        const subDetails = invoice.parent?.subscription_details;
+        const orgId = subDetails?.metadata?.org_id;
+        const subscriptionId =
+          typeof subDetails?.subscription === "string"
+            ? subDetails.subscription
+            : subDetails?.subscription?.id;
+        if (orgId && subscriptionId) {
+          await updateOrgPlanSettings(orgId, { subscription_status: "active" });
+          console.log(
+            `[webhook] Invoice paid for org ${orgId}, sub ${subscriptionId} — status synced to active`
+          );
+        }
+        break;
+      }
+
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
         const subDetails = invoice.parent?.subscription_details;

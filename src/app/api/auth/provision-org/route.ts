@@ -145,6 +145,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Resolve country once — used both for provisioning defaults (VAT, etc.)
+    // and for the general settings row below.
+    const countryCode = typeof rawCountry === "string" && rawCountry.trim().length === 2
+      ? rawCountry.trim().toUpperCase()
+      : "GB";
+
     // Provision org
     try {
       await provisionOrg({
@@ -154,6 +160,7 @@ export async function POST(request: NextRequest) {
         orgName: trimmedName,
         firstName: user.user_metadata?.full_name?.split(" ")[0] || undefined,
         lastName: user.user_metadata?.full_name?.split(" ").slice(1).join(" ") || undefined,
+        country: countryCode,
       });
     } catch (provisionErr) {
       console.error("[provision-org] provisionOrg() failed:", provisionErr);
@@ -165,9 +172,6 @@ export async function POST(request: NextRequest) {
     try {
       const supabaseAdmin = await getSupabaseAdmin();
       if (supabaseAdmin) {
-        const countryCode = typeof rawCountry === "string" && rawCountry.trim().length === 2
-          ? rawCountry.trim().toUpperCase()
-          : "GB";
         const baseCurrency = getDefaultCurrency(countryCode);
 
         // Save general settings (country + base_currency)
@@ -187,16 +191,26 @@ export async function POST(request: NextRequest) {
           { onConflict: "key" }
         );
 
-        // Save onboarding data
+        // Save legacy onboarding fields (event_types, experience_level) into the
+        // org-scoped onboarding row. provisionOrg() has already migrated any
+        // wizard state from the platform-scoped key, so this merges into it.
         if (event_types || experience_level) {
+          const { data: existingRow } = await supabaseAdmin
+            .from(TABLES.SITE_SETTINGS)
+            .select("data")
+            .eq("key", onboardingKey(slug))
+            .maybeSingle();
+          const existing = (existingRow?.data as Record<string, unknown> | null) ?? {};
           await supabaseAdmin.from(TABLES.SITE_SETTINGS).upsert(
             {
               key: onboardingKey(slug),
               data: {
+                ...existing,
                 event_types: event_types || [],
                 experience_level: experience_level || null,
                 completed_at: new Date().toISOString(),
               },
+              org_id: slug,
               updated_at: new Date().toISOString(),
             },
             { onConflict: "key" }

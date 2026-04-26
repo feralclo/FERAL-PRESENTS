@@ -77,7 +77,29 @@ export async function POST(request: NextRequest) {
       country = "GB",
       account_type = DEFAULT_ACCOUNT_TYPE,
       business_type = "individual",
-    } = body;
+      // Pre-fill fields (all optional). Drop into Stripe's individual.* / company.*
+      // shape based on business_type so the hosted Account Link starts pre-populated.
+      first_name,
+      last_name,
+      phone,
+      address,
+    } = body as {
+      email?: string;
+      business_name?: string;
+      country?: string;
+      account_type?: string;
+      business_type?: string;
+      first_name?: string;
+      last_name?: string;
+      phone?: string;
+      address?: {
+        line1?: string;
+        line2?: string;
+        city?: string;
+        state?: string;
+        postal_code?: string;
+      };
+    };
 
     if (!email) {
       return noStoreJson(
@@ -131,6 +153,49 @@ export async function POST(request: NextRequest) {
         ? `https://${platformHost}` // Test/fixture orgs — no real subdomain
         : `https://${auth.orgId}.${platformHost}`;
 
+    // Build optional Stripe address payload. Only include fields we have.
+    const stripeAddress = address
+      ? {
+          ...(address.line1 ? { line1: address.line1 } : {}),
+          ...(address.line2 ? { line2: address.line2 } : {}),
+          ...(address.city ? { city: address.city } : {}),
+          ...(address.state ? { state: address.state } : {}),
+          ...(address.postal_code ? { postal_code: address.postal_code } : {}),
+          country,
+        }
+      : undefined;
+
+    // For Individual accounts, populate `individual.*`. For Company / Non-profit,
+    // the same person becomes the representative — Stripe still wants their KYC.
+    type IndividualPrefill = {
+      first_name?: string;
+      last_name?: string;
+      email?: string;
+      phone?: string;
+      address?: typeof stripeAddress;
+    };
+    const individualPrefill: IndividualPrefill = {
+      ...(first_name ? { first_name } : {}),
+      ...(last_name ? { last_name } : {}),
+      email,
+      ...(phone ? { phone } : {}),
+      ...(stripeAddress && Object.keys(stripeAddress).length > 1 ? { address: stripeAddress } : {}),
+    };
+    const hasIndividualPrefill = Object.keys(individualPrefill).length > 1; // > email alone
+
+    // For company/non-profit, also pre-fill `company.*` (name, phone, address).
+    type CompanyPrefill = {
+      name?: string;
+      phone?: string;
+      address?: typeof stripeAddress;
+    };
+    const companyPrefill: CompanyPrefill = {
+      ...(business_name ? { name: business_name } : {}),
+      ...(phone ? { phone } : {}),
+      ...(stripeAddress && Object.keys(stripeAddress).length > 1 ? { address: stripeAddress } : {}),
+    };
+    const hasCompanyPrefill = Object.keys(companyPrefill).length > 0;
+
     const account = await stripe.accounts.create({
       type: "custom",
       country,
@@ -145,6 +210,13 @@ export async function POST(request: NextRequest) {
         mcc: "7922", // Theatrical Producers and Ticket Agencies
         url: businessUrl,
       },
+      // For individual accounts, pre-fill the person record.
+      // For company / non-profit, the same person is treated as the representative
+      // by Stripe's hosted onboarding — they still need to identify themselves.
+      ...(hasIndividualPrefill ? { individual: individualPrefill } : {}),
+      ...(business_type !== "individual" && hasCompanyPrefill
+        ? { company: companyPrefill }
+        : {}),
       settings: {
         payouts: {
           schedule: {

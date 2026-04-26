@@ -3,6 +3,9 @@ import forge from "node-forge";
 import { generateTicketQR } from "@/lib/qr";
 import type { WalletPassSettings } from "@/types/email";
 import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
+import type { BrandingSettings } from "@/types/settings";
+import { TABLES, brandingKey, walletPassesKey } from "@/lib/constants";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 /* ═══════════════════════════════════════════════════════════
    SHARED TYPES
@@ -1005,4 +1008,78 @@ function hexToComponents(hex: string): { r: number; g: number; b: number } {
     g: parseInt(h.substring(2, 4), 16) || 0,
     b: parseInt(h.substring(4, 6), 16) || 0,
   };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BRAND SYNC — copy main branding visuals into wallet-pass settings
+   ═══════════════════════════════════════════════════════════ */
+
+/**
+ * Map a `BrandingSettings` row onto a `WalletPassSettings` shape.
+ *
+ * Pure (no I/O) — used both server-side from `syncBrandToWalletPasses`
+ * and from tests. Merges over an existing wallet settings row to preserve
+ * tenant-set fields (terms_text, descriptions, enabled toggles, certs).
+ */
+export function applyBrandingToWalletPasses(
+  branding: BrandingSettings,
+  existing?: Partial<WalletPassSettings> | null
+): WalletPassSettings {
+  const base: WalletPassSettings = {
+    ...DEFAULT_WALLET_PASS_SETTINGS,
+    ...(existing ?? {}),
+  };
+
+  return {
+    ...base,
+    organization_name: branding.org_name || base.organization_name,
+    logo_url: branding.logo_url || base.logo_url,
+    accent_color: branding.accent_color || base.accent_color,
+    label_color: branding.accent_color || base.label_color,
+    bg_color: branding.background_color || base.bg_color,
+    text_color: branding.text_color || base.text_color,
+  };
+}
+
+/**
+ * Read the org's branding row, copy the visual fields into wallet-pass settings,
+ * and persist. Idempotent — safe to call multiple times.
+ *
+ * Does NOT enable wallet passes — that's an explicit tenant choice. This just
+ * makes sure that WHEN they enable, the visuals look like their brand.
+ */
+export async function syncBrandToWalletPasses(orgId: string): Promise<void> {
+  const supabase = await getSupabaseAdmin();
+  if (!supabase) throw new Error("Supabase not configured");
+
+  // Read branding
+  const { data: brandingRow } = await supabase
+    .from(TABLES.SITE_SETTINGS)
+    .select("data")
+    .eq("key", brandingKey(orgId))
+    .maybeSingle();
+
+  const branding = (brandingRow?.data ?? {}) as BrandingSettings;
+
+  // Read existing wallet settings (preserve enabled toggles, certs, terms)
+  const { data: walletRow } = await supabase
+    .from(TABLES.SITE_SETTINGS)
+    .select("data")
+    .eq("key", walletPassesKey(orgId))
+    .maybeSingle();
+
+  const merged = applyBrandingToWalletPasses(
+    branding,
+    (walletRow?.data ?? null) as Partial<WalletPassSettings> | null
+  );
+
+  await supabase.from(TABLES.SITE_SETTINGS).upsert(
+    {
+      key: walletPassesKey(orgId),
+      data: merged,
+      org_id: orgId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "key" }
+  );
 }

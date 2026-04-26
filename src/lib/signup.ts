@@ -1,5 +1,19 @@
-import { TABLES, planKey, brandingKey } from "@/lib/constants";
+import {
+  TABLES,
+  planKey,
+  brandingKey,
+  vatKey,
+  emailKey,
+  walletPassesKey,
+  marketingKey,
+  popupKey,
+  abandonedCartAutomationKey,
+  announcementAutomationKey,
+  eventsListKey,
+} from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getDefaultVatSettings } from "@/lib/country-vat";
+import { migrateWizardStateToOrg } from "@/lib/onboarding-state";
 
 /**
  * Self-service signup: shared org provisioning logic.
@@ -115,6 +129,105 @@ interface ProvisionOrgParams {
   orgName: string;
   firstName?: string;
   lastName?: string;
+  /** ISO country code. Drives VAT defaults (rate + label). Defaults to GB. */
+  country?: string;
+}
+
+/**
+ * Build the default settings rows seeded at provisioning time.
+ *
+ * Includes only keys that benefit from explicit, country-aware, or shape-locked
+ * defaults. Other keys (themes, merch store, guest list, scanner) auto-create
+ * on first write/read and are intentionally left empty here.
+ */
+function buildDefaultSettingsRows(opts: {
+  orgSlug: string;
+  orgName: string;
+  country: string;
+  now: string;
+}): Array<{ key: string; data: Record<string, unknown>; org_id: string; updated_at: string }> {
+  const { orgSlug, orgName, country, now } = opts;
+
+  return [
+    {
+      key: vatKey(orgSlug),
+      data: getDefaultVatSettings(country) as unknown as Record<string, unknown>,
+      org_id: orgSlug,
+      updated_at: now,
+    },
+    {
+      key: emailKey(orgSlug),
+      data: {
+        // Sensible defaults — tenant overrides in /admin/communications later
+        from_name: orgName,
+        from_email: `${orgSlug}@mail.entry.events`,
+        reply_to: "",
+        support_email: "",
+      },
+      org_id: orgSlug,
+      updated_at: now,
+    },
+    {
+      key: walletPassesKey(orgSlug),
+      data: {
+        apple_wallet_enabled: false,
+        google_wallet_enabled: false,
+        organization_name: orgName,
+        // Inherit branding visuals when wizard's "Use my brand on wallet passes" toggle fires.
+        // Until then, wallet passes use platform defaults via fallback in lib/wallet-passes.ts.
+        accent_color: "",
+        bg_color: "",
+        text_color: "",
+        label_color: "",
+        logo_url: "",
+        strip_url: "",
+        description: "",
+        show_holder: true,
+        show_order_number: true,
+        show_terms: false,
+        terms_text: "",
+      },
+      org_id: orgSlug,
+      updated_at: now,
+    },
+    {
+      key: marketingKey(orgSlug),
+      data: {
+        // Empty but valid — wizard / settings page fills these in
+        gtm_id: "",
+        meta_pixel_id: "",
+        meta_capi_token: "",
+        klaviyo_public_key: "",
+        klaviyo_private_key: "",
+      },
+      org_id: orgSlug,
+      updated_at: now,
+    },
+    {
+      key: popupKey(orgSlug),
+      data: { enabled: false },
+      org_id: orgSlug,
+      updated_at: now,
+    },
+    {
+      key: abandonedCartAutomationKey(orgSlug),
+      data: { enabled: false },
+      org_id: orgSlug,
+      updated_at: now,
+    },
+    {
+      key: announcementAutomationKey(orgSlug),
+      data: { enabled: false },
+      org_id: orgSlug,
+      updated_at: now,
+    },
+    {
+      key: eventsListKey(orgSlug),
+      data: { sort: "date_asc", show_past: false },
+      org_id: orgSlug,
+      updated_at: now,
+    },
+  ];
 }
 
 /**
@@ -127,7 +240,8 @@ export async function provisionOrg(params: ProvisionOrgParams): Promise<{
   orgSlug: string;
   orgName: string;
 }> {
-  const { authUserId, email, orgSlug, orgName, firstName, lastName } = params;
+  const { authUserId, email, orgSlug, orgName, firstName, lastName, country } = params;
+  const countryCode = (country && country.length === 2 ? country.toUpperCase() : "GB");
   const supabase = await getSupabaseAdmin();
   if (!supabase) throw new Error("Supabase not configured");
 
@@ -209,12 +323,34 @@ export async function provisionOrg(params: ProvisionOrgParams): Promise<{
         {
           key: brandingKey(orgSlug),
           data: { org_name: orgName },
+          org_id: orgSlug,
           updated_at: now,
         },
         { onConflict: "key" }
       );
   } catch (e) {
     console.error("[signup] Failed to create initial branding (non-critical):", e);
+  }
+
+  // Step 5: Seed default per-org settings with country-aware values.
+  // Non-critical — `ignoreDuplicates: true` so re-runs / partial failures don't error.
+  // Reads in the codebase already use spread-with-defaults pattern, so missing rows
+  // remain safe; this just removes the empty-key code path for happy-path tenants.
+  try {
+    const defaults = buildDefaultSettingsRows({ orgSlug, orgName, country: countryCode, now });
+    await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .upsert(defaults, { onConflict: "key", ignoreDuplicates: true });
+  } catch (e) {
+    console.error("[signup] Failed to seed default settings (non-critical):", e);
+  }
+
+  // Step 6: Migrate any pre-org wizard state into the org-scoped onboarding key.
+  // No-op if the user signed up without using the wizard (legacy flow).
+  try {
+    await migrateWizardStateToOrg({ authUserId, orgId: orgSlug });
+  } catch (e) {
+    console.error("[signup] Failed to migrate wizard state (non-critical):", e);
   }
 
   return { orgSlug, orgName };

@@ -40,6 +40,10 @@
     {
       "path": "/api/cron/stories-expire/",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/domain-verify-poll/",
+      "schedule": "*/15 * * * *"
     }
   ],
   "headers": [

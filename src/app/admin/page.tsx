@@ -7,6 +7,7 @@ import { LiveIndicator } from "@/components/ui/live-indicator";
 import { LiveStatCard } from "@/components/ui/live-stat-card";
 import { StripeConnectionBanner } from "@/components/admin/dashboard/StripeConnectionBanner";
 import { CheckoutHealthBanner } from "@/components/admin/dashboard/CheckoutHealthBanner";
+import { OnboardingChecklist } from "@/components/admin/OnboardingChecklist";
 import { RevenueHero } from "@/components/admin/dashboard/RevenueHero";
 import { PresenceCards } from "@/components/admin/dashboard/PresenceCards";
 import { BuyerJourney } from "@/components/admin/dashboard/BuyerJourney";
@@ -169,6 +170,10 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-5">
+      {/* Onboarding checklist — shows what's left for new tenants. Hides itself
+          once everything is done or all items are dismissed. */}
+      {!isPlatformOwner && <OnboardingChecklist />}
+
       {/* Stripe connection banner */}
       {!isPlatformOwner && stripeStatus && (!stripeStatus.connected || !stripeStatus.chargesEnabled) && (
         <StripeConnectionBanner connected={stripeStatus.connected} chargesEnabled={stripeStatus.chargesEnabled} />

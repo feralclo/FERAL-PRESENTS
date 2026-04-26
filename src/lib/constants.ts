@@ -143,6 +143,17 @@ export function onboardingKey(orgId: string): string {
   return `${orgId}_onboarding`;
 }
 
+/**
+ * Generate the pre-org wizard state key for an authenticated user.
+ *
+ * Stored as a platform-level row (org_id = null) because the wizard runs BEFORE
+ * the org is provisioned (identity/country/branding sections happen pre-slug).
+ * Once provisionOrg() runs, this state is migrated into `onboardingKey(slug)`.
+ */
+export function wizardStateKey(authUserId: string): string {
+  return `wizard_state_${authUserId}`;
+}
+
 /** Generate the merch store settings key for a given org */
 export function merchStoreKey(orgId: string): string {
   return `${orgId}_merch_store`;

@@ -156,9 +156,17 @@ export function SettingsTab({ event, updateEvent, settings, updateSetting, artis
         </CardHeader>
         <CardContent className="px-6 pb-6 space-y-4">
           {liveBlockedMsg && (
-            <Alert variant="warning">
-              <AlertCircle className="size-4" />
-              <AlertDescription>{liveBlockedMsg}</AlertDescription>
+            <Alert variant="warning" className="flex items-start gap-3">
+              <AlertCircle className="size-4 shrink-0 mt-0.5" />
+              <AlertDescription className="flex-1">
+                <div>{liveBlockedMsg}</div>
+                <Link
+                  href="/admin/payments/"
+                  className="mt-2 inline-flex items-center gap-1 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1 text-[11px] font-semibold text-warning transition-colors hover:bg-warning/15"
+                >
+                  Open payment setup →
+                </Link>
+              </AlertDescription>
             </Alert>
           )}
           <div className="grid gap-4 sm:grid-cols-2">

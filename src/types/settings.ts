@@ -226,3 +226,51 @@ export interface SiteSettingsRow {
   data: EventSettings;
   updated_at: string;
 }
+
+/**
+ * Onboarding wizard sections, in display order.
+ * Adding/removing sections here is a breaking change — bump the wizard URL when changed.
+ */
+export type WizardSection =
+  | "identity"
+  | "country"
+  | "branding"
+  | "domain"
+  | "vat"
+  | "payments"
+  | "first_event"
+  | "team"
+  | "finish";
+
+/** Per-section state persisted between visits so the wizard is fully resumable. */
+export interface WizardSectionState {
+  /** First time the user visited this section */
+  visited_at?: string;
+  /** When the user clicked Continue with valid data */
+  completed_at?: string;
+  /** User explicitly chose Skip — counts as "addressed" for checklist purposes */
+  skipped?: boolean;
+  /** Section-specific draft data (form values, choices) so resume restores state */
+  data?: Record<string, unknown>;
+}
+
+/**
+ * Onboarding wizard state — stored in site_settings under either:
+ *   - `wizard_state_{auth_user_id}` (platform key, before provisioning)
+ *   - `{org_id}_onboarding` (org key, after provisioning)
+ *
+ * Migrated from the platform key to the org key when `provisionOrg` runs.
+ */
+export interface OnboardingWizardState {
+  /** Per-section progress */
+  sections: Partial<Record<WizardSection, WizardSectionState>>;
+  /** Most recently visited/edited section — wizard resumes here */
+  last_section?: WizardSection;
+  /** When the wizard was first opened by this user */
+  started_at?: string;
+  /** When the wizard reached the finish line */
+  completed_at?: string;
+  /** Telemetry/personalisation hints. Not used as gates today. */
+  event_types?: string[];
+  experience_level?: "first-event" | "experienced" | "switching" | null;
+}

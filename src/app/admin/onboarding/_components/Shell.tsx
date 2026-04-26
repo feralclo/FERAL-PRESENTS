@@ -26,7 +26,14 @@ export function WizardShell({ api, children, showPreview = true, preview }: Shel
         <Header api={api} />
 
         <div className="flex-1 overflow-y-auto px-5 pb-10 lg:px-10">
-          <div className="mx-auto w-full max-w-[480px] space-y-6">{children}</div>
+          <div className="mx-auto w-full max-w-[480px] space-y-6">
+            <div
+              key={api.current}
+              className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-1 duration-300"
+            >
+              {children}
+            </div>
+          </div>
         </div>
 
         <SaveStatus api={api} />
@@ -34,7 +41,7 @@ export function WizardShell({ api, children, showPreview = true, preview }: Shel
 
       {showPreview && (
         <div className="relative z-[1] hidden flex-1 border-l border-border/60 bg-card/30 lg:block">
-          {preview}
+          <div className="h-full animate-in fade-in-0 duration-500">{preview}</div>
         </div>
       )}
     </div>

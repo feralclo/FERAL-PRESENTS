@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { OnboardingWizardState } from "@/types/settings";
 import { getCountryInfo } from "@/lib/country-currency-map";
 
@@ -22,6 +22,7 @@ import { getCountryInfo } from "@/lib/country-currency-map";
 interface IdentityData {
   brand_name?: string;
   country?: string;
+  slug?: string;
 }
 interface BrandingData {
   logo_data_uri?: string;
@@ -85,6 +86,7 @@ export function BrandPreview({ state }: { state: OnboardingWizardState | null })
       : "#8B5CF6";
 
   const brandName = (identity.brand_name || "Your brand").toUpperCase();
+  const slug = identity.slug || "your-brand";
   const countryInfo = getCountryInfo(identity.country || "GB");
   const currencySymbol = countryInfo?.currencySymbol || "£";
 
@@ -120,16 +122,12 @@ export function BrandPreview({ state }: { state: OnboardingWizardState | null })
               <Header brandName={brandName} logo={branding.logo_data_uri} />
               <Hero
                 accent={accent}
-                logo={branding.logo_data_uri}
-                brandName={brandName}
                 currencySymbol={currencySymbol}
                 minPrice={SAMPLE_TICKETS[0].price}
               />
-              <TicketWidget
-                accent={accent}
-                currencySymbol={currencySymbol}
-              />
-              <Footer brandName={brandName} />
+              <AboutBlock brandName={brandName} />
+              <TicketWidget accent={accent} currencySymbol={currencySymbol} />
+              <Footer brandName={brandName} slug={slug} />
             </div>
           </PhoneFrame>
           <PreviewCaption identity={identity} branding={branding} />
@@ -183,7 +181,21 @@ function PreviewCaption({
   );
 }
 
+function useSampleClock() {
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
 function PhoneFrame({ children }: { children: React.ReactNode }) {
+  const now = useSampleClock();
+  const time = now
+    .toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: false })
+    .replace(/^0/, "");
+
   return (
     <div className="relative">
       {/* Soft outer glow */}
@@ -195,14 +207,63 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
         }}
       />
       {/* Device frame */}
-      <div className="relative overflow-hidden rounded-[36px] border border-white/[0.08] bg-black shadow-[0_30px_80px_-30px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.04)_inset]">
-        {/* Tiny notch bar */}
-        <div className="relative h-6 bg-black">
-          <div className="absolute left-1/2 top-1.5 h-3.5 w-20 -translate-x-1/2 rounded-full bg-black" />
+      <div className="relative overflow-hidden rounded-[40px] border border-white/[0.1] bg-black p-[3px] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.04)_inset]">
+        <div className="overflow-hidden rounded-[36px] bg-black">
+          {/* Status bar — iPhone-style */}
+          <div className="relative flex h-9 items-center justify-between bg-black px-6 text-[11px] font-semibold text-white">
+            <span className="tabular-nums">{time}</span>
+            {/* Dynamic-island look */}
+            <span className="absolute left-1/2 top-1.5 h-6 w-24 -translate-x-1/2 rounded-full bg-black" />
+            <div className="flex items-center gap-1">
+              <SignalIcon />
+              <WifiIcon />
+              <BatteryIcon />
+            </div>
+          </div>
+          <div className="max-h-[620px] overflow-y-auto">{children}</div>
         </div>
-        <div className="max-h-[640px] overflow-y-auto">{children}</div>
       </div>
     </div>
+  );
+}
+
+function SignalIcon() {
+  return (
+    <svg viewBox="0 0 18 12" className="h-3 w-3.5">
+      <rect x="0" y="8" width="3" height="4" rx="0.5" fill="currentColor" />
+      <rect x="5" y="6" width="3" height="6" rx="0.5" fill="currentColor" />
+      <rect x="10" y="3" width="3" height="9" rx="0.5" fill="currentColor" />
+      <rect x="15" y="0" width="3" height="12" rx="0.5" fill="currentColor" opacity="0.4" />
+    </svg>
+  );
+}
+function WifiIcon() {
+  return (
+    <svg viewBox="0 0 16 12" className="h-3 w-3.5">
+      <path
+        d="M8 11.5c.6 0 1-.4 1-1s-.4-1-1-1-1 .4-1 1 .4 1 1 1Zm-3-3a4.5 4.5 0 0 1 6 0l-1 1a3 3 0 0 0-4 0l-1-1Zm-2.5-2a8 8 0 0 1 11 0l-1 1a6.5 6.5 0 0 0-9 0l-1-1Zm-2.5-2a11.5 11.5 0 0 1 16 0l-1 1a10 10 0 0 0-14 0l-1-1Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+function BatteryIcon() {
+  return (
+    <svg viewBox="0 0 24 12" className="h-3 w-5">
+      <rect
+        x="0.5"
+        y="0.5"
+        width="20"
+        height="11"
+        rx="2.5"
+        ry="2.5"
+        stroke="currentColor"
+        strokeOpacity="0.55"
+        fill="none"
+      />
+      <rect x="21" y="3.5" width="1.6" height="5" rx="0.6" fill="currentColor" opacity="0.55" />
+      <rect x="2" y="2" width="14" height="8" rx="1.2" fill="currentColor" />
+    </svg>
   );
 }
 
@@ -234,14 +295,10 @@ function Header({ brandName, logo }: { brandName: string; logo?: string }) {
 
 function Hero({
   accent,
-  logo,
-  brandName,
   currencySymbol,
   minPrice,
 }: {
   accent: string;
-  logo?: string;
-  brandName: string;
   currencySymbol: string;
   minPrice: number;
 }) {
@@ -456,15 +513,33 @@ function TicketRow({
   );
 }
 
-function Footer({ brandName }: { brandName: string }) {
+function AboutBlock({ brandName }: { brandName: string }) {
   return (
-    <footer className="border-t border-white/[0.04] px-5 py-5 text-center">
-      <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">
+    <section className="border-t border-white/[0.04] px-5 py-7">
+      <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-white/40">
+        About
+      </div>
+      <p
+        className="text-[12px] leading-[1.6] text-white/65"
+        style={{ fontFamily: "'Space Mono', monospace" }}
+      >
+        Long, sweaty night spanning two rooms with a stacked international lineup.
+        Doors at nine, last entry at eleven thirty. Powered by {brandName}.
+      </p>
+    </section>
+  );
+}
+
+function Footer({ brandName, slug }: { brandName: string; slug: string }) {
+  return (
+    <footer className="border-t border-white/[0.04] px-5 py-6 text-center">
+      <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">
         {brandName}
       </div>
-      <div className="mt-1.5 text-[9px] text-white/25">
-        Powered by Entry
+      <div className="mt-1.5 font-mono text-[9px] tracking-[0.04em] text-white/30">
+        {slug}.entry.events
       </div>
+      <div className="mt-3 text-[9px] text-white/25">Powered by Entry</div>
     </footer>
   );
 }

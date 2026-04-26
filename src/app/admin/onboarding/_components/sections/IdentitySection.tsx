@@ -14,6 +14,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SectionFooter, SectionField, SectionHeading } from "../Shell";
 import { COUNTRIES, detectCountryFromLocale } from "@/lib/country-currency-map";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import type { OnboardingApi } from "../../_state";
 
 interface IdentityData {
@@ -22,6 +23,17 @@ interface IdentityData {
   brand_name?: string;
   slug?: string;
   country?: string;
+}
+
+/**
+ * Best-effort split of a single full-name string into first/last.
+ * Handles "Alex Morgan", "Alex de Lacy", "Alex" → ["Alex", ""], etc.
+ */
+function splitName(full: string): { first: string; last: string } {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length === 0) return { first: "", last: "" };
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  return { first: parts[0], last: parts.slice(1).join(" ") };
 }
 
 /**
@@ -59,7 +71,49 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
   const [provisionError, setProvisionError] = useState<string | null>(null);
 
   const slugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefilledRef = useRef(false);
   const isLocked = api.hasOrg;
+
+  // Pre-fill name from auth metadata (Google OAuth populates full_name /
+  // given_name). Stripe Connect Express's redesign credits a 17% conversion
+  // uplift to aggressive pre-fill: don't ask for what we already know.
+  useEffect(() => {
+    if (prefilledRef.current) return;
+    if (stored.first_name || stored.last_name) {
+      prefilledRef.current = true;
+      return;
+    }
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (cancelled || !data.user) return;
+      const meta = data.user.user_metadata as
+        | { full_name?: string; name?: string; given_name?: string; family_name?: string }
+        | undefined;
+      if (!meta) return;
+      const given = meta.given_name?.trim();
+      const family = meta.family_name?.trim();
+      if (given || family) {
+        if (given && !firstName) setFirstName(given);
+        if (family && !lastName) setLastName(family);
+        prefilledRef.current = true;
+        return;
+      }
+      const fallback = (meta.full_name || meta.name || "").trim();
+      if (fallback) {
+        const { first, last } = splitName(fallback);
+        if (first && !firstName) setFirstName(first);
+        if (last && !lastName) setLastName(last);
+        prefilledRef.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Slug live-derived from brand name + availability check.
   useEffect(() => {

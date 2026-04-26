@@ -76,21 +76,39 @@ const SAMPLE_TICKETS = [
   },
 ] as const;
 
-/** The next upcoming Saturday — gives the preview the feel of "your next event". */
-function nextSaturdayParts(): { weekday: string; full: string; short: string } {
+/**
+ * The next upcoming Saturday, formatted for the locale that matches the
+ * tenant's country. Gives the preview the feel of "your own next event"
+ * with the date written the way buyers in that country would expect.
+ */
+function nextSaturdayParts(country: string): {
+  weekday: string;
+  full: string;
+  short: string;
+} {
   const now = new Date();
   const day = now.getDay();
   const offset = (6 - day + 7) % 7 || 7;
   const sat = new Date(now);
   sat.setDate(now.getDate() + offset);
+  // Map country → BCP-47 locale; fallback en-GB for the rest of EU + ROW.
+  const localeMap: Record<string, string> = {
+    US: "en-US",
+    CA: "en-CA",
+    AU: "en-AU",
+    NZ: "en-NZ",
+    GB: "en-GB",
+    IE: "en-IE",
+  };
+  const locale = localeMap[country] || "en-GB";
   return {
-    weekday: sat.toLocaleDateString("en-GB", { weekday: "long" }),
-    full: sat.toLocaleDateString("en-GB", {
+    weekday: sat.toLocaleDateString(locale, { weekday: "long" }),
+    full: sat.toLocaleDateString(locale, {
       weekday: "long",
       day: "numeric",
       month: "long",
     }),
-    short: sat.toLocaleDateString("en-GB", {
+    short: sat.toLocaleDateString(locale, {
       weekday: "short",
       day: "numeric",
       month: "short",
@@ -146,6 +164,7 @@ export function BrandPreview({ state }: { state: OnboardingWizardState | null })
                 accent={accent}
                 currencySymbol={currencySymbol}
                 minPrice={SAMPLE_TICKETS[0].price}
+                country={identity.country || "GB"}
               />
               <AboutBlock brandName={brandName} />
               <TicketWidget accent={accent} currencySymbol={currencySymbol} />
@@ -319,12 +338,14 @@ function Hero({
   accent,
   currencySymbol,
   minPrice,
+  country,
 }: {
   accent: string;
   currencySymbol: string;
   minPrice: number;
+  country: string;
 }) {
-  const date = useMemo(() => nextSaturdayParts(), []);
+  const date = useMemo(() => nextSaturdayParts(country), [country]);
   return (
     <section
       className="relative overflow-hidden"

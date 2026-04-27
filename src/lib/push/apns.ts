@@ -135,7 +135,14 @@ async function getOrOpenSession(): Promise<http2.ClientHttp2Session> {
       // best-effort cleanup
     }
   }
-  const http2Mod = await import("http2");
+  // /* @vite-ignore */ tells vite/rollup to skip its static-analysis pass on
+  // this specifier. Without it vite reads the literal "http2" out of the
+  // dynamic import and externalises it for jsdom test environments — but
+  // vite has no jsdom stub for http2, and the broken placeholder faults at
+  // runtime with "No such built-in module: node:". With the ignore, Node's
+  // own module resolver loads http2 normally at runtime in any environment
+  // that actually exercises this code path (production / integration).
+  const http2Mod = (await import(/* @vite-ignore */ "http2")) as typeof http2;
   cachedSession = http2Mod.connect(host);
   cachedSessionHost = host;
   // Drop the cache if the connection errors out so the next send opens a

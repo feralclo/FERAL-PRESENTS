@@ -1,3 +1,12 @@
+// @vitest-environment node
+//
+// Run this suite in Node, not jsdom. The pure helpers under test (envelope
+// builder, ES256 JWT mint, response mapper) only need Node's `crypto` —
+// no DOM. vite's jsdom externalisation produces stubs for Node built-ins,
+// and the crypto stub doesn't ship `generateKeyPairSync` / `verify`
+// (Node-only APIs we use to lock in the JWT signature shape), which made
+// the suite fail at module-load with "No such built-in module: node:" on
+// Vercel (Node 22 + jsdom). Node env loads the real crypto module.
 import { describe, expect, it } from "vitest";
 import * as crypto from "crypto";
 // Import from apns-core, not apns. apns.ts pulls in node:http2 (for the

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as crypto from "node:crypto";
+import * as crypto from "crypto";
 import {
   buildApnsEnvelope,
   mapApnsResponse,

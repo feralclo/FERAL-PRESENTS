@@ -21,8 +21,8 @@
  * call.
  */
 
-import * as crypto from "node:crypto";
-import * as http2 from "node:http2";
+import * as crypto from "crypto";
+import * as http2 from "http2";
 import type {
   DeviceToken,
   DeliveryResult,

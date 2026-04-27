@@ -5,6 +5,29 @@ import { NextRequest } from "next/server";
 // Mocks
 // ---------------------------------------------------------------------------
 
+// Stub the APNs transport before vite resolves it. webhook handler
+// transitively pulls @/lib/push/apns through orders → rep-attribution →
+// rep-notifications → fanout, and apns.ts statically imports node:http2.
+// vite/vitest externalise http2 in jsdom env and the externalised stub
+// faults at runtime with "No such built-in module: node:". The mock
+// short-circuits that import graph so http2 is never loaded for this test.
+vi.mock("@/lib/push/apns", () => ({
+  apns: {
+    platform: "ios",
+    isConfigured: () => false,
+    send: vi.fn().mockResolvedValue({
+      status: "skipped",
+      error_message: "mocked in webhook test",
+      transport_response_ms: 0,
+    }),
+  },
+  buildApnsEnvelope: vi.fn(() => ({})),
+  mapApnsResponse: vi.fn(() => ({ status: "skipped", transport_response_ms: 0 })),
+  mintApnsJwt: vi.fn(() => "stub.jwt.token"),
+  getApnsHost: vi.fn(() => "https://api.push.apple.com"),
+  _resetApnsCachesForTests: vi.fn(),
+}));
+
 const mockFrom = vi.fn();
 const mockRpc = vi.fn();
 const mockSupabase = { from: mockFrom, rpc: mockRpc };

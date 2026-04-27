@@ -15,21 +15,12 @@
  * header. Apple rate-limits new tokens, so we cache it at module scope for
  * 50 minutes (Apple permits 20–60min reuse).
  *
- * HTTP/2: opens a session on the first send and reuses it for the lifetime
- * of the serverless invocation. Vercel functions are short-lived so a stale
- * session is unlikely; if one goes bad we tear down and reopen on the next
- * call.
+ * Pure helpers (envelope builder, JWT mint, response mapper, host resolver)
+ * live in `./apns-core` — split out so tests can import them without
+ * pulling http2 into their module graph (vite/vitest externalises http2 in
+ * jsdom and the externalised stub faults at runtime).
  */
 
-import * as crypto from "crypto";
-// `http2` is loaded lazily inside `send()` via `await import("http2")` —
-// static `import * as http2 from "http2"` makes vite/vitest externalise the
-// module at jsdom module-load, and vite has no jsdom stub for http2, so the
-// placeholder explodes with "No such built-in module: node:" (Vercel runs
-// tests in Node 22 + jsdom). This tripped both push-apns.test.ts (direct
-// importer) and webhook.test.ts (transitive — webhook → orders →
-// rep-notifications → fanout → apns). Keeping the type-only reference so
-// the cached session field is still typed.
 import type * as http2 from "http2";
 import type {
   DeviceToken,
@@ -37,12 +28,17 @@ import type {
   NotificationPayload,
   PushTransport,
 } from "./types";
+import {
+  buildApnsEnvelope,
+  getApnsHost,
+  mapApnsResponse,
+  mintApnsJwt,
+} from "./apns-core";
 
-const APNS_PROD_HOST = "https://api.push.apple.com";
-const APNS_SANDBOX_HOST = "https://api.development.push.apple.com";
+// Re-export the pure helpers so existing imports of `@/lib/push/apns`
+// still resolve. Tests should prefer importing directly from `./apns-core`.
+export { buildApnsEnvelope, getApnsHost, mapApnsResponse, mintApnsJwt };
 
-// Apple permits reusing a provider token for 20–60 minutes. 50 min stays
-// well inside the window while minimising regenerations under steady load.
 const JWT_TTL_MS = 50 * 60 * 1000;
 
 interface CachedToken {
@@ -53,48 +49,6 @@ let cachedToken: CachedToken | null = null;
 
 let cachedSession: http2.ClientHttp2Session | null = null;
 let cachedSessionHost: string | null = null;
-
-function base64url(input: Buffer | string): string {
-  const buf = typeof input === "string" ? Buffer.from(input) : input;
-  return buf
-    .toString("base64")
-    .replace(/=+$/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
-}
-
-/**
- * Mint an ES256 JWT using the P8 private key. Cached at module scope.
- *
- * Exported for tests — production callers should use {@link getProviderToken}.
- */
-export function mintApnsJwt(opts: {
-  keyPem: string;
-  keyId: string;
-  teamId: string;
-  nowSec?: number;
-}): string {
-  const now = opts.nowSec ?? Math.floor(Date.now() / 1000);
-  const header = base64url(
-    JSON.stringify({ alg: "ES256", kid: opts.keyId, typ: "JWT" }),
-  );
-  const payload = base64url(
-    JSON.stringify({ iss: opts.teamId, iat: now }),
-  );
-  const signingInput = `${header}.${payload}`;
-
-  // dsaEncoding: 'ieee-p1363' produces the raw 64-byte (r||s) signature
-  // Apple expects, instead of the DER form Node returns by default.
-  const signature = crypto.sign(
-    "SHA256",
-    Buffer.from(signingInput),
-    {
-      key: opts.keyPem,
-      dsaEncoding: "ieee-p1363",
-    },
-  );
-  return `${signingInput}.${base64url(signature)}`;
-}
 
 function getProviderToken(): string {
   const now = Date.now();
@@ -108,18 +62,8 @@ function getProviderToken(): string {
   return token;
 }
 
-function getApnsHostUrl(): string {
-  return process.env.APNS_USE_SANDBOX === "true"
-    ? APNS_SANDBOX_HOST
-    : APNS_PROD_HOST;
-}
-
-export function getApnsHost(): string {
-  return getApnsHostUrl();
-}
-
 async function getOrOpenSession(): Promise<http2.ClientHttp2Session> {
-  const host = getApnsHostUrl();
+  const host = getApnsHost();
   if (
     cachedSession &&
     !cachedSession.closed &&
@@ -135,18 +79,12 @@ async function getOrOpenSession(): Promise<http2.ClientHttp2Session> {
       // best-effort cleanup
     }
   }
-  // /* @vite-ignore */ tells vite/rollup to skip its static-analysis pass on
-  // this specifier. Without it vite reads the literal "http2" out of the
-  // dynamic import and externalises it for jsdom test environments — but
-  // vite has no jsdom stub for http2, and the broken placeholder faults at
-  // runtime with "No such built-in module: node:". With the ignore, Node's
-  // own module resolver loads http2 normally at runtime in any environment
-  // that actually exercises this code path (production / integration).
+  // /* @vite-ignore */ keeps vite from statically resolving "http2" so it
+  // doesn't externalise it for jsdom test environments. Production / Node
+  // resolve the import normally at runtime.
   const http2Mod = (await import(/* @vite-ignore */ "http2")) as typeof http2;
   cachedSession = http2Mod.connect(host);
   cachedSessionHost = host;
-  // Drop the cache if the connection errors out so the next send opens a
-  // fresh one rather than re-using a dead session.
   cachedSession.on("error", () => {
     cachedSession = null;
     cachedSessionHost = null;
@@ -156,55 +94,6 @@ async function getOrOpenSession(): Promise<http2.ClientHttp2Session> {
     cachedSessionHost = null;
   });
   return cachedSession;
-}
-
-/**
- * Map an APNs HTTP response (status + parsed body reason) to our internal
- * DeliveryResult. Pure function so tests don't need the network.
- *
- * Reason codes per Apple docs:
- *   https://developer.apple.com/documentation/usernotifications/handling_notification_responses_from_apns
- */
-export function mapApnsResponse(
-  status: number,
-  reason: string | undefined,
-  responseMs: number,
-): DeliveryResult {
-  if (status === 200) {
-    return { status: "sent", transport_response_ms: responseMs };
-  }
-  // Tokens that are no longer valid — Apple wants us to stop sending.
-  if (
-    status === 410 ||
-    reason === "Unregistered" ||
-    reason === "BadDeviceToken" ||
-    reason === "DeviceTokenNotForTopic"
-  ) {
-    return {
-      status: "invalid_token",
-      error_message: reason ?? `apns ${status}`,
-      transport_response_ms: responseMs,
-    };
-  }
-  // Provider-token issues — surface clearly so misconfigured Vercel env
-  // shows up in notification_deliveries instead of looking like a bad
-  // device.
-  if (
-    reason === "ExpiredProviderToken" ||
-    reason === "InvalidProviderToken" ||
-    reason === "MissingProviderToken"
-  ) {
-    return {
-      status: "failed",
-      error_message: `apns auth: ${reason}`,
-      transport_response_ms: responseMs,
-    };
-  }
-  return {
-    status: "failed",
-    error_message: reason ? `apns ${status}: ${reason}` : `apns ${status}`,
-    transport_response_ms: responseMs,
-  };
 }
 
 class ApnsTransport implements PushTransport {
@@ -311,9 +200,8 @@ class ApnsTransport implements PushTransport {
         });
       });
 
-      // Hard ceiling so a hung HTTP/2 stream can't wedge the fanout.
       // 0x8 is NGHTTP2_CANCEL per RFC 7540 §7 — fixed by the HTTP/2 spec,
-      // safe to inline so we don't have to load `http2.constants` here.
+      // safe to inline so we don't need to load http2.constants here.
       const timeout = setTimeout(() => {
         try {
           req.close(0x8);
@@ -349,26 +237,4 @@ export function _resetApnsCachesForTests(): void {
   }
   cachedSession = null;
   cachedSessionHost = null;
-}
-
-// ---------------------------------------------------------------------------
-// Envelope builder — kept public so tests can assert on shape without
-// needing real credentials. This is the contract iOS's native-notification
-// extension parses.
-// ---------------------------------------------------------------------------
-
-export function buildApnsEnvelope(payload: NotificationPayload) {
-  return {
-    aps: {
-      alert: {
-        title: payload.title,
-        ...(payload.body ? { body: payload.body } : {}),
-      },
-      sound: "default",
-      "mutable-content": 1,
-    },
-    type: payload.type,
-    ...(payload.deep_link ? { deep_link: payload.deep_link } : {}),
-    ...(payload.data ? { data: payload.data } : {}),
-  };
 }

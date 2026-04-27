@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import * as crypto from "crypto";
+// Import from apns-core, not apns. apns.ts pulls in node:http2 (for the
+// transport class) which vite/vitest externalise for jsdom — a broken stub
+// that faults at runtime with "No such built-in module: node:". apns-core
+// holds the pure helpers (envelope, JWT, response mapper) with zero http2
+// reference, so the test's module graph stays clean.
 import {
   buildApnsEnvelope,
   mapApnsResponse,
   mintApnsJwt,
-} from "@/lib/push/apns";
+} from "@/lib/push/apns-core";
 
 // Generate a throwaway P-256 key pair per test run. These keys never touch
 // Apple — they exist only so we can sign and verify JWTs locally.

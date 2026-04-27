@@ -481,7 +481,10 @@ export type RepNotificationType =
   | "poster_drop"
   | "peer_milestone"
   | "general"
-  | "rep_follow";
+  | "rep_follow"
+  | "reward_drop"
+  | "event_reminder"
+  | "streak_at_risk";
 
 export interface RepNotification {
   id: string;

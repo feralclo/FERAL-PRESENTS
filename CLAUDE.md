@@ -235,7 +235,7 @@ Project: `rqtfghzhkkdytkegcifm` (agency-feral, eu-west-1).
 **NOT org-scoped (rep- or platform-keyed):**
 - Identity/social: `reps` (status active|deleted|suspended), `promoters`, `rep_promoter_memberships`, `rep_promoter_follows`, `rep_follows`, `rep_blocks`, `rep_reports`, `rep_event_attendance` (**RLS DISABLED** — populated by `ticket_attendance_sync` trigger).
 - Activity: `rep_quests`, `rep_quest_submissions`, `rep_quest_acceptances`, `rep_rewards`, `rep_reward_claims`, `rep_events`, `rep_milestones`, `rep_event_position_rewards`, `rep_points_log`, `rep_streaks`, `rep_rank_snapshots`.
-- Notifications: `rep_notifications`, `rep_push_subscriptions` (legacy), `device_tokens`, `notification_deliveries`.
+- Notifications: `rep_notifications`, `rep_push_subscriptions` (legacy), `device_tokens`, `notification_deliveries`, `rep_event_reminders` (cron dedup, internal only).
 - Stories: `rep_stories`, `rep_story_views`. EP: `platform_ep_config` (singleton), `ep_ledger` (APPEND-ONLY), `ep_tenant_purchases`, `ep_tenant_payouts`. Market: `platform_market_{products,product_variants,claims,vendors}`.
 
 **Legacy/low-row (don't extend)**: `contracts`, `settings` (generic, distinct from `site_settings`), `artists_legacy_payments`.
@@ -323,13 +323,14 @@ Events, Artists, Merch, Customers, Discounts (`validate|auto|seed`), Settings, B
 - Admin dashboards: `admin/{live-sessions,checkout-health,orders-stats,uk-events}`
 - Integrations: `mux/*`, `email/*`, `wallet/status`, `upload`, `upload-video`, scanner (4), merch-store (5)
 
-### Vercel Cron (11 in `vercel.json`)
+### Vercel Cron (13 in `vercel.json`)
 - `*/5 * * * *` `cron/announcement-emails` — steps 2–4 dispatch
 - `*/10 * * * *` `cron/abandoned-carts` — recovery
 - `*/15 * * * *` `cron/guest-list-reminders` (RSVP); `cron/domain-verify-poll` (custom-domain check)
 - `*/30 * * * *` `cron/stripe-health` — payment health
-- `0 * * * *` `cron/stories-expire` — soft-delete expired stories
+- `0 * * * *` `cron/stories-expire` (soft-delete expired stories); `cron/event-reminders` (push 24h+2h before rep-enabled events; deduped via `rep_event_reminders`)
 - `0 */6 * * *` `cron/payment-digest`, `cron/exchange-rates`
+- `0 19 * * *` `cron/streak-at-risk` — daily nudge to reps with active streak + 0 XP today (UTC)
 - `5 0 * * *` `cron/rep-streak-reset`; `0 2 * * 1` `cron/rep-rank-snapshots` (weekly); `0 3 1 * *` `cron/ep-payouts` (monthly tenant EP → cash)
 
 ---

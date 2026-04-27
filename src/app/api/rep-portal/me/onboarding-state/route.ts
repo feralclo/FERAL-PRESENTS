@@ -3,6 +3,13 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireRepAuth } from "@/lib/auth";
 import * as Sentry from "@sentry/nextjs";
 
+// Always re-evaluate on every request — onboarding state drives the iOS
+// welcome strip, and a stale read produces "you've completed this step but
+// the strip still shows" complaints. Force the route off Vercel's data
+// cache and emit a no-store header so any intermediary caches honour it.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * GET /api/rep-portal/me/onboarding-state
  *
@@ -29,6 +36,10 @@ import * as Sentry from "@sentry/nextjs";
  *     // a name, a photo, and is on at least one team. iOS uses this to
  *     // decide whether to gate the main feed behind the onboarding wizard.
  *     ready_for_main_app: bool,
+ *     // ISO8601 timestamp the response was computed. Lets iOS surface
+ *     // staleness in dev mode and lets us debug "the strip still says
+ *     // missing X" by hitting the endpoint and confirming a fresh eval.
+ *     last_evaluated_at: string,
  *   }
  * }
  *
@@ -133,20 +144,28 @@ export async function GET() {
     const readyForMainApp =
       hasDisplayName && hasPhoto && hasApprovedMembership;
 
-    return NextResponse.json({
-      data: {
-        has_display_name: hasDisplayName,
-        has_photo: hasPhoto,
-        email_verified: emailVerified,
-        has_approved_membership: hasApprovedMembership,
-        has_pending_membership: pendingCount > 0,
-        has_following_promoter: followingPromotersCount > 0,
-        has_friend: hasFriend,
-        has_accepted_quest: acceptedQuestsCount > 0,
-        onboarding_completed: onboardingCompleted,
-        ready_for_main_app: readyForMainApp,
+    return NextResponse.json(
+      {
+        data: {
+          has_display_name: hasDisplayName,
+          has_photo: hasPhoto,
+          email_verified: emailVerified,
+          has_approved_membership: hasApprovedMembership,
+          has_pending_membership: pendingCount > 0,
+          has_following_promoter: followingPromotersCount > 0,
+          has_friend: hasFriend,
+          has_accepted_quest: acceptedQuestsCount > 0,
+          onboarding_completed: onboardingCompleted,
+          ready_for_main_app: readyForMainApp,
+          last_evaluated_at: new Date().toISOString(),
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      },
+    );
   } catch (err) {
     Sentry.captureException(err);
     console.error("[rep-portal/me/onboarding-state] Error:", err);

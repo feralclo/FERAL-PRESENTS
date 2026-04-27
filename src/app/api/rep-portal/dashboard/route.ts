@@ -165,6 +165,7 @@ export async function GET(request: NextRequest) {
       followedPromotersResult,
       eventsResult,
       recentSalesResult,
+      approvedQuestCountResult,
     ] = await Promise.all([
       getPlatformXPConfig(),
 
@@ -223,6 +224,18 @@ export async function GET(request: NextRequest) {
             .order("created_at", { ascending: false })
             .limit(5)
         : Promise.resolve({ data: [] }),
+
+      // Lifetime approved-quest count across every promoter team. iOS uses
+      // `count == 1` to detect the first-ever approval (and fire its
+      // celebration takeover) without relying on a UserDefaults flag that
+      // would reset on reinstall.
+      want("rep")
+        ? db
+            .from(TABLES.REP_QUEST_SUBMISSIONS)
+            .select("id", { count: "exact", head: true })
+            .eq("rep_id", repId)
+            .eq("status", "approved")
+        : Promise.resolve({ count: 0 }),
     ]);
 
     const leveling: LevelingConfig =
@@ -431,6 +444,7 @@ export async function GET(request: NextRequest) {
           streak_best: streakBest,
           follower_count: rep.follower_count ?? 0,
           following_count: rep.following_count ?? 0,
+          total_approved_quest_count: approvedQuestCountResult.count ?? 0,
         }
       : null;
 

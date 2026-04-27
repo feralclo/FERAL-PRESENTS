@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendRepEmail } from "@/lib/rep-emails";
+import { createNotification } from "@/lib/rep-notifications";
 import { getPlatformXPConfig } from "@/lib/rep-points";
 import * as Sentry from "@sentry/nextjs";
 
@@ -296,7 +297,11 @@ export async function POST(request: NextRequest) {
       const { data: reps } = await repQuery;
 
       if (reps && reps.length > 0) {
-        // Fire-and-forget — don't await
+        // Fire-and-forget — don't await. Email + push run in parallel; the
+        // push fanout (createNotification → APNs/FCM/web) is what iOS
+        // surfaces in the notifications sheet, the email is the legacy
+        // fallback for reps without a registered device.
+        const questBody = data.subtitle?.trim() || data.description?.trim() || null;
         for (const rep of reps) {
           sendRepEmail({
             type: "quest_notification",
@@ -308,6 +313,21 @@ export async function POST(request: NextRequest) {
               points_reward: data.points_reward,
             },
           });
+          createNotification({
+            repId: rep.id,
+            orgId,
+            type: "reward_drop",
+            title: data.title,
+            body: questBody ?? undefined,
+            link: `/rep/quests/${data.id}`,
+            metadata: {
+              quest_id: data.id,
+              event_id: data.event_id ?? null,
+              promoter_id: data.promoter_id ?? null,
+              xp_reward: data.points_reward ?? 0,
+              ep_reward: data.ep_reward ?? data.currency_reward ?? 0,
+            },
+          }).catch((err) => Sentry.captureException(err, { level: "warning" }));
         }
       }
     }

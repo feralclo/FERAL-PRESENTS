@@ -44,6 +44,14 @@
     {
       "path": "/api/cron/domain-verify-poll/",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/event-reminders/",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/streak-at-risk/",
+      "schedule": "0 19 * * *"
     }
   ],
   "headers": [

@@ -88,7 +88,7 @@ export default function OnboardingPage() {
   return (
     <WizardShell
       api={api}
-      showPreview={api.current !== "finish"}
+      showPreview
       preview={<BrandPreview state={api.state} />}
     >
       {sectionNode}

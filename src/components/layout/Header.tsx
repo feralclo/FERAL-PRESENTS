@@ -145,7 +145,20 @@ export function Header() {
             alt={branding.org_name || "Entry"}
             surface="dark"
             className="nav__logo-img"
-            style={branding.logo_height ? { height: Math.min(branding.logo_height, 56) } : undefined}
+            // Tenants can nudge the logo height up to the CSS-enforced cap
+            // (28px mobile / 36px desktop) via Settings → Branding. We push
+            // the value as a CSS var so it can clamp against the cap rather
+            // than fight it as an inline `height: ...px`.
+            style={
+              branding.logo_height
+                ? ({
+                    ["--branding-logo-height-cap" as string]: `${Math.min(
+                      branding.logo_height,
+                      36
+                    )}px`,
+                  } as React.CSSProperties)
+                : undefined
+            }
           />
         ) : (
           <span className="nav__logo-text" data-branding="logo">

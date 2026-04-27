@@ -11,6 +11,7 @@ import {
   announcementAutomationKey,
   eventsListKey,
 } from "@/lib/constants";
+import type { BrandingSettings } from "@/types/settings";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getDefaultVatSettings } from "@/lib/country-vat";
 import { migrateWizardStateToOrg } from "@/lib/onboarding-state";
@@ -150,7 +151,29 @@ function buildDefaultSettingsRows(opts: {
 
   // NOTE: site_settings has only (key, data, updated_at) — no org_id column.
   // Tenancy is encoded in the key prefix (e.g. "feral_branding").
+  // Default branding seeded at provision time so /api/branding GET returns the
+  // tenant's own org_name rather than the platform fallback ("Entry"). Without
+  // this, surfaces like VerifiedBanner ("Official {org_name} Ticket Store") and
+  // event page headers misattribute every freshly-provisioned tenant as "Entry"
+  // until they manually save Settings → Branding.
+  const seedBranding: BrandingSettings = {
+    org_name: orgName,
+    logo_url: "",
+    accent_color: "#8B5CF6",
+    background_color: "#0e0e0e",
+    card_color: "#1a1a1a",
+    text_color: "#ffffff",
+    heading_font: "Space Mono",
+    body_font: "Inter",
+    copyright_text: `© ${new Date().getFullYear()} ${orgName}`,
+  };
+
   return [
+    {
+      key: brandingKey(orgSlug),
+      data: seedBranding as unknown as Record<string, unknown>,
+      updated_at: now,
+    },
     {
       key: vatKey(orgSlug),
       data: getDefaultVatSettings(country) as unknown as Record<string, unknown>,

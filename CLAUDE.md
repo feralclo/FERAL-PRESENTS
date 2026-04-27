@@ -421,7 +421,7 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 
 1. **Google Ads + TikTok tracking** — placeholders only.
 2. **Aura theme** — 18 deprecated components, pending removal.
-3. **APNs + FCM transports stubbed** — `lib/push/apns.ts` and `lib/push/fcm.ts` have envelope builders + `isConfigured()` but the actual HTTP/2 send (APNs JWT-signed POST, FCM service-account → access-token → v1 send) is a TODO returning `status:"skipped"` with `"transport stubbed — auth implementation pending"`. Setting env vars alone will NOT deliver pushes; the senders need to be implemented. Web push works (VAPID).
+3. **FCM transport stubbed** — `lib/push/fcm.ts` has envelope builder + `isConfigured()` but the service-account → access-token → v1 send is still a TODO returning `status:"skipped"`. Not blocking iOS; will need finishing for Android. APNs is live (`lib/push/apns.ts` does ES256 JWT + HTTP/2 POST against `api.push.apple.com[/development]`); requires `APNS_AUTH_KEY_P8` (PEM) + `APNS_KEY_ID` + `APNS_TEAM_ID` + `APNS_BUNDLE_ID` + `APNS_USE_SANDBOX=true` for TestFlight builds. Web push works (VAPID).
 4. **Web `/rep/*`** — frozen. Rebuild to v2 spec post-iOS-launch.
 5. **Poster drops** — paused. No table; `dashboard.feed` = peer + story activity.
 6. **Apple Sign-In** — deferred. Google IS live; App Store 4.8 only triggers when third-party SSO offered.

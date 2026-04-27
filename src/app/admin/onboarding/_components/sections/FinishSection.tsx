@@ -1,19 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Loader2,
-  Copy,
-  ExternalLink,
-  CreditCard,
-  Calendar,
-  Users,
-  Globe,
-  ArrowRight,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Loader2, Copy, ExternalLink, ArrowRight, Check } from "lucide-react";
 import type { OnboardingApi } from "../../_state";
 
 interface IdentityData {
@@ -21,28 +10,39 @@ interface IdentityData {
   brand_name?: string;
   slug?: string;
 }
+interface BrandingData {
+  accent_hex?: string;
+}
 
 /**
  * Step 3: Finish.
  *
- * Celebrate, show the live address, hand off to the dashboard. The dashboard
- * itself owns the persistent setup checklist (see OnboardingChecklist.tsx) —
- * we just preview it here so the user knows where they're going.
+ * Celebrates the new tenant, shows the live address, and hands off to the
+ * dashboard. The dashboard's persistent OnboardingChecklist owns the rest
+ * of the setup journey (Stripe, first event, team, custom domain) — we
+ * don't reproduce it here. Visual weight is balanced because the
+ * BrandPreview pane stays visible on the right (re-enabled on Finish).
  *
- * Side effects on mount: marks the wizard complete + fires the welcome email
- * (idempotent via onboarding_email_sent flag in state extras).
+ * Side effects on mount: marks the wizard complete + fires the welcome
+ * email (idempotent via onboarding_email_sent flag in state extras).
  */
 export function FinishSection({ api }: { api: OnboardingApi }) {
   const router = useRouter();
   const identity = (api.getSection("identity")?.data ?? {}) as IdentityData;
+  const branding = (api.getSection("branding")?.data ?? {}) as BrandingData;
   const slug = identity.slug || api.orgId || "your-brand";
   const subdomain = `${slug}.entry.events`;
-  const greet = identity.first_name || "there";
+  const greet = identity.first_name?.trim() || "there";
+  const brandName = identity.brand_name?.trim() || "Your space";
+
+  const accent = useMemo(() => {
+    const v = branding.accent_hex;
+    return v && /^#[0-9a-fA-F]{6}$/.test(v) ? v.toUpperCase() : "#8B5CF6";
+  }, [branding.accent_hex]);
 
   const finishedRef = useRef(false);
   const [finalising, setFinalising] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [confettiPhase, setConfettiPhase] = useState<0 | 1 | 2>(0);
 
   useEffect(() => {
     if (finishedRef.current) return;
@@ -65,12 +65,6 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
         setFinalising(false);
       }
     })();
-    const t1 = setTimeout(() => setConfettiPhase(1), 120);
-    const t2 = setTimeout(() => setConfettiPhase(2), 1400);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
   }, []);
 
   async function handleCopy() {
@@ -85,184 +79,192 @@ export function FinishSection({ api }: { api: OnboardingApi }) {
 
   return (
     <div className="relative">
-      <Confetti phase={confettiPhase} />
+      {/* Subtle accent halo on mount — replaces the previous confetti
+          shower with something more deliberate. The ring expands once,
+          fades, and leaves the brand accent glow behind the heading. */}
+      <AccentHalo color={accent} />
 
-      <div className="space-y-6">
+      <div className="relative space-y-7">
+        {/* Status pill — emerald pulse, not the old generic primary dot */}
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/[0.06] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          </span>
+          You&apos;re live
+        </div>
+
         <div>
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-success/25 bg-success/[0.06] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-success">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/60" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
-            </span>
-            You&apos;re live
-          </div>
-          <h1 className="font-mono text-[28px] font-bold leading-[1.1] tracking-tight text-foreground">
-            Welcome to Entry, {greet}.
+          <h1 className="font-mono text-[34px] font-bold leading-[1.04] tracking-[-0.02em] text-foreground [text-wrap:balance] sm:text-[40px]">
+            <RevealText delay={120}>{`You're live, ${greet}.`}</RevealText>
           </h1>
-          <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-            Your space is set up. Here&apos;s what&apos;s waiting.
+          <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground [text-wrap:pretty]">
+            <span className="font-medium text-foreground">{brandName}</span> is open
+            for business on Entry. Your storefront is ready to receive visitors —
+            connect Stripe and create your first event when you&apos;re set.
           </p>
         </div>
 
-        <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/[0.04] via-card to-card">
-          <CardContent className="p-5">
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Your address
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className="font-mono text-[18px] font-semibold tracking-[-0.01em] text-foreground">
-                {subdomain}
-              </span>
-              <div className="ml-auto flex items-center gap-1.5">
-                <Button variant="ghost" size="sm" onClick={handleCopy}>
-                  <Copy size={12} />
-                  {copied ? "Copied" : "Copy"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    window.open(`https://${subdomain}`, "_blank", "noopener,noreferrer")
-                  }
-                >
-                  <ExternalLink size={12} />
-                  Open
-                </Button>
-              </div>
-            </div>
-            <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
-              This is your brand&apos;s home on Entry. Every event you publish lives here, and every
-              email and ticket points buyers to it.
-            </p>
-          </CardContent>
-        </Card>
+        <AddressChip
+          subdomain={subdomain}
+          accent={accent}
+          copied={copied}
+          onCopy={handleCopy}
+          onOpen={() =>
+            window.open(`https://${subdomain}`, "_blank", "noopener,noreferrer")
+          }
+        />
 
-        <Card>
-          <CardContent className="p-5">
-            <div className="mb-1 text-sm font-semibold text-foreground">
-              Pick up on the dashboard
-            </div>
-            <p className="mb-4 text-[12px] leading-relaxed text-muted-foreground">
-              These are waiting for you in any order. Tackle them when you&apos;re ready.
-            </p>
+        <div className="flex flex-col gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => router.push("/admin/?welcome=1")}
+            disabled={finalising}
+            className="group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary text-[14px] font-semibold text-primary-foreground shadow-[0_8px_28px_-8px_rgba(139,92,246,0.55),inset_0_1px_0_rgba(255,255,255,0.18)] transition-all duration-200 hover:translate-y-[-1px] hover:shadow-[0_14px_32px_-10px_rgba(139,92,246,0.7),inset_0_1px_0_rgba(255,255,255,0.22)] disabled:translate-y-0 disabled:opacity-70"
+          >
+            {finalising ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Wrapping up…
+              </>
+            ) : (
+              <>
+                Open dashboard
+                <ArrowRight
+                  size={14}
+                  className="transition-transform duration-200 group-hover:translate-x-0.5"
+                />
+              </>
+            )}
+          </button>
 
-            <ul className="space-y-1">
-              <NextStep
-                icon={CreditCard}
-                title="Connect Stripe"
-                hint="So you can take card payments"
-                priority
-              />
-              <NextStep
-                icon={Calendar}
-                title="Create your first event"
-                hint="Cover artwork, ticket types, lineup, the lot"
-              />
-              <NextStep
-                icon={Users}
-                title="Invite your team"
-                hint="Owners, scanners, marketers"
-              />
-              <NextStep
-                icon={Globe}
-                title="Add a custom domain"
-                hint="Optional — your subdomain works straight away"
-              />
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Button
-          size="lg"
-          className="w-full"
-          onClick={() => router.push("/admin/?welcome=1")}
-          disabled={finalising}
-        >
-          {finalising ? (
-            <span className="inline-flex items-center justify-center gap-2">
-              <Loader2 size={14} className="animate-spin" />
-              Wrapping up…
-            </span>
-          ) : (
-            <>
-              Open dashboard
-              <ArrowRight size={14} />
-            </>
-          )}
-        </Button>
+          <p className="text-center text-[11px] text-muted-foreground/80">
+            Your dashboard has a setup checklist for everything that&apos;s next.
+          </p>
+        </div>
       </div>
     </div>
   );
 }
 
-function NextStep({
-  icon: Icon,
-  title,
-  hint,
-  priority,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  title: string;
-  hint: string;
-  priority?: boolean;
-}) {
+/* ─────────────────────────────────────────── pieces */
+
+/**
+ * Tasteful one-shot reveal — accent-coloured ring expands behind the
+ * heading on mount, peaks at ~600ms, fades by 1.2s. CSS only, no JS
+ * animation timeline, gracefully degrades on prefers-reduced-motion.
+ */
+function AccentHalo({ color }: { color: string }) {
   return (
-    <li className="flex items-start gap-3 rounded-lg px-1 py-2.5 text-sm">
-      <span
-        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-          priority
-            ? "bg-primary/10 text-primary ring-1 ring-primary/20"
-            : "bg-muted/40 text-muted-foreground"
-        }`}
-      >
-        <Icon size={13} />
-      </span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-foreground">{title}</span>
-          {priority && (
-            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.12em] text-primary">
-              First
-            </span>
-          )}
-        </div>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>
-      </div>
-    </li>
+    <div
+      aria-hidden
+      className="pointer-events-none absolute -left-12 -top-16 h-72 w-72 motion-safe:animate-[accent-halo_1.6s_ease-out_forwards] motion-reduce:opacity-30"
+      style={{
+        background: `radial-gradient(circle at center, ${color}55 0%, ${color}18 32%, transparent 65%)`,
+        filter: "blur(28px)",
+      }}
+    >
+      <style>{`
+        @keyframes accent-halo {
+          0%   { opacity: 0; transform: scale(0.55); }
+          35%  { opacity: 1; transform: scale(1.05); }
+          100% { opacity: 0.18; transform: scale(1.18); }
+        }
+      `}</style>
+    </div>
   );
 }
 
-/** CSS-only confetti — three bursts over ~1.5s. */
-function Confetti({ phase }: { phase: 0 | 1 | 2 }) {
-  const items = Array.from({ length: 32 });
+/** Word-by-word reveal — premium, restrained, ~80ms stagger. */
+function RevealText({ children, delay = 0 }: { children: string; delay?: number }) {
+  const words = children.split(/(\s+)/);
   return (
-    <div className="pointer-events-none absolute inset-x-0 -top-12 z-0 h-40 overflow-hidden">
-      {items.map((_, i) => {
-        const left = (i / items.length) * 100;
-        const delay = (i % 7) * 0.08;
-        const colors = ["#A78BFA", "#FF66B2", "#19D6A0", "#F5A524", "#3B82F6", "#FFFFFF"];
-        const bg = colors[i % colors.length];
-        const offsetX = ((i * 53) % 100) - 50;
-        return (
+    <span className="inline">
+      {words.map((word, i) => {
+        const ws = /^\s+$/.test(word);
+        return ws ? (
+          <span key={i}>{word}</span>
+        ) : (
           <span
             key={i}
-            className="absolute block rounded-sm"
-            style={{
-              top: 0,
-              left: `${left}%`,
-              width: 6,
-              height: 10,
-              backgroundColor: bg,
-              opacity: phase === 0 ? 0 : phase === 1 ? 1 : 0,
-              transform:
-                phase === 0
-                  ? "translate3d(0, -20px, 0) rotate(0deg)"
-                  : `translate3d(${offsetX}px, 220px, 0) rotate(${i * 22}deg)`,
-              transition: `transform ${1.4 + delay}s cubic-bezier(0.32, 0.72, 0.4, 1), opacity 1s ease-out ${delay}s`,
-            }}
-          />
+            className="inline-block motion-safe:animate-[fadeup_500ms_cubic-bezier(0.32,0.72,0.4,1)_both] motion-reduce:opacity-100"
+            style={{ animationDelay: `${delay + i * 70}ms` }}
+          >
+            {word}
+            <style>{`
+              @keyframes fadeup {
+                0%   { opacity: 0; transform: translateY(0.4em); }
+                100% { opacity: 1; transform: translateY(0); }
+              }
+            `}</style>
+          </span>
         );
       })}
+    </span>
+  );
+}
+
+function AddressChip({
+  subdomain,
+  accent,
+  copied,
+  onCopy,
+  onOpen,
+}: {
+  subdomain: string;
+  accent: string;
+  copied: boolean;
+  onCopy: () => void;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      className="overflow-hidden rounded-2xl border bg-card transition-colors"
+      style={{
+        borderColor: `${accent}33`,
+        boxShadow: `0 0 0 1px ${accent}10 inset`,
+      }}
+    >
+      <div
+        className="px-5 pt-4 pb-3"
+        style={{
+          background: `linear-gradient(180deg, ${accent}10 0%, transparent 100%)`,
+        }}
+      >
+        <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Your address
+        </div>
+        <div className="mt-1.5 font-mono text-[18px] font-semibold tracking-[-0.005em] text-foreground">
+          {subdomain}
+        </div>
+      </div>
+      <div className="flex items-stretch border-t border-border/40">
+        <button
+          type="button"
+          onClick={onCopy}
+          className="flex flex-1 items-center justify-center gap-1.5 px-4 py-3 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
+          aria-label="Copy address"
+        >
+          {copied ? (
+            <>
+              <Check size={12} className="text-emerald-400" /> Copied
+            </>
+          ) : (
+            <>
+              <Copy size={12} /> Copy
+            </>
+          )}
+        </button>
+        <span aria-hidden className="w-px bg-border/40" />
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex flex-1 items-center justify-center gap-1.5 px-4 py-3 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
+          aria-label="Open in new tab"
+        >
+          <ExternalLink size={12} /> Visit
+        </button>
+      </div>
     </div>
   );
 }

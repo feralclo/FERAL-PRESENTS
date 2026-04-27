@@ -93,12 +93,22 @@ export function BrandingSection({ api }: { api: OnboardingApi }) {
     setSavingFinal(true);
     try {
       if (api.orgId) {
+        // Pull brand_name from the identity step so the saved branding row
+        // carries the tenant's own name. Without this, /api/branding falls
+        // back to the platform default ("Entry") on surfaces like the
+        // VerifiedBanner.
+        const identity = (api.getSection("identity")?.data ?? {}) as {
+          brand_name?: string;
+        };
+        const orgName = identity.brand_name?.trim();
+
         // Persist branding to the real settings store so /admin/settings/branding/
         // and the public event page reflect the choices immediately.
         await fetch("/api/branding", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            ...(orgName ? { org_name: orgName } : {}),
             logo_url: logoDataUri || undefined,
             accent_color: accent,
             active_vibe: vibe,

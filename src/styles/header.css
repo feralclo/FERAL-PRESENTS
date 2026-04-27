@@ -52,16 +52,24 @@
   z-index: 1001;
 }
 
+/* Logo containment — bound BOTH axes so wordmark logos (wide aspect) don't
+   stretch the nav unreasonably and icon logos don't shrink to nothing. The
+   --branding-logo-height variable lets a tenant's settings nudge the height
+   slightly within these bounds (Header.tsx wires this through). */
 .nav__logo-img {
-  height: 40px;
+  height: auto;
+  max-height: var(--branding-logo-height-cap, 28px);
+  max-width: 160px;
   width: auto;
   display: block;
+  object-fit: contain;
   transition: opacity var(--transition-base);
 }
 
 @media (min-width: 768px) {
   .nav__logo-img {
-    height: 52px;
+    max-height: var(--branding-logo-height-cap, 36px);
+    max-width: 200px;
   }
 }
 

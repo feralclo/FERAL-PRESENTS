@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, brandingKey, emailKey } from "@/lib/constants";
+import { TABLES, brandingKey, emailKey, generalKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 import type { BrandingSettings } from "@/types/settings";
@@ -53,15 +53,48 @@ export async function GET() {
       "Cache-Control": "no-store, must-revalidate",
     };
 
+    // Resolve org_name from generalKey when brandingKey doesn't carry its
+    // own. New tenants get brandingKey seeded at provision time, but legacy
+    // tenants provisioned before that seeding existed only have generalKey
+    // populated. Without this fallback, surfaces like VerifiedBanner
+    // ("Official {org_name} Ticket Store") misattribute every legacy tenant
+    // as the platform default ("Entry").
+    let generalOrgName: string | undefined;
+    try {
+      const { data: gen } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", generalKey(orgId))
+        .maybeSingle();
+      const genData = gen?.data as { org_name?: string } | null;
+      const trimmed = genData?.org_name?.trim();
+      if (trimmed) generalOrgName = trimmed;
+    } catch {
+      // best-effort — fall through to platform default
+    }
+
     if (row?.data && typeof row.data === "object") {
-      // Merge with defaults so missing fields fall back gracefully
+      const stored = row.data as BrandingSettings;
+      const storedName = stored.org_name?.trim();
       const branding: BrandingSettings = {
         ...DEFAULT_BRANDING,
-        ...(row.data as BrandingSettings),
+        ...stored,
+        // Storage is "name was set on brandingKey" → use it. Otherwise prefer
+        // generalKey before falling back to the platform default.
+        org_name: storedName || generalOrgName || DEFAULT_BRANDING.org_name,
       };
       return NextResponse.json({ data: branding }, { headers });
     }
 
+    // No brandingKey row at all — still try to surface generalKey's org_name
+    // so the tenant identity is correct everywhere a brand row hasn't been
+    // saved yet.
+    if (generalOrgName) {
+      return NextResponse.json(
+        { data: { ...DEFAULT_BRANDING, org_name: generalOrgName } },
+        { headers }
+      );
+    }
     return NextResponse.json({ data: DEFAULT_BRANDING }, { headers });
   } catch (err) {
     Sentry.captureException(err);

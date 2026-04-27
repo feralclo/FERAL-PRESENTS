@@ -605,6 +605,16 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
       `Order ${result.order.order_number} created for PI ${paymentIntent.id} (${result.tickets.length} tickets)`
     );
 
+    // Consume waitlist token if buyer arrived via a "spot opened" email.
+    // Mirrors the UPDATE in confirm-order — idempotent, status check in WHERE.
+    if (metadata.waitlist_token) {
+      await supabase
+        .from(TABLES.WAITLIST_SIGNUPS)
+        .update({ status: "purchased" })
+        .eq("notification_token", metadata.waitlist_token)
+        .in("status", ["notified", "pending"]);
+    }
+
     // Skip all tracking for test orders
     if (!isTest) {
       // ── Server-side traffic event for dashboard live activity (backup) ──

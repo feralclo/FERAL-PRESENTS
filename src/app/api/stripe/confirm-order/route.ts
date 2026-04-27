@@ -318,6 +318,18 @@ export async function POST(request: NextRequest) {
       testOrder: isTest,
     });
 
+    // Mark waitlist signup as redeemed if the buyer arrived via a waitlist link.
+    // Idempotent — the WHERE clause prevents double-flipping or hitting an
+    // already-consumed/expired row. The webhook path does the same UPDATE as a
+    // backup if confirm-order doesn't run.
+    if (metadata.waitlist_token) {
+      await supabase
+        .from(TABLES.WAITLIST_SIGNUPS)
+        .update({ status: "purchased" })
+        .eq("notification_token", metadata.waitlist_token)
+        .in("status", ["notified", "pending"]);
+    }
+
     // Fetch the full order with relations to return
     const { data: fullOrder } = await supabase
       .from(TABLES.ORDERS)

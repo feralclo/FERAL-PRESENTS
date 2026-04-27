@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const orgId = getOrgIdFromRequest(request);
     const stripe = getStripe();
     const body = await request.json();
-    const { event_id, items, customer, discount_code, presentment_currency, test_order } = body;
+    const { event_id, items, customer, discount_code, presentment_currency, test_order, waitlist_token } = body;
 
     if (!event_id || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -124,6 +124,31 @@ export async function POST(request: NextRequest) {
         { error: "This event does not use Stripe payments" },
         { status: 400 }
       );
+    }
+
+    // Validate the waitlist notification token, if one was passed.
+    // Buyer arrived via /event/<slug>?wt=<token> from a "spot opened" email.
+    // We stash the token on the PaymentIntent metadata so confirm-order can
+    // mark the signup row as `purchased` after the order succeeds. An invalid
+    // or expired token is silently ignored — the purchase still proceeds if
+    // capacity exists; the buyer just isn't tracked as redeeming a waitlist
+    // offer. This matches the current "token gates UI, not purchase" model.
+    let validatedWaitlistToken: string | null = null;
+    if (typeof waitlist_token === "string" && waitlist_token.trim()) {
+      const { data: signup } = await supabase
+        .from(TABLES.WAITLIST_SIGNUPS)
+        .select("id, event_id, status, token_expires_at, org_id")
+        .eq("notification_token", waitlist_token.trim())
+        .single();
+      if (
+        signup
+        && signup.org_id === orgId
+        && signup.event_id === event_id
+        && (signup.status === "notified" || signup.status === "pending")
+        && (!signup.token_expires_at || new Date(signup.token_expires_at) >= new Date())
+      ) {
+        validatedWaitlistToken = waitlist_token.trim();
+      }
     }
 
     // Determine connected account: event-level stripe_account_id takes priority,
@@ -546,6 +571,10 @@ export async function POST(request: NextRequest) {
 
     if (test_order) {
       metadata.test_order = "true";
+    }
+
+    if (validatedWaitlistToken) {
+      metadata.waitlist_token = validatedWaitlistToken;
     }
 
     // Multi-currency metadata (for order creation)

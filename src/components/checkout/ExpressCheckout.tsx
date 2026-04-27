@@ -112,6 +112,10 @@ function ExpressCheckoutInner({
         );
 
         // 1. Create PaymentIntent with customer data from wallet
+        const waitlistToken =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("wt")
+            : null;
         const res = await fetch("/api/stripe/payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -125,6 +129,7 @@ function ExpressCheckoutInner({
               phone: phone || undefined,
             },
             discount_code: discountCode || undefined,
+            ...(waitlistToken ? { waitlist_token: waitlistToken } : {}),
           }),
         });
 

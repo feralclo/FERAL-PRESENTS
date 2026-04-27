@@ -1185,6 +1185,10 @@ function SinglePageCheckoutForm({
           { em: walletEmail.toLowerCase(), fn: walletFirstName, ln: walletLastName }
         );
 
+        const waitlistTokenWallet =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("wt")
+            : null;
         const piUrl = merchData ? "/api/merch-store/payment-intent" : "/api/stripe/payment-intent";
         const piBody = merchData
           ? {
@@ -1217,6 +1221,7 @@ function SinglePageCheckoutForm({
               discount_code: discountCode || undefined,
               ...(presentmentCurrency ? { presentment_currency: presentmentCurrency.toLowerCase() } : {}),
               ...(testOrder ? { test_order: true } : {}),
+              ...(waitlistTokenWallet ? { waitlist_token: waitlistTokenWallet } : {}),
             };
 
         const res = await fetch(piUrl, {
@@ -1342,6 +1347,10 @@ function SinglePageCheckoutForm({
       trackEngagement("payment_processing");
 
       try {
+        const waitlistTokenCard =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("wt")
+            : null;
         const piUrl = merchData ? "/api/merch-store/payment-intent" : "/api/stripe/payment-intent";
         const piBody = merchData
           ? {
@@ -1373,6 +1382,7 @@ function SinglePageCheckoutForm({
               discount_code: discountCode || undefined,
               ...(presentmentCurrency ? { presentment_currency: presentmentCurrency.toLowerCase() } : {}),
               ...(testOrder ? { test_order: true } : {}),
+              ...(waitlistTokenCard ? { waitlist_token: waitlistTokenCard } : {}),
             };
 
         const res = await fetch(piUrl, {

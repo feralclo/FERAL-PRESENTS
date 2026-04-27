@@ -22,7 +22,15 @@
  */
 
 import * as crypto from "crypto";
-import * as http2 from "http2";
+// `http2` is loaded lazily inside `send()` via `await import("http2")` —
+// static `import * as http2 from "http2"` makes vite/vitest externalise the
+// module at jsdom module-load, and vite has no jsdom stub for http2, so the
+// placeholder explodes with "No such built-in module: node:" (Vercel runs
+// tests in Node 22 + jsdom). This tripped both push-apns.test.ts (direct
+// importer) and webhook.test.ts (transitive — webhook → orders →
+// rep-notifications → fanout → apns). Keeping the type-only reference so
+// the cached session field is still typed.
+import type * as http2 from "http2";
 import type {
   DeviceToken,
   DeliveryResult,
@@ -110,7 +118,7 @@ export function getApnsHost(): string {
   return getApnsHostUrl();
 }
 
-function getOrOpenSession(): http2.ClientHttp2Session {
+async function getOrOpenSession(): Promise<http2.ClientHttp2Session> {
   const host = getApnsHostUrl();
   if (
     cachedSession &&
@@ -127,7 +135,8 @@ function getOrOpenSession(): http2.ClientHttp2Session {
       // best-effort cleanup
     }
   }
-  cachedSession = http2.connect(host);
+  const http2Mod = await import("http2");
+  cachedSession = http2Mod.connect(host);
   cachedSessionHost = host;
   // Drop the cache if the connection errors out so the next send opens a
   // fresh one rather than re-using a dead session.
@@ -233,22 +242,21 @@ class ApnsTransport implements PushTransport {
       };
     }
 
-    return new Promise<DeliveryResult>((resolve) => {
-      let session: http2.ClientHttp2Session;
-      try {
-        session = getOrOpenSession();
-      } catch (err) {
-        resolve({
-          status: "failed",
-          error_message:
-            err instanceof Error
-              ? `apns connect: ${err.message}`
-              : "apns connect error",
-          transport_response_ms: Date.now() - start,
-        });
-        return;
-      }
+    let session: http2.ClientHttp2Session;
+    try {
+      session = await getOrOpenSession();
+    } catch (err) {
+      return {
+        status: "failed",
+        error_message:
+          err instanceof Error
+            ? `apns connect: ${err.message}`
+            : "apns connect error",
+        transport_response_ms: Date.now() - start,
+      };
+    }
 
+    return new Promise<DeliveryResult>((resolve) => {
       const req = session.request({
         ":method": "POST",
         ":path": `/3/device/${device.token}`,
@@ -297,9 +305,11 @@ class ApnsTransport implements PushTransport {
       });
 
       // Hard ceiling so a hung HTTP/2 stream can't wedge the fanout.
+      // 0x8 is NGHTTP2_CANCEL per RFC 7540 §7 — fixed by the HTTP/2 spec,
+      // safe to inline so we don't have to load `http2.constants` here.
       const timeout = setTimeout(() => {
         try {
-          req.close(http2.constants.NGHTTP2_CANCEL);
+          req.close(0x8);
         } catch {
           // best-effort
         }

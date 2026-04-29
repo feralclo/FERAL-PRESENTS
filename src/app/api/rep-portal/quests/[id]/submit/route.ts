@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import { getOrCreateRepDiscount } from "@/lib/discount-codes";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -180,7 +181,16 @@ export async function POST(
       }
     }
 
-    // Verify rep has access to this quest (global or assigned event)
+    // Verify rep has the rep_events linkage for this quest's event. The
+    // linkage is what carries the discount code attribution + per-event
+    // sales count, so we can't skip it for sales-target quests.
+    //
+    // Previously: missing row → 403. That created a UX trap — a rep could
+    // accept an event-scoped quest from the feed, then get blocked at submit.
+    // Now: if the row is missing AND the event is rep-enabled + valid, we
+    // auto-create it (same logic as /api/rep-portal/join-event). Idempotent;
+    // a real "you're not allowed" case (event not rep-enabled or wrong org)
+    // still 403s.
     if (quest.event_id) {
       const { data: repEvent } = await supabase
         .from(TABLES.REP_EVENTS)
@@ -188,13 +198,66 @@ export async function POST(
         .eq("rep_id", repId)
         .eq("event_id", quest.event_id)
         .eq("org_id", orgId)
-        .single();
+        .maybeSingle();
 
       if (!repEvent) {
-        return NextResponse.json(
-          { error: "You are not assigned to the event for this quest" },
-          { status: 403 }
-        );
+        const { data: questEvent } = await supabase
+          .from(TABLES.EVENTS)
+          .select("id, rep_enabled, status")
+          .eq("id", quest.event_id)
+          .eq("org_id", orgId)
+          .maybeSingle();
+
+        const eventOk =
+          questEvent &&
+          questEvent.rep_enabled === true &&
+          ["published", "active", "live"].includes(questEvent.status);
+
+        if (!eventOk) {
+          return NextResponse.json(
+            { error: "This event is not currently open to reps" },
+            { status: 403 }
+          );
+        }
+
+        // Reuse existing per-rep discount (or mint one) so attribution works
+        // the moment the rep starts sharing.
+        const { data: repProfile } = await supabase
+          .from(TABLES.REPS)
+          .select("first_name, display_name")
+          .eq("id", repId)
+          .maybeSingle();
+
+        const discount = await getOrCreateRepDiscount({
+          repId,
+          orgId,
+          firstName: repProfile?.first_name || "Rep",
+          displayName: repProfile?.display_name ?? undefined,
+        });
+
+        const { error: joinError } = await supabase
+          .from(TABLES.REP_EVENTS)
+          .insert({
+            org_id: orgId,
+            rep_id: repId,
+            event_id: quest.event_id,
+            discount_id: discount?.id ?? null,
+            sales_count: 0,
+            revenue: 0,
+          });
+
+        // Tolerate the rare race where two concurrent submits both try to
+        // create the row (unique constraint catches the dupe). Anything
+        // else is a real failure.
+        if (joinError && joinError.code !== "23505") {
+          Sentry.captureException(joinError, {
+            extra: { step: "auto_join_rep_event", repId, eventId: quest.event_id },
+          });
+          return NextResponse.json(
+            { error: "Failed to join event for this quest" },
+            { status: 500 }
+          );
+        }
       }
     }
 

@@ -465,22 +465,30 @@ Dashboard fetch writes today's marker. Cron at UTC midnight resets streaks whose
 
 ### 5.15 Notification type expansions
 
-`rep_notifications.type` CHECK constraint needs new values:
+`rep_notifications.type` CHECK constraint values (all live as of 2026-04-29):
 
-- `sale_attributed` (existing)
-- `quest_approved` (existing)
-- `quest_rejected` (**new** — iOS needs reason surfaced)
-- `level_up` (existing)
-- `reward_unlocked` (existing)
-- `reward_fulfilled` (existing)
-- `team_request_approved` (**new**)
-- `team_request_rejected` (**new**)
-- `poster_drop` (**new** — new drop from followed promoter)
-- `peer_milestone` (**new** — friend levelled up / hit top 10)
-- `first_sale_for_event` (**new** — elevated treatment in iOS, persona moment 1)
-- `leaderboard_top10` (**new** — crossed into top 10)
+- `sale_attributed`
+- `quest_approved`
+- `quest_rejected`
+- `quest_revision_requested`
+- `level_up`
+- `reward_unlocked`
+- `reward_fulfilled`
+- `manual_grant`
+- `approved`
+- `team_request_approved`
+- `team_request_rejected`
+- `poster_drop` (paused — no callers yet)
+- `peer_milestone`
+- `first_sale_for_event`
+- `leaderboard_top10`
+- `general`
+- `rep_follow` — friend started following
+- `reward_drop` — promoter dropped a new quest (fires from `POST /api/reps/quests` when `notify_reps=true`)
+- `event_reminder` — 24h + 2h before a rep-enabled event (hourly cron `cron/event-reminders`, deduped via `rep_event_reminders`)
+- `streak_at_risk` — daily 19:00 UTC nudge to reps with active streak + 0 XP today (cron `cron/streak-at-risk`)
 
-Migration extends CHECK to include all.
+`RepNotificationType` (`src/types/reps.ts`) and the DB CHECK must stay in lock-step — see CLAUDE.md.
 
 ---
 
@@ -519,6 +527,7 @@ Every endpoint below. `Auth` column: `public` | `rep` (via `requireRepAuth`) | `
 | PATCH | `/api/rep-portal/me` | rep | Partial update: `display_name`, `photo_url`, `instagram`, `tiktok`, `bio`, `push_enabled`, `marketing_opt_in`. |
 | GET | `/api/rep-portal/me/memberships` | rep | List all `rep_promoter_memberships` for this rep, grouped by status. |
 | GET | `/api/rep-portal/me/balances` | rep | EP balance + XP balance + lifetime stats. Light payload for polling. |
+| GET | `/api/rep-portal/me/onboarding-state` | rep | Booleans the iOS first-run wizard reads (has_display_name, has_photo, has_approved_membership, has_pending_membership, has_following_promoter, has_friend, has_accepted_quest, ready_for_main_app). Force-dynamic + `Cache-Control: no-store`. Response includes `last_evaluated_at: ISO8601` so dev mode can surface staleness. |
 | POST | `/api/rep-portal/me/verify-email` | rep | Send verification. |
 | DELETE | `/api/rep-portal/me` | rep | Account deletion (App Store requirement). Soft-deletes; ledger + orders preserved. |
 
@@ -570,7 +579,7 @@ Query params:
 ```json
 {
   "data": {
-    "rep": { /* same as /me */ },
+    "rep": { /* same as /me, plus `total_approved_quest_count: number` (lifetime, all promoters) for "first-ever approval" detection that survives reinstall */ },
     "xp": {
       "balance": 3420,
       "today": 200,
@@ -1242,11 +1251,17 @@ APNs "BadDeviceToken" or FCM unregistered error → mark device row `push_enable
 
 ### 9.4 APNs setup
 
-- P8 auth key (not cert). Stored as env var `APNS_AUTH_KEY_P8` (PEM), plus `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`.
-- Dev vs prod topic: `APNS_USE_SANDBOX` env var.
-- HTTP/2 client: `node-apn` or vanilla `undici` (Next.js server runtime supports it).
+**Status: live as of 2026-04-29.** Sender implementation in `src/lib/push/apns.ts` (transport class) + `src/lib/push/apns-core.ts` (envelope, ES256 JWT mint, response mapper). Pure helpers split out so test files don't pull `node:http2` into a jsdom module graph.
+
+- P8 auth key (not cert). Env vars: `APNS_AUTH_KEY_P8` (PEM, multiline), `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_USE_SANDBOX`.
+- JWT cached at module scope for 50 min (within Apple's 20–60 min reuse window).
+- HTTP/2 session opened lazily via `await import("http2")` with `/* @vite-ignore */` so vite's static analysis doesn't externalise it for jsdom test environments.
+- **Gateway-routing rule (verified end-to-end 2026-04-29):** the gateway is determined by the **provisioning profile at signing time**, not by what the source `.entitlements` file says. Builds distributed via App Store Connect (TestFlight + App Store) sign against the App Store distribution profile and ALWAYS hit the production gateway (`api.push.apple.com`) regardless of `aps-environment` in the source. So `APNS_USE_SANDBOX=false` is correct for TestFlight + App Store; only flip to `true` for Xcode-signed local dev installs. Sending production-profile tokens to the sandbox host returns `BadDeviceToken` — the token itself is valid, the gateway just doesn't recognise it.
+- Response mapping (`mapApnsResponse` in `apns-core.ts`): 200 → `sent`; 410 / `Unregistered` / `BadDeviceToken` / `DeviceTokenNotForTopic` → `invalid_token` (fanout auto-disables device); `ExpiredProviderToken` / `InvalidProviderToken` / `MissingProviderToken` → `failed` with `apns auth: ` prefix so misconfigured Vercel env shows up clearly in `notification_deliveries`.
 
 ### 9.5 FCM setup
+
+**Status: stubbed.** `src/lib/push/fcm.ts` has envelope builder + `isConfigured()` but the service-account → access-token → v1 send is still a TODO returning `status: "skipped"`. Not blocking iOS; needs finishing for Android.
 
 - Service account JSON stored as `FCM_SERVICE_ACCOUNT_JSON` env var.
 - `firebase-admin` SDK.

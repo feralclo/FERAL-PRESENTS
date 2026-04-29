@@ -351,7 +351,7 @@ Events, Artists, Merch, Customers, Discounts (`validate|auto|seed`), Settings, B
 **Monitoring**: `PLATFORM_ALERT_EMAIL`, `ANTHROPIC_API_KEY` (digest), `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
 
 **Push** (without these, transports log `skipped` in `notification_deliveries`):
-- APNs: `APNS_AUTH_KEY_P8` (full PEM), `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_USE_SANDBOX` (optional, `true` for dev)
+- APNs: `APNS_AUTH_KEY_P8` (full PEM), `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_USE_SANDBOX` (optional; `false` is correct for TestFlight + App Store — see Known Gaps #3 for the gateway-routing rule)
 - FCM: `FCM_SERVICE_ACCOUNT_JSON` (stringified service-account JSON)
 
 ---
@@ -419,7 +419,7 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 ## Known Gaps
 
 1. **Google Ads + TikTok tracking** — placeholders only.
-2. **FCM transport stubbed** — `lib/push/fcm.ts` has envelope builder + `isConfigured()` but the service-account → access-token → v1 send is still a TODO returning `status:"skipped"`. Not blocking iOS; will need finishing for Android. APNs is live (`lib/push/apns.ts` does ES256 JWT + HTTP/2 POST against `api.push.apple.com[/development]`); requires `APNS_AUTH_KEY_P8` (PEM) + `APNS_KEY_ID` + `APNS_TEAM_ID` + `APNS_BUNDLE_ID` + `APNS_USE_SANDBOX=true` for TestFlight builds. Web push works (VAPID).
+2. **FCM transport stubbed** — `lib/push/fcm.ts` has envelope builder + `isConfigured()` but the service-account → access-token → v1 send is still a TODO returning `status:"skipped"`. Not blocking iOS; will need finishing for Android. APNs is live (`lib/push/apns.ts` does ES256 JWT + HTTP/2 POST against `api.push.apple.com[/development]`); requires `APNS_AUTH_KEY_P8` (PEM) + `APNS_KEY_ID` + `APNS_TEAM_ID` + `APNS_BUNDLE_ID` + `APNS_USE_SANDBOX`. Web push works (VAPID). **APNs gateway-routing rule (verified 2026-04-29):** the gateway is determined by the **provisioning profile** at signing time, NOT the source `.entitlements` file — App-Store-Connect-distributed builds (TestFlight + App Store) ALWAYS hit the production gateway (`api.push.apple.com`) regardless of what `aps-environment` reads in source. So `APNS_USE_SANDBOX=false` is correct for TestFlight and App Store; only flip to `true` when pushing to Xcode-signed local dev builds. Sending production-profile tokens to the sandbox host returns `BadDeviceToken`, which is what burned us during the first end-to-end test — the symptom is misleading because the token itself is valid.
 3. **Web `/rep/*`** — frozen. Rebuild to v2 spec post-iOS-launch.
 4. **Poster drops** — paused. No table; `dashboard.feed` = peer + story activity.
 5. **Apple Sign-In** — deferred. Google IS live; App Store 4.8 only triggers when third-party SSO offered.

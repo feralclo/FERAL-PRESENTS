@@ -203,8 +203,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const isCommandRoute = pathname.startsWith("/admin/command");
   const isBackendRoute = pathname.startsWith("/admin/backend");
   const isSettingsRoute = pathname.startsWith("/admin/settings");
+  const isStartMomentRoute = pathname.startsWith("/admin/events/new");
   const isUnauthRoute = isLoginPage || isInvitePage || isSignupPage || isBetaPage || isOnboardingPage;
-  const isBypassRoute = isUnauthRoute || isEditorPage || isCommandRoute || isBackendRoute || isSettingsRoute;
+  const isBypassRoute =
+    isUnauthRoute ||
+    isEditorPage ||
+    isCommandRoute ||
+    isBackendRoute ||
+    isSettingsRoute ||
+    isStartMomentRoute;
 
   // Fetch user email + platform owner flag + permissions on mount
   useEffect(() => {
@@ -311,6 +318,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // Settings has its own standalone layout
   if (isSettingsRoute) return <><CommandPalette open={commandOpen} onClose={closeCommand} isPlatformOwner={isPlatformOwner} />{children}</>;
+
+  // Start moment (/admin/events/new) is a full-screen guided experience —
+  // no sidebar, no header, no breadcrumb. Mirrors the onboarding wizard's
+  // chrome-free pattern (Phase 2.1 of EVENT-BUILDER-PLAN).
+  if (isStartMomentRoute) return <><CommandPalette open={commandOpen} onClose={closeCommand} isPlatformOwner={isPlatformOwner} />{children}</>;
 
   // Block rendering while redirecting scanner-only users
   if (scannerOnlyRedirecting) {

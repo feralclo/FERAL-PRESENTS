@@ -6,21 +6,12 @@ import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/components/admin/ui";
-import { PlaceAutocomplete } from "@/components/admin/PlaceAutocomplete";
-import { Input } from "@/components/ui/input";
-import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableHeader,
@@ -36,17 +27,9 @@ import {
   RotateCcw,
   Loader2,
   ArrowUpDown,
-  X,
 } from "lucide-react";
 import type { Event } from "@/types/events";
 import { fmtMoney } from "@/lib/format";
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 const STATUS_VARIANT: Record<string, "warning" | "success" | "secondary" | "default" | "destructive"> = {
   draft: "warning",
@@ -74,7 +57,6 @@ export default function EventsPage() {
   const router = useRouter();
   const [events, setEvents] = useState<EventWithTickets[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState("all");
@@ -87,18 +69,6 @@ export default function EventsPage() {
   // actions; permanent deletion lives in one place to avoid the trap of two
   // half-baked confirmation flows that drift apart.
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-
-  // Create form state
-  const [newName, setNewName] = useState("");
-  const [newSlug, setNewSlug] = useState("");
-  const [newVenue, setNewVenue] = useState("");
-  const [newCity, setNewCity] = useState("");
-  const [newDate, setNewDate] = useState("");
-  const [newPayment] = useState<"test" | "stripe">("stripe");
-  const [newVisibility, setNewVisibility] = useState<"public" | "private" | "unlisted">("private");
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState("");
-  const [slugSuggestions, setSlugSuggestions] = useState<string[]>([]);
 
   const loadEvents = useCallback(async () => {
     const supabase = getSupabaseClient();
@@ -185,51 +155,6 @@ export default function EventsPage() {
     setActionLoading(null);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateError("");
-    setSlugSuggestions([]);
-
-    if (!newName || !newDate) {
-      setCreateError("Name and date are required");
-      return;
-    }
-
-    setCreating(true);
-    try {
-      const res = await fetch("/api/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newName,
-          slug: newSlug || slugify(newName),
-          venue_name: newVenue || undefined,
-          city: newCity || undefined,
-          date_start: new Date(newDate).toISOString(),
-          payment_method: newPayment,
-          visibility: newVisibility,
-          status: "draft",
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        setCreateError(json.error || "Failed to create event");
-        if (json.code === "slug_taken" && Array.isArray(json.suggestions)) {
-          setSlugSuggestions(json.suggestions);
-        }
-        setCreating(false);
-        return;
-      }
-
-      setCreating(false);
-      router.push(`/admin/events/${json.data.slug}/`);
-    } catch {
-      setCreateError("Network error");
-      setCreating(false);
-    }
-  };
-
   const getTicketStats = (evt: EventWithTickets) => {
     const types = evt.ticket_types || [];
     const sold = types.reduce((s, t) => s + (t.sold || 0), 0);
@@ -250,130 +175,14 @@ export default function EventsPage() {
         title="Events"
         subtitle="Create and manage your events"
         actions={
-          <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
-            {showCreate ? (
-              <>
-                <X size={14} />
-                Cancel
-              </>
-            ) : (
-              <>
-                <Plus size={14} />
-                Create event
-              </>
-            )}
+          <Button size="sm" asChild>
+            <Link href="/admin/events/new/">
+              <Plus size={14} />
+              Create event
+            </Link>
           </Button>
         }
       />
-
-      {/* Create event Form */}
-      {showCreate && (
-        <Card className="py-0 gap-0 border-primary/20">
-          <CardHeader className="pb-0 pt-5 px-6">
-            <CardTitle className="text-sm">New Event</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 pt-4">
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Event Name *</Label>
-                  <Input
-                    value={newName}
-                    onChange={(e) => {
-                      setNewName(e.target.value);
-                      if (!newSlug) setNewSlug(slugify(e.target.value));
-                    }}
-                    placeholder="e.g. Summer Launch Party"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>URL Slug</Label>
-                  <Input
-                    value={newSlug}
-                    onChange={(e) => setNewSlug(e.target.value)}
-                    placeholder="auto-generated"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Venue</Label>
-                  <PlaceAutocomplete
-                    value={newVenue}
-                    onChange={setNewVenue}
-                    onPlaceSelected={(p) => {
-                      // Selecting a venue gives us its city for free —
-                      // pre-fill it only when the user hasn't typed one.
-                      if (p.city && !newCity) setNewCity(p.city);
-                    }}
-                    mode="venue"
-                    placeholder="e.g. Invisible Wind Factory"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>City</Label>
-                  <PlaceAutocomplete
-                    value={newCity}
-                    onChange={setNewCity}
-                    mode="city"
-                    placeholder="e.g. Liverpool"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Date & Time *</Label>
-                  <DateTimePicker
-                    value={newDate}
-                    onChange={setNewDate}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Visibility</Label>
-                  <Select value={newVisibility} onValueChange={(v) => setNewVisibility(v as typeof newVisibility)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="private">Private (Secret Link)</SelectItem>
-                      <SelectItem value="unlisted">Unlisted</SelectItem>
-                      <SelectItem value="public">Public</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {createError && (
-                <div className="space-y-2">
-                  <p className="text-sm text-destructive">{createError}</p>
-                  {slugSuggestions.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[11px] text-muted-foreground">Try:</span>
-                      {slugSuggestions.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => {
-                            setNewSlug(s);
-                            setCreateError("");
-                            setSlugSuggestions([]);
-                          }}
-                          className="rounded-md border border-primary/30 bg-primary/[0.06] px-2 py-1 font-mono text-[11px] text-primary transition-colors hover:border-primary/50 hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60"
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              <Button type="submit" size="sm" disabled={creating}>
-                {creating && <Loader2 size={14} className="animate-spin" />}
-                {creating ? "Creating…" : "Create event"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Filter Bar */}
       {!loading && events.length > 0 && (
@@ -459,9 +268,11 @@ export default function EventsPage() {
             </div>
             <p className="mt-4 text-sm font-medium text-foreground">No events yet</p>
             <p className="mt-1 text-xs text-muted-foreground">Create your first event to get started</p>
-            <Button size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
-              <Plus size={14} />
-              Create event
+            <Button size="sm" className="mt-4" asChild>
+              <Link href="/admin/events/new/">
+                <Plus size={14} />
+                Create event
+              </Link>
             </Button>
           </CardContent>
         </Card>

@@ -224,6 +224,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/scanner/manifest", // PWA manifest (public, no auth)
   "/api/scanner/live/", // Live scanner (token-based auth, no login)
   "/api/brand/", // Brand assets (logo SVG, public)
+  "/api/og/", // Open Graph / generated cover images (public, content-addressed)
   "/api/campaigns/track", // Email open/click tracking pixels (public)
 ];
 

@@ -172,13 +172,15 @@ The cheap, high-impact fixes. None of these need the canvas; they ship independe
 
 Replace the "click Create Event → inline form on a list page → land in a 6-tab spreadsheet" flow with a single full-screen guided start that drops the user into the canvas with content already populated.
 
-### 2.1 New route: `/admin/events/new` ⬜
+### 2.1 New route: `/admin/events/new` ✅
+**Outcome (2026-04-29):** Shipped at `src/app/admin/events/new/page.tsx`. Added `isStartMomentRoute` to the admin layout's bypass list so the page renders without sidebar/header — same pattern onboarding uses. The shell mirrors `FinishSection.tsx`'s visual register (Entry wordmark + Cancel back-link in the top bar, accent halo behind the heading, mono Display "Start with the basics.", muted-foreground subtitle, fade-in entrance). Form is the Phase 2.1 baseline only — name, date+time, venue, city via `PlaceAutocomplete` (auto-fills city from venue selection), `AdminButton` primary CTA "Create event" with loading state, and the same Phase 1.2 slug-collision suggestion-chip flow (now one-click — chips re-submit with the picked slug). On success routes to `/admin/events/{slug}/`. List-page Create button + empty-state Create button rewired to `<Link href="/admin/events/new/">`; the inline create form on the list (and its `showCreate`/`newName`/`newSlug`/etc. state, `handleCreate`, `slugify`, `Select`/`DateTimePicker`/`PlaceAutocomplete`/`Input` imports) deleted — one canonical entry point. Phase 2.2 layers the "what kind?" tile picker + live slug check inside this same shell; 2.3 seeds tickets via templates; 2.4 generates a cover.
 **Goal:** dedicated full-screen start experience, separate from the events list.
 **Files:** new `src/app/admin/events/new/page.tsx`. List-page "Create Event" button now links here instead of toggling an inline form.
 **Layout:** mirrors the visual quality of `FinishSection.tsx` — full-screen, no admin chrome, accent halo, narrative pacing.
 **Design language:** full application of `admin-ux-design.md`. This is the showcase moment — the first time a host meets the rebuilt product. Treat it like the onboarding wizard's Finish screen, not a normal admin form.
 
-### 2.2 Four-question Start form ⬜
+### 2.2 Four-question Start form ✅
+**Outcome (2026-04-29):** `/admin/events/new` now asks four questions, in human-think order. (1) "What kind?" tile picker — 5 templates with icon + one-line blurb, click to select / click again to clear, accent-tinted active state with corner check pill. (2) "What's it called?" — text input + live slug indicator powered by new `GET /api/events/check-slug?slug=…` (auth-required, org-scoped, 30/min rate limit, 300ms debounce, status pill: idle / checking / available / taken). (3) "When?" — `DateTimePicker` prefilled to next Saturday 21:00 in the user's local timezone via `nextSaturdayAt9pm()`. (4) "Where?" — venue + city via `PlaceAutocomplete` (selecting a venue auto-fills city when blank, same as 1.7). CTA disabled until name + date are valid AND slug isn't mid-check. Phase 1.2 slug-collision suggestion chips still kick in on 409 — chips re-submit with the picked slug in one click.
 **Goal:** ask only what a human must answer.
 1. **What's it called?** — text input + live slug availability check (reuse `IdentitySection.tsx` pattern with `/api/auth/check-slug`-equivalent for events).
 2. **When?** — date + start time. Prefill: next Saturday, 21:00 in org timezone.
@@ -186,7 +188,8 @@ Replace the "click Create Event → inline form on a list page → land in a 6-t
 4. **What kind?** — visual picker: `Concert / Club night / Festival / Conference / Private event`. Each is a tile with a tiny icon + one-line description.
 **Acceptance:** all four answerable in under 60 seconds. CTA enabled only when name + date are valid.
 
-### 2.3 Event-type templates ⬜
+### 2.3 Event-type templates ✅
+**Outcome (2026-04-29):** `src/lib/event-templates.ts` exports 5 canonical templates (Concert / Club night / Festival / Conference / Private) with seed `ticket_types`, `show_lineup`, `default_visibility`, `recommended_cover_aspect`, lucide icon name, and a one-line blurb consumed by the picker. Pure data + `getEventTemplate()` accessor + `isEventTemplateKey()` type guard. Pricing is a sensible placeholder, not a recommendation — hosts adjust immediately. Group / sequential-release wiring lives in the Tickets tab JSONB and is **not** written by templates today (Festival's three tiers ship plain — flag in plan to revisit if telemetry shows hosts always toggling sequential mode). 7 unit tests (`src/__tests__/event-templates.test.ts`) cover key set, ticket shape, sort-order monotonicity, visibility/lineup defaults, and the accessor.
 **Goal:** the "what kind?" answer pre-populates ticket types, lineup section visibility, content sections, theme defaults.
 **Files:** new `src/lib/event-templates.ts` exporting:
 ```ts
@@ -208,23 +211,26 @@ type EventTemplate = {
 - **Private:** Single ticket "Entry" + invite-only visibility default
 **Acceptance:** picking a template + completing the start form creates an event with those tickets pre-filled, all editable in the canvas.
 
-### 2.4 Generated cover image fallback ⬜
+### 2.4 Generated cover image fallback ✅
+**Outcome (2026-04-29):** `GET /api/og/event-cover` shipped at `src/app/api/og/event-cover/route.tsx` (edge runtime, `next/og` ImageResponse — same family as `brand/logo-png`). Query params: `name`, `venue`, `date` (ISO), `accent` (hex), `variant` (square 1080² / portrait 1080×1350 / landscape 1200×630). Visual: radial gradient seeded from the org accent in the top-left, fading to near-black void; eyebrow "NEW EVENT" with accent dot at top, big white headline middle, mono venue · date line, faint ENTRY wordmark bottom-right. Heuristic `headlineSizeFor()` clamps the type to fit narrow widths without wrapping. Cache headers: 1d s-maxage + 7d SWR. Route added to middleware's `PUBLIC_API_PREFIXES` under `/api/og/`. Stored as a **content-addressed URL** in `events.cover_image_url` — no Supabase Storage round-trip; replacement on real upload just overwrites the field. POST `/api/events` populates it automatically when no cover is supplied (uses template's `recommended_cover_aspect`). Org accent looked up via `readOrgAccent()` with platform Electric Violet fallback.
 **Goal:** a brand-new event never appears with a grey placeholder. Auto-generate a poster-quality cover via `next/og` using the event name, venue, date, and the org's accent color.
 **Files:** new `src/app/api/og/event-cover/route.ts` (returns PNG via `next/og`'s `ImageResponse`). Save the rendered PNG to Supabase Storage on event creation, store URL in `cover_image_url`.
 **Visual:** large display-font event name + small venue + date + tenant logo bottom-right + brand-color gradient bg. Same typography stack as the public event page (Space Mono / Inter).
 **Acceptance:** fresh event has a striking cover before the host uploads anything. Replacing it in the canvas works as before.
 
-### 2.5 Wire Start → canvas ⬜
+### 2.5 Wire Start → canvas ✅
+**Outcome (2026-04-29):** `POST /api/events` now accepts an optional `template` field. When present AND `ticket_types` is empty/undefined, the server expands the template's seeds into the `ticket_types` insert via the existing mapper (`TicketTypeSeed` is structurally compatible). When `visibility` is omitted, the resolved value falls back to `template.default_visibility` (so private templates land private without the form having to pass it through). When `cover_image` and `cover_image_url` are both omitted, the server populates `cover_image_url` with the deterministic OG URL (Phase 2.4) using the org's branding accent and the template's `recommended_cover_aspect`. On success the existing `router.push("/admin/events/{slug}/")` lands the host in the editor — which becomes the canvas in Phase 3.
 **Goal:** submitting the Start form creates the event via existing `POST /api/events` (extended to accept template key) and routes to `/admin/events/{slug}` — which in Phase 3 becomes the canvas.
 **Files:** `POST /api/events/route.ts` accepts new optional `template: 'concert' | 'club' | ...` field. Server expands the template into the event + ticket_types insert.
 **Acceptance:** "Five-clicks-and-zero-atmosphere" flow becomes "two-screens-and-you're-editing-something-beautiful."
 
-### 2.6 First-event analytics ⬜
+### 2.6 First-event analytics ✅
+**Outcome (2026-04-29):** Three GTM dataLayer events wired into `/admin/events/new` via `useDataLayer()`: `first_event_started` (fired once on mount via a ref guard so React strict-mode doesn't double-count), `first_event_template_picked` (with `template` key, fired on tile select but not on deselect), and `first_event_created` (with `template` and `time_to_create_seconds`, fired immediately before the redirect on a successful POST). Time is measured from mount via `startedAtRef`. Light-touch instrumentation — the heavy buyer-side analytics layer (Meta CAPI / Supabase traffic / engagement) is overkill for an admin funnel; GTM is enough to answer "is the 60-second target real."
 **Goal:** instrument the new flow so we know if it's working.
 **Files:** add `track('first_event_started')`, `track('first_event_template_picked', { template })`, `track('first_event_created', { time_to_create_seconds })` to existing analytics layer (find via grep for `useEventTracking` or similar).
 **Acceptance:** numbers visible in whatever dashboard the team uses. Without measurement we won't know if 60 seconds is real.
 
-### Phase 2 done = `/admin/events/new` ships, used by 100% of new events, drops users into the canvas (Phase 3) with content. Estimated ship: 12–13 working days.
+### Phase 2 done ✅ (2026-04-29) = `/admin/events/new` ships as the only path to create. Four-question form (type / name / when / where) seeds tickets, lineup visibility, default visibility, and a deterministic generated cover from the picked template. Live slug check + datetime prefill + Place autocomplete + Phase 1.2 collision chips. GTM instrumentation answers "is 60 seconds real." Lands the host in the existing editor — which becomes the canvas in Phase 3. Actual ship: 1 day (was estimated 12–13).
 
 ---
 
@@ -358,6 +364,9 @@ Append entries as `YYYY-MM-DD — decision — rationale`.
 - *2026-04-29 — Phase 1.7 unblocked: Google Places (New) chosen — best venue coverage for UK nightlife, ~£15–40/mo at beta scale, browser calls safe with HTTP-referrer-restricted keys. Built as a standalone `<PlaceAutocomplete>` so Phase 2.2 reuses it.*
 - *2026-04-27 — Aura deletion went deeper than planned — the kill list naming `/components/aura/` understated the actual blast radius: also removed `lib/themes.ts`, the `getActiveTemplate()` plumbing in `event/[slug]/page.tsx`, `.../checkout/page.tsx`, and `.../layout.tsx`. Verified zero live tenants on aura first via Supabase MCP. The single-theme assumption is now baked in at the layout level (`dataThemeAttr = "midnight"`).*
 - *2026-04-27 — admin Display font corrected from Inter to Space Mono in design doc — `FinishSection.tsx` was named the quality bar but uses Space Mono. Aligning the doc to the implementation rather than retrofitting FinishSection. Display still reserved for hero moments only; workspace pages use Inter H1.*
+- *2026-04-29 — generated cover stored as a content-addressed `/api/og/event-cover?…` URL rather than a Supabase Storage upload — the OG endpoint is deterministic given query params, the URL itself is the cache key, no round-trip required, and replacement on real upload is just an UPDATE on `cover_image_url`. Trade-off: every page load that surfaces the cover hits our edge runtime (cached aggressively via `s-maxage=86400`); accepted because (a) the cover only renders until a host uploads a real one, usually within minutes, and (b) it skips the build-time storage cost + lifecycle complexity of saving a generated asset that will be discarded.*
+- *2026-04-29 — Festival template ships ungrouped (no sequential-release wiring) — writing per-event `ticket_groups` JSONB on creation needs a follow-up settings-write that complicates the API path. Hosts who want the Day 1 → Day 2 → Weekend waterfall toggle it in the Tickets tab in two clicks. Revisit if telemetry shows ≥80% of festival hosts toggling sequential within their first session.*
+- *2026-04-29 — Phase 2 took 1 day (vs. 12–13 day estimate) — most items were single-file additions on top of Phase 1's groundwork (PlaceAutocomplete, slug-collision chips, AdminButton wrapper, FinishSection halo pattern). The plan was estimated on a "build everything from scratch" timeline; with the Phase 0 + Phase 1 substrate in place, each item collapsed to a small, well-scoped diff. Will recalibrate Phase 3 estimates accordingly when scoping the canvas — the optimistic read is "Phase 3 lands faster than 5 weeks too"; the pessimistic read is "the canvas is a substantially harder problem because it's net-new shape, not pattern-reuse."*
 
 ---
 

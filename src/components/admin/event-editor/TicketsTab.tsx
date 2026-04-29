@@ -10,6 +10,7 @@ import { TicketCard } from "./TicketCard";
 import {
   TemplatePreviewDialog,
   type PendingTemplate,
+  type TemplateOverrides,
 } from "./TemplatePreviewDialog";
 import { TemplateUndoBanner } from "./TemplateUndoBanner";
 import { useOrgId } from "@/components/OrgProvider";
@@ -178,28 +179,31 @@ export function TicketsTab({
   }, [event.id, setTicketTypes, orgId, flashHighlight]);
 
   /**
-   * Apply an event template — same shape as before, but now wired through
-   * the preview dialog and registers undo state. Each new ticket gets a
-   * `tmp-*` id so the undo banner can target it precisely.
+   * Apply an event template using the host's edited values (name, price,
+   * capacity per tier). Each new ticket gets a `tmp-*` id so the undo
+   * banner can target it precisely.
    */
   const applyEventTemplate = useCallback(
-    (template: EventTemplate) => {
+    (template: EventTemplate, overrides: TemplateOverrides) => {
       const newRows = template.ticket_types.map((seed, i) => ({
         id: makeTmpTicketId(),
         sort_offset: seed.sort_order ?? i,
         seed,
+        edit: overrides.tiers[i],
       }));
 
       setTicketTypes((prev) => {
         const baseOrder = prev.length;
-        const seeded = newRows.map(({ id, sort_offset, seed }) => ({
+        const seeded = newRows.map(({ id, sort_offset, seed, edit }) => ({
           id,
           org_id: orgId,
           event_id: event.id || "",
-          name: seed.name,
+          // Edited fields — names and prices the host actually wants.
+          name: edit?.name ?? seed.name,
+          price: edit?.price ?? seed.price,
+          capacity: edit?.capacity ?? seed.capacity,
+          // Structural fields — pulled from the template, not editable.
           description: seed.description || "",
-          price: seed.price,
-          capacity: seed.capacity,
           sold: 0,
           sort_order: baseOrder + sort_offset,
           includes_merch: false,
@@ -227,28 +231,30 @@ export function TicketsTab({
   );
 
   /**
-   * Apply a tier template — appends tickets, optionally creates a group,
+   * Apply a tier template — appends tickets (with the host's edits),
+   * optionally creates a group (with the host's edited group name),
    * optionally flips that group to sequential. Captures every change in
-   * `lastApply` so undo can put everything back. See `ticket-tmp-id.ts`.
+   * `lastApply` so undo can put everything back.
    */
   const applyTierTemplate = useCallback(
-    (template: TierTemplate) => {
+    (template: TierTemplate, overrides: TemplateOverrides) => {
       const newRows = template.tiers.map((tier, i) => ({
         id: makeTmpTicketId(),
         sort_offset: i,
         seed: tier,
+        edit: overrides.tiers[i],
       }));
 
       setTicketTypes((prev) => {
         const baseOrder = prev.length;
-        const seeded = newRows.map(({ id, sort_offset, seed }) => ({
+        const seeded = newRows.map(({ id, sort_offset, seed, edit }) => ({
           id,
           org_id: orgId,
           event_id: event.id || "",
-          name: seed.name,
+          name: edit?.name ?? seed.name,
+          price: edit?.price ?? seed.price,
+          capacity: edit?.capacity ?? seed.capacity,
           description: seed.description || "",
-          price: seed.price,
-          capacity: seed.capacity,
           sold: 0,
           sort_order: baseOrder + sort_offset,
           includes_merch: false,
@@ -268,18 +274,25 @@ export function TicketsTab({
       let createdGroup: string | undefined;
       let prevGroupReleaseMode: "all" | "sequential" | undefined;
 
-      if (template.group_name) {
-        const groupName = template.group_name;
-        if (!groups.includes(groupName)) {
-          createdGroup = groupName;
-          updateSetting("ticket_groups", [...groups, groupName]);
+      // Use the host's edited group name when set, fall back to the
+      // template's default. Empty string falls back too — empty groups
+      // wouldn't display sensibly.
+      const editedGroupName =
+        overrides.groupName && overrides.groupName.trim().length > 0
+          ? overrides.groupName.trim()
+          : template.group_name;
+
+      if (editedGroupName) {
+        if (!groups.includes(editedGroupName)) {
+          createdGroup = editedGroupName;
+          updateSetting("ticket_groups", [...groups, editedGroupName]);
         }
 
         const existingMap =
           (settings.ticket_group_map as Record<string, string | null>) || {};
         const updatedMap = { ...existingMap };
         for (const id of insertedIds) {
-          updatedMap[id] = groupName;
+          updatedMap[id] = editedGroupName;
         }
         updateSetting("ticket_group_map", updatedMap);
 
@@ -289,10 +302,10 @@ export function TicketsTab({
               string,
               "all" | "sequential"
             >) || {};
-          prevGroupReleaseMode = releaseMode[groupName]; // undefined if absent
+          prevGroupReleaseMode = releaseMode[editedGroupName]; // undefined if absent
           updateSetting("ticket_group_release_mode", {
             ...releaseMode,
-            [groupName]: "sequential",
+            [editedGroupName]: "sequential",
           });
         }
       }
@@ -314,16 +327,19 @@ export function TicketsTab({
     setPendingTemplate(pending);
   }, []);
 
-  /** Confirm the dialog → run the right apply path. */
-  const confirmPendingTemplate = useCallback(() => {
-    if (!pendingTemplate) return;
-    if (pendingTemplate.kind === "event") {
-      applyEventTemplate(pendingTemplate.template);
-    } else {
-      applyTierTemplate(pendingTemplate.template);
-    }
-    setPendingTemplate(null);
-  }, [pendingTemplate, applyEventTemplate, applyTierTemplate]);
+  /** Confirm the dialog → run the right apply path with the host's edits. */
+  const confirmPendingTemplate = useCallback(
+    (overrides: TemplateOverrides) => {
+      if (!pendingTemplate) return;
+      if (pendingTemplate.kind === "event") {
+        applyEventTemplate(pendingTemplate.template, overrides);
+      } else {
+        applyTierTemplate(pendingTemplate.template, overrides);
+      }
+      setPendingTemplate(null);
+    },
+    [pendingTemplate, applyEventTemplate, applyTierTemplate]
+  );
 
   /** Reverse the most-recent template apply. */
   const undoLastApply = useCallback(() => {

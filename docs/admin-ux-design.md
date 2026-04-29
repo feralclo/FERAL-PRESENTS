@@ -627,11 +627,11 @@ When you upgrade an existing surface to use the new wrapper components, log it h
 | `src/app/admin/connect/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (was using legacy `admin-page-title` class). |
 | `src/app/admin/ticketstore/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped. |
 | `src/app/admin/merch-store/online/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (Coming Soon badge structure). |
-| `src/components/admin/event-editor/EventEditorHeader.tsx` | 🟨 | 2026-04-27 | Phase 1.9 — Save → "Save". Wrapper migration pending. |
-| `src/components/admin/event-editor/SettingsTab.tsx` | 🟨 | 2026-04-27 | Phase 1.3 (live gates) + Phase 1.10 (Mobile Experience card). Wrapper migration pending. |
-| `src/components/admin/event-editor/TicketCard.tsx` | 🟨 | 2026-04-27 | Phase 1.4 (VAT preview). Wrapper migration pending. |
 | `src/components/admin/dashboard/FreshTenantHero.tsx` | ✅ | 2026-04-27 | Phase 1.1 — built fresh on AdminPanel + tile pattern. |
-| `src/app/admin/events/[slug]/page.tsx` (editor → canvas) | ⬜ | — | Phase 3 |
+| `src/app/admin/events/[slug]/page.tsx` (editor → canvas) | ✅ | 2026-04-29 | Phase 3 complete — `CanvasShell` two-pane layout (form + sticky preview rail; mobile sheet behind floating pill), six narrative `CanvasSection`s (Identity / Story / Look / Tickets / Money / Publish) replacing the 6-tab editor, faithful phone-frame preview fed live from form state, click-to-scroll-sync, real-time readiness rail with one-button Publish + "You're live" sheet, `ImageSlot` with where-it-appears silhouettes. Four legacy tabs deleted. |
+| `src/components/admin/event-editor/EventEditorHeader.tsx` | ✅ | 2026-04-29 | Carried into the canvas shell as the top-bar component; CTA still "Save" per Phase 1.9. |
+| `src/components/admin/event-editor/SettingsTab.tsx` | 🚫 | 2026-04-29 | Deleted — split into `MoneySection` + `PublishSection` under `src/components/admin/canvas/sections/`. |
+| `src/components/admin/event-editor/TicketCard.tsx` | 🟨 | 2026-04-27 | Kept under `event-editor/` — still mounted by `TicketsTab`/`TicketsSection`. Wrapper migration deferred to Phase 4 (tickets-as-heart rebuild). |
 | `src/app/admin/events/new/page.tsx` (Start moment) | ✅ | 2026-04-29 | Phase 2 complete — chrome-bypass full-screen shell, halo, mono Display heading, four-question form (template tile picker / name+slug check / datetime prefill / venue+city autocomplete), GTM instrumentation, generated cover via deterministic OG URL. The single canonical path to create an event. |
 | `src/app/admin/orders/` | ⬜ | — | Phase 4+ |
 | `src/app/admin/customers/` | ⬜ | — | Phase 4+ |

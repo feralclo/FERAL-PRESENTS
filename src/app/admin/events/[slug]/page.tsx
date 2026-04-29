@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES } from "@/lib/constants";
+import { TABLES, brandingKey } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -18,28 +15,50 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { AdminCard } from "@/components/admin/ui";
 import { EventEditorHeader } from "@/components/admin/event-editor/EventEditorHeader";
-import { DetailsTab } from "@/components/admin/event-editor/DetailsTab";
-import { ContentTab } from "@/components/admin/event-editor/ContentTab";
-import { DesignTab } from "@/components/admin/event-editor/DesignTab";
-import { TicketsTab } from "@/components/admin/event-editor/TicketsTab";
-import { SettingsTab } from "@/components/admin/event-editor/SettingsTab";
-import { WaitlistTab } from "@/components/admin/event-editor/WaitlistTab";
+import { CanvasShell } from "@/components/admin/canvas/CanvasShell";
+import { CanvasShellSkeleton } from "@/components/admin/canvas/CanvasShellSkeleton";
+import { CanvasSection } from "@/components/admin/canvas/CanvasSection";
+import { CanvasPreview } from "@/components/admin/canvas/CanvasPreview";
+import { ReadinessCard } from "@/components/admin/canvas/ReadinessCard";
+import { PublishCard } from "@/components/admin/canvas/PublishCard";
+import { useCanvasSync } from "@/components/admin/canvas/useCanvasSync";
+import { IdentitySection } from "@/components/admin/canvas/sections/IdentitySection";
+import { StorySection } from "@/components/admin/canvas/sections/StorySection";
+import { LookSection } from "@/components/admin/canvas/sections/LookSection";
+import { TicketsSection } from "@/components/admin/canvas/sections/TicketsSection";
+import { MoneySection } from "@/components/admin/canvas/sections/MoneySection";
+import { PublishSection } from "@/components/admin/canvas/sections/PublishSection";
+import { assessEvent } from "@/lib/event-readiness";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import type { Event, TicketTypeRow } from "@/types/events";
-import type { EventSettings } from "@/types/settings";
+import type { EventSettings, BrandingSettings } from "@/types/settings";
 import type { EventArtist } from "@/types/artists";
 
+/**
+ * Event editor — the canvas. Replaces the legacy 6-tab editor (shipped
+ * Phase 3, EVENT-BUILDER-PLAN). Two panes on desktop: form (left) and
+ * live phone-frame preview (right). Mobile: form fills the page, preview
+ * lives behind a floating pill that opens a full-screen sheet.
+ *
+ * The form pane is six narrative sections — Identity / Story / Look /
+ * Tickets / Money / Publish. Readiness rail + Publish card sit above the
+ * preview. Save model unchanged: explicit central Save in the header.
+ */
 export default function EventEditorPage() {
   const orgId = useOrgId();
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
 
+  const sync = useCanvasSync();
+
   const [event, setEvent] = useState<Event | null>(null);
   const [ticketTypes, setTicketTypes] = useState<TicketTypeRow[]>([]);
   const [deletedTypeIds, setDeletedTypeIds] = useState<string[]>([]);
   const [settings, setSettings] = useState<EventSettings>({});
+  const [branding, setBranding] = useState<BrandingSettings>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
@@ -47,6 +66,8 @@ export default function EventEditorPage() {
   const [eventArtists, setEventArtists] = useState<EventArtist[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [stripeConnected, setStripeConnected] = useState<boolean | null>(null);
+  const [isPlatformOwner, setIsPlatformOwner] = useState(false);
 
   // Load event by slug
   useEffect(() => {
@@ -71,32 +92,63 @@ export default function EventEditorPage() {
       const types = (data.ticket_types || []) as TicketTypeRow[];
       setTicketTypes(types.sort((a, b) => a.sort_order - b.sort_order));
 
-      // Load site_settings
-      const key =
-        data.settings_key || `${orgId}_event_${slug}`;
+      const key = data.settings_key || `${orgId}_event_${slug}`;
       const { data: sd } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
         .eq("key", key)
         .single();
-      if (sd?.data) {
-        const s = sd.data as EventSettings;
-        setSettings(s);
-      }
+      if (sd?.data) setSettings(sd.data as EventSettings);
 
-      // Load event artists
       try {
         const artistRes = await fetch(`/api/events/${data.id}/artists`);
         const artistJson = await artistRes.json();
         if (artistJson.data) setEventArtists(artistJson.data);
       } catch {
-        // ignore — event_artists may not exist yet
+        /* event_artists may not exist yet — non-fatal */
       }
 
       setLoading(false);
     }
     load();
   }, [slug, orgId]);
+
+  // Load org branding for the preview pane (accent / logo / org_name)
+  useEffect(() => {
+    fetch(`/api/settings?key=${brandingKey(orgId)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data) setBranding(json.data as BrandingSettings);
+      })
+      .catch(() => {});
+  }, [orgId]);
+
+  // Stripe connection + platform-owner detection drives the readiness gate
+  useEffect(() => {
+    (async () => {
+      try {
+        const [, stripeRes] = await Promise.all([
+          (async () => {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+            const { data } = await supabase.auth.getUser();
+            if (data.user?.app_metadata?.is_platform_owner === true) {
+              setIsPlatformOwner(true);
+            }
+          })(),
+          fetch("/api/stripe/connect/my-account").catch(() => null),
+        ]);
+        if (stripeRes?.ok) {
+          const json = await stripeRes.json();
+          setStripeConnected(!!json.connected && !!json.charges_enabled);
+        } else {
+          setStripeConnected(false);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
 
   const updateEvent = useCallback((field: string, value: unknown) => {
     setEvent((prev) => (prev ? { ...prev, [field]: value } : prev));
@@ -106,22 +158,25 @@ export default function EventEditorPage() {
     setSettings((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleSave = useCallback(async () => {
-    if (!event) return;
+  /**
+   * Save flow. Returns true on success. PublishCard awaits this so it
+   * can transition to the "You're live" sheet only after the server
+   * confirms.
+   */
+  const handleSave = useCallback(async (): Promise<boolean> => {
+    if (!event) return false;
     setSaving(true);
     setSaveMsg("");
 
+    let ok = false;
     try {
-      // STEP 1: Save site_settings FIRST
-      // Spread all settings so nothing is dropped (e.g. ticket_group_release_mode,
-      // sticky_checkout_bar, etc.), then layer on the fields we always want present.
+      // STEP 1: Save site_settings first (matches legacy ordering — see
+      // the original page.tsx for the rationale; ticket_groups and
+      // sticky_checkout_bar live there).
       {
         const supabase = getSupabaseClient();
         if (supabase) {
-          const key =
-            event.settings_key ||
-            `${orgId}_event_${event.slug}`;
-
+          const key = event.settings_key || `${orgId}_event_${event.slug}`;
           const dataToSave = {
             ...settings,
             theme: event.theme || "default",
@@ -131,7 +186,6 @@ export default function EventEditorPage() {
             ticket_groups: settings.ticket_groups || [],
             ticket_group_map: settings.ticket_group_map || {},
           };
-
           await supabase.from(TABLES.SITE_SETTINGS).upsert(
             {
               key,
@@ -164,12 +218,14 @@ export default function EventEditorPage() {
           payment_method: event.payment_method,
           capacity: event.capacity || null,
           cover_image: event.cover_image || null,
+          cover_image_url: event.cover_image_url || null,
           hero_image: event.hero_image || null,
+          banner_image_url: event.banner_image_url || null,
+          poster_image_url: event.poster_image_url || null,
           theme: event.theme || "default",
           currency: event.currency,
           about_text: event.about_text || null,
-          lineup:
-            event.lineup && event.lineup.length > 0 ? event.lineup : null,
+          lineup: event.lineup && event.lineup.length > 0 ? event.lineup : null,
           details_text: event.details_text || null,
           tag_line: event.tag_line || null,
           doors_time: event.doors_time || null,
@@ -184,6 +240,12 @@ export default function EventEditorPage() {
           queue_subtitle: event.queue_subtitle || null,
           seo_title: event.seo_title || null,
           seo_description: event.seo_description || null,
+          stripe_account_id: event.stripe_account_id || null,
+          external_link: event.external_link || null,
+          vat_registered: event.vat_registered ?? null,
+          vat_rate: event.vat_rate ?? null,
+          vat_prices_include: event.vat_prices_include ?? null,
+          vat_number: event.vat_number || null,
           ticket_types: ticketTypes.map((tt) => ({
             ...(tt.id ? { id: tt.id } : {}),
             name: tt.name,
@@ -233,10 +295,9 @@ export default function EventEditorPage() {
             const artistJson = await artistRes.json();
             if (artistJson.data) setEventArtists(artistJson.data);
           } catch {
-            // event_artists save failed — non-critical
+            /* event_artists save failed — non-critical */
           }
         } else {
-          // Clear event artists if none
           try {
             await fetch(`/api/events/${event.id}/artists`, {
               method: "PUT",
@@ -244,7 +305,7 @@ export default function EventEditorPage() {
               body: JSON.stringify({ artists: [] }),
             });
           } catch {
-            // ignore
+            /* ignore */
           }
         }
 
@@ -255,6 +316,7 @@ export default function EventEditorPage() {
         } else {
           setSaveMsg("Saved successfully");
         }
+        ok = true;
       } else {
         setSaveMsg(`Error: ${json.error}`);
       }
@@ -264,7 +326,8 @@ export default function EventEditorPage() {
 
     setSaving(false);
     setTimeout(() => setSaveMsg(""), 4000);
-  }, [event, ticketTypes, deletedTypeIds, settings, eventArtists, slug]);
+    return ok;
+  }, [event, ticketTypes, deletedTypeIds, settings, eventArtists, orgId]);
 
   const handleDelete = useCallback(async () => {
     if (!event) return;
@@ -285,20 +348,53 @@ export default function EventEditorPage() {
     setDeleting(false);
   }, [event, router]);
 
-  /* ── Loading / Not found states ── */
+  const setStatus = useCallback(
+    (status: Event["status"]) => updateEvent("status", status),
+    [updateEvent]
+  );
+
+  // Readiness — recomputed on every render; the cost is trivial (pure
+  // function over small arrays) and it's the heartbeat of the right rail.
+  const readiness = useMemo(
+    () =>
+      event
+        ? assessEvent(event, ticketTypes, eventArtists, {
+            stripeConnected,
+            isPlatformOwner,
+          })
+        : null,
+    [event, ticketTypes, eventArtists, stripeConnected, isPlatformOwner]
+  );
+
+  // Per-section completeness chips. Map each readiness rule's status to
+  // the section it sits on, then aggregate.
+  const sectionCompleteness = useMemo(() => {
+    if (!readiness) return null;
+    const counts: Record<
+      "identity" | "story" | "look" | "tickets" | "money" | "publish",
+      { ok: number; total: number }
+    > = {
+      identity: { ok: 0, total: 0 },
+      story: { ok: 0, total: 0 },
+      look: { ok: 0, total: 0 },
+      tickets: { ok: 0, total: 0 },
+      money: { ok: 0, total: 0 },
+      publish: { ok: 0, total: 0 },
+    };
+    for (const rule of readiness.rules) {
+      counts[rule.anchor].total += 1;
+      if (rule.status === "ok") counts[rule.anchor].ok += 1;
+    }
+    return counts;
+  }, [readiness]);
+
+  /* ── Loading / Not-found ── */
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 size={20} className="animate-spin text-primary/60" />
-        <span className="ml-3 text-sm text-muted-foreground">
-          Loading event...
-        </span>
-      </div>
-    );
+    return <CanvasShellSkeleton />;
   }
 
-  if (notFound || !event) {
+  if (notFound || !event || !readiness || !sectionCompleteness) {
     return (
       <div className="p-6 lg:p-8">
         <Link
@@ -306,117 +402,188 @@ export default function EventEditorPage() {
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
           <ArrowLeft size={14} />
-          Back to Events
+          Back to events
         </Link>
-        <Card className="py-0 gap-0">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-sm font-medium text-foreground">
-              Event not found
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              No event matches slug: {slug}
-            </p>
-          </CardContent>
-        </Card>
+        <AdminCard className="px-5 py-16 text-center">
+          <p className="text-sm font-medium text-foreground">Event not found</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            No event matches slug: {slug}
+          </p>
+        </AdminCard>
       </div>
     );
   }
 
+  const eventId = event.id || "draft";
+
+  const formPane = (
+    <>
+      <CanvasSection
+        anchor="identity"
+        eventId={eventId}
+        title="Identity"
+        eyebrow="01 — The basics"
+        subtitle="What it is, when, and where."
+        completeness={sectionCompleteness.identity}
+        onActivate={sync.focus}
+      >
+        <IdentitySection event={event} updateEvent={updateEvent} />
+      </CanvasSection>
+
+      <CanvasSection
+        anchor="story"
+        eventId={eventId}
+        title="Story"
+        eyebrow="02 — The pitch"
+        subtitle="Tag line, about, lineup, fine-print details."
+        completeness={sectionCompleteness.story}
+        onActivate={sync.focus}
+      >
+        <StorySection
+          event={event}
+          updateEvent={updateEvent}
+          eventArtists={eventArtists}
+          onEventArtistsChange={setEventArtists}
+        />
+      </CanvasSection>
+
+      <CanvasSection
+        anchor="look"
+        eventId={eventId}
+        title="Look"
+        eyebrow="03 — The visuals"
+        subtitle="Cover, banner, poster, theme."
+        completeness={sectionCompleteness.look}
+        onActivate={sync.focus}
+      >
+        <LookSection
+          event={event}
+          updateEvent={updateEvent}
+          settings={settings}
+          updateSetting={updateSetting}
+        />
+      </CanvasSection>
+
+      <CanvasSection
+        anchor="tickets"
+        eventId={eventId}
+        title="Tickets"
+        eyebrow="04 — The product"
+        subtitle="Tiers, capacity, release strategy, waitlist."
+        completeness={sectionCompleteness.tickets}
+        onActivate={sync.focus}
+      >
+        <TicketsSection
+          event={event}
+          updateEvent={updateEvent}
+          settings={settings}
+          updateSetting={updateSetting}
+          ticketTypes={ticketTypes}
+          setTicketTypes={setTicketTypes}
+          deletedTypeIds={deletedTypeIds}
+          setDeletedTypeIds={setDeletedTypeIds}
+        />
+      </CanvasSection>
+
+      <CanvasSection
+        anchor="money"
+        eventId={eventId}
+        title="Money"
+        eyebrow="05 — The flow"
+        subtitle="Currency, multi-currency, VAT, payment account."
+        completeness={sectionCompleteness.money}
+        onActivate={sync.focus}
+      >
+        <MoneySection
+          event={event}
+          updateEvent={updateEvent}
+          settings={settings}
+          updateSetting={updateSetting}
+          hasMerch={ticketTypes.some((tt) => tt.includes_merch || tt.product_id)}
+        />
+      </CanvasSection>
+
+      <CanvasSection
+        anchor="publish"
+        eventId={eventId}
+        title="Publish"
+        eyebrow="06 — Going live"
+        subtitle="Status, visibility, announcement, queue, SEO."
+        completeness={sectionCompleteness.publish}
+        onActivate={sync.focus}
+      >
+        <PublishSection
+          event={event}
+          updateEvent={updateEvent}
+          settings={settings}
+          updateSetting={updateSetting}
+          artistNames={
+            eventArtists.map((ea) => ea.artist?.name).filter(Boolean) as string[]
+          }
+          orgName={branding.org_name || "Entry"}
+        />
+      </CanvasSection>
+    </>
+  );
+
+  const previewPane = (
+    <div className="flex flex-col">
+      <div className="space-y-3 border-b border-border/40 px-4 py-4">
+        <ReadinessCard report={readiness} onJumpToSection={sync.focus} />
+        <PublishCard
+          event={event}
+          report={readiness}
+          onSetStatus={setStatus}
+          onSave={handleSave}
+        />
+      </div>
+      <div className="relative min-h-[700px]">
+        <CanvasPreview
+          event={event}
+          ticketTypes={ticketTypes}
+          eventArtists={eventArtists}
+          settings={settings}
+          branding={branding}
+          sync={sync}
+        />
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-6 p-6 lg:p-8">
-      {/* Header */}
-      <EventEditorHeader
-        event={event}
-        saving={saving}
-        onSave={handleSave}
-        onDelete={() => setShowDeleteConfirm(true)}
+    <>
+      <CanvasShell
+        header={
+          <EventEditorHeader
+            event={event}
+            saving={saving}
+            onSave={() => {
+              void handleSave();
+            }}
+            onDelete={() => setShowDeleteConfirm(true)}
+          />
+        }
+        banner={
+          saveMsg ? (
+            <div
+              className={`rounded-md border px-4 py-2.5 text-sm ${
+                saveMsg.includes("Error") || saveMsg.includes("error") || saveMsg.includes("failed")
+                  ? "border-destructive/20 bg-destructive/5 text-destructive"
+                  : "border-success/20 bg-success/5 text-success"
+              }`}
+            >
+              {saveMsg}
+            </div>
+          ) : null
+        }
+        form={formPane}
+        preview={previewPane}
       />
 
-      {/* Save Message */}
-      {saveMsg && (
-        <div
-          className={`rounded-md border px-4 py-2.5 text-sm ${
-            saveMsg.includes("Error") || saveMsg.includes("error")
-              ? "border-destructive/20 bg-destructive/5 text-destructive"
-              : "border-success/20 bg-success/5 text-success"
-          }`}
-        >
-          {saveMsg}
-        </div>
-      )}
-
-      {/* Tab Navigation */}
-      <Tabs defaultValue="details">
-        <TabsList variant="line">
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="design">Design</TabsTrigger>
-          <TabsTrigger value="tickets">Tickets</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="details" className="mt-6">
-          <DetailsTab event={event} updateEvent={updateEvent} />
-        </TabsContent>
-
-        <TabsContent value="content" className="mt-6">
-          <ContentTab
-            event={event}
-            updateEvent={updateEvent}
-            eventArtists={eventArtists}
-            onEventArtistsChange={setEventArtists}
-          />
-        </TabsContent>
-
-        <TabsContent value="design" className="mt-6">
-          <DesignTab
-            event={event}
-            updateEvent={updateEvent}
-            settings={settings}
-            updateSetting={updateSetting}
-          />
-        </TabsContent>
-
-        <TabsContent value="tickets" className="mt-6">
-          <TicketsTab
-            event={event}
-            updateEvent={updateEvent}
-            settings={settings}
-            updateSetting={updateSetting}
-            ticketTypes={ticketTypes}
-            setTicketTypes={setTicketTypes}
-            deletedTypeIds={deletedTypeIds}
-            setDeletedTypeIds={setDeletedTypeIds}
-          />
-        </TabsContent>
-
-        <TabsContent value="settings" className="mt-6">
-          <SettingsTab
-            event={event}
-            updateEvent={updateEvent}
-            settings={settings}
-            updateSetting={updateSetting}
-            artistNames={eventArtists.map((ea) => ea.artist?.name).filter(Boolean) as string[]}
-            hasMerch={ticketTypes.some((tt) => tt.includes_merch || tt.product_id)}
-            ticketTypes={ticketTypes}
-          />
-        </TabsContent>
-
-        <TabsContent value="waitlist" className="mt-6">
-          <WaitlistTab
-            event={event}
-            settings={settings}
-            updateSetting={updateSetting}
-          />
-        </TabsContent>
-      </Tabs>
-
-      {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Event</DialogTitle>
+            <DialogTitle>Delete event</DialogTitle>
             <DialogDescription>
               Permanently delete &ldquo;{event.name}&rdquo;? This cannot be
               undone. All associated ticket types will also be deleted.
@@ -435,11 +602,11 @@ export default function EventEditorPage() {
               disabled={deleting}
             >
               {deleting && <Loader2 size={14} className="animate-spin" />}
-              {deleting ? "Deleting..." : "Delete Event"}
+              {deleting ? "Deleting…" : "Delete event"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

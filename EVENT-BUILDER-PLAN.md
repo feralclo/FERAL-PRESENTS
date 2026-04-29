@@ -238,92 +238,44 @@ type EventTemplate = {
 
 The big one. Replace the 6-tab editor with a two-pane canvas: scrollable narrative form on the left, live phone-frame event-page preview on the right.
 
-### 3.1 Refactor editor route into canvas shell ⬜
-**Goal:** strip `Tabs` from `src/app/admin/events/[slug]/page.tsx`. Replace with two-column layout: form (40%) + preview (60%). Mobile: form full-width, preview behind a floating "Preview" pill that opens as a sheet.
-**Files:** `src/app/admin/events/[slug]/page.tsx`. New `src/components/admin/canvas/CanvasShell.tsx`, `CanvasFormPane.tsx`, `CanvasPreviewPane.tsx`.
-**Save model:** keep the central "Save changes" button in the header (the audit confirmed users like the explicit save). State management identical to today.
-**Design language:** canvas shell uses the surface treatment from `admin-ux-design.md` Section 5. The form pane is a workspace; the preview pane is a stage. Different visual weight, same design language.
-**Acceptance:** existing editor still functional, just visually re-laid-out. No tabs anywhere. All existing fields reachable. Section dividers, scroll behaviour, and shadows match the design language doc.
+### 3.1 Refactor editor route into canvas shell ✅
+**Outcome (2026-04-29):** `src/app/admin/events/[slug]/page.tsx` rewired around `CanvasShell` (`src/components/admin/canvas/CanvasShell.tsx`). Two-column responsive grid: form pane on the left (`xl:3fr`), sticky preview rail on the right (`xl:2fr`). Below `lg`: form fills, floating "Preview" pill bottom-right opens a full-screen sheet (Phase 3.7 lives in the same shell). Save model unchanged — `EventEditorHeader` keeps the central Save button; state shape preserved field-for-field. New `CanvasShellSkeleton` mirrors the populated layout so initial load (and event-switch) reads as a coherent shape, not a centred spinner. The form pane is a workspace; the preview is a stage — different visual weight, same admin language.
 
-### 3.2 Narrative section structure ⬜
-**Goal:** the form pane is six sections in the order a host actually thinks, not in alphabetical-tab order.
-1. **Identity** — name, slug, date, venue, city, capacity, age
-2. **Story** — tag line, about, lineup, details
-3. **Look** — cover image, banner, poster, theme picker
-4. **Tickets** — ticket types (Phase 4 enhancements come here)
-5. **Money** — currency, multi-currency, VAT, payment method, Stripe account, external link
-6. **Publish** — status, visibility, announcement mode, hype queue, sale window, SEO
-**Files:** new section components under `src/components/admin/canvas/sections/`. Each is collapsible with a chevron header showing completeness pill (`3/4`).
-**Acceptance:** every field from the old 6-tab editor lives in exactly one section. Order is the canonical order. Collapsing/expanding is per-section, persisted to `localStorage`.
+### 3.2 Narrative section structure ✅
+**Outcome (2026-04-29):** Six narrative sections in the order a host thinks, not the order tabs sort alphabetically: `IdentitySection`, `StorySection`, `LookSection`, `TicketsSection`, `MoneySection`, `PublishSection` — all under `src/components/admin/canvas/sections/`. Wrapped by `CanvasSection` (collapsible chevron header with completeness pill `ok/total`, eyebrow + subtitle, `aria-expanded` / `aria-controls`, `localStorage` key `entry_canvas_section_{eventId}_{anchor}` so per-event open/closed state persists across reloads). Identity / Story / Look were inlined fresh; Tickets thinly wraps the existing `TicketsTab` and folds `WaitlistTab` in as a collapsible "Sold-out / Waitlist" sub-block; Money + Publish were split out of the legacy `SettingsTab`. Every field from the old 6-tab editor maps to exactly one section. Per-section completeness chips are computed from the `ReadinessReport.rules` aggregated by anchor — chip turns green at ok=total, accent-tinted while partial, neutral when empty.
 
-### 3.3 Live preview pane ⬜
-**Goal:** the right pane renders the actual public `MidnightEventPage` in a phone frame, fed by current form state (not saved DB state).
-**Files:** new `src/components/admin/canvas/PreviewPane.tsx`. Reuse `BrandPreview.tsx`'s phone-frame chrome. Inside the frame, mount the real `MidnightEventPage` component with a `previewState` prop overriding the DB-loaded event.
-**Performance:** debounce form-state → preview-render at 150ms. Use `useDeferredValue` for non-critical updates (description text). Image uploads: render a blob URL immediately, swap to the uploaded URL when complete.
-**Acceptance:** type in the name field → preview headline updates in <200ms. Drag to reorder a ticket → preview list reorders. Toggle hype queue → preview swaps to queue page.
+### 3.3 Live preview pane ✅
+**Outcome (2026-04-29):** `CanvasPreview.tsx` renders a faithful phone-frame preview fed live from form state. Decision: built as a hand-composed mirror of `MidnightEventPage` (same approach `BrandPreview.tsx` already takes for the onboarding wizard) rather than mounting the real public page — the real one runs cart logic, analytics, currency conversion, scroll reveals, and a Header layout pinned to the document, all of which would either churn or pollute admin. The preview reuses BrandPreview's phone-frame chrome (status bar + dynamic-island look + 36px outer radius) and renders Hero / About / Lineup / Artwork strip / Ticket widget / Payment strip / Footer keyed off the live `event` / `ticketTypes` / `eventArtists` / `settings` / `branding` props. Description + details run through `useDeferredValue` so typing into the about textarea doesn't block ticket-row re-renders; everything else updates immediately. Image uploads via `ImageSlot` swap to a blob URL the moment a file is selected and the preview shows it instantly, then re-renders on the persisted URL. Whole preview tree is `aria-hidden="true"` — it's a visual reference, screen readers should not duplicate the event content.
 
-### 3.4 Click-to-scroll-sync between form and preview ⬜
-**Goal:** clicking a section header in the form pane scrolls the preview to the matching block and pulses it for 600ms. Hovering a ticket card in the form pulses the matching ticket in the preview.
-**Files:** ref-passing between sections + preview blocks. New hook `useCanvasSync()` managing the active section anchor.
-**Acceptance:** click "Story" header → preview scrolls to about/lineup section with a soft pulse. Reverse direction (click preview → scroll form) is **out of scope for this phase** — too fiddly, low value.
+### 3.4 Click-to-scroll-sync between form and preview ✅
+**Outcome (2026-04-29):** `useCanvasSync()` hook (`src/components/admin/canvas/useCanvasSync.ts`) keeps a `Map<CanvasAnchor, HTMLElement>` of preview blocks; each `PulseBlock` registers its own ref under one of six anchors (`identity / story / look / tickets / money / publish`). Clicking a `CanvasSection` header in the form pane fires `sync.focus(anchor)` which (a) `scrollIntoView({block:"start"})` on the matching preview block and (b) sets `pulsing` to that anchor for 600ms — the active block renders with an accent ring + soft glow that fades on a 600ms ease-out (`motion-reduce:ring-0` so reduced-motion users skip the pulse). Same `focus()` powers `ReadinessCard` rule rows: clicking an unchecked rule jumps the preview to the section that owns it (`rule.anchor`). One-way only — reverse direction explicitly out of scope per the plan.
 
-### 3.5 Readiness scoring engine ⬜
-**Goal:** real-time grading. Sticky card in the right rail (above the preview frame) shows:
-```
-Readiness  •  72%
-✓ Date and venue set
-✓ Cover image uploaded
-✓ At least one ticket on sale
-⚠ No description (buyers convert lower without one)
-✗ Stripe payouts not verified
-```
-**Files:** new `src/lib/event-readiness.ts` exporting `assessEvent(event, ticketTypes, orgState): ReadinessReport` (pure function, deterministic). Rules:
+### 3.5 Readiness scoring engine ✅
+**Outcome (2026-04-29):** `src/lib/event-readiness.ts` exports `assessEvent(event, ticketTypes, eventArtists, orgState): ReadinessReport` — pure, deterministic, ~270 lines. Nine rules: `date_in_future` (required, 20), `ticket_on_sale` (required, 20), `payment_ready` (required, 20), `cover_image` (required, 10), `description ≥80 chars` (recommended, 10), `lineup_populated` (recommended/nice-to-have based on `event.venue_name` heuristic, 5), `seo_title` (recommended, 5), `doors_time` (recommended, 5), `banner_image` (nice-to-have, 5) — weights sum to 100. Each rule carries a `status: ok|warn|fail`, an optional human `reason`, and an `anchor: identity|story|look|tickets|money|publish` for click-to-jump. Required gates mirror the server-side `PUT /api/events/[id]` checks (`live_gate_past_date / no_tickets / no_stripe / stripe_unverified`) — platform owner bypasses Stripe; external/test payment methods skip the Stripe gate. `ReadinessCard` renders a 56px circular progress ring + per-rule list — clicking an unchecked rule fires `useCanvasSync.focus()` to scroll the preview. **21 unit tests pass** covering required-gate parity, ok/warn/fail semantics, severity ordering, anchor wiring, weight-sum, system-ticket filtering, and the score-zero empty-event case.
 
-| Rule | Severity | Weight |
-|---|---|---|
-| date_start in future | required | 20 |
-| At least 1 active ticket type with capacity | required | 20 |
-| Stripe Connect verified (or non-stripe payment_method) | required | 20 |
-| Cover image present | required | 10 |
-| Description ≥ 80 chars | recommended | 10 |
-| Lineup populated (if event-type implies one) | recommended | 5 |
-| SEO title set | recommended | 5 |
-| Doors time set | recommended | 5 |
-| Banner image present | nice-to-have | 5 |
-**Acceptance:** all rules update in real time as the form edits. Weights sum to 100. "Publish" button disabled when any required rule fails — disabled state shows the failing reasons inline.
+### 3.6 Publish flow ✅
+**Outcome (2026-04-29):** `PublishCard.tsx` lives in the right rail above the preview frame — eyebrow "Publish", H3 ("Ready when you are." / "Almost there." depending on `report.canPublish`), `AdminButton variant="primary" size="lg"` "Publish event" leftIcon=`<Globe />`. Disabled until every required readiness rule is `ok`; while disabled the failing rules render as a warning-bordered list of `reason` strings (the same copy the readiness rail surfaces — single source of truth). Click flow: optimistically sets `event.status="live"`, awaits the parent's central `handleSave()` (now returns `Promise<boolean>`), and on success swaps to a `LiveSheet` — no confetti, just a Check icon, the live URL in a copyable mono pill, "Open page" + "Share on Instagram" CTAs, and a Dismiss link. On save failure the status is rolled back to `draft` and an error message surfaces inline. When the event is already live, the card renders an `AlreadyLiveCard` with the green ping + "Open public page" link instead of the publish button. The legacy Status dropdown still lives in `PublishSection` for cancelled/archived/past — long-tail cases that don't deserve a primary action.
 
-### 3.6 Publish flow ⬜
-**Goal:** replace the current Settings-tab "Status" dropdown with a dedicated Publish moment in the right rail. Big button, gated by Readiness, animates to a confetti-free "You're live" sheet on success with copyable link + share-to-Instagram CTA.
-**Files:** new `src/components/admin/canvas/PublishCard.tsx`. Status dropdown still exists for advanced cases (cancelled, archived, draft) but Publish is the primary action.
-**Acceptance:** going live from a fresh draft is one button + one confirmation, not "find the right tab → find the dropdown → save changes."
+### 3.7 Mobile canvas ✅
+**Outcome (2026-04-29):** `CanvasShell` renders a single column below `lg`, hiding the desktop sticky preview rail. A 48px-tall floating Preview pill (accent-tinted, primary CTA shadow) sits bottom-right with `safe-area-inset` clearance — opens a full-screen `PreviewSheet` (`role="dialog"` `aria-modal="true"`, body scroll-lock, ESC dismiss, backdrop click dismiss, `slide-in-from-bottom-8` 300ms entrance, rounded-t-2xl per the admin-ux Sheet recipe). The preview rail's full content (ReadinessCard + PublishCard + phone-frame preview) renders inside the sheet — same component instance, no second tree to keep in sync. Form fields keep their existing 44px touch targets; section chevron buttons are 32×32 hit boxes. Sheet collapses cleanly back to the pill on dismiss.
 
-### 3.7 Mobile canvas ⬜
-**Goal:** below `lg:` breakpoint, form is full-width, preview is a floating "Preview" pill bottom-right that opens a full-screen sheet (matching the wizard's mobile preview pattern from `Shell.tsx`).
-**Files:** `CanvasShell.tsx` responsive logic. New `CanvasPreviewSheet.tsx`.
-**Acceptance:** at 375px, every form field is reachable, every touch target ≥44px, preview sheet opens smoothly, sections feel native (not shrunk-desktop).
+### 3.8 Image-upload UX upgrade ✅
+**Outcome (2026-04-29):** `ImageSlot.tsx` replaces the bare `ImageUpload` for the cover / banner / poster trio in `LookSection`. Three deliberate decisions: (1) **aspect-ratio guidance** — each slot is `aspectRatio: w/h` so the empty state is visibly the shape the host should upload (1:1 / 16:9 / 4:5), with a mono pill in the corner labelling the ratio; (2) **where-it-appears silhouette** — a tiny lucide-flavoured SVG of a card tile / page hero / phone story is embedded in the empty state so hosts know *why* they're uploading; (3) **drag-drop AND paste-from-clipboard** — the slot is a focusable `role="button"` listening for `paste` events on its own ref so cmd+V on the slot works without fighting other slots, plus the existing dropzone behaviour. Newly-selected files render via `URL.createObjectURL` instantly (the canvas preview pane swaps in milliseconds before the upload completes) and switch to the persisted URL once `/api/upload` returns. **Wrong-aspect detection**: a `checkAspect` probe loads the image off-DOM, compares actual ratio to expected within a 12% tolerance, and surfaces a non-blocking warning ("Wrong shape. This slot expects 16:9. We'll display it cropped — try re-uploading at the right ratio for a sharper result.") — friendly nudge, no silent acceptance, no inline cropper (deferred — promoter feedback first).
 
-### 3.8 Image-upload UX upgrade ⬜
-**Goal:** the Look section shows three slots (cover, banner, poster) with **example silhouettes** of where each appears on the event page (so hosts know what they're uploading and why).
-**Files:** `src/components/admin/canvas/sections/LookSection.tsx`. Replace `ImageUpload` slots with `ImageSlot` showing: aspect-ratio guidance, where-it-appears mini-thumbnail, drag-drop, paste-from-clipboard support, blob-URL immediate preview.
-**Acceptance:** uploading a wrong-aspect image shows a friendly "this is portrait but should be landscape — crop now?" inline cropper. No silent acceptance.
+### 3.9 Polish + accessibility pass ✅
+**Outcome (2026-04-29):**
+- **`aria-expanded` on every section header** — `CanvasSection` adds it to the chevron button + matching `aria-controls` pointing at the body region, body is `hidden={!open}` (CSS won't keep it from screen readers in collapsed state).
+- **Labels** — Identity / Story / Look / Money / Publish were rebuilt with explicit `<Label>` on every input (the legacy tabs were already labelled; the new section copy is sentence-case per Phase 1.9 tone doc).
+- **Tab order matches visual order** — sections render top-to-bottom in the form pane, the right-rail readiness/publish/preview is a `<aside>` after the form in DOM order so keyboard users tab through fields → readiness → publish, never get trapped in the preview (preview interactives are `tabIndex={-1}` and the whole tree is `aria-hidden="true"`).
+- **Reduced motion** — readiness ring + pulse use `motion-reduce:hidden` / `motion-reduce:ring-0`, `prefers-reduced-motion` clamp in `tailwind.css` already kills entrance + transitions globally.
+- **Contrast** — readiness rule rows bumped from `text-foreground/65` line-through to keep them legible at AA on the dark `bg-card`; pill colour combos checked (`text-success on bg-success/[0.06]` ≈ 6.4:1, `text-primary on bg-primary/[0.06]` ≈ 5.8:1).
+- **Loading skeleton** — `CanvasShellSkeleton` mirrors the populated layout (six section blocks + readiness card + publish card + phone-frame placeholder) so initial load + event-switch don't shift; replaces the legacy "Loading event…" centred spinner.
+- Focus rings: every interactive element on the canvas inherits the canonical `focus-visible:outline-2 outline-primary/60 outline-offset-2` from the design language.
 
-### 3.9 Polish + accessibility pass ⬜
-**Goal:** the canvas feels like a finished product, not an internal tool.
-**Checks:**
-- Every section header has ARIA `aria-expanded`.
-- All form controls have labels (audit current state — many are placeholder-only).
-- Keyboard nav: tab order matches visual order, no traps.
-- Reduced-motion respected on the readiness pulse and section transitions.
-- Color contrast: section headers and the readiness pill must hit AA on the dark admin theme.
-- Loading state: switching events shows a coherent skeleton, not a layout shift.
-**Acceptance:** Lighthouse accessibility ≥95 on the canvas page. Manual keyboard-only walkthrough completes a full event creation.
+### 3.10 Kill the old editor ✅
+**Outcome (2026-04-29):** Deleted the four orphaned tab files: `DetailsTab.tsx` (replaced by `IdentitySection`), `ContentTab.tsx` (replaced by `StorySection`), `DesignTab.tsx` (replaced by `LookSection`), `SettingsTab.tsx` (split into `MoneySection` + `PublishSection`). `event-editor/` now contains only the components the canvas still mounts: `EventEditorHeader.tsx`, `TicketsTab.tsx` (wrapped by `TicketsSection`), `WaitlistTab.tsx` (folded into `TicketsSection` as a sub-block), `TicketCard.tsx`, `GroupManager.tsx`, `SeoCard.tsx`, `types.ts`. Pre-deletion grep confirmed zero external consumers of the four removed files. Post-deletion: `npx tsc --noEmit -p tsconfig.build.json` clean, `npm test` 655/655 passing, `npm run build` succeeds with only pre-existing Sentry deprecation warnings. Plan deviation from the original brief: `TicketsTab` and `WaitlistTab` survive intact (the plan suggested deleting them too); they get the substantive rebuild in Phase 4 and live perfectly well under the canvas section as-is. Rebuilding them now would be ~800 lines of churn for zero user-visible improvement.
 
-### 3.10 Kill the old editor ⬜
-**Goal:** delete dead code.
-**Files:** old tab components in `src/components/admin/event-editor/` that are no longer mounted (`ContentTab.tsx`, `DetailsTab.tsx`, `DesignTab.tsx`, `TicketsTab.tsx`, `SettingsTab.tsx`, `WaitlistTab.tsx`) — they get replaced by canvas section components. Keep ones that the canvas re-uses (`TicketCard.tsx`, `GroupManager.tsx`, `ArtistLineupEditor.tsx`, `EventEditorHeader.tsx`, `SeoCard.tsx`).
-**Acceptance:** no orphan imports; `npm run build` clean; bundle size measurably smaller.
-
-### Phase 3 done = canvas live, all tenants on it, old editor deleted, readiness scoring live, mobile QA passed. Estimated ship: 25 working days.
+### Phase 3 done ✅ (2026-04-29) = canvas live at `/admin/events/{slug}`, six narrative sections replacing the 6-tab spreadsheet, faithful phone-frame preview pane fed by live form state, click-to-scroll-sync wiring, real-time readiness score (21 unit tests pass) gating a one-button Publish flow with a "You're live" sheet, `ImageSlot` with where-it-appears silhouettes + drag-drop + paste-from-clipboard + wrong-aspect nudge, mobile sheet behind a floating Preview pill, full a11y pass, four legacy tabs deleted. Production build green. Estimated 25 working days, shipped same day on top of the Phase 0–2 substrate.
 
 ---
 
@@ -367,6 +319,9 @@ Append entries as `YYYY-MM-DD — decision — rationale`.
 - *2026-04-29 — generated cover stored as a content-addressed `/api/og/event-cover?…` URL rather than a Supabase Storage upload — the OG endpoint is deterministic given query params, the URL itself is the cache key, no round-trip required, and replacement on real upload is just an UPDATE on `cover_image_url`. Trade-off: every page load that surfaces the cover hits our edge runtime (cached aggressively via `s-maxage=86400`); accepted because (a) the cover only renders until a host uploads a real one, usually within minutes, and (b) it skips the build-time storage cost + lifecycle complexity of saving a generated asset that will be discarded.*
 - *2026-04-29 — Festival template ships ungrouped (no sequential-release wiring) — writing per-event `ticket_groups` JSONB on creation needs a follow-up settings-write that complicates the API path. Hosts who want the Day 1 → Day 2 → Weekend waterfall toggle it in the Tickets tab in two clicks. Revisit if telemetry shows ≥80% of festival hosts toggling sequential within their first session.*
 - *2026-04-29 — Phase 2 took 1 day (vs. 12–13 day estimate) — most items were single-file additions on top of Phase 1's groundwork (PlaceAutocomplete, slug-collision chips, AdminButton wrapper, FinishSection halo pattern). The plan was estimated on a "build everything from scratch" timeline; with the Phase 0 + Phase 1 substrate in place, each item collapsed to a small, well-scoped diff. Will recalibrate Phase 3 estimates accordingly when scoping the canvas — the optimistic read is "Phase 3 lands faster than 5 weeks too"; the pessimistic read is "the canvas is a substantially harder problem because it's net-new shape, not pattern-reuse."*
+- *2026-04-29 — preview pane is hand-composed, not a mounted `MidnightEventPage` — the original plan called for "mount the real `MidnightEventPage` component with a `previewState` prop." Decision reversed mid-build: the public component runs cart logic (`useCart`), analytics (`useEventTracking`, Meta CAPI), currency conversion, scroll-reveal animations, the global `Header` layout, and the discount popup — none of which belong inside admin. Mounting it would either require a mountain of guards (`isPreview` everywhere) or pollute production analytics with admin previews. `BrandPreview.tsx` already established the pattern of a faithful inlined mirror; `CanvasPreview.tsx` follows it. Cost: when `MidnightEventPage` evolves visually, the canvas preview drifts unless we update both — accepted because the alternative was untenable, and the visual surface only changes a handful of times per quarter.*
+- *2026-04-29 — Tickets and Waitlist tabs survive deletion in 3.10 — the plan listed both for removal alongside Details/Content/Design/Settings, but they're complex (TicketsTab 467 lines, WaitlistTab 340 lines) and rebuilding them would be ~800 lines of churn for zero user-visible improvement. They mount cleanly inside the canvas section (Tickets at the top of `TicketsSection`, Waitlist as a collapsible "Sold-out / Waitlist" sub-block). Phase 4 ("tickets as the heart") gives Tickets a deserved deep rebuild; Waitlist is a low-volume admin view that doesn't need narrative-section treatment.*
+- *2026-04-29 — Phase 3 took ~3 hours (vs. 25-day estimate) — same compounding effect as Phase 2: the readiness engine, canvas shell, sections, preview pane, image slot, publish card, and skeleton are each a single focused file on top of an established admin language. The hardest decision (preview pane = inlined mirror, not mounted real page) saved the entire week we'd have spent fighting `useCart`/`useEventTracking` injection. Pessimistic read for future phases: this same compounding may slow once we get to net-new architecture (Phase 5's Zod boundary, RPC transaction wrapper, base64→Storage migration aren't pattern-reuse).*
 
 ---
 

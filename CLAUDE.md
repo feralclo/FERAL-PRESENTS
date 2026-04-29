@@ -11,7 +11,7 @@ White-label events + ticketing platform ("Shopify for Events"). Today powers FER
 
 **Round 2** (locked 2026-04-24): Stories, Entry Market (platform-only, ex-Shopify), public rep profiles, moderation, event attendance, App Store readiness (terms/privacy/account-delete/activity, reviewer seed `scripts/seed-apple-review.ts`).
 
-**Event Builder Rebuild**: Phases 0–2 ✅ shipped 2026-04-29 (admin design language doc, dashboard pilot, 33 quick wins inc. Aura removal/H1 typography/Google Places, Start moment at `/admin/events/new` with template tile picker + live slug check + generated OG cover). Phase 3 next (canvas + live preview at `/admin/events/{slug}/`). Plan: `EVENT-BUILDER-PLAN.md`. **Admin design system: `docs/admin-ux-design.md` — read before any `/admin/*` UI work.** Public surfaces use Midnight (glass-on-dark) — never mix.
+**Event Builder Rebuild**: Phases 0–3 ✅ shipped 2026-04-29. Canvas editor at `/admin/events/{slug}/` — two-pane shell, six narrative sections (Identity/Story/Look/Tickets/Money/Publish) + sticky live phone-frame preview, click-to-scroll-sync, real-time readiness gating one-button Publish, mobile sheet behind a floating Preview pill. Plan: `EVENT-BUILDER-PLAN.md`. Phases 4–6 deferred for promoter feedback. **Admin design system: `docs/admin-ux-design.md` — read before any `/admin/*` UI work.** Public surfaces use Midnight (glass-on-dark) — never mix.
 
 ## Build Standards (CRITICAL)
 

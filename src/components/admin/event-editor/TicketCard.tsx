@@ -59,6 +59,9 @@ interface TicketCardProps {
   vatRate?: number;
   /** True when the entered price already includes VAT (extract). False when it's net (add on top). */
   vatIncludesPrice?: boolean;
+  /** When true, render a brief accent pulse so the host can see the
+   *  newly-added card. Cleared by the parent after ~1.4s. */
+  isFreshlyAdded?: boolean;
 }
 
 export function TicketCard({
@@ -81,6 +84,7 @@ export function TicketCard({
   vatEnabled,
   vatRate,
   vatIncludesPrice,
+  isFreshlyAdded,
 }: TicketCardProps) {
   const [open, setOpen] = useState(false);
   // Advanced fields default to closed — most events don't need per-ticket
@@ -113,7 +117,12 @@ export function TicketCard({
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <div
-        className="rounded-md border border-border bg-card overflow-hidden transition-colors hover:border-primary/15"
+        className={cn(
+          "rounded-md border bg-card overflow-hidden transition-colors hover:border-primary/15",
+          isFreshlyAdded
+            ? "border-primary/40 ring-2 ring-primary/30 motion-safe:animate-[ticket-pulse_1.4s_ease-out]"
+            : "border-border"
+        )}
         draggable
         onDragStart={() => onDragStart?.(index)}
         onDragOver={(e) => onDragOver?.(e, index)}

@@ -176,8 +176,8 @@ export default function EventEditorPage() {
     let ok = false;
     try {
       // STEP 1: Save site_settings first (matches legacy ordering — see
-      // the original page.tsx for the rationale; ticket_groups and
-      // sticky_checkout_bar live there).
+      // the original page.tsx for the rationale; ticket_groups + the
+      // ticket_group_map JSONB live there).
       //
       // ticket_group_map may contain `tmp-*` keys for tickets that
       // haven't been persisted yet (Phase 4 — the per-card Group dropdown

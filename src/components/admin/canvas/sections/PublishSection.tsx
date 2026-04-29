@@ -268,22 +268,6 @@ export function PublishSection({
         )}
       </div>
 
-      <div className="border-t border-border/40 pt-5 flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <Label className="text-sm font-medium">Sticky checkout bar</Label>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-            Pins a fixed cart total + checkout button to the bottom of the
-            screen on mobile.
-          </p>
-        </div>
-        <Switch
-          checked={settings.sticky_checkout_bar !== false}
-          onCheckedChange={(checked) =>
-            updateSetting("sticky_checkout_bar", checked)
-          }
-        />
-      </div>
-
       <div className="border-t border-border/40 pt-5">
         <SeoCard
           event={event}

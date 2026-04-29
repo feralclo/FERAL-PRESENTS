@@ -7,9 +7,17 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Layers, Plus, Sparkles, Ticket } from "lucide-react";
 import { TicketCard } from "./TicketCard";
+import {
+  TemplatePreviewDialog,
+  type PendingTemplate,
+} from "./TemplatePreviewDialog";
+import { TemplateUndoBanner } from "./TemplateUndoBanner";
 import { useOrgId } from "@/components/OrgProvider";
 import { vatKey } from "@/lib/constants";
-import { EVENT_TEMPLATE_LIST } from "@/lib/event-templates";
+import {
+  EVENT_TEMPLATE_LIST,
+  type EventTemplate,
+} from "@/lib/event-templates";
 import {
   TIER_TEMPLATE_LIST,
   type TierTemplate,
@@ -19,6 +27,24 @@ import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
 import type { VatSettings } from "@/types/settings";
 import type { TicketsTabProps } from "./types";
+
+/**
+ * State retained after a template applies so the host can undo the
+ * action without manually deleting tickets / groups. Includes the inserse
+ * of every change the apply made.
+ */
+interface LastTemplateApply {
+  /** Display copy for the banner. */
+  message: string;
+  /** tmp-* ids of tickets that were inserted by this apply. */
+  insertedTicketIds: string[];
+  /** Group name that was newly created by this apply (if any). */
+  createdGroup?: string;
+  /** Previous release-mode value for the (possibly created) group, so
+   *  we can put it back on undo. `undefined` = the group key wasn't in
+   *  the release_mode object at all and should be removed on undo. */
+  prevGroupReleaseMode?: "all" | "sequential" | undefined;
+}
 
 /**
  * Phase 4 — release-strategy controls (group create/rename/delete/reorder
@@ -104,7 +130,26 @@ export function TicketsTab({
     [setTicketTypes]
   );
 
+  /* ── Templates: preview-then-apply with undo ─────────────────────── */
+
+  /** What's currently in the preview dialog. Null when the dialog is closed. */
+  const [pendingTemplate, setPendingTemplate] =
+    useState<PendingTemplate | null>(null);
+  /** State retained for the undo banner. Null when no banner is up. */
+  const [lastApply, setLastApply] = useState<LastTemplateApply | null>(null);
+  /** Ticket ids that should pulse with an "I'm new!" highlight — clears
+   *  after 1.4s so the pulse reads as a brief cue, not decoration. */
+  const [highlightIds, setHighlightIds] = useState<Set<string>>(new Set());
+
+  /** Set the highlight set to the given ids, then clear after 1.4s. */
+  const flashHighlight = useCallback((ids: string[]) => {
+    setHighlightIds(new Set(ids));
+    const t = setTimeout(() => setHighlightIds(new Set()), 1400);
+    return () => clearTimeout(t);
+  }, []);
+
   const addTicketType = useCallback(() => {
+    const tmpId = makeTmpTicketId();
     setTicketTypes((prev) => [
       ...prev,
       {
@@ -112,7 +157,7 @@ export function TicketsTab({
         // before save. handleSave on the editor page strips `tmp-*` from
         // the API payload and translates tmp→real keys in
         // ticket_group_map after the response. See `lib/ticket-tmp-id.ts`.
-        id: makeTmpTicketId(),
+        id: tmpId,
         org_id: orgId,
         event_id: event.id || "",
         name: "",
@@ -129,22 +174,26 @@ export function TicketsTab({
         updated_at: new Date().toISOString(),
       } as TicketTypeRow,
     ]);
-  }, [event.id, setTicketTypes, orgId]);
+    flashHighlight([tmpId]);
+  }, [event.id, setTicketTypes, orgId, flashHighlight]);
 
   /**
-   * Append an event-template's ticket seeds. Reuses the same EVENT_TEMPLATES
-   * that drive the Start moment so a host who picked "Concert" at
-   * /admin/events/new can later add the "Festival" set without leaving the
-   * editor. Templates append (don't replace) so existing tickets are safe.
+   * Apply an event template — same shape as before, but now wired through
+   * the preview dialog and registers undo state. Each new ticket gets a
+   * `tmp-*` id so the undo banner can target it precisely.
    */
-  const addFromEventTemplate = useCallback(
-    (templateKey: string) => {
-      const template = EVENT_TEMPLATE_LIST.find((t) => t.key === templateKey);
-      if (!template) return;
+  const applyEventTemplate = useCallback(
+    (template: EventTemplate) => {
+      const newRows = template.ticket_types.map((seed, i) => ({
+        id: makeTmpTicketId(),
+        sort_offset: seed.sort_order ?? i,
+        seed,
+      }));
+
       setTicketTypes((prev) => {
         const baseOrder = prev.length;
-        const seeded = template.ticket_types.map((seed, i) => ({
-          id: "",
+        const seeded = newRows.map(({ id, sort_offset, seed }) => ({
+          id,
           org_id: orgId,
           event_id: event.id || "",
           name: seed.name,
@@ -152,7 +201,7 @@ export function TicketsTab({
           price: seed.price,
           capacity: seed.capacity,
           sold: 0,
-          sort_order: baseOrder + (seed.sort_order ?? i),
+          sort_order: baseOrder + sort_offset,
           includes_merch: false,
           status: "active" as const,
           min_per_order: seed.min_per_order ?? 1,
@@ -165,26 +214,25 @@ export function TicketsTab({
         })) as TicketTypeRow[];
         return [...prev, ...seeded];
       });
+
+      const insertedIds = newRows.map((r) => r.id);
+      flashHighlight(insertedIds);
+
+      setLastApply({
+        message: `Added ${insertedIds.length} ticket${insertedIds.length === 1 ? "" : "s"} from ${template.label}`,
+        insertedTicketIds: insertedIds,
+      });
     },
-    [event.id, setTicketTypes, orgId]
+    [event.id, setTicketTypes, orgId, flashHighlight]
   );
 
   /**
-   * Apply a *tier* template (Phase 4.5). Unlike event templates, tier
-   * templates can also seed a ticket group + flip release mode, so the
-   * waterfall ships ready to go. Existing tickets are left alone — the
-   * template appends a brand-new group beside them.
-   *
-   * Each new ticket gets a `tmp-*` client id (via `makeTmpTicketId`) so
-   * `ticket_group_map[tmpId] = groupName` works *immediately*, without
-   * waiting for save. handleSave on the editor page strips `tmp-*` ids
-   * before sending to the API, then translates tmp→real keys in the
-   * settings JSONB after the response. See `lib/ticket-tmp-id.ts`.
+   * Apply a tier template — appends tickets, optionally creates a group,
+   * optionally flips that group to sequential. Captures every change in
+   * `lastApply` so undo can put everything back. See `ticket-tmp-id.ts`.
    */
-  const addFromTierTemplate = useCallback(
+  const applyTierTemplate = useCallback(
     (template: TierTemplate) => {
-      // Mint client ids upfront so the same ids can be referenced by the
-      // ticket-types update *and* the group_map write below.
       const newRows = template.tiers.map((tier, i) => ({
         id: makeTmpTicketId(),
         sort_offset: i,
@@ -214,19 +262,23 @@ export function TicketsTab({
         return [...prev, ...seeded];
       });
 
-      // If the template wants its own group, create it (idempotent),
-      // assign every freshly-seeded ticket to it via tmp-id, and flip
-      // sequential mode if requested. All synchronous now — no microtask.
+      const insertedIds = newRows.map((r) => r.id);
+
+      // Track exactly what we changed for undo.
+      let createdGroup: string | undefined;
+      let prevGroupReleaseMode: "all" | "sequential" | undefined;
+
       if (template.group_name) {
         const groupName = template.group_name;
         if (!groups.includes(groupName)) {
+          createdGroup = groupName;
           updateSetting("ticket_groups", [...groups, groupName]);
         }
 
         const existingMap =
           (settings.ticket_group_map as Record<string, string | null>) || {};
         const updatedMap = { ...existingMap };
-        for (const { id } of newRows) {
+        for (const id of insertedIds) {
           updatedMap[id] = groupName;
         }
         updateSetting("ticket_group_map", updatedMap);
@@ -237,15 +289,89 @@ export function TicketsTab({
               string,
               "all" | "sequential"
             >) || {};
+          prevGroupReleaseMode = releaseMode[groupName]; // undefined if absent
           updateSetting("ticket_group_release_mode", {
             ...releaseMode,
             [groupName]: "sequential",
           });
         }
       }
+
+      flashHighlight(insertedIds);
+
+      setLastApply({
+        message: `Added ${insertedIds.length} ticket${insertedIds.length === 1 ? "" : "s"} from ${template.label}`,
+        insertedTicketIds: insertedIds,
+        createdGroup,
+        prevGroupReleaseMode,
+      });
     },
-    [event.id, setTicketTypes, orgId, groups, settings, updateSetting]
+    [event.id, setTicketTypes, orgId, groups, settings, updateSetting, flashHighlight]
   );
+
+  /** Open the confirmation dialog with the picked template. */
+  const previewTemplate = useCallback((pending: PendingTemplate) => {
+    setPendingTemplate(pending);
+  }, []);
+
+  /** Confirm the dialog → run the right apply path. */
+  const confirmPendingTemplate = useCallback(() => {
+    if (!pendingTemplate) return;
+    if (pendingTemplate.kind === "event") {
+      applyEventTemplate(pendingTemplate.template);
+    } else {
+      applyTierTemplate(pendingTemplate.template);
+    }
+    setPendingTemplate(null);
+  }, [pendingTemplate, applyEventTemplate, applyTierTemplate]);
+
+  /** Reverse the most-recent template apply. */
+  const undoLastApply = useCallback(() => {
+    if (!lastApply) return;
+    const { insertedTicketIds, createdGroup, prevGroupReleaseMode } =
+      lastApply;
+    const insertedSet = new Set(insertedTicketIds);
+
+    // 1. Remove the inserted tickets. Their ids are tmp-* — no API
+    // delete-ids tracking needed because they were never persisted.
+    setTicketTypes((prev) =>
+      prev
+        .filter((tt) => !insertedSet.has(tt.id))
+        // Re-tighten sort_order so we don't leave holes.
+        .map((tt, i) => ({ ...tt, sort_order: i }))
+    );
+
+    // 2. Strip the inserted ids from ticket_group_map.
+    const map =
+      (settings.ticket_group_map as Record<string, string | null>) || {};
+    const cleanedMap: Record<string, string | null> = {};
+    for (const [k, v] of Object.entries(map)) {
+      if (!insertedSet.has(k)) cleanedMap[k] = v;
+    }
+    updateSetting("ticket_group_map", cleanedMap);
+
+    // 3. Remove the group if we created it.
+    if (createdGroup) {
+      updateSetting(
+        "ticket_groups",
+        groups.filter((g) => g !== createdGroup)
+      );
+      const releaseMode =
+        (settings.ticket_group_release_mode as Record<
+          string,
+          "all" | "sequential"
+        >) || {};
+      const next = { ...releaseMode };
+      if (prevGroupReleaseMode != null) {
+        next[createdGroup] = prevGroupReleaseMode;
+      } else {
+        delete next[createdGroup];
+      }
+      updateSetting("ticket_group_release_mode", next);
+    }
+
+    setLastApply(null);
+  }, [lastApply, setTicketTypes, settings, updateSetting, groups]);
 
   const removeTicketType = useCallback(
     (index: number) => {
@@ -380,10 +506,32 @@ export function TicketsTab({
           Add ticket
         </Button>
         <BulkAddMenu
-          onPickEventTemplate={addFromEventTemplate}
-          onPickTierTemplate={addFromTierTemplate}
+          onPickEventTemplate={(template) =>
+            previewTemplate({ kind: "event", template })
+          }
+          onPickTierTemplate={(template) =>
+            previewTemplate({ kind: "tier", template })
+          }
         />
       </div>
+
+      <TemplatePreviewDialog
+        pending={pendingTemplate}
+        existingTicketCount={
+          ticketTypes.filter((tt) => !isSystemTicket(tt)).length
+        }
+        currency={event.currency || "GBP"}
+        onCancel={() => setPendingTemplate(null)}
+        onConfirm={confirmPendingTemplate}
+      />
+
+      {lastApply && (
+        <TemplateUndoBanner
+          message={lastApply.message}
+          onUndo={undoLastApply}
+          onDismiss={() => setLastApply(null)}
+        />
+      )}
 
       {ticketTypes.length === 0 ? (
         <Card className="py-0 gap-0">
@@ -453,6 +601,7 @@ export function TicketsTab({
                       vatEnabled={effectiveVat.enabled}
                       vatRate={effectiveVat.rate}
                       vatIncludesPrice={effectiveVat.includesPrice}
+                      isFreshlyAdded={highlightIds.has(tt.id)}
                     />
                   );
                 })}
@@ -513,6 +662,7 @@ export function TicketsTab({
                           vatEnabled={effectiveVat.enabled}
                           vatRate={effectiveVat.rate}
                           vatIncludesPrice={effectiveVat.includesPrice}
+                          isFreshlyAdded={highlightIds.has(tt.id)}
                         />
                       );
                     })
@@ -543,7 +693,7 @@ function BulkAddMenu({
   onPickEventTemplate,
   onPickTierTemplate,
 }: {
-  onPickEventTemplate: (templateKey: string) => void;
+  onPickEventTemplate: (template: EventTemplate) => void;
   onPickTierTemplate: (template: TierTemplate) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -594,7 +744,7 @@ function BulkAddMenu({
               type="button"
               role="menuitem"
               onClick={() => {
-                onPickEventTemplate(template.key);
+                onPickEventTemplate(template);
                 setOpen(false);
               }}
               className="flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none"

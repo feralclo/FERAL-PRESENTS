@@ -25,9 +25,6 @@ export interface EventSettings {
   // Key = group name, or "__ungrouped__" for ungrouped tickets
   ticket_group_release_mode?: Record<string, "all" | "sequential">;
 
-  /** Show sticky checkout bar on mobile (default: true) */
-  sticky_checkout_bar?: boolean;
-
   /** Enable multi-currency support (geo-detected currency conversion) for this event */
   multi_currency_enabled?: boolean;
 

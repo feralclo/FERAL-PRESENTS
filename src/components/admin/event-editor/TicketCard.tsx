@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,15 +21,13 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { TierSelector, type TierValue } from "@/components/admin/TierSelector";
-import { MerchImageGallery } from "@/components/admin/MerchImageGallery";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import { toDatetimeLocal, fromDatetimeLocal } from "@/lib/date-utils";
-import { AlertTriangle, ChevronDown, ChevronRight, GripVertical, Lock, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, GripVertical, Lock, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CurrencyPriceOverrides } from "@/components/admin/CurrencyPriceOverrides";
 import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
-import type { EventSettings } from "@/types/settings";
 import { CURRENCY_SYMBOLS } from "./types";
 import { isZeroDecimalCurrency, formatPrice } from "@/lib/stripe/config";
 import { calculateVat } from "@/lib/vat";
@@ -172,39 +171,20 @@ export function TicketCard({
 
         <CollapsibleContent>
           <div className="border-t border-border px-4 py-4 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Name *</Label>
-                <Input
-                  value={ticket.name}
-                  onChange={(e) => onUpdate(index, "name", e.target.value)}
-                  placeholder="e.g. General Admission"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={ticket.status} onValueChange={(v) => onUpdate(index, "status", v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="hidden">Hidden</SelectItem>
-                    <SelectItem value="sold_out">Sold Out</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
+            {/* Name takes the full row — it's the most important field.
+                Description sits under it as a compact line. */}
             <div className="space-y-2">
-              <Label>Description</Label>
+              <Label>Name *</Label>
+              <Input
+                value={ticket.name}
+                onChange={(e) => onUpdate(index, "name", e.target.value)}
+                placeholder="e.g. General Admission"
+              />
               <Input
                 value={ticket.description || ""}
-                onChange={(e) =>
-                  onUpdate(index, "description", e.target.value)
-                }
-                placeholder="Brief description of this ticket tier"
+                onChange={(e) => onUpdate(index, "description", e.target.value)}
+                placeholder="Optional description shown under the name"
+                className="text-xs"
               />
             </div>
 
@@ -213,24 +193,59 @@ export function TicketCard({
               onChange={(tier) => onUpdate(index, "tier", tier)}
             />
 
-            <div className="space-y-2">
-              <Label>Group</Label>
-              <Select
-                value={groupMap[ticket.id] || "__none__"}
-                onValueChange={(v) => onAssignGroup(ticket.id, v === "__none__" ? "" : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">(No group)</SelectItem>
-                  {groups.map((g) => (
-                    <SelectItem key={g} value={g}>
-                      {g}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Group + Active on one row — both are quick toggles/picks
+                that don't deserve a row each. */}
+            <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
+              <div className="space-y-2">
+                <Label>Group</Label>
+                <Select
+                  value={groupMap[ticket.id] || "__none__"}
+                  onValueChange={(v) => onAssignGroup(ticket.id, v === "__none__" ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">(No group)</SelectItem>
+                    {groups.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {g}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Status simplified to an Active toggle. Sold-out is
+                  computed from sold/capacity (not user-set), and
+                  Archived is a power-user state surfaced via Delete.
+                  If the stored status is sold_out or archived, the
+                  toggle visually reflects active=false and a hint pill
+                  explains the actual state. */}
+              <div className="space-y-2">
+                <Label>Active</Label>
+                <div className="flex h-9 items-center justify-between gap-3 rounded-md border border-border/60 bg-background px-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {ticket.status === "sold_out" && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Sold out
+                      </Badge>
+                    )}
+                    {ticket.status === "archived" && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Archived
+                      </Badge>
+                    )}
+                    {ticket.status === "active" && <span>On sale</span>}
+                    {ticket.status === "hidden" && <span>Hidden from buyers</span>}
+                  </div>
+                  <Switch
+                    checked={ticket.status === "active" || ticket.status === "sold_out"}
+                    onCheckedChange={(checked) =>
+                      onUpdate(index, "status", checked ? "active" : "hidden")
+                    }
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -380,43 +395,41 @@ export function TicketCard({
               </div>
             </div>
 
-            {/* Merchandise */}
-            <div className="border-t border-border pt-4 space-y-4">
+            {/* Merchandise — Linked Product is the only path now.
+                Production data confirmed 2/2 merch tickets use Linked
+                Product, 0 inline (as of 2026-04-29). The inline merch
+                fallback was dropped: tickets are tickets, products are
+                products, and bundling them via product_id is the right
+                shape. New products live in /admin/merch. */}
+            <div className="border-t border-border pt-4 space-y-3">
               <div className="flex items-center gap-3">
                 <Switch
                   checked={ticket.includes_merch}
-                  onCheckedChange={(checked) =>
-                    onUpdate(index, "includes_merch", checked)
-                  }
+                  onCheckedChange={(checked) => {
+                    onUpdate(index, "includes_merch", checked);
+                    // When turning merch off, clear the link too so
+                    // the data is consistent with the toggle state.
+                    if (!checked && ticket.product_id) {
+                      onUpdate(index, "product_id", null);
+                    }
+                  }}
                 />
-                <Label className="cursor-pointer">
-                  Includes Merchandise
-                </Label>
+                <Label className="cursor-pointer">Includes merch</Label>
               </div>
 
               {ticket.includes_merch && (
-                <div className="space-y-4 pl-1">
-                  {/* Product linking */}
-                  {products.length > 0 && (
+                <div className="space-y-3">
+                  {products.filter((p) => p.status === "active").length > 0 ? (
                     <div className="space-y-2">
-                      <Label>Link Product</Label>
+                      <Label>Linked product</Label>
                       <Select
-                        value={ticket.product_id || "__none__"}
-                        onValueChange={(v) =>
-                          onUpdate(
-                            index,
-                            "product_id",
-                            v === "__none__" ? null : v
-                          )
-                        }
+                        value={ticket.product_id || ""}
+                        onValueChange={(v) => onUpdate(index, "product_id", v)}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Pick a product…" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__none__">
-                            (Configure inline)
-                          </SelectItem>
                           {products
                             .filter((p) => p.status === "active")
                             .map((p) => (
@@ -429,108 +442,59 @@ export function TicketCard({
                             ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-[10px] text-muted-foreground/60">
-                        Link a product from your catalog, or configure merch inline below.
+                      <Link
+                        href="/admin/merch/"
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                      >
+                        <Plus size={12} />
+                        Create new product
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-warning/25 bg-warning/[0.04] p-3 space-y-2">
+                      <p className="text-[11px] text-foreground">
+                        No active products in your catalog yet.
                       </p>
+                      <Link
+                        href="/admin/merch/"
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                      >
+                        <Plus size={12} />
+                        Create your first product
+                      </Link>
                     </div>
                   )}
 
                   {linkedProduct && (() => {
                     const primaryImg = normalizeMerchImages(linkedProduct.images)[0];
                     return (
-                    <div className="flex items-center gap-3 rounded-md border border-primary/15 bg-primary/5 p-3">
-                      {primaryImg && (
-                        <img
-                          src={
-                            primaryImg.startsWith("data:")
-                              ? primaryImg
-                              : `/api/media/${primaryImg}`
-                          }
-                          alt={linkedProduct.name}
-                          className="h-10 w-10 rounded object-cover shrink-0 bg-background/50"
-                        />
-                      )}
-                      <div>
-                        <p className="text-xs text-foreground font-medium">
-                          Linked: {linkedProduct.name}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {linkedProduct.type} — Sizes:{" "}
-                          {linkedProduct.sizes.join(", ") || "None"}
-                        </p>
+                      <div className="flex items-center gap-3 rounded-md border border-primary/15 bg-primary/[0.04] p-3">
+                        {primaryImg && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={
+                              primaryImg.startsWith("data:")
+                                ? primaryImg
+                                : `/api/media/${primaryImg}`
+                            }
+                            alt={linkedProduct.name}
+                            className="h-10 w-10 rounded object-cover shrink-0 bg-background/50"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">
+                            {linkedProduct.name}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {linkedProduct.type}
+                            {linkedProduct.sizes.length > 0
+                              ? ` · ${linkedProduct.sizes.join(", ")}`
+                              : ""}
+                          </p>
+                        </div>
                       </div>
-                    </div>
                     );
                   })()}
-
-                  {/* Inline merch fields (fallback) */}
-                  {!ticket.product_id && (
-                    <>
-                      <div className="space-y-2">
-                        <Label>Merch Name</Label>
-                        <Input
-                          value={ticket.merch_name || ""}
-                          onChange={(e) =>
-                            onUpdate(index, "merch_name", e.target.value)
-                          }
-                          placeholder="e.g. Summer Drop Tee"
-                        />
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Merch Type</Label>
-                          <Input
-                            value={ticket.merch_type || ""}
-                            onChange={(e) =>
-                              onUpdate(index, "merch_type", e.target.value)
-                            }
-                            placeholder="e.g. T-Shirt"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Available Sizes</Label>
-                          <Input
-                            value={(ticket.merch_sizes || []).join(", ")}
-                            onChange={(e) =>
-                              onUpdate(
-                                index,
-                                "merch_sizes",
-                                e.target.value
-                                  .split(",")
-                                  .map((s) => s.trim())
-                                  .filter(Boolean)
-                              )
-                            }
-                            placeholder="XS, S, M, L, XL, XXL"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Merch Description</Label>
-                        <Input
-                          value={ticket.merch_description || ""}
-                          onChange={(e) =>
-                            onUpdate(
-                              index,
-                              "merch_description",
-                              e.target.value
-                            )
-                          }
-                          placeholder="One-time drop. Never again..."
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Merch Images
-                        </span>
-                        <MerchImageGallery
-                          images={ticket.merch_images}
-                          onChange={(imgs) => onUpdate(index, "merch_images", imgs)}
-                          uploadKeyPrefix={`merch_${cardId}`}
-                        />
-                      </div>
-                    </>
-                  )}
                 </div>
               )}
             </div>

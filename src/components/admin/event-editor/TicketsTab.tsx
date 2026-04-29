@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowRight, Info, Layers, Plus, Ticket } from "lucide-react";
+import { ArrowRight, ChevronDown, Info, Layers, Plus, Sparkles, Ticket } from "lucide-react";
 import { TicketCard } from "./TicketCard";
 import { GroupManager, GroupHeader } from "./GroupManager";
 import { useOrgId } from "@/components/OrgProvider";
 import { vatKey } from "@/lib/constants";
+import { EVENT_TEMPLATE_LIST } from "@/lib/event-templates";
 import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
 import type { VatSettings } from "@/types/settings";
@@ -112,6 +113,45 @@ export function TicketsTab({
       } as TicketTypeRow,
     ]);
   }, [event.id, setTicketTypes, orgId]);
+
+  /**
+   * Bulk-add a template's ticket seeds. Reuses the same EVENT_TEMPLATES
+   * that drive the Start moment so a host who picked "Concert" at
+   * /admin/events/new can later add the "Festival" set without leaving
+   * the editor. Templates append (don't replace) so existing tickets
+   * are safe.
+   */
+  const addFromTemplate = useCallback(
+    (templateKey: string) => {
+      const template = EVENT_TEMPLATE_LIST.find((t) => t.key === templateKey);
+      if (!template) return;
+      setTicketTypes((prev) => {
+        const baseOrder = prev.length;
+        const seeded = template.ticket_types.map((seed, i) => ({
+          id: "",
+          org_id: orgId,
+          event_id: event.id || "",
+          name: seed.name,
+          description: seed.description || "",
+          price: seed.price,
+          capacity: seed.capacity,
+          sold: 0,
+          sort_order: baseOrder + (seed.sort_order ?? i),
+          includes_merch: false,
+          status: "active" as const,
+          min_per_order: seed.min_per_order ?? 1,
+          max_per_order: seed.max_per_order ?? 10,
+          tier: (seed.tier === "vip" ? "platinum" : "standard") as
+            | "standard"
+            | "platinum",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })) as TicketTypeRow[];
+        return [...prev, ...seeded];
+      });
+    },
+    [event.id, setTicketTypes, orgId]
+  );
 
   const removeTicketType = useCallback(
     (index: number) => {
@@ -282,8 +322,9 @@ export function TicketsTab({
       <div className="flex items-center gap-2">
         <Button size="sm" onClick={addTicketType}>
           <Plus size={14} />
-          Add Ticket
+          Add ticket
         </Button>
+        <BulkAddMenu onPick={addFromTemplate} />
         <GroupManager settings={settings} updateSetting={updateSetting} />
       </div>
 
@@ -461,6 +502,77 @@ export function TicketsTab({
             );
           })}
         </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Bulk-add menu — wraps the canonical EVENT_TEMPLATES so a host can
+ * append, e.g., "Concert (GA + VIP)" or "Club night (Early/General/Door)"
+ * with one click instead of building each tier by hand. Same templates
+ * power the Start moment picker — the data is the source of truth.
+ */
+function BulkAddMenu({ onPick }: { onPick: (templateKey: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <Sparkles size={13} className="text-primary/80" />
+        From template
+        <ChevronDown
+          size={12}
+          className={cn(
+            "ml-0.5 transition-transform duration-200",
+            open && "rotate-180"
+          )}
+        />
+      </Button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-full z-50 mt-1 w-64 rounded-md border border-border bg-card py-1 shadow-lg"
+        >
+          {EVENT_TEMPLATE_LIST.map((template) => (
+            <button
+              key={template.key}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onPick(template.key);
+                setOpen(false);
+              }}
+              className="flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none"
+            >
+              <span className="text-[12px] font-medium text-foreground">
+                {template.label}
+              </span>
+              <span className="text-[10px] text-muted-foreground/85 leading-tight">
+                {template.ticket_types.map((t) => t.name).join(" · ")}
+              </span>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

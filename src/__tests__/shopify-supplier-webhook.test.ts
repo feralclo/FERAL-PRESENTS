@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import crypto from "node:crypto";
+import crypto from "crypto";
 import { NextRequest } from "next/server";
 
 const hoisted = vi.hoisted(() => {

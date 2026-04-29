@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "node:crypto";
+import crypto from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendClaimDispatched } from "@/lib/market/emails";
 import * as Sentry from "@sentry/nextjs";

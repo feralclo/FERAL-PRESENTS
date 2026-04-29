@@ -1,3 +1,10 @@
+// @vitest-environment node
+//
+// Run this suite in Node, not jsdom. We import `crypto` directly to compute
+// a known-good HMAC for the webhook payload. vitest's jsdom default
+// stubs Node built-ins and the resulting module-load fails with
+// "No such built-in module: node:" on Vercel's build sandbox — exactly
+// what push-apns.test.ts hit. Node env loads the real crypto module.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import crypto from "crypto";
 import { NextRequest } from "next/server";

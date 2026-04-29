@@ -56,6 +56,9 @@ const TIER_EFFECT: Record<string, string> = {
 // ============================================================
 
 const VARIANTS = [
+  // ── Wave 0: Combined pick ──
+  { key: "combined", wave: "Combined pick", name: "V1 box × Glow inner", blurb: "V1's solid bordered card. Glow's content layout: + button when empty that expands to a stepper when active. Glow's tier-colour ambient lighting on selection. Most refined version of every element you said you liked.", List: CombinedList },
+
   // ── Wave 1: First compact attempts ──
   { key: "original", wave: "Compact wave 1", name: "Original (v0)", blurb: "How it shipped on main: 2-row, p-5 padding, big chunky stepper. Baseline (~140px tall).", List: OriginalList },
   { key: "v1-bordered", wave: "Compact wave 1", name: "v1 — Bordered Horizontal", blurb: "First compact: collapsed to single row. Bordered stepper container felt like a chunky widget bolted on.", List: V1BorderedList },
@@ -82,7 +85,7 @@ const VARIANTS = [
   { key: "glow", wave: "NEW", name: "Glow — tier as ambient light", blurb: "Compact rows with no border, no chrome. Each tier emits a soft glow in its tier colour when hovered or active. Identity through atmosphere.", List: GlowList },
 ] as const;
 
-const WAVES = ["All", "Compact wave 1", "A–D variants", "Bold rethinks", "Refined", "NEW"] as const;
+const WAVES = ["Combined pick", "All", "Compact wave 1", "A–D variants", "Bold rethinks", "Refined", "NEW"] as const;
 
 // ============================================================
 // PAGE
@@ -92,7 +95,7 @@ export default function TicketCardArchivePage() {
   const [qtys, setQtys] = useState<Record<string, Record<string, number>>>(
     () => Object.fromEntries(VARIANTS.map((v) => [v.key, {}])),
   );
-  const [activeWave, setActiveWave] = useState<(typeof WAVES)[number]>("NEW");
+  const [activeWave, setActiveWave] = useState<(typeof WAVES)[number]>("Combined pick");
 
   const update = (variantKey: string) => (id: string, delta: number) => {
     setQtys((prev) => {
@@ -111,7 +114,7 @@ export default function TicketCardArchivePage() {
             Ticket card — full archive
           </h1>
           <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] uppercase text-foreground/40 mb-6">
-            Everything tried + five new · default = NEW
+            V1 box × Glow inner · everything else for reference
           </p>
           <div className="flex flex-wrap gap-2">
             {WAVES.map((w) => (
@@ -181,6 +184,135 @@ function MapList({
         />
       ))}
     </>
+  );
+}
+
+// ============================================================
+// 0. COMBINED — V1 box × Glow inner (the user's pick)
+// ============================================================
+function CombinedList(props: Parameters<ListComponent>[0]) {
+  return <MapList {...props} Card={CombinedCard} />;
+}
+
+const TIER_GLOW: Record<string, string> = {
+  platinum: "rgba(220,220,235,0.22)",
+  valentine: "rgba(255,126,179,0.22)",
+  black: "rgba(255,255,255,0.18)",
+  standard: "rgba(255,255,255,0.10)",
+};
+const TIER_GLOW_FAINT: Record<string, string> = {
+  platinum: "rgba(220,220,235,0.06)",
+  valentine: "rgba(255,126,179,0.06)",
+  black: "rgba(255,255,255,0.05)",
+  standard: "rgba(255,255,255,0.03)",
+};
+
+function CombinedCard({ ticket: tt, qty, onAdd, onRemove }: VProps) {
+  const { tier, isSoldOut, isActive, priceDisplay } = useTicketState(tt, qty);
+  const glow = TIER_GLOW[tier] || TIER_GLOW.standard;
+  const faint = TIER_GLOW_FAINT[tier] || TIER_GLOW_FAINT.standard;
+
+  return (
+    <div
+      className={cn(
+        "relative px-4 py-3.5 mb-2 rounded-xl transition-all duration-300",
+        "max-[480px]:px-3.5 max-[480px]:py-3",
+        // Sold out
+        isSoldOut && "opacity-40 pointer-events-none",
+        // V1 box: bg + border (always visible, intensifies when active)
+        "bg-foreground/[0.025] border",
+        isActive && !isSoldOut ? "border-foreground/[0.20]" : "border-foreground/[0.06]",
+        !isActive && !isSoldOut && "hover:border-foreground/[0.12] hover:bg-foreground/[0.035]",
+      )}
+      style={
+        isActive && !isSoldOut
+          ? {
+              // Glow ambient: tier-coloured outer glow + radial gradient inside
+              boxShadow: `0 0 28px ${glow}, 0 0 0 1px ${glow}`,
+              backgroundImage: `radial-gradient(140% 100% at 100% 50%, ${faint}, transparent 60%)`,
+            }
+          : undefined
+      }
+    >
+      <div className="relative z-[1] flex items-center gap-3">
+        {/* Left: name + description */}
+        <div className="flex-1 min-w-0">
+          <h4
+            className={cn(
+              "font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] font-bold tracking-[0.05em] uppercase leading-tight",
+              TIER_TEXT_CLASSES[tier] || TIER_TEXT_CLASSES.standard,
+            )}
+          >
+            {tt.name}
+          </h4>
+          {tt.description ? (
+            <p
+              className={cn(
+                "font-[family-name:var(--font-display)] text-[11px] tracking-[0.01em] leading-snug mt-1 truncate",
+                TIER_DESC_CLASSES[tier] || TIER_DESC_DEFAULT,
+              )}
+            >
+              {tt.description}
+            </p>
+          ) : null}
+        </div>
+
+        {/* Right: price + smart add/stepper */}
+        <div className="shrink-0 flex items-center gap-3">
+          <span
+            className={cn(
+              "font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.5px] tabular-nums",
+              TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
+            )}
+          >
+            {priceDisplay}
+          </span>
+          {isSoldOut ? (
+            <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/40">
+              Sold out
+            </span>
+          ) : qty === 0 ? (
+            // Glow's "+" button — single ghost circle when empty
+            <button
+              type="button"
+              onClick={onAdd}
+              aria-label={`Add ${tt.name}`}
+              className="w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 rounded-full bg-foreground/[0.04] hover:bg-foreground/[0.10] active:scale-90 transition flex items-center justify-center cursor-pointer touch-manipulation"
+            >
+              <span className="text-base leading-none text-foreground/80">+</span>
+            </button>
+          ) : (
+            // Glow's stepper — ghost buttons, no container
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={onRemove}
+                aria-label={`Remove ${tt.name}`}
+                className="w-8 h-8 hover:bg-foreground/[0.08] rounded-full active:scale-90 transition cursor-pointer touch-manipulation flex items-center justify-center"
+              >
+                <span className="text-base leading-none text-foreground/70">−</span>
+              </button>
+              <span
+                className={cn(
+                  "font-[family-name:var(--font-mono)] text-sm font-bold min-w-5 text-center tabular-nums select-none",
+                  TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground",
+                )}
+              >
+                {qty}
+              </span>
+              <button
+                type="button"
+                onClick={onAdd}
+                aria-label={`Add ${tt.name}`}
+                className="w-8 h-8 hover:bg-foreground/[0.08] rounded-full active:scale-90 transition cursor-pointer touch-manipulation flex items-center justify-center"
+              >
+                <span className="text-base leading-none text-foreground">+</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

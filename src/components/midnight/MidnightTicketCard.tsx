@@ -75,7 +75,7 @@ export function MidnightTicketCard({
       role="article"
       aria-label={`${tt.name} — ${priceDisplay}`}
       className={cn(
-        "relative px-4 py-3 mb-2 rounded-xl transition-all duration-200",
+        "relative px-4 py-3.5 mb-2 rounded-xl transition-all duration-200",
         // Sold out
         isSoldOut && "opacity-40 pointer-events-none",
         // Standard tier styling
@@ -86,7 +86,7 @@ export function MidnightTicketCard({
         tierEffect,
         tierEffect && isActive && !isSoldOut && "midnight-active",
         // Mobile
-        "max-[480px]:px-3.5 max-[480px]:py-2.5",
+        "max-[480px]:px-3.5 max-[480px]:py-3",
       )}
       data-ticket-id={tt.id}
     >
@@ -136,17 +136,17 @@ export function MidnightTicketCard({
           ) : null}
         </div>
 
-        {/* Right: price + stepper, paired as a unit */}
-        <div className="shrink-0 flex items-center gap-3 max-[480px]:gap-2.5">
-          {/* Price (single or stacked-discount) */}
+        {/* Right: price (anchor) + ghost stepper */}
+        <div className="shrink-0 flex items-center gap-3 max-[480px]:gap-2">
+          {/* Price (single or stacked-discount) — visual anchor of the right side */}
           {discount && discount.type === "percentage" ? (
             <div className="flex flex-col items-end leading-none">
-              <span className="font-[family-name:var(--font-mono)] text-[10px] max-[480px]:text-[9px] font-medium tracking-[0.3px] text-foreground/25 line-through mb-0.5">
+              <span className="font-[family-name:var(--font-mono)] text-[10px] max-[480px]:text-[9px] font-medium tracking-[0.3px] text-foreground/25 line-through mb-1">
                 {priceDisplay}
               </span>
               <span
                 className={cn(
-                  "font-[family-name:var(--font-mono)] text-[15px] max-[480px]:text-[14px] font-bold tracking-[0.5px]",
+                  "font-[family-name:var(--font-mono)] text-lg max-[480px]:text-base font-bold tracking-[0.5px]",
                   TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
                 )}
               >
@@ -156,7 +156,7 @@ export function MidnightTicketCard({
           ) : (
             <span
               className={cn(
-                "font-[family-name:var(--font-mono)] text-base max-[480px]:text-[14px] font-bold tracking-[0.5px]",
+                "font-[family-name:var(--font-mono)] text-lg max-[480px]:text-base font-bold tracking-[0.5px]",
                 TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
               )}
             >
@@ -164,18 +164,22 @@ export function MidnightTicketCard({
             </span>
           )}
 
-          {/* Sold out badge OR quantity stepper */}
+          {/* Sold out badge OR ghost stepper (no container — feels native to card) */}
           {isSoldOut ? (
             <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.15em] uppercase text-foreground/30">
               Sold out
             </span>
           ) : (
-            <div className="flex items-center gap-0.5 bg-foreground/[0.03] rounded-xl border border-foreground/[0.06] p-0.5">
+            <div className="flex items-center">
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "w-10 h-10 max-[480px]:w-9 max-[480px]:h-9 text-base rounded-lg touch-manipulation hover:bg-foreground/[0.06] active:scale-[0.92] transition-transform duration-100",
+                  "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 text-base rounded-full touch-manipulation",
+                  "hover:bg-foreground/[0.08] active:scale-[0.9] transition-all duration-100",
+                  isActive
+                    ? "text-foreground/80"
+                    : "text-foreground/40",
                   TIER_BUTTON_CLASSES[tier],
                 )}
                 onClick={() => onRemove(tt)}
@@ -186,10 +190,10 @@ export function MidnightTicketCard({
               <span
                 ref={qtyRef}
                 className={cn(
-                  "font-[family-name:var(--font-mono)] text-[15px] max-[480px]:text-[14px] font-bold min-w-6 text-center tabular-nums",
+                  "font-[family-name:var(--font-mono)] text-sm font-semibold min-w-5 text-center tabular-nums select-none",
                   isActive
                     ? TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground"
-                    : "text-foreground/60",
+                    : "text-foreground/40",
                 )}
               >
                 {qty}
@@ -198,7 +202,9 @@ export function MidnightTicketCard({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "w-10 h-10 max-[480px]:w-9 max-[480px]:h-9 text-base rounded-lg touch-manipulation hover:bg-foreground/[0.06] active:scale-[0.92] transition-transform duration-100",
+                  "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 text-base rounded-full touch-manipulation",
+                  "hover:bg-foreground/[0.08] active:scale-[0.9] transition-all duration-100",
+                  "text-foreground/80",
                   TIER_BUTTON_CLASSES[tier],
                 )}
                 onClick={() => tt.includes_merch && onViewMerch ? onViewMerch(tt) : onAdd(tt)}

@@ -11,7 +11,7 @@ White-label events + ticketing platform ("Shopify for Events"). Today powers FER
 
 **Round 2** (locked 2026-04-24): Stories, Entry Market (platform-only, ex-Shopify), public rep profiles, moderation, event attendance, App Store readiness (terms/privacy/account-delete/activity, reviewer seed `scripts/seed-apple-review.ts`).
 
-**Event Builder Rebuild**: Phases 0–3 ✅ shipped 2026-04-29. Canvas editor at `/admin/events/{slug}/` — two-pane shell, six narrative sections (Identity/Story/Look/Tickets/Money/Publish) + sticky live phone-frame preview, click-to-scroll-sync, real-time readiness gating one-button Publish, mobile sheet behind a floating Preview pill. Plan: `EVENT-BUILDER-PLAN.md`. Phases 4–6 deferred for promoter feedback. **Admin design system: `docs/admin-ux-design.md` — read before any `/admin/*` UI work.** Public surfaces use Midnight (glass-on-dark) — never mix.
+**Event Builder Rebuild**: Phases 0–4 ✅ shipped 2026-04-29. Canvas editor at `/admin/events/{slug}/` — two-pane shell, six narrative sections (Identity/Story/Look/Tickets/Money/Publish) + sticky live phone-frame preview, click-to-scroll-sync, real-time readiness gating one-button Publish, mobile sheet behind a floating Preview pill. **Phase 4 (Tickets-as-the-heart)**: Release Strategy panel (single source of truth for group + sequential config — replaces deleted `GroupManager.tsx`), Sales Timeline card (cumulative + daily MicroSparklines, what-if 1×/1.5×/2× projection), time-to-unlock estimates honest about confidence, 5 tier templates (Early-bird waterfall, Tiered pricing, Members + Public, VIP/GA/Door, Two-phase release). Plan: `EVENT-BUILDER-PLAN.md`. Phases 5–6 deferred. **Admin design system: `docs/admin-ux-design.md` — read before any `/admin/*` UI work.** Public surfaces use Midnight (glass-on-dark) — never mix.
 
 ## Build Standards (CRITICAL)
 
@@ -298,6 +298,8 @@ JSONB in `site_settings`. **Always use helpers in `lib/constants.ts`, never hard
 ### Orders & Tickets
 `orders` (GET/POST), `orders/[id]` (GET), `orders/[id]/{refund|resend-email|rep-info|pdf}`, `orders/[id]/wallet/{apple|google}`, `orders/export` (CSV), `tickets/[code]` (GET), `tickets/[code]/{scan|merch}` (POST). Refund → `lib/refund.ts`.
 
+**Sales analytics**: `GET /api/events/[id]/sales-timeline` (admin auth, org-scoped) — returns `{ buckets: { date, perTicket: { [id]: { qty, revenue } } }[], ticketTypes, currency }` for completed orders only. Powers admin Sales Timeline card + Release Strategy panel time-to-unlock estimates. Pure-function aggregations live in `lib/sales-velocity.ts`.
+
 ### Standard CRUD (admin auth)
 Events, Artists, Merch, Customers, Discounts (`validate|auto|seed`), Settings, Branding, Themes, Domains, Team (incl. public `accept-invite`), Guest List (13), Onboarding (state, submit), Campaigns (5), Waitlist.
 
@@ -337,7 +339,7 @@ Events, Artists, Merch, Customers, Discounts (`validate|auto|seed`), Settings, B
 
 ## Hooks
 
-21 in `src/hooks/`: `useBranding`, `useSettings`, `useCart`, `useShopCart`, `useEventTracking`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useLiveSessions`, `useTraffic`, `useHypeQueue`, `useCountdown`, `useOrgTimezone`, `useOrgCurrency`, `useCurrency`, `useHeaderScroll`, `useScrollReveal`, `useCountUp`, `usePopupSettings`, `useRepPWA`, `useScannerPWA`.
+22 in `src/hooks/`: `useBranding`, `useSettings`, `useCart`, `useShopCart`, `useEventTracking`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useLiveSessions`, `useTraffic`, `useHypeQueue`, `useCountdown`, `useOrgTimezone`, `useOrgCurrency`, `useCurrency`, `useHeaderScroll`, `useScrollReveal`, `useCountUp`, `usePopupSettings`, `useRepPWA`, `useScannerPWA`, `useEventSalesTimeline` (Phase 4 — fetches `/api/events/[id]/sales-timeline`).
 
 **Referential stability (CRITICAL)**: hooks returning objects/functions in effect deps MUST `useMemo`. Stable-ref: `useMetaTracking`, `useDataLayer`, `useEventTracking`, `useSettings`, `useBranding`, `useDashboardRealtime`. Destructure callbacks as deps — never the whole object. `useMetaTracking` reads `feral_cookie_consent` localStorage for `marketing:true`; `useMetaTracking` + `useBranding` persist state at module scope (tests must account).
 

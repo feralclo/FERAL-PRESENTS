@@ -4,20 +4,55 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { TicketsTab } from "@/components/admin/event-editor/TicketsTab";
 import { WaitlistTab } from "@/components/admin/event-editor/WaitlistTab";
+import { ReleaseStrategyPanel } from "./ReleaseStrategyPanel";
+import { SalesTimelineCard } from "./SalesTimelineCard";
+import { useEventSalesTimeline } from "@/hooks/useEventSalesTimeline";
 import { cn } from "@/lib/utils";
 import type { TicketsTabProps } from "@/components/admin/event-editor/types";
 
 /**
- * Tickets — the heart of the event. Phase 4 of EVENT-BUILDER-PLAN deepens
- * this section (timeline view, what-if velocity); for Phase 3 we mount
- * the existing TicketsTab implementation under the canvas surface and
- * fold Waitlist in as a collapsible sub-block.
+ * Tickets — the heart of the event. Phase 4 deepens this section: a
+ * dedicated Release Strategy panel consolidates the previously-split
+ * group + sequential controls; a Sales Timeline card surfaces velocity
+ * and what-if scenarios (only on saved events with sales).
+ *
+ * Order:
+ *   1. SalesTimelineCard — only meaningful for saved events with sales
+ *   2. ReleaseStrategyPanel — group + release config (replaces inline
+ *      GroupManager + GroupHeader UI on TicketsTab)
+ *   3. TicketsTab — the ticket list itself + add/template actions
+ *   4. Waitlist sub-block (collapsed)
  */
 export function TicketsSection(props: TicketsTabProps) {
   const [waitlistOpen, setWaitlistOpen] = useState(false);
+  // Only fetch sales for saved events. Drafts (no id) wouldn't have any.
+  const { data: salesData } = useEventSalesTimeline(
+    props.event.id || null
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {props.event.id && (
+        <SalesTimelineCard
+          buckets={salesData?.buckets || []}
+          ticketTypes={(salesData?.ticketTypes || []).map((t) => ({
+            id: t.id,
+            name: t.name,
+          }))}
+          currency={salesData?.currency || props.event.currency || "GBP"}
+          loading={!salesData}
+        />
+      )}
+
+      <ReleaseStrategyPanel
+        settings={props.settings}
+        updateSetting={props.updateSetting}
+        ticketTypes={props.ticketTypes}
+        setTicketTypes={props.setTicketTypes}
+        buckets={salesData?.buckets || null}
+        currency={props.event.currency || "GBP"}
+      />
+
       <TicketsTab {...props} />
 
       <div className="border-t border-border/40 pt-5">

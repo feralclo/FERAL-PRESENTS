@@ -5,17 +5,27 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowRight, ChevronDown, Info, Layers, Plus, Sparkles, Ticket } from "lucide-react";
+import { ChevronDown, Layers, Plus, Sparkles, Ticket } from "lucide-react";
 import { TicketCard } from "./TicketCard";
-import { GroupManager, GroupHeader } from "./GroupManager";
 import { useOrgId } from "@/components/OrgProvider";
 import { vatKey } from "@/lib/constants";
 import { EVENT_TEMPLATE_LIST } from "@/lib/event-templates";
+import {
+  TIER_TEMPLATE_LIST,
+  type TierTemplate,
+} from "@/lib/tier-templates";
 import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
 import type { VatSettings } from "@/types/settings";
 import type { TicketsTabProps } from "./types";
 
+/**
+ * Phase 4 — release-strategy controls (group create/rename/delete/reorder
+ * + release-mode toggle) live in the Release Strategy panel above. This
+ * component now owns the *ticket* surface only: list, drag-to-reorder,
+ * add, bulk-add from event/tier templates, and per-card editing. Group
+ * dividers above tickets are read-only chips; group config is in the panel.
+ */
 export function TicketsTab({
   event,
   settings,
@@ -55,9 +65,6 @@ export function TicketsTab({
       .catch(() => {});
   }, [orgId]);
 
-  // Compute the effective VAT settings for this event. Event override wins
-  // over org default. The TicketCard renders "Buyer pays X (incl. Y VAT)"
-  // only when `vatEnabled === true`.
   const effectiveVat = useMemo(() => {
     if (event.vat_registered === false) return { enabled: false, rate: 0, includesPrice: true };
     if (event.vat_registered === true) {
@@ -67,7 +74,6 @@ export function TicketsTab({
         includesPrice: event.vat_prices_include ?? true,
       };
     }
-    // event.vat_registered === null/undefined → fall back to org default
     if (orgVat?.vat_registered) {
       return {
         enabled: true,
@@ -78,9 +84,15 @@ export function TicketsTab({
     return { enabled: false, rate: 0, includesPrice: true };
   }, [event.vat_registered, event.vat_rate, event.vat_prices_include, orgVat]);
 
-  const groups = (settings.ticket_groups as string[]) || [];
-  const groupMap =
-    (settings.ticket_group_map as Record<string, string | null>) || {};
+  const groups = useMemo<string[]>(
+    () => (settings.ticket_groups as string[]) || [],
+    [settings.ticket_groups]
+  );
+  const groupMap = useMemo<Record<string, string | null>>(
+    () =>
+      (settings.ticket_group_map as Record<string, string | null>) || {},
+    [settings.ticket_group_map]
+  );
 
   const updateTicketType = useCallback(
     (index: number, field: string, value: unknown) => {
@@ -115,13 +127,12 @@ export function TicketsTab({
   }, [event.id, setTicketTypes, orgId]);
 
   /**
-   * Bulk-add a template's ticket seeds. Reuses the same EVENT_TEMPLATES
+   * Append an event-template's ticket seeds. Reuses the same EVENT_TEMPLATES
    * that drive the Start moment so a host who picked "Concert" at
-   * /admin/events/new can later add the "Festival" set without leaving
-   * the editor. Templates append (don't replace) so existing tickets
-   * are safe.
+   * /admin/events/new can later add the "Festival" set without leaving the
+   * editor. Templates append (don't replace) so existing tickets are safe.
    */
-  const addFromTemplate = useCallback(
+  const addFromEventTemplate = useCallback(
     (templateKey: string) => {
       const template = EVENT_TEMPLATE_LIST.find((t) => t.key === templateKey);
       if (!template) return;
@@ -151,6 +162,89 @@ export function TicketsTab({
       });
     },
     [event.id, setTicketTypes, orgId]
+  );
+
+  /**
+   * Apply a *tier* template (Phase 4.5). Unlike event templates, tier
+   * templates can also seed a ticket group + flip release mode, so the
+   * waterfall ships ready to go. Existing tickets are left alone — the
+   * template appends a brand-new group beside them.
+   */
+  const addFromTierTemplate = useCallback(
+    (template: TierTemplate) => {
+      // 1. Append the new tickets at the end of the sort order.
+      setTicketTypes((prev) => {
+        const baseOrder = prev.length;
+        const seeded = template.tiers.map((tier, i) => ({
+          id: "",
+          org_id: orgId,
+          event_id: event.id || "",
+          name: tier.name,
+          description: tier.description || "",
+          price: tier.price,
+          capacity: tier.capacity,
+          sold: 0,
+          sort_order: baseOrder + i,
+          includes_merch: false,
+          status: "active" as const,
+          min_per_order: tier.min_per_order ?? 1,
+          max_per_order: tier.max_per_order ?? 10,
+          tier: "standard" as const,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })) as TicketTypeRow[];
+        return [...prev, ...seeded];
+      });
+
+      // 2. If the template wants its own group, create it and assign each
+      // freshly-seeded ticket to it. The mapping uses the *names* because
+      // we don't yet have ids for the new tickets — when they're persisted
+      // the editor sees the `id` come back and can wire up the map. For
+      // now we build a "pending name map" that the assignment effect picks
+      // up after the next render.
+      if (template.group_name) {
+        const groupName = template.group_name;
+        if (!groups.includes(groupName)) {
+          updateSetting("ticket_groups", [...groups, groupName]);
+        }
+        if (template.release_mode === "sequential") {
+          const releaseMode =
+            (settings.ticket_group_release_mode as Record<
+              string,
+              "all" | "sequential"
+            >) || {};
+          updateSetting("ticket_group_release_mode", {
+            ...releaseMode,
+            [groupName]: "sequential",
+          });
+        }
+        // Defer ticket-id assignment to a layout effect so we can map by
+        // name once setTicketTypes has applied. This is best-effort: if a
+        // host re-templates instantly we'll still pick up the freshly
+        // seeded names. We use a microtask to land after the state set.
+        Promise.resolve().then(() => {
+          setTicketTypes((prev) => {
+            const namesInTemplate = new Set(
+              template.tiers.map((t) => t.name)
+            );
+            const updates: Record<string, string | null> = {
+              ...((settings.ticket_group_map as Record<
+                string,
+                string | null
+              >) || {}),
+            };
+            for (const tt of prev) {
+              if (tt.id && namesInTemplate.has(tt.name)) {
+                updates[tt.id] = groupName;
+              }
+            }
+            updateSetting("ticket_group_map", updates);
+            return prev;
+          });
+        });
+      }
+    },
+    [event.id, setTicketTypes, orgId, groups, settings, updateSetting]
   );
 
   const removeTicketType = useCallback(
@@ -199,63 +293,27 @@ export function TicketsTab({
     setDragIndex(null);
   }, []);
 
-  const moveGroup = useCallback(
-    (groupName: string, direction: "up" | "down") => {
-      const g = [...groups];
-      const idx = g.indexOf(groupName);
-      if (idx === -1) return;
-      const target = direction === "up" ? idx - 1 : idx + 1;
-      if (target < 0 || target >= g.length) return;
-      [g[idx], g[target]] = [g[target], g[idx]];
-      updateSetting("ticket_groups", g);
-    },
-    [groups, updateSetting]
+  // Release mode is now config-only — read it to decorate the cards (sequence
+  // position pill, "waiting for X" badge), but write happens in the strategy
+  // panel.
+  const releaseMode = useMemo(
+    () =>
+      (settings.ticket_group_release_mode as Record<
+        string,
+        "all" | "sequential"
+      >) || {},
+    [settings.ticket_group_release_mode]
   );
 
-  // Release mode settings
-  const releaseMode =
-    (settings.ticket_group_release_mode as Record<string, "all" | "sequential">) || {};
-  const ungroupedMode = releaseMode["__ungrouped__"] || "all";
-
-  const handleUngroupedModeChange = useCallback(
-    (mode: "all" | "sequential") => {
-      const updated: Record<string, "all" | "sequential"> = { ...releaseMode, ["__ungrouped__"]: mode };
-      if (mode === "all") {
-        const { __ungrouped__: _, ...rest } = updated;
-        updateSetting("ticket_group_release_mode", rest);
-      } else {
-        updateSetting("ticket_group_release_mode", updated);
-        // Auto-activate hidden tickets — sequential release handles visibility,
-        // so hidden tickets would never appear. Activate them so the system works.
-        // Skip system tickets (price 0 with no capacity) — these are auto-created
-        // by the merch/reward system and should stay hidden.
-        setTicketTypes((prev) =>
-          prev.map((tt) => {
-            if (!groupMap[tt.id] && tt.status === "hidden" && !(Number(tt.price) === 0 && !tt.capacity)) {
-              return { ...tt, status: "active" as const };
-            }
-            return tt;
-          })
-        );
-      }
-    },
-    [releaseMode, updateSetting, groupMap, setTicketTypes]
-  );
-
-  // Compute "waitingFor" for tickets in sequential groups
-  // Maps ticket ID → name of the preceding ticket it's waiting on
+  // Compute "waitingFor" for tickets in sequential groups.
   const waitingForMap = useMemo(() => {
     const result: Record<string, string> = {};
     const sequentialGroupNames = new Set<string>();
-
-    // Collect all sequential group names (including ungrouped)
     for (const [key, mode] of Object.entries(releaseMode)) {
       if (mode === "sequential") sequentialGroupNames.add(key);
     }
-
     if (sequentialGroupNames.size === 0) return result;
 
-    // Build per-group sorted ticket lists (exclude hidden — they don't participate in the sequence)
     for (const groupName of sequentialGroupNames) {
       const gTickets = ticketTypes
         .filter((tt) => {
@@ -264,21 +322,21 @@ export function TicketsTab({
         })
         .sort((a, b) => a.sort_order - b.sort_order);
 
-      // For each ticket after the first, it's "waiting for" the preceding ticket
-      // (only if the preceding ticket isn't already sold out)
       for (let i = 1; i < gTickets.length; i++) {
         const prev = gTickets[i - 1];
-        const isSoldOut = prev.status === "sold_out" || (prev.capacity != null && prev.capacity > 0 && prev.sold >= prev.capacity);
+        const isSoldOut =
+          prev.status === "sold_out" ||
+          (prev.capacity != null &&
+            prev.capacity > 0 &&
+            prev.sold >= prev.capacity);
         if (!isSoldOut) {
           result[gTickets[i].id] = prev.name || "previous ticket";
         }
       }
     }
-
     return result;
   }, [ticketTypes, groupMap, releaseMode]);
 
-  // Set of sequential group names (for passing isSequentialGroup to TicketCard)
   const sequentialGroups = useMemo(() => {
     const set = new Set<string>();
     for (const [key, mode] of Object.entries(releaseMode)) {
@@ -287,11 +345,9 @@ export function TicketsTab({
     return set;
   }, [releaseMode]);
 
-  // Compute sequence positions for tickets in sequential groups (1-based)
   const sequencePositionMap = useMemo(() => {
     const result: Record<string, number> = {};
     if (sequentialGroups.size === 0) return result;
-
     for (const groupName of sequentialGroups) {
       const gTickets = ticketTypes
         .filter((tt) => {
@@ -299,7 +355,6 @@ export function TicketsTab({
           return ttGroup === groupName && tt.status !== "hidden";
         })
         .sort((a, b) => a.sort_order - b.sort_order);
-
       gTickets.forEach((tt, idx) => {
         result[tt.id] = idx + 1;
       });
@@ -307,25 +362,27 @@ export function TicketsTab({
     return result;
   }, [ticketTypes, groupMap, sequentialGroups]);
 
-  // System ticket types (hidden, £0, no capacity) are auto-created by the merch/reward
-  // system. Filter them from the admin display — they're invisible on the public page
-  // and should never be manually managed.
+  // System ticket types (hidden, £0, no capacity) are auto-created by the
+  // merch/reward system. Filter them from the admin display.
   const isSystemTicket = (tt: TicketTypeRow) =>
     tt.status === "hidden" && Number(tt.price) === 0 && !tt.capacity;
 
-  // Group tickets (excluding system tickets)
-  const ungrouped = ticketTypes.filter((tt) => !groupMap[tt.id] && !isSystemTicket(tt));
+  const ungrouped = ticketTypes.filter(
+    (tt) => !groupMap[tt.id] && !isSystemTicket(tt)
+  );
 
   return (
     <div className="space-y-4">
       {/* Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={addTicketType}>
           <Plus size={14} />
           Add ticket
         </Button>
-        <BulkAddMenu onPick={addFromTemplate} />
-        <GroupManager settings={settings} updateSetting={updateSetting} />
+        <BulkAddMenu
+          onPickEventTemplate={addFromEventTemplate}
+          onPickTierTemplate={addFromTierTemplate}
+        />
       </div>
 
       {ticketTypes.length === 0 ? (
@@ -351,57 +408,26 @@ export function TicketsTab({
           {/* Ungrouped tickets */}
           {ungrouped.length > 0 && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3 px-1">
-                <div className="flex items-center gap-2">
-                  <Layers size={13} className="text-muted-foreground/50" />
-                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    General Tickets
-                  </span>
-                  <Badge variant="secondary" className="text-[10px] font-mono tabular-nums">
-                    {ungrouped.length}
+              <div className="flex items-center gap-2 px-1">
+                <Layers size={13} className="text-muted-foreground/50" />
+                <span className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  General Tickets
+                </span>
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] font-mono tabular-nums"
+                >
+                  {ungrouped.length}
+                </Badge>
+                {sequentialGroups.has("__ungrouped__") && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-mono uppercase border-primary/25 text-primary/85"
+                  >
+                    Sequential
                   </Badge>
-                </div>
-                {ungrouped.length >= 2 && (
-                  <div className="flex items-center rounded-md border border-border bg-secondary/50 p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleUngroupedModeChange("all")}
-                      className={cn(
-                        "px-2.5 py-1 rounded text-[11px] font-medium transition-all",
-                        ungroupedMode === "all"
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      All at once
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleUngroupedModeChange("sequential")}
-                      className={cn(
-                        "px-2.5 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1.5",
-                        ungroupedMode === "sequential"
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <ArrowRight size={11} />
-                      Sequential
-                    </button>
-                  </div>
                 )}
               </div>
-              {ungroupedMode === "sequential" && ungrouped.length >= 2 && (
-                <div className="flex items-start gap-2.5 rounded-md border border-primary/10 bg-primary/5 px-3 py-2.5 mx-1">
-                  <Info size={13} className="text-primary/70 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-medium text-foreground/80">Sequential release active</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Tickets reveal one at a time as each sells out. Drag to reorder the release sequence.
-                    </p>
-                  </div>
-                </div>
-              )}
               <div className="space-y-1.5">
                 {ungrouped.map((tt) => {
                   const i = ticketTypes.indexOf(tt);
@@ -435,33 +461,32 @@ export function TicketsTab({
           )}
 
           {/* Grouped tickets */}
-          {groups.map((gName, gi) => {
+          {groups.map((gName) => {
             const gTickets = ticketTypes.filter(
               (tt) => groupMap[tt.id] === gName && !isSystemTicket(tt)
             );
             return (
               <Card key={gName} className="py-0 gap-0 overflow-hidden">
-                <GroupHeader
-                  name={gName}
-                  ticketCount={gTickets.length}
-                  index={gi}
-                  total={groups.length}
-                  settings={settings}
-                  updateSetting={updateSetting}
-                  onMoveUp={() => moveGroup(gName, "up")}
-                  onMoveDown={() => moveGroup(gName, "down")}
-                  onActivateGroupTickets={(groupName) => {
-                    setTicketTypes((prev) =>
-                      prev.map((tt) => {
-                        // Skip system tickets (price 0 with no capacity) — auto-created by merch/reward system
-                        if (groupMap[tt.id] === groupName && tt.status === "hidden" && !(Number(tt.price) === 0 && !tt.capacity)) {
-                          return { ...tt, status: "active" as const };
-                        }
-                        return tt;
-                      })
-                    );
-                  }}
-                />
+                <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-4 py-2.5">
+                  <Layers
+                    size={13}
+                    className="text-muted-foreground/50 shrink-0"
+                  />
+                  <span className="flex-1 font-mono text-xs font-semibold uppercase tracking-wider text-foreground truncate">
+                    {gName}
+                  </span>
+                  <span className="font-mono tabular-nums text-[10px] text-muted-foreground/60">
+                    {gTickets.length} ticket{gTickets.length === 1 ? "" : "s"}
+                  </span>
+                  {sequentialGroups.has(gName) && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] font-mono uppercase border-primary/25 text-primary/85"
+                    >
+                      Sequential
+                    </Badge>
+                  )}
+                </div>
                 <div className="p-3 space-y-1.5">
                   {gTickets.length > 0 ? (
                     gTickets.map((tt) => {
@@ -493,8 +518,8 @@ export function TicketsTab({
                     })
                   ) : (
                     <p className="text-center text-xs text-muted-foreground/60 py-4">
-                      No tickets in this group. Assign tickets from their
-                      settings.
+                      No tickets in this group. Use a ticket card&rsquo;s
+                      Group dropdown to add one.
                     </p>
                   )}
                 </div>
@@ -508,16 +533,22 @@ export function TicketsTab({
 }
 
 /**
- * Bulk-add menu — wraps the canonical EVENT_TEMPLATES so a host can
- * append, e.g., "Concert (GA + VIP)" or "Club night (Early/General/Door)"
- * with one click instead of building each tier by hand. Same templates
- * power the Start moment picker — the data is the source of truth.
+ * Bulk-add menu — surfaces both event templates (Concert / Club / Festival
+ * / Conference / Private) and tier templates (Phase 4.5: Early-bird
+ * waterfall, Tiered pricing, etc.). Templates are organised in two
+ * sections so the host can quickly distinguish "give me a typical event
+ * shape" from "give me a release pattern".
  */
-function BulkAddMenu({ onPick }: { onPick: (templateKey: string) => void }) {
+function BulkAddMenu({
+  onPickEventTemplate,
+  onPickTierTemplate,
+}: {
+  onPickEventTemplate: (templateKey: string) => void;
+  onPickTierTemplate: (template: TierTemplate) => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -551,15 +582,19 @@ function BulkAddMenu({ onPick }: { onPick: (templateKey: string) => void }) {
       {open && (
         <div
           role="menu"
-          className="absolute left-0 top-full z-50 mt-1 w-64 rounded-md border border-border bg-card py-1 shadow-lg"
+          className="absolute left-0 top-full z-50 mt-1 w-72 rounded-md border border-border bg-card py-1 shadow-lg"
         >
+          {/* Event templates — full event shapes */}
+          <div className="px-3 pt-2 pb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+            Event shapes
+          </div>
           {EVENT_TEMPLATE_LIST.map((template) => (
             <button
-              key={template.key}
+              key={`event-${template.key}`}
               type="button"
               role="menuitem"
               onClick={() => {
-                onPick(template.key);
+                onPickEventTemplate(template.key);
                 setOpen(false);
               }}
               className="flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none"
@@ -569,6 +604,31 @@ function BulkAddMenu({ onPick }: { onPick: (templateKey: string) => void }) {
               </span>
               <span className="text-[10px] text-muted-foreground/85 leading-tight">
                 {template.ticket_types.map((t) => t.name).join(" · ")}
+              </span>
+            </button>
+          ))}
+
+          {/* Tier templates — release patterns */}
+          <div className="mt-1 border-t border-border/40 px-3 pt-2 pb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+            Release patterns
+          </div>
+          {TIER_TEMPLATE_LIST.map((tpl) => (
+            <button
+              key={`tier-${tpl.key}`}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onPickTierTemplate(tpl);
+                setOpen(false);
+              }}
+              className="flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none"
+            >
+              <span className="text-[12px] font-medium text-foreground">
+                {tpl.label}
+              </span>
+              <span className="text-[10px] text-muted-foreground/85 leading-tight">
+                {tpl.tiers.map((t) => t.name).join(" → ")}
+                {tpl.release_mode === "sequential" && " · sequential"}
               </span>
             </button>
           ))}

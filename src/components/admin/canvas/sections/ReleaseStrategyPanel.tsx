@@ -410,105 +410,153 @@ function GroupRow({
         mode === "sequential" && "border-primary/15 bg-primary/[0.02]"
       )}
     >
-      {/* Header row */}
-      <div className="flex items-center gap-3 px-3 py-2.5">
-        {!disableEdit && (
-          <div className="flex flex-col items-center text-muted-foreground/60">
-            <button
-              type="button"
-              onClick={onMoveUp}
-              disabled={!onMoveUp}
-              className="hover:text-foreground transition-colors disabled:opacity-30"
-              aria-label="Move group up"
-            >
-              <ArrowUp size={11} />
-            </button>
-            <button
-              type="button"
-              onClick={onMoveDown}
-              disabled={!onMoveDown}
-              className="hover:text-foreground transition-colors disabled:opacity-30"
-              aria-label="Move group down"
-            >
-              <ArrowDown size={11} />
-            </button>
-          </div>
-        )}
-        {disableEdit && (
-          <Layers size={13} className="text-muted-foreground/50 shrink-0" />
-        )}
+      {/* Header — stacks at < sm so 375px never crowds.
+          Row 1: reorder + title + count + mode badge.
+          Row 2 (mobile only): action buttons (rename, delete, expand). */}
+      <div className="px-3 py-2.5">
+        <div className="flex items-center gap-3">
+          {!disableEdit && (
+            <div className="flex flex-col items-center text-muted-foreground/60 shrink-0">
+              <button
+                type="button"
+                onClick={onMoveUp}
+                disabled={!onMoveUp}
+                className="hover:text-foreground transition-colors disabled:opacity-30"
+                aria-label="Move group up"
+              >
+                <ArrowUp size={11} />
+              </button>
+              <button
+                type="button"
+                onClick={onMoveDown}
+                disabled={!onMoveDown}
+                className="hover:text-foreground transition-colors disabled:opacity-30"
+                aria-label="Move group down"
+              >
+                <ArrowDown size={11} />
+              </button>
+            </div>
+          )}
+          {disableEdit && (
+            <Layers size={13} className="text-muted-foreground/50 shrink-0" />
+          )}
 
-        {editing ? (
-          <div className="flex items-center gap-2 flex-1">
-            <input
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleRenameSubmit();
-                if (e.key === "Escape") {
+          {editing ? (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRenameSubmit();
+                  if (e.key === "Escape") {
+                    setEditing(false);
+                    setEditName(displayName);
+                  }
+                }}
+                autoFocus
+                className="flex-1 min-w-0 rounded-md border border-border/60 bg-background px-2 py-1 text-xs text-foreground focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-1"
+              />
+              <AdminButton
+                size="sm"
+                variant="primary"
+                onClick={handleRenameSubmit}
+                disabled={renameInvalid}
+              >
+                <Check size={12} /> Save
+              </AdminButton>
+              <AdminButton
+                size="sm"
+                variant="ghost"
+                onClick={() => {
                   setEditing(false);
                   setEditName(displayName);
-                }
-              }}
-              autoFocus
-              className="flex-1 rounded-md border border-border/60 bg-background px-2 py-1 text-xs text-foreground focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-1"
-            />
-            <AdminButton
-              size="sm"
-              variant="primary"
-              onClick={handleRenameSubmit}
-              disabled={renameInvalid}
-            >
-              <Check size={12} /> Save
-            </AdminButton>
-            <AdminButton
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setEditing(false);
-                setEditName(displayName);
-              }}
-              aria-label="Cancel"
-            >
-              <X size={12} />
-            </AdminButton>
-          </div>
-        ) : (
-          <>
-            <span className="flex-1 font-mono text-xs font-semibold uppercase tracking-wider text-foreground truncate">
-              {displayName}
-            </span>
-            <span className="font-mono tabular-nums text-[11px] text-muted-foreground/70">
-              {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
-            </span>
-            <ModeBadge mode={mode} />
+                }}
+                aria-label="Cancel"
+              >
+                <X size={12} />
+              </AdminButton>
+            </div>
+          ) : (
+            <>
+              <span className="flex-1 min-w-0 font-mono text-xs font-semibold uppercase tracking-wider text-foreground truncate">
+                {displayName}
+              </span>
+              <span className="font-mono tabular-nums text-[11px] text-muted-foreground/70 shrink-0">
+                {tickets.length}
+              </span>
+              <ModeBadge mode={mode} />
 
-            {!disableEdit && !confirmDelete && (
+              {/* Desktop: actions inline on the same row. */}
+              {!disableEdit && !confirmDelete && (
+                <div className="hidden sm:flex items-center gap-1">
+                  <AdminButton
+                    size="sm"
+                    variant="ghost"
+                    aria-label="Rename group"
+                    onClick={() => {
+                      setEditName(displayName);
+                      setEditing(true);
+                    }}
+                  >
+                    <Pencil size={12} />
+                  </AdminButton>
+                  <AdminButton
+                    size="sm"
+                    variant="ghost"
+                    aria-label="Delete group"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    <Trash2 size={12} />
+                  </AdminButton>
+                </div>
+              )}
+              {!disableEdit && confirmDelete && (
+                <div className="hidden sm:flex items-center gap-1">
+                  <AdminButton
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      onDelete?.();
+                      setConfirmDelete(false);
+                    }}
+                  >
+                    Delete
+                  </AdminButton>
+                  <AdminButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setConfirmDelete(false)}
+                  >
+                    Keep
+                  </AdminButton>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                aria-label={expanded ? "Collapse group" : "Expand group"}
+                aria-expanded={expanded}
+                className="text-muted-foreground/60 hover:text-foreground transition-colors shrink-0"
+              >
+                <ChevronDown
+                  size={14}
+                  className={cn(
+                    "transition-transform duration-200",
+                    expanded ? "rotate-0" : "-rotate-90"
+                  )}
+                />
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Mobile-only action row — keeps the 375px header from overflowing. */}
+        {!editing && !disableEdit && (
+          <div className="mt-2 flex justify-end gap-1 sm:hidden">
+            {confirmDelete ? (
               <>
-                <AdminButton
-                  size="sm"
-                  variant="ghost"
-                  aria-label="Rename group"
-                  onClick={() => {
-                    setEditName(displayName);
-                    setEditing(true);
-                  }}
-                >
-                  <Pencil size={12} />
-                </AdminButton>
-                <AdminButton
-                  size="sm"
-                  variant="ghost"
-                  aria-label="Delete group"
-                  className="text-muted-foreground hover:text-destructive"
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <Trash2 size={12} />
-                </AdminButton>
-              </>
-            )}
-            {!disableEdit && confirmDelete && (
-              <div className="flex items-center gap-1">
                 <AdminButton
                   size="sm"
                   variant="destructive"
@@ -526,25 +574,32 @@ function GroupRow({
                 >
                   Keep
                 </AdminButton>
-              </div>
+              </>
+            ) : (
+              <>
+                <AdminButton
+                  size="sm"
+                  variant="ghost"
+                  leftIcon={<Pencil />}
+                  onClick={() => {
+                    setEditName(displayName);
+                    setEditing(true);
+                  }}
+                >
+                  Rename
+                </AdminButton>
+                <AdminButton
+                  size="sm"
+                  variant="ghost"
+                  leftIcon={<Trash2 />}
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  Remove
+                </AdminButton>
+              </>
             )}
-
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              aria-label={expanded ? "Collapse group" : "Expand group"}
-              aria-expanded={expanded}
-              className="text-muted-foreground/60 hover:text-foreground transition-colors"
-            >
-              <ChevronDown
-                size={14}
-                className={cn(
-                  "transition-transform duration-200",
-                  expanded ? "rotate-0" : "-rotate-90"
-                )}
-              />
-            </button>
-          </>
+          </div>
         )}
       </div>
 
@@ -702,52 +757,63 @@ function TierRow({
     return estimateUnlock(ref, velocity);
   }, [velocity, isFirst, predecessor]);
 
-  return (
-    <li className="flex items-baseline gap-3 rounded-md px-2 py-1.5 hover:bg-foreground/[0.02] transition-colors">
-      {position != null && (
-        <span
-          className={cn(
-            "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold tabular-nums shrink-0",
-            isSoldOut
-              ? "bg-foreground/[0.06] text-muted-foreground"
-              : "bg-primary/10 text-primary"
-          )}
-        >
-          {position}
-        </span>
-      )}
-      <span className="flex-1 truncate text-xs text-foreground">
-        {ticket.name || "Untitled"}
-      </span>
-      <span className="font-mono tabular-nums text-[11px] text-muted-foreground/80">
-        {formatPrice(Number(ticket.price), currency)}
-      </span>
-      {ticket.capacity != null && (
-        <span
-          className={cn(
-            "font-mono tabular-nums text-[10px]",
-            isSoldOut ? "text-success" : "text-muted-foreground/70"
-          )}
-        >
-          {isSoldOut
-            ? "sold out"
-            : `${ticket.sold}/${ticket.capacity}`}
-        </span>
-      )}
+  const hasUnlock =
+    !!(unlock?.unlockAt && unlock.daysFromNow != null && remaining != null);
+  const showNoVelocity = unlock?.reason === "no_velocity";
 
-      {unlock?.unlockAt && unlock.daysFromNow != null && remaining != null && (
-        <span
-          className="inline-flex items-center gap-1 rounded-md border border-primary/15 bg-primary/[0.04] px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-primary/85"
-          title={`Predecessor ${predecessor?.name} has ${remaining ?? 0} left at ${unlock.perDay.toFixed(2)}/day over the last ${unlock.windowDays} day${unlock.windowDays === 1 ? "" : "s"}.`}
-        >
-          <Clock size={10} />
-          unlocks {formatDaysHedged(unlock.daysFromNow)}
+  return (
+    <li className="rounded-md px-2 py-1.5 hover:bg-foreground/[0.02] transition-colors">
+      {/* Top: position + name + price + stock — always one row. The
+          unlock pill stacks below at narrow widths so we never truncate
+          the ticket name. */}
+      <div className="flex items-baseline gap-3">
+        {position != null && (
+          <span
+            className={cn(
+              "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold tabular-nums shrink-0",
+              isSoldOut
+                ? "bg-foreground/[0.06] text-muted-foreground"
+                : "bg-primary/10 text-primary"
+            )}
+          >
+            {position}
+          </span>
+        )}
+        <span className="flex-1 truncate text-xs text-foreground min-w-0">
+          {ticket.name || "Untitled"}
         </span>
-      )}
-      {unlock?.reason === "no_velocity" && (
-        <span className="font-mono text-[10px] text-muted-foreground/60">
-          unlock pace unknown
+        <span className="font-mono tabular-nums text-[11px] text-muted-foreground/80 shrink-0">
+          {formatPrice(Number(ticket.price), currency)}
         </span>
+        {ticket.capacity != null && (
+          <span
+            className={cn(
+              "font-mono tabular-nums text-[10px] shrink-0",
+              isSoldOut ? "text-success" : "text-muted-foreground/70"
+            )}
+          >
+            {isSoldOut ? "sold out" : `${ticket.sold}/${ticket.capacity}`}
+          </span>
+        )}
+      </div>
+
+      {(hasUnlock || showNoVelocity) && (
+        <div className={cn("mt-1 flex", position != null ? "pl-8" : "")}>
+          {hasUnlock && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md border border-primary/15 bg-primary/[0.04] px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-primary/85"
+              title={`Predecessor ${predecessor?.name} has ${remaining ?? 0} left at ${unlock!.perDay.toFixed(2)}/day over the last ${unlock!.windowDays} day${unlock!.windowDays === 1 ? "" : "s"}.`}
+            >
+              <Clock size={10} />
+              unlocks {formatDaysHedged(unlock!.daysFromNow!)}
+            </span>
+          )}
+          {showNoVelocity && (
+            <span className="font-mono text-[10px] text-muted-foreground/60">
+              unlock pace unknown
+            </span>
+          )}
+        </div>
       )}
     </li>
   );

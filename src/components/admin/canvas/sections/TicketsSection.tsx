@@ -40,6 +40,7 @@ export function TicketsSection(props: TicketsTabProps) {
             name: t.name,
           }))}
           currency={salesData?.currency || props.event.currency || "GBP"}
+          eventDateStart={props.event.date_start}
           loading={!salesData}
         />
       )}

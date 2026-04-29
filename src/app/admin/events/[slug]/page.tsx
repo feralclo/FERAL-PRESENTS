@@ -31,6 +31,11 @@ import { TicketsSection } from "@/components/admin/canvas/sections/TicketsSectio
 import { MoneySection } from "@/components/admin/canvas/sections/MoneySection";
 import { PublishSection } from "@/components/admin/canvas/sections/PublishSection";
 import { assessEvent } from "@/lib/event-readiness";
+import {
+  buildTmpToRealMap,
+  isTmpTicketId,
+  translateTmpIdsInMap,
+} from "@/lib/ticket-tmp-id";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { EventSettings, BrandingSettings } from "@/types/settings";
@@ -173,10 +178,21 @@ export default function EventEditorPage() {
       // STEP 1: Save site_settings first (matches legacy ordering — see
       // the original page.tsx for the rationale; ticket_groups and
       // sticky_checkout_bar live there).
+      //
+      // ticket_group_map may contain `tmp-*` keys for tickets that
+      // haven't been persisted yet (Phase 4 — the per-card Group dropdown
+      // and tier templates write tmp-id keys synchronously). We strip
+      // those for the initial settings save, then re-save with translated
+      // real ids after the API response below.
       {
         const supabase = getSupabaseClient();
         if (supabase) {
           const key = event.settings_key || `${orgId}_event_${event.slug}`;
+          const rawGroupMap = settings.ticket_group_map || {};
+          const groupMapWithoutTmp: Record<string, string | null> = {};
+          for (const [k, v] of Object.entries(rawGroupMap)) {
+            if (!isTmpTicketId(k)) groupMapWithoutTmp[k] = v;
+          }
           const dataToSave = {
             ...settings,
             theme: event.theme || "default",
@@ -184,7 +200,7 @@ export default function EventEditorPage() {
             minimalStaticStrength: settings.minimalStaticStrength ?? 5,
             minimalBgEnabled: !!(event.hero_image || event.cover_image),
             ticket_groups: settings.ticket_groups || [],
-            ticket_group_map: settings.ticket_group_map || {},
+            ticket_group_map: groupMapWithoutTmp,
           };
           await supabase.from(TABLES.SITE_SETTINGS).upsert(
             {
@@ -198,6 +214,10 @@ export default function EventEditorPage() {
       }
 
       // STEP 2: Save event + ticket types via API
+      // Strip tmp-* ids from the ticket payload — the API treats absent
+      // ids as inserts. Save the pre-save list so we can translate
+      // tmp→real ids after the response lands.
+      const preSaveTickets = ticketTypes;
       const res = await fetch(`/api/events/${event.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -247,7 +267,7 @@ export default function EventEditorPage() {
           vat_prices_include: event.vat_prices_include ?? null,
           vat_number: event.vat_number || null,
           ticket_types: ticketTypes.map((tt) => ({
-            ...(tt.id ? { id: tt.id } : {}),
+            ...(tt.id && !isTmpTicketId(tt.id) ? { id: tt.id } : {}),
             name: tt.name,
             description: tt.description || null,
             price: Number(tt.price),
@@ -276,8 +296,51 @@ export default function EventEditorPage() {
       if (res.ok) {
         setEvent(json.data);
         const types = (json.data.ticket_types || []) as TicketTypeRow[];
-        setTicketTypes(types.sort((a, b) => a.sort_order - b.sort_order));
+        const sortedTypes = types.sort((a, b) => a.sort_order - b.sort_order);
+        setTicketTypes(sortedTypes);
         setDeletedTypeIds([]);
+
+        // Translate tmp-* keys in ticket_group_map to the freshly-minted
+        // real ids and re-save settings if anything moved. Pre-save list
+        // had the tmp ids; post-save list has real ids in matching
+        // (sort_order, name) slots.
+        const tmpToReal = buildTmpToRealMap(
+          preSaveTickets,
+          sortedTypes
+        );
+        if (tmpToReal.size > 0) {
+          const rawMap = settings.ticket_group_map || {};
+          const translated = translateTmpIdsInMap(rawMap, tmpToReal);
+          // Filter out any leftover tmp keys (shouldn't happen, but cheap insurance).
+          const cleaned: Record<string, string | null> = {};
+          for (const [k, v] of Object.entries(translated)) {
+            if (!isTmpTicketId(k)) cleaned[k] = v;
+          }
+          updateSetting("ticket_group_map", cleaned);
+
+          const supabase = getSupabaseClient();
+          if (supabase) {
+            const key =
+              event.settings_key || `${orgId}_event_${event.slug}`;
+            const dataToSave = {
+              ...settings,
+              theme: event.theme || "default",
+              minimalBlurStrength: settings.minimalBlurStrength ?? 4,
+              minimalStaticStrength: settings.minimalStaticStrength ?? 5,
+              minimalBgEnabled: !!(event.hero_image || event.cover_image),
+              ticket_groups: settings.ticket_groups || [],
+              ticket_group_map: cleaned,
+            };
+            await supabase.from(TABLES.SITE_SETTINGS).upsert(
+              {
+                key,
+                data: dataToSave,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "key" }
+            );
+          }
+        }
 
         // Save event artists
         if (eventArtists.length > 0) {

@@ -14,6 +14,7 @@ import {
   TIER_TEMPLATE_LIST,
   type TierTemplate,
 } from "@/lib/tier-templates";
+import { makeTmpTicketId } from "@/lib/ticket-tmp-id";
 import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
 import type { VatSettings } from "@/types/settings";
@@ -107,7 +108,11 @@ export function TicketsTab({
     setTicketTypes((prev) => [
       ...prev,
       {
-        id: "",
+        // Temporary client-side id so per-card Group assignment works
+        // before save. handleSave on the editor page strips `tmp-*` from
+        // the API payload and translates tmp→real keys in
+        // ticket_group_map after the response. See `lib/ticket-tmp-id.ts`.
+        id: makeTmpTicketId(),
         org_id: orgId,
         event_id: event.id || "",
         name: "",
@@ -169,26 +174,39 @@ export function TicketsTab({
    * templates can also seed a ticket group + flip release mode, so the
    * waterfall ships ready to go. Existing tickets are left alone — the
    * template appends a brand-new group beside them.
+   *
+   * Each new ticket gets a `tmp-*` client id (via `makeTmpTicketId`) so
+   * `ticket_group_map[tmpId] = groupName` works *immediately*, without
+   * waiting for save. handleSave on the editor page strips `tmp-*` ids
+   * before sending to the API, then translates tmp→real keys in the
+   * settings JSONB after the response. See `lib/ticket-tmp-id.ts`.
    */
   const addFromTierTemplate = useCallback(
     (template: TierTemplate) => {
-      // 1. Append the new tickets at the end of the sort order.
+      // Mint client ids upfront so the same ids can be referenced by the
+      // ticket-types update *and* the group_map write below.
+      const newRows = template.tiers.map((tier, i) => ({
+        id: makeTmpTicketId(),
+        sort_offset: i,
+        seed: tier,
+      }));
+
       setTicketTypes((prev) => {
         const baseOrder = prev.length;
-        const seeded = template.tiers.map((tier, i) => ({
-          id: "",
+        const seeded = newRows.map(({ id, sort_offset, seed }) => ({
+          id,
           org_id: orgId,
           event_id: event.id || "",
-          name: tier.name,
-          description: tier.description || "",
-          price: tier.price,
-          capacity: tier.capacity,
+          name: seed.name,
+          description: seed.description || "",
+          price: seed.price,
+          capacity: seed.capacity,
           sold: 0,
-          sort_order: baseOrder + i,
+          sort_order: baseOrder + sort_offset,
           includes_merch: false,
           status: "active" as const,
-          min_per_order: tier.min_per_order ?? 1,
-          max_per_order: tier.max_per_order ?? 10,
+          min_per_order: seed.min_per_order ?? 1,
+          max_per_order: seed.max_per_order ?? 10,
           tier: "standard" as const,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -196,17 +214,23 @@ export function TicketsTab({
         return [...prev, ...seeded];
       });
 
-      // 2. If the template wants its own group, create it and assign each
-      // freshly-seeded ticket to it. The mapping uses the *names* because
-      // we don't yet have ids for the new tickets — when they're persisted
-      // the editor sees the `id` come back and can wire up the map. For
-      // now we build a "pending name map" that the assignment effect picks
-      // up after the next render.
+      // If the template wants its own group, create it (idempotent),
+      // assign every freshly-seeded ticket to it via tmp-id, and flip
+      // sequential mode if requested. All synchronous now — no microtask.
       if (template.group_name) {
         const groupName = template.group_name;
         if (!groups.includes(groupName)) {
           updateSetting("ticket_groups", [...groups, groupName]);
         }
+
+        const existingMap =
+          (settings.ticket_group_map as Record<string, string | null>) || {};
+        const updatedMap = { ...existingMap };
+        for (const { id } of newRows) {
+          updatedMap[id] = groupName;
+        }
+        updateSetting("ticket_group_map", updatedMap);
+
         if (template.release_mode === "sequential") {
           const releaseMode =
             (settings.ticket_group_release_mode as Record<
@@ -218,30 +242,6 @@ export function TicketsTab({
             [groupName]: "sequential",
           });
         }
-        // Defer ticket-id assignment to a layout effect so we can map by
-        // name once setTicketTypes has applied. This is best-effort: if a
-        // host re-templates instantly we'll still pick up the freshly
-        // seeded names. We use a microtask to land after the state set.
-        Promise.resolve().then(() => {
-          setTicketTypes((prev) => {
-            const namesInTemplate = new Set(
-              template.tiers.map((t) => t.name)
-            );
-            const updates: Record<string, string | null> = {
-              ...((settings.ticket_group_map as Record<
-                string,
-                string | null
-              >) || {}),
-            };
-            for (const tt of prev) {
-              if (tt.id && namesInTemplate.has(tt.name)) {
-                updates[tt.id] = groupName;
-              }
-            }
-            updateSetting("ticket_group_map", updates);
-            return prev;
-          });
-        });
       }
     },
     [event.id, setTicketTypes, orgId, groups, settings, updateSetting]

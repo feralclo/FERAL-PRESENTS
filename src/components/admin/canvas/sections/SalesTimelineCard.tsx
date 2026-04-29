@@ -1,14 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { TrendingUp } from "lucide-react";
 import { MicroSparkline } from "@/components/admin/dashboard/MicroSparkline";
 import { AdminBadge } from "@/components/admin/ui";
-import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/stripe/config";
 import {
   buildTimelineSeries,
-  projectForward,
   velocityByTicket,
   type SalesBucket,
 } from "@/lib/sales-velocity";
@@ -22,20 +20,22 @@ import {
  * Two layers:
  *   1. Combined event totals: cumulative line + daily bars + a velocity
  *      pill ("12.4 tickets/day over the last 7 days").
- *   2. Per-ticket-type rows below: each tier's daily cadence and its
- *      total. Helps the host see which tier is driving sales.
+ *   2. Per-ticket-type rows: each tier's daily cadence + total + per-day
+ *      pace. Helps the host see which tier is driving sales.
  *
- * Phase 4.6 (what-if scenarios) layers a hover toggle that projects the
- * cumulative line forward at 1× / 1.5× / 2× the current pace. Restraint:
- * a single thin projected line, not an interactive simulator. If the
- * projection contradicts plain reading (zero velocity, 0 days remaining),
- * we hide the toggle entirely.
+ * Below that, a single anchored projection: "At this pace you'll reach
+ * ~N tickets by {event date}". One sentence. No 1.5× / 2× toggle —
+ * sliders without anchored meaning are toy-flavoured. The event date is
+ * the anchor every host actually cares about.
  */
 
 interface Props {
   buckets: SalesBucket[];
   ticketTypes: { id: string; name: string }[];
   currency: string;
+  /** Event start ISO — used for the "by event date" projection sentence.
+   *  Null/undefined hides the projection (drafts before a date is set). */
+  eventDateStart?: string | null;
   loading?: boolean;
 }
 
@@ -43,6 +43,7 @@ export function SalesTimelineCard({
   buckets,
   ticketTypes,
   currency,
+  eventDateStart,
   loading,
 }: Props) {
   const totals = useMemo(() => buildTimelineSeries(buckets), [buckets]);
@@ -51,8 +52,7 @@ export function SalesTimelineCard({
     [buckets]
   );
 
-  // Aggregate velocity across the whole event — used for the headline
-  // "tickets/day" line. Sum each per-ticket sample.
+  // Aggregate per-day across the whole event for the headline line.
   const eventVelocity = useMemo(() => {
     let qty = 0;
     let perDay = 0;
@@ -65,14 +65,35 @@ export function SalesTimelineCard({
     return { qty, perDay, windowDays };
   }, [velocity]);
 
-  const [whatIf, setWhatIf] = useState<1 | 1.5 | 2>(1);
+  // Per-tier series — memoised once per bucket payload + ticketTypes set so
+  // we don't refold on every render. Returns an array aligned with
+  // `ticketTypes` so the JSX can map by index.
+  const perTierSeries = useMemo(
+    () => ticketTypes.map((tt) => buildTimelineSeries(buckets, tt.id)),
+    [buckets, ticketTypes]
+  );
 
-  // Projection — only shown when there's something to project.
-  const projection = useMemo(() => {
-    if (eventVelocity.perDay <= 0) return null;
-    if (whatIf === 1) return null; // baseline matches the actual line; redundant
-    return projectForward(totals, eventVelocity.perDay, whatIf, 14);
-  }, [totals, eventVelocity.perDay, whatIf]);
+  // Projection at current pace, anchored to the event date. Hide when
+  // velocity is zero, the event has no date set, or the date has passed —
+  // a projection that points to yesterday is worse than no projection.
+  const projectionLine = useMemo(() => {
+    if (!eventDateStart || eventVelocity.perDay <= 0) return null;
+    const eventDate = new Date(eventDateStart);
+    if (isNaN(eventDate.getTime())) return null;
+    const now = new Date();
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const daysUntil = (eventDate.getTime() - now.getTime()) / msPerDay;
+    if (daysUntil <= 0.5) return null;
+
+    const projectedAdditional = eventVelocity.perDay * daysUntil;
+    const projectedTotal = totals.totals.qty + projectedAdditional;
+    return {
+      total: Math.round(projectedTotal),
+      additional: Math.round(projectedAdditional),
+      eventDate,
+      daysUntil,
+    };
+  }, [eventDateStart, eventVelocity.perDay, totals.totals.qty]);
 
   const hasData = buckets.length > 0 && totals.totals.qty > 0;
 
@@ -108,9 +129,10 @@ export function SalesTimelineCard({
 
   return (
     <div className="rounded-lg border border-border/40 bg-card/40 px-4 py-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      {/* Header — wraps cleanly at 375px because the badge sits at the
+          start of the second line, not pinned to the right. */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
             Sales timeline
           </p>
@@ -145,18 +167,8 @@ export function SalesTimelineCard({
             height={56}
             variant="area"
             showDot
+            className="w-full"
           />
-          {projection && (
-            <ProjectionOverlay
-              actualLength={totals.cumulative.length}
-              projectedQty={projection.cumulative.map((b) => b.qty)}
-              maxValue={Math.max(
-                ...totals.cumulative.map((b) => b.qty),
-                ...projection.cumulative.map((b) => b.qty),
-                1
-              )}
-            />
-          )}
         </ChartBlock>
         <ChartBlock label="Daily">
           <MicroSparkline
@@ -165,56 +177,44 @@ export function SalesTimelineCard({
             width={300}
             height={56}
             variant="bar"
+            className="w-full"
           />
         </ChartBlock>
       </div>
 
-      {/* What-if scenarios — only when there's velocity to project. */}
-      {eventVelocity.perDay > 0 && (
-        <div className="flex items-center gap-3 border-t border-border/30 pt-3">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">
-            What if
+      {/* Anchored projection — one sentence, anchored to the actual event
+          date the host already cares about. Hidden when there's nothing
+          honest to say. */}
+      {projectionLine && (
+        <p className="border-t border-border/30 pt-3 text-xs text-muted-foreground">
+          At this pace you&rsquo;ll reach{" "}
+          <span className="font-mono font-semibold tabular-nums text-foreground">
+            ~{projectionLine.total.toLocaleString()}
+          </span>{" "}
+          tickets by{" "}
+          <span className="font-mono tabular-nums text-foreground/85">
+            {formatEventDate(projectionLine.eventDate)}
           </span>
-          <div className="inline-flex items-center rounded-md border border-border bg-secondary/40 p-0.5">
-            {[1, 1.5, 2].map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setWhatIf(m as 1 | 1.5 | 2)}
-                className={cn(
-                  "rounded px-2.5 py-1 text-[11px] font-medium tabular-nums transition-all",
-                  whatIf === m
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {m === 1 ? "Current pace" : `${m}× pace`}
-              </button>
-            ))}
-          </div>
-          {projection && (
-            <span className="font-mono tabular-nums text-[11px] text-muted-foreground">
-              + {Math.round(projection.totals.qty)} tickets ·{" "}
-              {formatPrice(Math.round(projection.totals.revenue), currency)}{" "}
-              over the next 14 days
-            </span>
+          {projectionLine.additional > 0 && (
+            <>
+              {" "}— that&rsquo;s{" "}
+              <span className="font-mono tabular-nums">
+                +{projectionLine.additional.toLocaleString()}
+              </span>{" "}
+              from now.
+            </>
           )}
-          {whatIf === 1 && (
-            <span className="text-[11px] text-muted-foreground">
-              Pick 1.5× or 2× to overlay a projection.
-            </span>
-          )}
-        </div>
+        </p>
       )}
 
-      {/* Per-ticket-type rows */}
+      {/* Per-ticket-type rows — only when there's more than one tier */}
       {ticketTypes.length > 1 && (
         <div className="space-y-1.5 border-t border-border/30 pt-3">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
             By ticket type
           </p>
-          {ticketTypes.map((tt) => {
-            const series = buildTimelineSeries(buckets, tt.id);
+          {ticketTypes.map((tt, i) => {
+            const series = perTierSeries[i];
             const sample = velocity.get(tt.id);
             if (series.totals.qty === 0 && (!sample || sample.qty === 0)) {
               return null;
@@ -222,9 +222,9 @@ export function SalesTimelineCard({
             return (
               <div
                 key={tt.id}
-                className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-foreground/[0.02] transition-colors"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-foreground/[0.02] transition-colors"
               >
-                <span className="flex-1 truncate text-xs text-foreground/85">
+                <span className="flex-1 truncate text-xs text-foreground/85 min-w-0">
                   {tt.name}
                 </span>
                 <MicroSparkline
@@ -233,12 +233,13 @@ export function SalesTimelineCard({
                   width={120}
                   height={20}
                   variant="bar"
+                  className="hidden sm:block shrink-0"
                 />
-                <span className="font-mono tabular-nums text-[11px] text-foreground/85 w-12 text-right">
+                <span className="font-mono tabular-nums text-[11px] text-foreground/85 w-10 text-right shrink-0">
                   {series.totals.qty}
                 </span>
                 {sample && sample.perDay > 0 && (
-                  <span className="font-mono tabular-nums text-[10px] text-muted-foreground/70 w-16 text-right">
+                  <span className="font-mono tabular-nums text-[10px] text-muted-foreground/70 w-16 text-right shrink-0">
                     {sample.perDay.toFixed(1)}/day
                   </span>
                 )}
@@ -268,60 +269,11 @@ function ChartBlock({
   );
 }
 
-/**
- * Projection overlay — a thin dashed line continuing the cumulative
- * sparkline forward. Drawn manually over the MicroSparkline so we don't
- * have to touch the existing sparkline component (which is shared with
- * the dashboard).
- */
-function ProjectionOverlay({
-  actualLength,
-  projectedQty,
-  maxValue,
-}: {
-  actualLength: number;
-  projectedQty: number[];
-  maxValue: number;
-}) {
-  if (projectedQty.length === 0) return null;
-  const width = 300;
-  const height = 56;
-  const pad = 2;
-  const totalLen = actualLength + projectedQty.length;
-
-  // Continue from where the actual line ends.
-  const startX = pad + ((actualLength - 1) / Math.max(totalLen - 1, 1)) * (width - pad * 2);
-  const points = projectedQty.map((v, i) => {
-    const x =
-      pad +
-      ((actualLength + i) / Math.max(totalLen - 1, 1)) * (width - pad * 2);
-    const y =
-      pad + (height - pad * 2) - (v / maxValue) * (height - pad * 2);
-    return { x, y };
+/** Friendly long-form date for the projection sentence: "Sat 5 May". */
+function formatEventDate(d: Date): string {
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
   });
-  const last = points[points.length - 1];
-
-  const pathD = points
-    .map((p, i) => (i === 0 ? `M ${startX} ${p.y}` : `L ${p.x} ${p.y}`))
-    .join(" ");
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0"
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-    >
-      <path
-        d={pathD}
-        fill="none"
-        stroke="#A78BFA"
-        strokeOpacity={0.55}
-        strokeWidth={1.5}
-        strokeDasharray="3 3"
-        strokeLinecap="round"
-      />
-      <circle cx={last.x} cy={last.y} r={2.5} fill="#A78BFA" opacity={0.7} />
-    </svg>
-  );
 }

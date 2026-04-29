@@ -632,7 +632,7 @@ When you upgrade an existing surface to use the new wrapper components, log it h
 | `src/components/admin/event-editor/TicketCard.tsx` | 🟨 | 2026-04-27 | Phase 1.4 (VAT preview). Wrapper migration pending. |
 | `src/components/admin/dashboard/FreshTenantHero.tsx` | ✅ | 2026-04-27 | Phase 1.1 — built fresh on AdminPanel + tile pattern. |
 | `src/app/admin/events/[slug]/page.tsx` (editor → canvas) | ⬜ | — | Phase 3 |
-| `src/app/admin/events/new/page.tsx` (Start moment) | ⬜ | — | Phase 2 — built fresh, use wrappers from day 1 |
+| `src/app/admin/events/new/page.tsx` (Start moment) | ✅ | 2026-04-29 | Phase 2 complete — chrome-bypass full-screen shell, halo, mono Display heading, four-question form (template tile picker / name+slug check / datetime prefill / venue+city autocomplete), GTM instrumentation, generated cover via deterministic OG URL. The single canonical path to create an event. |
 | `src/app/admin/orders/` | ⬜ | — | Phase 4+ |
 | `src/app/admin/customers/` | ⬜ | — | Phase 4+ |
 | `src/app/admin/guest-list/` | ⬜ | — | Phase 4+ |

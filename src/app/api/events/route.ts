@@ -1,10 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 import { getOrgBaseCurrency } from "@/lib/org-settings";
+import { getEventTemplate, type TicketTypeSeed } from "@/lib/event-templates";
 import * as Sentry from "@sentry/nextjs";
+
+/**
+ * Build the deterministic OG cover URL for events that ship without an
+ * uploaded cover image. The OG route is content-addressed by query params
+ * so the URL itself is the cache key — no Supabase Storage round-trip.
+ * Phase 2.4 of EVENT-BUILDER-PLAN.
+ */
+function buildGeneratedCoverUrl(params: {
+  name: string;
+  venue: string | null;
+  dateStart: string;
+  accent: string;
+  variant: "square" | "portrait" | "landscape";
+}): string {
+  const qp = new URLSearchParams({
+    name: params.name,
+    date: params.dateStart,
+    accent: params.accent,
+    variant: params.variant,
+  });
+  if (params.venue) qp.set("venue", params.venue);
+  return `/api/og/event-cover?${qp.toString()}`;
+}
+
+/**
+ * Look up the org's brand accent (or the platform default) so generated
+ * covers feel like the tenant. Falls back to Electric Violet rather than
+ * leaving the cover bland — every event gets a deliberate accent on day 1.
+ */
+async function readOrgAccent(
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseAdmin>>>,
+  orgId: string
+): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("org_id", orgId)
+      .eq("key", brandingKey(orgId))
+      .maybeSingle();
+    const branding = (data?.data || {}) as { accent_hex?: string };
+    if (branding.accent_hex && /^#[0-9a-fA-F]{6}$/.test(branding.accent_hex)) {
+      return branding.accent_hex;
+    }
+  } catch {
+    /* fall through */
+  }
+  return "#8B5CF6";
+}
 
 /**
  * Generate up to three alternative slugs for a taken slug. Tries `-2`, `-pt2`,
@@ -111,10 +161,11 @@ export async function POST(request: NextRequest) {
       doors_open,
       age_restriction,
       status = "draft",
-      visibility = "public",
+      visibility,
       payment_method = "stripe",
       capacity,
       cover_image,
+      cover_image_url,
       hero_image,
       theme,
       currency,
@@ -129,6 +180,7 @@ export async function POST(request: NextRequest) {
       seo_title,
       seo_description,
       ticket_types,
+      template: templateKey,
     } = body;
 
     if (!name || !slug || !date_start) {
@@ -146,8 +198,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Resolve the template (Phase 2.3) — drives default visibility, seed
+    // ticket types, and cover-aspect for the generated OG fallback.
+    const template = getEventTemplate(templateKey);
+
+    const resolvedVisibility =
+      visibility ?? template?.default_visibility ?? "public";
+
     // Default currency to org's base currency if not provided
     const eventCurrency = currency || (await getOrgBaseCurrency(orgId));
+
+    // Generated cover fallback (Phase 2.4) — deterministic OG URL when the
+    // host hasn't uploaded one and we know how to render a placeholder.
+    let resolvedCoverUrl: string | undefined = cover_image_url;
+    if (!resolvedCoverUrl && !cover_image) {
+      const accent = await readOrgAccent(supabase, orgId);
+      resolvedCoverUrl = buildGeneratedCoverUrl({
+        name,
+        venue: venue_name || null,
+        dateStart: date_start,
+        accent,
+        variant: template?.recommended_cover_aspect ?? "square",
+      });
+    }
 
     // Create event
     const { data: event, error: eventError } = await supabase
@@ -166,10 +239,11 @@ export async function POST(request: NextRequest) {
         doors_open,
         age_restriction,
         status,
-        visibility,
+        visibility: resolvedVisibility,
         payment_method,
         capacity,
         cover_image,
+        cover_image_url: resolvedCoverUrl,
         hero_image,
         theme,
         currency: eventCurrency,
@@ -210,9 +284,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create ticket types if provided
-    if (ticket_types && Array.isArray(ticket_types) && ticket_types.length > 0) {
-      const ticketRows = ticket_types.map(
+    // Resolve ticket-type seeds — explicit body wins, else expand template.
+    // Templates are Phase 2.3: pre-filled tiers so the editor isn't empty
+    // when a host lands. Each seed is shaped like the manual `ticket_types`
+    // payload so the existing mapper handles both paths uniformly.
+    const ticketSeeds: TicketTypeSeed[] | undefined =
+      ticket_types && Array.isArray(ticket_types) && ticket_types.length > 0
+        ? (ticket_types as TicketTypeSeed[])
+        : template?.ticket_types;
+
+    // Create ticket types if any
+    if (ticketSeeds && ticketSeeds.length > 0) {
+      const ticketRows = ticketSeeds.map(
         (
           tt: {
             name: string;

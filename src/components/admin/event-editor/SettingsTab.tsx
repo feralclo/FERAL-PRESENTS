@@ -27,6 +27,7 @@ import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import { SeoCard } from "./SeoCard";
 import type { BrandingSettings } from "@/types/settings";
 import type { VatSettings } from "@/types/settings";
+import type { TicketTypeRow } from "@/types/events";
 import type { TabWithSettingsProps } from "./types";
 
 interface StripeAccount {
@@ -40,9 +41,11 @@ interface StripeAccount {
 interface SettingsTabProps extends TabWithSettingsProps {
   artistNames?: string[];
   hasMerch?: boolean;
+  /** Live ticket types from the editor — used for the pre-publish "no tickets" gate. */
+  ticketTypes?: TicketTypeRow[];
 }
 
-export function SettingsTab({ event, updateEvent, settings, updateSetting, artistNames = [], hasMerch = false }: SettingsTabProps) {
+export function SettingsTab({ event, updateEvent, settings, updateSetting, artistNames = [], hasMerch = false, ticketTypes = [] }: SettingsTabProps) {
   const orgId = useOrgId();
   const { timezone } = useOrgTimezone();
   const { currency: orgBaseCurrency } = useOrgCurrency();
@@ -175,17 +178,41 @@ export function SettingsTab({ event, updateEvent, settings, updateSetting, artis
               <Select
                 value={event.status}
                 onValueChange={(v) => {
-                  // Gate: block going live if Stripe not connected (non-platform-owner only)
-                  if (
-                    v === "live" &&
-                    !isPlatformOwner &&
-                    event.payment_method === "stripe" &&
-                    stripeConnected === false
-                  ) {
-                    setLiveBlockedMsg(
-                      "Connect your payment account before going live. Go to Settings → Payments to set up."
-                    );
-                    return;
+                  // Pre-publish gates — mirror the server checks in
+                  // PUT /api/events/[id]/route.ts so the host sees the
+                  // blocker inline instead of clicking Save and getting a
+                  // toast a beat later. Order matches the server: cheap
+                  // checks first.
+                  if (v === "live" && !isPlatformOwner) {
+                    // (1) Date must be in the future
+                    const dateStart = event.date_start ? new Date(event.date_start) : null;
+                    if (!dateStart || isNaN(dateStart.getTime()) || dateStart.getTime() <= Date.now()) {
+                      setLiveBlockedMsg(
+                        "Set an event date in the future before going live. Update the date in the Details tab."
+                      );
+                      return;
+                    }
+
+                    // (2) At least one sellable ticket
+                    const sellable = ticketTypes.some((tt) => {
+                      const isActive = (tt.status ?? "active") === "active";
+                      const hasCapacity = tt.capacity == null || (typeof tt.capacity === "number" && tt.capacity > 0);
+                      return isActive && hasCapacity;
+                    });
+                    if (!sellable) {
+                      setLiveBlockedMsg(
+                        "Add a ticket on sale (active, with capacity) before going live. Configure tickets in the Tickets tab."
+                      );
+                      return;
+                    }
+
+                    // (3) Stripe connection — only when this event takes card payments
+                    if (event.payment_method === "stripe" && stripeConnected === false) {
+                      setLiveBlockedMsg(
+                        "Connect your payment account before going live. Go to Settings → Payments to set up."
+                      );
+                      return;
+                    }
                   }
                   setLiveBlockedMsg("");
                   updateEvent("status", v);
@@ -726,6 +753,30 @@ export function SettingsTab({ event, updateEvent, settings, updateSetting, artis
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="py-0 gap-0">
+        <CardHeader className="px-6 pt-5 pb-4">
+          <CardTitle className="text-sm">Mobile Experience</CardTitle>
+        </CardHeader>
+        <CardContent className="px-6 pb-6 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <Label className="text-sm font-medium text-foreground">
+                Sticky checkout bar
+              </Label>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                Pins a fixed bar to the bottom of the screen on mobile with the
+                cart total and a checkout button — keeps the CTA always visible
+                while scrolling.
+              </p>
+            </div>
+            <Switch
+              checked={settings.sticky_checkout_bar !== false}
+              onCheckedChange={(checked) => updateSetting("sticky_checkout_bar", checked)}
+            />
+          </div>
         </CardContent>
       </Card>
 

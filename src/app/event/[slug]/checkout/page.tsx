@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { NativeCheckout } from "@/components/checkout/NativeCheckout";
-import { AuraCheckout } from "@/components/aura/AuraCheckout";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getActiveTemplate } from "@/lib/themes";
 import { TABLES, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
@@ -49,11 +47,6 @@ export default async function CheckoutRoute({
   const { slug } = await params;
   const sp = await searchParams;
   const orgId = await getOrgId();
-
-  // Editor preview: ?template= overrides which checkout component renders
-  const editorTemplate = sp.editor === "1" && typeof sp.template === "string"
-    ? sp.template
-    : undefined;
 
   // Cart restoration: ?restore= token from abandoned cart recovery email
   const restoreToken = typeof sp.restore === "string" ? sp.restore : undefined;
@@ -133,9 +126,6 @@ export default async function CheckoutRoute({
     redirect(event.external_link || `/event/${slug}`);
   }
 
-  const activeTemplate = await getActiveTemplate();
-  const template = editorTemplate || activeTemplate;
-
   /* Preconnect hints — browser starts DNS + TCP/TLS handshake before
      any JS loads, shaving ~100-300ms off Express Checkout readiness.
      Stripe domains for payment processing, Google domains for Google Pay. */
@@ -148,17 +138,6 @@ export default async function CheckoutRoute({
       <link rel="dns-prefetch" href="https://www.googleapis.com" />
     </>
   );
-
-  if (template === "aura") {
-    return (
-      <>
-        {preconnectHints}
-        <Suspense>
-          <AuraCheckout slug={slug} event={event} restoreData={restoreData} />
-        </Suspense>
-      </>
-    );
-  }
 
   return (
     <>

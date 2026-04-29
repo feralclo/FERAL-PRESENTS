@@ -408,7 +408,7 @@ export function IdentitySection({ api }: { api: OnboardingApi }) {
       )}
 
       <SectionFooter
-        primaryLabel={isLocked ? "Continue" : "Create my space"}
+        primaryLabel="Next"
         primaryLoadingLabel={isLocked ? "Saving…" : provisionMessage}
         primaryDisabled={!canContinue || provisioning}
         primaryLoading={provisioning || api.saving}

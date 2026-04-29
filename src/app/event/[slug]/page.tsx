@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { MidnightEventPage } from "@/components/midnight/MidnightEventPage";
 import { MidnightExternalPage } from "@/components/midnight/MidnightExternalPage";
-import { AuraEventPage } from "@/components/aura/AuraEventPage";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getActiveTemplate } from "@/lib/themes";
 import { TABLES, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import {
@@ -139,16 +137,11 @@ export default async function EventPage({
   const sp = await searchParams;
   const orgId = await getOrgId();
 
-  // In editor preview mode, the ?template= param tells us which theme to render.
-  // This lets the admin preview non-active themes (e.g. editing Aura while Midnight is live).
-  const editorTemplate = sp.editor === "1" && typeof sp.template === "string"
-    ? sp.template
-    : undefined;
-
-  // Fetch event + active template + branding in parallel
-  const [event, activeTemplate, { orgName }, baseUrl] = await Promise.all([
+  // Fetch event + branding in parallel. Theme is always Midnight now (Aura
+  // was deprecated 2025-02-25 and removed in Phase 1.10 of EVENT-BUILDER-PLAN);
+  // tenant customisation happens through branding accents/logo, not theme swap.
+  const [event, { orgName }, baseUrl] = await Promise.all([
     getEventFromDB(slug, orgId),
-    getActiveTemplate(orgId),
     fetchBranding(orgId),
     getCanonicalBaseUrl(orgId),
   ]);
@@ -223,19 +216,6 @@ export default async function EventPage({
     );
   }
 
-  // Use editor override if present, otherwise use live active template
-  const template = editorTemplate || activeTemplate;
-
-  // Aura theme: render Aura component tree (shadcn/ui based)
-  if (template === "aura") {
-    return (
-      <>
-        {structuredData}
-        {viewContentScript}
-        <AuraEventPage event={event} />
-      </>
-    );
-  }
   // ?ref=CODE auto-applies a rep's discount code, ?discount=CODE auto-applies any discount
   const refCode = typeof sp.ref === "string" ? sp.ref : undefined;
   const discountCode = typeof sp.discount === "string" ? sp.discount : undefined;

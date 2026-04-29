@@ -2,7 +2,6 @@ import { fetchSettings } from "@/lib/settings";
 import { TABLES, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getActiveTemplate } from "@/lib/themes";
 import { setSentryEventContext } from "@/lib/sentry";
 import { getVibeById, getVibeCssVars } from "@/lib/theme-vibes";
 import { SettingsProvider } from "@/hooks/useSettings";
@@ -95,11 +94,8 @@ export default async function EventLayout({
         .catch(() => null)
     : Promise.resolve(null);
 
-  // Fetch active template in parallel (for Aurora detection)
-  const templatePromise = getActiveTemplate(orgId);
-
   // Wait for all in parallel
-  const [settings, , branding, activeTemplate] = await Promise.all([settingsPromise, mediaPromise, brandingPromise, templatePromise]);
+  const [settings, , branding] = await Promise.all([settingsPromise, mediaPromise, brandingPromise]);
 
   // Tag Sentry errors with event + org context for this page
   setSentryEventContext({ id: eventId || undefined, slug, orgId });
@@ -153,7 +149,9 @@ export default async function EventLayout({
     }
   }
 
-  const dataThemeAttr = activeTemplate || "midnight";
+  // Single theme post-Aura cleanup (Phase 1.10). Tenant identity ships through
+  // branding (accents, logo, fonts) — not through swapping theme components.
+  const dataThemeAttr = "midnight";
 
   /* Preconnect hints — browser starts DNS + TCP/TLS handshake before
      any JS loads, shaving ~100-300ms off Express Checkout readiness.

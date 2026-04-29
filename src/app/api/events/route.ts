@@ -7,6 +7,49 @@ import { getOrgBaseCurrency } from "@/lib/org-settings";
 import * as Sentry from "@sentry/nextjs";
 
 /**
+ * Generate up to three alternative slugs for a taken slug. Tries `-2`, `-pt2`,
+ * and `-{year}` in that order, then falls back to numeric increments. Returns
+ * only slugs we've verified are free for this org so the user can click any
+ * and have it succeed.
+ *
+ * `supabase` is typed loose because the DB client doesn't infer well across
+ * dynamic `from(TABLES.EVENTS)` lookups; we only call `select` on it.
+ */
+async function suggestSlugs(
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseAdmin>>>,
+  orgId: string,
+  base: string,
+  year: number
+): Promise<string[]> {
+  // Strip any existing trailing -N from the base so we don't end up with
+  // "summer-launch-2-2" — start from the conceptual root each time.
+  const root = base.replace(/-\d+$/, "").replace(/-+$/, "").slice(0, 35) || "event";
+  const candidates = [
+    `${root}-2`,
+    `${root}-pt2`,
+    `${root}-${year}`,
+    `${root}-3`,
+    `${root}-encore`,
+    `${root}-${year + 1}`,
+  ].map((s) => s.slice(0, 40));
+
+  const { data: existing } = await supabase
+    .from(TABLES.EVENTS)
+    .select("slug")
+    .eq("org_id", orgId)
+    .in("slug", candidates);
+  const taken = new Set((existing || []).map((r) => r.slug));
+
+  const free: string[] = [];
+  for (const c of candidates) {
+    if (taken.has(c) || free.includes(c)) continue;
+    free.push(c);
+    if (free.length === 3) break;
+  }
+  return free;
+}
+
+/**
  * GET /api/events — List all events for the org
  */
 export async function GET(request: NextRequest) {
@@ -145,6 +188,22 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (eventError) {
+      // Postgres unique-constraint violation = slug already exists for this org.
+      // Generate three sensible alternatives instead of leaking the raw DB error.
+      // Suggestions are user-facing chips; the slug helper keeps them within the
+      // 40-char cap and strips any trailing dash so they round-trip cleanly.
+      if (eventError.code === "23505") {
+        const year = new Date(date_start).getFullYear();
+        const candidates = await suggestSlugs(supabase, orgId, slug, year);
+        return NextResponse.json(
+          {
+            error: "An event with that URL already exists. Pick a different slug below.",
+            code: "slug_taken",
+            suggestions: candidates,
+          },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { error: eventError.message },
         { status: 500 }

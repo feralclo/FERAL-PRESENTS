@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ArtistLineupEditor } from "@/components/admin/ArtistLineupEditor";
-import { LineupTagInput } from "@/components/admin/LineupTagInput";
 import type { TabProps } from "./types";
 import type { EventArtist } from "@/types/artists";
 
@@ -82,18 +81,6 @@ export function ContentTab({
             sortAlphabetical={!!event.lineup_sort_alphabetical}
             onSortAlphabeticalChange={(v) => updateEvent("lineup_sort_alphabetical", v)}
           />
-          {/* Legacy tag input — hidden when using artist catalog, shown as fallback */}
-          {eventArtists.length === 0 && (
-            <div className="pt-2 border-t border-border/50">
-              <p className="text-[10px] text-muted-foreground/60 mb-2">
-                Or add names manually (legacy mode):
-              </p>
-              <LineupTagInput
-                lineup={event.lineup || []}
-                onChange={(lineup) => updateEvent("lineup", lineup)}
-              />
-            </div>
-          )}
         </CardContent>
       </Card>
 

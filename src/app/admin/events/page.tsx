@@ -32,7 +32,6 @@ import {
   Plus,
   Archive,
   RotateCcw,
-  Trash2,
   Loader2,
   ArrowUpDown,
   X,
@@ -81,9 +80,11 @@ export default function EventsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  // Action state
+  // Action state — delete is editor-only (open the editor and use the Delete
+  // button there). The list keeps Archive/Unarchive for reversible row-level
+  // actions; permanent deletion lives in one place to avoid the trap of two
+  // half-baked confirmation flows that drift apart.
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // Create form state
   const [newName, setNewName] = useState("");
@@ -95,6 +96,7 @@ export default function EventsPage() {
   const [newVisibility, setNewVisibility] = useState<"public" | "private" | "unlisted">("private");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [slugSuggestions, setSlugSuggestions] = useState<string[]>([]);
 
   const loadEvents = useCallback(async () => {
     const supabase = getSupabaseClient();
@@ -181,23 +183,10 @@ export default function EventsPage() {
     setActionLoading(null);
   };
 
-  const handleDelete = async (evt: EventWithTickets) => {
-    setActionLoading(evt.id);
-    try {
-      const res = await fetch(`/api/events/${evt.id}`, { method: "DELETE" });
-      if (res.ok) {
-        await loadEvents();
-        setConfirmDelete(null);
-      }
-    } catch {
-      // Silently fail
-    }
-    setActionLoading(null);
-  };
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError("");
+    setSlugSuggestions([]);
 
     if (!newName || !newDate) {
       setCreateError("Name and date are required");
@@ -224,6 +213,9 @@ export default function EventsPage() {
       const json = await res.json();
       if (!res.ok) {
         setCreateError(json.error || "Failed to create event");
+        if (json.code === "slug_taken" && Array.isArray(json.suggestions)) {
+          setSlugSuggestions(json.suggestions);
+        }
         setCreating(false);
         return;
       }
@@ -267,13 +259,13 @@ export default function EventsPage() {
           ) : (
             <>
               <Plus size={14} />
-              Create Event
+              Create event
             </>
           )}
         </Button>
       </div>
 
-      {/* Create Event Form */}
+      {/* Create event Form */}
       {showCreate && (
         <Card className="py-0 gap-0 border-primary/20">
           <CardHeader className="pb-0 pt-5 px-6">
@@ -343,11 +335,32 @@ export default function EventsPage() {
                 </div>
               </div>
               {createError && (
-                <p className="text-sm text-destructive">{createError}</p>
+                <div className="space-y-2">
+                  <p className="text-sm text-destructive">{createError}</p>
+                  {slugSuggestions.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] text-muted-foreground">Try:</span>
+                      {slugSuggestions.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            setNewSlug(s);
+                            setCreateError("");
+                            setSlugSuggestions([]);
+                          }}
+                          className="rounded-md border border-primary/30 bg-primary/[0.06] px-2 py-1 font-mono text-[11px] text-primary transition-colors hover:border-primary/50 hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
               <Button type="submit" size="sm" disabled={creating}>
                 {creating && <Loader2 size={14} className="animate-spin" />}
-                {creating ? "Creating..." : "Create Event"}
+                {creating ? "Creating…" : "Create event"}
               </Button>
             </form>
           </CardContent>
@@ -440,7 +453,7 @@ export default function EventsPage() {
             <p className="mt-1 text-xs text-muted-foreground">Create your first event to get started</p>
             <Button size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
               <Plus size={14} />
-              Create Event
+              Create event
             </Button>
           </CardContent>
         </Card>
@@ -538,6 +551,7 @@ export default function EventsPage() {
                             onClick={() => handleUnarchive(evt)}
                             disabled={actionLoading === evt.id}
                             className="text-success hover:text-success"
+                            title="Unarchive"
                           >
                             {actionLoading === evt.id ? (
                               <Loader2 size={12} className="animate-spin" />
@@ -559,35 +573,6 @@ export default function EventsPage() {
                             ) : (
                               <Archive size={12} />
                             )}
-                          </Button>
-                        )}
-                        {confirmDelete === evt.id ? (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="destructive"
-                              size="xs"
-                              onClick={() => handleDelete(evt)}
-                              disabled={actionLoading === evt.id}
-                            >
-                              {actionLoading === evt.id ? "..." : "Yes"}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              onClick={() => setConfirmDelete(null)}
-                            >
-                              No
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() => setConfirmDelete(evt.id)}
-                            title="Delete"
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 size={12} />
                           </Button>
                         )}
                       </div>

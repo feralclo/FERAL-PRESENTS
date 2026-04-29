@@ -9,8 +9,10 @@ import { ArrowRight, Info, Layers, Plus, Ticket } from "lucide-react";
 import { TicketCard } from "./TicketCard";
 import { GroupManager, GroupHeader } from "./GroupManager";
 import { useOrgId } from "@/components/OrgProvider";
+import { vatKey } from "@/lib/constants";
 import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
+import type { VatSettings } from "@/types/settings";
 import type { TicketsTabProps } from "./types";
 
 export function TicketsTab({
@@ -25,6 +27,7 @@ export function TicketsTab({
   const orgId = useOrgId();
   const [products, setProducts] = useState<Product[]>([]);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [orgVat, setOrgVat] = useState<VatSettings | null>(null);
 
   // Load products for linking
   useEffect(() => {
@@ -38,6 +41,41 @@ export function TicketsTab({
       }
     })();
   }, []);
+
+  // Load org-level VAT defaults so we can show the gross/VAT preview on each
+  // ticket card. The event itself can override (event.vat_registered === true |
+  // false | null), with null = "use org default".
+  useEffect(() => {
+    fetch(`/api/settings?key=${vatKey(orgId)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data) setOrgVat(json.data as VatSettings);
+      })
+      .catch(() => {});
+  }, [orgId]);
+
+  // Compute the effective VAT settings for this event. Event override wins
+  // over org default. The TicketCard renders "Buyer pays X (incl. Y VAT)"
+  // only when `vatEnabled === true`.
+  const effectiveVat = useMemo(() => {
+    if (event.vat_registered === false) return { enabled: false, rate: 0, includesPrice: true };
+    if (event.vat_registered === true) {
+      return {
+        enabled: true,
+        rate: event.vat_rate ?? 20,
+        includesPrice: event.vat_prices_include ?? true,
+      };
+    }
+    // event.vat_registered === null/undefined → fall back to org default
+    if (orgVat?.vat_registered) {
+      return {
+        enabled: true,
+        rate: orgVat.vat_rate ?? 20,
+        includesPrice: orgVat.prices_include_vat ?? true,
+      };
+    }
+    return { enabled: false, rate: 0, includesPrice: true };
+  }, [event.vat_registered, event.vat_rate, event.vat_prices_include, orgVat]);
 
   const groups = (settings.ticket_groups as string[]) || [];
   const groupMap =
@@ -345,6 +383,9 @@ export function TicketsTab({
                       isSequentialGroup={sequentialGroups.has("__ungrouped__")}
                       sequencePosition={sequencePositionMap[tt.id]}
                       multiCurrencyEnabled={!!settings.multi_currency_enabled}
+                      vatEnabled={effectiveVat.enabled}
+                      vatRate={effectiveVat.rate}
+                      vatIncludesPrice={effectiveVat.includesPrice}
                     />
                   );
                 })}
@@ -403,6 +444,9 @@ export function TicketsTab({
                           isSequentialGroup={sequentialGroups.has(gName)}
                           sequencePosition={sequencePositionMap[tt.id]}
                           multiCurrencyEnabled={!!settings.multi_currency_enabled}
+                          vatEnabled={effectiveVat.enabled}
+                          vatRate={effectiveVat.rate}
+                          vatIncludesPrice={effectiveVat.includesPrice}
                         />
                       );
                     })

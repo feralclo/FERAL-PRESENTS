@@ -38,14 +38,13 @@ src/
 │   ├── event/[slug]/, events/, shop/[slug]/
 │   ├── scanner/, guest-list/, invite/, auth/
 │   ├── privacy/, terms/      # App Store legal (live 2026-04-26)
-│   ├── admin/                # 34 dirs (see Admin Pages Index)
+│   ├── admin/                # 32 dirs (see Admin Pages Index)
 │   ├── rep/                  # FROZEN v1 web (14 pages)
 │   └── api/                  # 276 route handlers
-├── components/               # 153 files / 12 dirs
-│   ├── admin/                # 60 files; subs: command dashboard event-editor guest-list reps
+├── components/               # 135 files / 13 dirs
+│   ├── admin/                # 60 files + admin/ui/ wrappers; subs: command dashboard event-editor guest-list reps ui
 │   ├── midnight/             # 27 theme components
 │   ├── ui/                   # 28 shadcn/ui (Radix)
-│   ├── aura/                 # DEPRECATED 18 files
 │   ├── event, checkout, shop, scanner, events, rep, landing, layout
 │   └── OrgProvider.tsx, CurrencyProvider.tsx, SmartLogo.tsx
 ├── hooks/                    # 21 hooks
@@ -92,7 +91,7 @@ External tickets: `payment_method:"external"` → `MidnightExternalPage`. Import
 `lib/refund.ts` — atomic, idempotent. Update order → cancel tickets → `decrement_sold()` → decrement discount usage → sync customer totals → `reverse_rep_attribution()` → send refund email once → record `orders.refunded_by`. Both `POST /api/orders/[id]/refund` (admin) and webhook (`charge.refunded`) use it.
 
 ### Theme System
-Single theme **Midnight** (default), customisable via branding. Aura DEPRECATED. Routing: `external` → `MidnightExternalPage`; default → `MidnightEventPage`; `tickets_live_at` future → `MidnightAnnouncementPage` (countdown + signup); `queue_enabled` + `queue_window_minutes` → `MidnightQueuePage` (`useHypeQueue`; `?preview=tickets` bypasses). Builder UI `/admin/ticketstore/`.
+Single theme **Midnight**. Aura was removed in Phase 1.10 of EVENT-BUILDER-PLAN (2026-04-27); tenant identity ships through branding accents/logo/fonts, not theme swap. Routing: `external` → `MidnightExternalPage`; default → `MidnightEventPage`; `tickets_live_at` future → `MidnightAnnouncementPage` (countdown + signup); `queue_enabled` + `queue_window_minutes` → `MidnightQueuePage` (`useHypeQueue`; `?preview=tickets` bypasses). Builder UI `/admin/ticketstore/`.
 
 ### Error Monitoring (Sentry)
 Three layers: Sentry (crash + replay 5%/100% on error), Payment Monitor (`payment_events`), AI Digest (Haiku every 6h). Config `sentry.{client,server,edge}.config.ts`. Tunnel `/api/monitoring`. Context via `setSentryOrgContext()`/`setSentryUserContext()`. Boundaries `global-error.tsx`, `admin/error.tsx`, `event/[slug]/error.tsx`. Health `/admin/backend/health/`.
@@ -408,11 +407,11 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 `/admin/*` — 34 directories (`requireAuth()` unless flagged owner-only).
 
 - **Daily ops**: `/` (dashboard + `OnboardingChecklist`), `/events/` + `/[slug]/` (Content/Design/Details/Tickets/Waitlist/SEO tabs), `/orders/`, `/customers/`, `/scanner/`, `/guest-list/` (4 tabs), `/abandoned-carts/`, `/import-tickets/` (CSV via `lib/import-csv.ts` + `lib/import-tickets.ts`; `payment_method:"imported"`, no email), `/discounts/`, `/popup/`, `/artists/`, `/merch/`, `/merch-store/`.
-- **Brand & content**: `/onboarding/` (3-step), `/settings/` (9 subs: branding, domains, general, plan, search-social, integrations, users, finance, scanner), `/ticketstore/` (theme builder), `/event-page/` (DEPRECATED → `/events/[slug]/`).
+- **Brand & content**: `/onboarding/` (3-step), `/settings/` (9 subs: branding, domains, general, plan, search-social, integrations, users, finance, scanner), `/ticketstore/` (theme builder).
 - **Marketing**: `/marketing/` (Klaviyo), `/communications/` (templates), `/campaigns/` + `/email/` (live: guest-list outreach), `/traffic/`.
 - **Rep program**: `/reps/` (6 tabs), `/promoter/` (public profile), `/ep/` (Float / Earned / Ledger / Payouts + Buy EP).
 - **Money**: `/payments/` (Stripe Custom 5-state), `/finance/` → `/settings/finance/`, `/plans/`.
-- **Owner only**: `/connect/` (all Stripe accounts, fee defaults), `/command/` (UK command center: globe + map + live sessions), `/platform-settings/`, `/backend/` (8 subs: beta, plans, health, tenants, payment-health, platform-settings, connect, xp), `/health/` (DEPRECATED → `/backend/health/`), `/beta/`.
+- **Owner only**: `/connect/` (all Stripe accounts, fee defaults), `/command/` (UK command center: globe + map + live sessions), `/platform-settings/`, `/backend/` (8 subs: beta, plans, health, tenants, payment-health, platform-settings, connect, xp), `/beta/`.
 - **Auth**: `/login/`, `/signup/`, `/account/`, `/invite/[token]/`.
 
 ---
@@ -420,16 +419,15 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 ## Known Gaps
 
 1. **Google Ads + TikTok tracking** — placeholders only.
-2. **Aura theme** — 18 deprecated components, pending removal.
-3. **FCM transport stubbed** — `lib/push/fcm.ts` has envelope builder + `isConfigured()` but the service-account → access-token → v1 send is still a TODO returning `status:"skipped"`. Not blocking iOS; will need finishing for Android. APNs is live (`lib/push/apns.ts` does ES256 JWT + HTTP/2 POST against `api.push.apple.com[/development]`); requires `APNS_AUTH_KEY_P8` (PEM) + `APNS_KEY_ID` + `APNS_TEAM_ID` + `APNS_BUNDLE_ID` + `APNS_USE_SANDBOX=true` for TestFlight builds. Web push works (VAPID).
-4. **Web `/rep/*`** — frozen. Rebuild to v2 spec post-iOS-launch.
-5. **Poster drops** — paused. No table; `dashboard.feed` = peer + story activity.
-6. **Apple Sign-In** — deferred. Google IS live; App Store 4.8 only triggers when third-party SSO offered.
-7. **Entry Market admin surface** — managed via Shopify + DB; no UI.
-8. **Story moderation queue** — table + endpoint exist, no admin review UI.
-9. **`rep_event_attendance` RLS disabled** — populated by trigger only; document explicitly when exposing reads.
-10. **`TABLES` constant lag** — missing ~24 tables. Update opportunistically; raw strings accepted.
-11. **Deprecated**: `/admin/event-page/`, `/admin/health/` — candidates for removal.
+2. **FCM transport stubbed** — `lib/push/fcm.ts` has envelope builder + `isConfigured()` but the service-account → access-token → v1 send is still a TODO returning `status:"skipped"`. Not blocking iOS; will need finishing for Android. APNs is live (`lib/push/apns.ts` does ES256 JWT + HTTP/2 POST against `api.push.apple.com[/development]`); requires `APNS_AUTH_KEY_P8` (PEM) + `APNS_KEY_ID` + `APNS_TEAM_ID` + `APNS_BUNDLE_ID` + `APNS_USE_SANDBOX=true` for TestFlight builds. Web push works (VAPID).
+3. **Web `/rep/*`** — frozen. Rebuild to v2 spec post-iOS-launch.
+4. **Poster drops** — paused. No table; `dashboard.feed` = peer + story activity.
+5. **Apple Sign-In** — deferred. Google IS live; App Store 4.8 only triggers when third-party SSO offered.
+6. **Entry Market admin surface** — managed via Shopify + DB; no UI.
+7. **Story moderation queue** — table + endpoint exist, no admin review UI.
+8. **`rep_event_attendance` RLS disabled** — populated by trigger only; document explicitly when exposing reads.
+9. **`TABLES` constant lag** — missing ~24 tables. Update opportunistically; raw strings accepted.
+10. **Place autocomplete (venue/city)** — Phase 1.7 of EVENT-BUILDER-PLAN. Free-text inputs only. Vendor decision pending (Google Places vs Mapbox vs free Nominatim with TOS caveat) before implementation; blocks Phase 2.2.
 
 ---
 

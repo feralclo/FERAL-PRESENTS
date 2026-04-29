@@ -234,7 +234,7 @@ describe("Admin page protection", () => {
     expect(isProtectedAdminPage("/admin/customers/")).toBe(true);
     expect(isProtectedAdminPage("/admin/settings/")).toBe(true);
     expect(isProtectedAdminPage("/admin/connect/")).toBe(true);
-    expect(isProtectedAdminPage("/admin/health/")).toBe(true);
+    expect(isProtectedAdminPage("/admin/backend/health/")).toBe(true);
     expect(isProtectedAdminPage("/admin/merch/")).toBe(true);
     expect(isProtectedAdminPage("/admin/merch/some-id")).toBe(true);
   });

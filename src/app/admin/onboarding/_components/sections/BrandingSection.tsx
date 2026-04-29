@@ -292,7 +292,7 @@ export function BrandingSection({ api }: { api: OnboardingApi }) {
       </p>
 
       <SectionFooter
-        primaryLabel="Continue"
+        primaryLabel="Next"
         primaryLoading={savingFinal || api.saving}
         onPrimary={handleContinue}
       />

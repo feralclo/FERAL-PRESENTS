@@ -185,7 +185,7 @@ export function EventEditorHeader({
             ) : (
               <Save size={14} />
             )}
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>

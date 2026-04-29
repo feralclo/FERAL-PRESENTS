@@ -67,13 +67,15 @@ export async function PUT(
       );
     }
 
-    // Gate: block going live with stripe payments if no Stripe account connected.
-    // Only applies when *transitioning* to live — editing an already-live event is fine.
-    // Platform owners are exempt (they own the platform and may not have Connect set up).
-    if (
-      body.status === "live" &&
-      body.payment_method === "stripe"
-    ) {
+    // Gate: block going live unless the event is actually sellable.
+    // Three checks, in order of cost (cheapest first):
+    //   1. date_start is in the future
+    //   2. At least one active ticket type with non-zero capacity (or unlimited)
+    //   3. Stripe Connect verified — only for stripe-payment events
+    // Only applies when *transitioning* to live — editing an already-live event
+    // is fine. Platform owners are exempt across the board (they may run test
+    // events for QA without going through the full setup).
+    if (body.status === "live") {
       const supabaseServer = await getSupabaseServer();
       const { data: { user: sessionUser } } = supabaseServer
         ? await supabaseServer.auth.getUser()
@@ -81,9 +83,12 @@ export async function PUT(
       const isPlatformOwner = sessionUser?.app_metadata?.is_platform_owner === true;
 
       if (!isPlatformOwner) {
+        // Pull existing status, date, and payment method so we can validate
+        // against either the incoming body OR the persisted row (the editor
+        // sends a single PUT with both event fields and ticket_types).
         const { data: existingEvent } = await supabase
           .from(TABLES.EVENTS)
-          .select("status")
+          .select("status, date_start, payment_method")
           .eq("id", id)
           .eq("org_id", orgId)
           .single();
@@ -91,33 +96,89 @@ export async function PUT(
         const isAlreadyLive = existingEvent?.status === "live";
 
         if (!isAlreadyLive) {
-          const { data: stripeRow } = await supabase
-            .from(TABLES.SITE_SETTINGS)
-            .select("data")
-            .eq("key", stripeAccountKey(orgId))
-            .single();
-
-          const accountId = stripeRow?.data?.account_id;
-          if (!accountId) {
+          // (1) Future date — body wins if provided, else fall back to DB
+          const dateStartRaw = body.date_start ?? existingEvent?.date_start;
+          const dateStart = dateStartRaw ? new Date(dateStartRaw) : null;
+          if (!dateStart || isNaN(dateStart.getTime()) || dateStart.getTime() <= Date.now()) {
             return NextResponse.json(
-              { error: "Connect your payment account before going live. Go to Settings → Payments to set up." },
+              {
+                error: "Set an event date in the future before going live.",
+                code: "live_gate_past_date",
+              },
               { status: 400 }
             );
           }
 
-          // Account exists in our DB — but is it actually able to take charges?
-          // verifyConnectedAccount returns null if the account is deleted/revoked
-          // OR if card_payments capability is anything other than 'active' (most
-          // commonly: KYC half-finished — name + address provided but no bank
-          // account or no ToS yet). Letting the tenant publish in that state
-          // means buyers hit a 503 at checkout time, which is a much worse
-          // experience than blocking the publish here.
-          const verified = await verifyConnectedAccount(accountId, orgId);
-          if (!verified) {
+          // (2) Sellable tickets — use body.ticket_types when present (covers the
+          // editor's all-in-one save), else read from DB. A ticket counts when:
+          // status is "active" AND (capacity > 0 OR capacity is null/unlimited).
+          let candidateTickets: Array<{
+            status?: string;
+            capacity?: number | null;
+          }> = [];
+          if (Array.isArray(body.ticket_types) && body.ticket_types.length > 0) {
+            candidateTickets = body.ticket_types as typeof candidateTickets;
+          } else {
+            const { data: dbTickets } = await supabase
+              .from(TABLES.TICKET_TYPES)
+              .select("status, capacity")
+              .eq("event_id", id)
+              .eq("org_id", orgId);
+            candidateTickets = dbTickets || [];
+          }
+          const sellable = candidateTickets.some((tt) => {
+            const isActive = (tt.status ?? "active") === "active";
+            const hasCapacity = tt.capacity == null || (typeof tt.capacity === "number" && tt.capacity > 0);
+            return isActive && hasCapacity;
+          });
+          if (!sellable) {
             return NextResponse.json(
-              { error: "Your Stripe account isn't fully set up yet. Go to Settings → Payments to finish verification, then come back to publish." },
+              {
+                error: "Add a ticket on sale (active and with capacity) before going live.",
+                code: "live_gate_no_tickets",
+              },
               { status: 400 }
             );
+          }
+
+          // (3) Stripe Connect — only when this event takes card payments.
+          // Body's payment_method wins if updated in the same request.
+          const paymentMethod = body.payment_method ?? existingEvent?.payment_method;
+          if (paymentMethod === "stripe") {
+            const { data: stripeRow } = await supabase
+              .from(TABLES.SITE_SETTINGS)
+              .select("data")
+              .eq("key", stripeAccountKey(orgId))
+              .single();
+
+            const accountId = stripeRow?.data?.account_id;
+            if (!accountId) {
+              return NextResponse.json(
+                {
+                  error: "Connect your payment account before going live. Go to Settings → Payments to set up.",
+                  code: "live_gate_no_stripe",
+                },
+                { status: 400 }
+              );
+            }
+
+            // Account exists in our DB — but is it actually able to take charges?
+            // verifyConnectedAccount returns null if the account is deleted/revoked
+            // OR if card_payments capability is anything other than 'active' (most
+            // commonly: KYC half-finished — name + address provided but no bank
+            // account or no ToS yet). Letting the tenant publish in that state
+            // means buyers hit a 503 at checkout time, which is a much worse
+            // experience than blocking the publish here.
+            const verified = await verifyConnectedAccount(accountId, orgId);
+            if (!verified) {
+              return NextResponse.json(
+                {
+                  error: "Your Stripe account isn't fully set up yet. Go to Settings → Payments to finish verification, then come back to publish.",
+                  code: "live_gate_stripe_unverified",
+                },
+                { status: 400 }
+              );
+            }
           }
         }
       }

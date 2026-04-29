@@ -55,6 +55,7 @@ interface DomainRow {
 }
 
 const DISMISSED_KEY_PREFIX = "entry_onboarding_dismissed:";
+const COLLAPSED_KEY_PREFIX = "entry_onboarding_collapsed:";
 
 function getDismissed(orgId: string): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -70,6 +71,28 @@ function saveDismissed(orgId: string, ids: Set<string>) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(DISMISSED_KEY_PREFIX + orgId, JSON.stringify([...ids]));
+  } catch {
+    /* ignore */
+  }
+}
+
+function getCollapsed(orgId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(COLLAPSED_KEY_PREFIX + orgId) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveCollapsed(orgId: string, collapsed: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    if (collapsed) {
+      window.localStorage.setItem(COLLAPSED_KEY_PREFIX + orgId, "1");
+    } else {
+      window.localStorage.removeItem(COLLAPSED_KEY_PREFIX + orgId);
+    }
   } catch {
     /* ignore */
   }
@@ -150,7 +173,10 @@ export function OnboardingChecklist() {
           hasTeammates,
         });
 
-        if (orgId) setDismissedSet(getDismissed(orgId));
+        if (orgId) {
+          setDismissedSet(getDismissed(orgId));
+          setCollapsed(getCollapsed(orgId));
+        }
       } catch {
         if (!cancelled) setState((prev) => ({ ...prev, loaded: true }));
       }
@@ -248,7 +274,13 @@ export function OnboardingChecklist() {
     <div className="mb-5 overflow-hidden rounded-xl border border-primary/20 bg-card shadow-sm">
       <button
         type="button"
-        onClick={() => setCollapsed((c) => !c)}
+        onClick={() => {
+          setCollapsed((c) => {
+            const next = !c;
+            if (s.orgId) saveCollapsed(s.orgId, next);
+            return next;
+          });
+        }}
         className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-primary/[0.025]"
         aria-expanded={!collapsed}
       >

@@ -31,6 +31,7 @@ import type { Product } from "@/types/products";
 import type { EventSettings } from "@/types/settings";
 import { CURRENCY_SYMBOLS } from "./types";
 import { isZeroDecimalCurrency, formatPrice } from "@/lib/stripe/config";
+import { calculateVat } from "@/lib/vat";
 
 interface TicketCardProps {
   ticket: TicketTypeRow;
@@ -53,6 +54,12 @@ interface TicketCardProps {
   sequencePosition?: number;
   /** Whether multi-currency is enabled (shows price overrides UI) */
   multiCurrencyEnabled?: boolean;
+  /** Whether VAT is enabled for this event (after merging event override + org default). */
+  vatEnabled?: boolean;
+  /** VAT percentage to apply (e.g. 20 = 20%). Ignored when vatEnabled is false. */
+  vatRate?: number;
+  /** True when the entered price already includes VAT (extract). False when it's net (add on top). */
+  vatIncludesPrice?: boolean;
 }
 
 export function TicketCard({
@@ -72,11 +79,25 @@ export function TicketCard({
   isSequentialGroup,
   sequencePosition,
   multiCurrencyEnabled,
+  vatEnabled,
+  vatRate,
+  vatIncludesPrice,
 }: TicketCardProps) {
   const [open, setOpen] = useState(false);
   const currSym = CURRENCY_SYMBOLS[currency] || currency;
   const tierLabel = ticket.tier || "standard";
   const cardId = ticket.id || `new-${index}`;
+
+  // VAT preview — only shown when the event has VAT enabled. We always
+  // surface the GROSS amount the buyer pays, even when prices are entered
+  // net, so hosts never have to mental-math the checkout total.
+  const vatPreview = (() => {
+    if (!vatEnabled || !vatRate || vatRate <= 0) return null;
+    const price = Number(ticket.price);
+    if (!isFinite(price) || price <= 0) return null;
+    const breakdown = calculateVat(price, vatRate, vatIncludesPrice ?? true, currency);
+    return breakdown;
+  })();
 
   const linkedProduct = ticket.product_id
     ? products.find((p) => p.id === ticket.product_id)
@@ -217,6 +238,22 @@ export function TicketCard({
                   min="0"
                   step={isZeroDecimalCurrency(currency) ? "1" : "0.01"}
                 />
+                {vatPreview && (
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Buyer pays{" "}
+                    <span className="font-mono font-semibold text-foreground tabular-nums">
+                      {formatPrice(vatPreview.gross, currency)}
+                    </span>{" "}
+                    <span className="text-muted-foreground/80">
+                      (incl.{" "}
+                      <span className="font-mono tabular-nums">
+                        {formatPrice(vatPreview.vat, currency)}
+                      </span>{" "}
+                      VAT
+                      {vatRate ? ` @ ${vatRate}%` : ""})
+                    </span>
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Capacity</Label>

@@ -8,6 +8,7 @@ import { useBranding } from "@/hooks/useBranding";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { AdminBadge } from "@/components/admin/ui";
 import { CommandPalette } from "@/components/admin/CommandPalette";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
@@ -343,8 +344,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* ── Mobile overlay ── */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-background/70 backdrop-blur-sm lg:hidden motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200"
           onClick={() => setOpen(false)}
+          aria-hidden
         />
       )}
 
@@ -609,16 +611,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </h1>
           </div>
 
-          {/* Live indicator */}
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-            </span>
-            <span className="font-mono text-[10px] font-semibold uppercase tracking-[2px] text-success">
-              Live
-            </span>
-          </div>
+          {/* Live indicator — uses the canonical AdminBadge so the "Live" treatment
+              is identical wherever it appears (header, banners, dashboard subtitle). */}
+          <AdminBadge variant="success" dot aria-label="Platform online">
+            Live
+          </AdminBadge>
         </header>
 
         {/* Page content */}

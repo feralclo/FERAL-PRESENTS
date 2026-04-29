@@ -346,7 +346,7 @@ Events, Artists, Merch, Customers, Discounts (`validate|auto|seed`), Settings, B
 
 **Required**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `RESEND_API_KEY`, `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`.
 
-**Optional integrations**: `NEXT_PUBLIC_GTM_ID`, Klaviyo, `MUX_TOKEN_ID`/`MUX_TOKEN_SECRET`, `VAPID_PUBLIC_KEY`/`_PRIVATE_KEY`/`_SUBJECT`, Apple/Google Wallet certs, `VERCEL_API_TOKEN`, `SPOTIFY_CLIENT_ID`/`_SECRET`, `SHOPIFY_*` (Entry Market).
+**Optional integrations**: `NEXT_PUBLIC_GTM_ID`, Klaviyo, `MUX_TOKEN_ID`/`MUX_TOKEN_SECRET`, `VAPID_PUBLIC_KEY`/`_PRIVATE_KEY`/`_SUBJECT`, Apple/Google Wallet certs, `VERCEL_API_TOKEN`, `SPOTIFY_CLIENT_ID`/`_SECRET`, `SHOPIFY_*` (Entry Market), `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (Places API New — venue + city autocomplete in event editor; restrict by HTTP referrer; absent = graceful fallback to plain text input).
 
 **Monitoring**: `PLATFORM_ALERT_EMAIL`, `ANTHROPIC_API_KEY` (digest), `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
 
@@ -427,7 +427,6 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 7. **Story moderation queue** — table + endpoint exist, no admin review UI.
 8. **`rep_event_attendance` RLS disabled** — populated by trigger only; document explicitly when exposing reads.
 9. **`TABLES` constant lag** — missing ~24 tables. Update opportunistically; raw strings accepted.
-10. **Place autocomplete (venue/city)** — Phase 1.7 of EVENT-BUILDER-PLAN. Free-text inputs only. Vendor decision pending (Google Places vs Mapbox vs free Nominatim with TOS caveat) before implementation; blocks Phase 2.2.
 
 ---
 

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { PlaceAutocomplete } from "@/components/admin/PlaceAutocomplete";
 import { useOrgTimezone } from "@/hooks/useOrgTimezone";
 import type { TabProps } from "./types";
 
@@ -103,9 +104,23 @@ export function DetailsTab({ event, updateEvent }: TabProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Venue Name</Label>
-              <Input
+              <PlaceAutocomplete
                 value={event.venue_name || ""}
-                onChange={(e) => updateEvent("venue_name", e.target.value)}
+                onChange={(v) => updateEvent("venue_name", v)}
+                onPlaceSelected={(p) => {
+                  // Selecting a venue auto-fills the address + city +
+                  // country fields below — the host only types the name.
+                  // Existing manual values stay; we only fill blanks so a
+                  // host who's edited details by hand doesn't get them
+                  // overwritten on a re-pick.
+                  updateEvent("venue_name", p.name || event.venue_name || "");
+                  if (p.address && !event.venue_address)
+                    updateEvent("venue_address", p.address);
+                  if (p.city && !event.city) updateEvent("city", p.city);
+                  if (p.country && !event.country)
+                    updateEvent("country", p.country);
+                }}
+                mode="venue"
                 placeholder="e.g. Invisible Wind Factory"
               />
             </div>
@@ -121,9 +136,14 @@ export function DetailsTab({ event, updateEvent }: TabProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>City</Label>
-              <Input
+              <PlaceAutocomplete
                 value={event.city || ""}
-                onChange={(e) => updateEvent("city", e.target.value)}
+                onChange={(v) => updateEvent("city", v)}
+                onPlaceSelected={(p) => {
+                  if (p.country && !event.country)
+                    updateEvent("country", p.country);
+                }}
+                mode="city"
                 placeholder="e.g. Liverpool"
               />
             </div>

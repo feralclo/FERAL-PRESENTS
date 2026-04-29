@@ -9,6 +9,7 @@ import { useOrgId } from "@/components/OrgProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/components/admin/ui";
+import { PlaceAutocomplete } from "@/components/admin/PlaceAutocomplete";
 import { Input } from "@/components/ui/input";
 import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
@@ -297,17 +298,24 @@ export default function EventsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Venue</Label>
-                  <Input
+                  <PlaceAutocomplete
                     value={newVenue}
-                    onChange={(e) => setNewVenue(e.target.value)}
+                    onChange={setNewVenue}
+                    onPlaceSelected={(p) => {
+                      // Selecting a venue gives us its city for free —
+                      // pre-fill it only when the user hasn't typed one.
+                      if (p.city && !newCity) setNewCity(p.city);
+                    }}
+                    mode="venue"
                     placeholder="e.g. Invisible Wind Factory"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>City</Label>
-                  <Input
+                  <PlaceAutocomplete
                     value={newCity}
-                    onChange={(e) => setNewCity(e.target.value)}
+                    onChange={setNewCity}
+                    mode="city"
                     placeholder="e.g. Liverpool"
                   />
                 </div>

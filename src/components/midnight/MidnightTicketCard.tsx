@@ -20,11 +20,25 @@ import type { TicketTypeRow } from "@/types/events";
 import type { DiscountDisplay } from "./discount-utils";
 import { getDiscountedPrice } from "./discount-utils";
 
-/** Tier → effects class mapping */
+/** Tier → effects class mapping (metallic gradient backgrounds) */
 const TIER_EFFECT: Record<string, string> = {
   platinum: "midnight-metallic-platinum",
   black: "midnight-metallic-obsidian",
   valentine: "midnight-metallic-valentine",
+};
+
+/** Tier → ambient glow colour for active state. Restrained, not flashy. */
+const TIER_GLOW: Record<string, string> = {
+  platinum: "rgba(220,220,235,0.22)",
+  valentine: "rgba(255,126,179,0.22)",
+  black: "rgba(255,255,255,0.18)",
+  standard: "rgba(255,255,255,0.10)",
+};
+const TIER_GLOW_FAINT: Record<string, string> = {
+  platinum: "rgba(220,220,235,0.06)",
+  valentine: "rgba(255,126,179,0.06)",
+  black: "rgba(255,255,255,0.05)",
+  standard: "rgba(255,255,255,0.03)",
 };
 
 interface MidnightTicketCardProps {
@@ -52,13 +66,15 @@ export function MidnightTicketCard({
   const isSoldOut = tt.status === "sold_out" || (tt.capacity != null && tt.capacity > 0 && tt.sold >= tt.capacity);
   const isActive = qty > 0;
   const priceDisplay = fmtPrice(convertPrice(Number(tt.price), tt.price_overrides));
+  const glow = TIER_GLOW[tier] || TIER_GLOW.standard;
+  const glowFaint = TIER_GLOW_FAINT[tier] || TIER_GLOW_FAINT.standard;
 
   const merchImgs = tt.includes_merch
     ? (tt.product_id && tt.product ? tt.product.images : tt.merch_images)
     : null;
   const hasMerch = hasMerchImages(merchImgs);
 
-  // Qty pop animation
+  // Qty pop animation — fires whenever qty changes (incl. 0 → 1 reveal)
   const qtyRef = useRef<HTMLSpanElement>(null);
   const prevQty = useRef(qty);
   useEffect(() => {
@@ -66,40 +82,54 @@ export function MidnightTicketCard({
       qtyRef.current.classList.remove("midnight-qty-pop");
       void qtyRef.current.offsetWidth;
       qtyRef.current.classList.add("midnight-qty-pop");
-      prevQty.current = qty;
     }
+    prevQty.current = qty;
   }, [qty]);
+
+  // Tap "+" on a merch ticket from empty state → open size sheet, not direct add
+  const handleAdd = () =>
+    tt.includes_merch && onViewMerch ? onViewMerch(tt) : onAdd(tt);
 
   return (
     <div
       role="article"
       aria-label={`${tt.name} — ${priceDisplay}`}
       className={cn(
-        "relative px-4 py-3.5 mb-2 rounded-xl transition-all duration-200",
+        "relative px-4 py-3.5 mb-2 rounded-xl transition-all duration-300",
+        "max-[480px]:px-3.5 max-[480px]:py-3",
         // Sold out
         isSoldOut && "opacity-40 pointer-events-none",
-        // Standard tier styling
-        !tierEffect && "bg-foreground/[0.025] border border-foreground/[0.06]",
-        !tierEffect && !isSoldOut && "hover:border-foreground/[0.12] hover:bg-foreground/[0.04]",
-        !tierEffect && isActive && !isSoldOut && "border-foreground/[0.15] bg-foreground/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_16px_rgba(255,255,255,0.02)]",
-        // Metallic tier styling
+        // Standard tier — V1 box: bg + border, intensifies on active
+        !tierEffect && "bg-foreground/[0.025] border",
+        !tierEffect && (isActive && !isSoldOut
+          ? "border-foreground/[0.20]"
+          : "border-foreground/[0.06]"),
+        !tierEffect && !isActive && !isSoldOut && "hover:border-foreground/[0.12] hover:bg-foreground/[0.035]",
+        // Metallic tier styling (platinum / black / valentine) — keeps gradient bg
         tierEffect,
         tierEffect && isActive && !isSoldOut && "midnight-active",
-        // Mobile
-        "max-[480px]:px-3.5 max-[480px]:py-3",
       )}
+      style={
+        // Glow ambient lighting when active. Skipped on metallic tiers — they
+        // already have their own gradient/effect that we don't want to fight.
+        isActive && !isSoldOut && !tierEffect
+          ? {
+              boxShadow: `0 0 28px ${glow}, 0 0 0 1px ${glow}`,
+              backgroundImage: `radial-gradient(140% 100% at 100% 50%, ${glowFaint}, transparent 60%)`,
+            }
+          : undefined
+      }
       data-ticket-id={tt.id}
     >
       {/* Valentine floating hearts */}
       {tier === "valentine" && <MidnightFloatingHearts />}
 
-      {/* Single horizontal row: name+desc on left, price+stepper on right */}
       <div className="relative z-[2] flex items-center gap-3 max-[480px]:gap-2.5">
         {/* Left: name + description (+ optional merch chip) */}
         <div className="flex-1 min-w-0">
           <span
             className={cn(
-              "font-[family-name:var(--font-sans)] text-sm max-[480px]:text-[13px] font-semibold tracking-[0.04em] uppercase block leading-tight",
+              "font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] font-bold tracking-[0.05em] uppercase block leading-tight",
               TIER_TEXT_CLASSES[tier] || TIER_TEXT_CLASSES.standard,
             )}
           >
@@ -108,7 +138,7 @@ export function MidnightTicketCard({
           {tt.description ? (
             <span
               className={cn(
-                "font-[family-name:var(--font-display)] text-[12px] max-[480px]:text-[11px] tracking-[0.01em] block leading-snug mt-1 truncate",
+                "font-[family-name:var(--font-display)] text-[11px] tracking-[0.01em] block leading-snug mt-1 truncate",
                 TIER_DESC_CLASSES[tier] || TIER_DESC_DEFAULT,
               )}
             >
@@ -136,9 +166,9 @@ export function MidnightTicketCard({
           ) : null}
         </div>
 
-        {/* Right: price (anchor) + ghost stepper */}
+        {/* Right: price + smart add/stepper */}
         <div className="shrink-0 flex items-center gap-3 max-[480px]:gap-2">
-          {/* Price (single or stacked-discount) — visual anchor of the right side */}
+          {/* Price — single or stacked-discount */}
           {discount && discount.type === "percentage" ? (
             <div className="flex flex-col items-end leading-none">
               <span className="font-[family-name:var(--font-mono)] text-[10px] max-[480px]:text-[9px] font-medium tracking-[0.3px] text-foreground/25 line-through mb-1">
@@ -146,7 +176,7 @@ export function MidnightTicketCard({
               </span>
               <span
                 className={cn(
-                  "font-[family-name:var(--font-mono)] text-lg max-[480px]:text-base font-bold tracking-[0.5px]",
+                  "font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.5px] tabular-nums",
                   TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
                 )}
               >
@@ -156,7 +186,7 @@ export function MidnightTicketCard({
           ) : (
             <span
               className={cn(
-                "font-[family-name:var(--font-mono)] text-lg max-[480px]:text-base font-bold tracking-[0.5px]",
+                "font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.5px] tabular-nums",
                 TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
               )}
             >
@@ -164,36 +194,47 @@ export function MidnightTicketCard({
             </span>
           )}
 
-          {/* Sold out badge OR ghost stepper (no container — feels native to card) */}
+          {/* Sold out · OR · single + button (qty=0) · OR · ghost stepper (qty>0) */}
           {isSoldOut ? (
-            <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.15em] uppercase text-foreground/30">
+            <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/30">
               Sold out
             </span>
+          ) : qty === 0 ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 rounded-full touch-manipulation",
+                "bg-foreground/[0.04] hover:bg-foreground/[0.10] active:scale-90 transition-transform duration-100",
+                "text-foreground/80",
+                TIER_BUTTON_CLASSES[tier],
+              )}
+              onClick={handleAdd}
+              aria-label={`Add ${tt.name}`}
+            >
+              <span className="text-base leading-none">+</span>
+            </Button>
           ) : (
             <div className="flex items-center">
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 text-base rounded-full touch-manipulation",
-                  "hover:bg-foreground/[0.08] active:scale-[0.9] transition-all duration-100",
-                  isActive
-                    ? "text-foreground/80"
-                    : "text-foreground/40",
+                  "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 rounded-full touch-manipulation",
+                  "hover:bg-foreground/[0.08] active:scale-90 transition-transform duration-100",
+                  "text-foreground/70",
                   TIER_BUTTON_CLASSES[tier],
                 )}
                 onClick={() => onRemove(tt)}
                 aria-label={`Remove ${tt.name}`}
               >
-                &minus;
+                <span className="text-base leading-none">&minus;</span>
               </Button>
               <span
                 ref={qtyRef}
                 className={cn(
-                  "font-[family-name:var(--font-mono)] text-sm font-semibold min-w-5 text-center tabular-nums select-none",
-                  isActive
-                    ? TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground"
-                    : "text-foreground/40",
+                  "font-[family-name:var(--font-mono)] text-sm font-bold min-w-5 text-center tabular-nums select-none",
+                  TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground",
                 )}
               >
                 {qty}
@@ -202,15 +243,15 @@ export function MidnightTicketCard({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 text-base rounded-full touch-manipulation",
-                  "hover:bg-foreground/[0.08] active:scale-[0.9] transition-all duration-100",
-                  "text-foreground/80",
+                  "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 rounded-full touch-manipulation",
+                  "hover:bg-foreground/[0.08] active:scale-90 transition-transform duration-100",
+                  "text-foreground",
                   TIER_BUTTON_CLASSES[tier],
                 )}
-                onClick={() => tt.includes_merch && onViewMerch ? onViewMerch(tt) : onAdd(tt)}
+                onClick={handleAdd}
                 aria-label={`Add ${tt.name}`}
               >
-                +
+                <span className="text-base leading-none">+</span>
               </Button>
             </div>
           )}

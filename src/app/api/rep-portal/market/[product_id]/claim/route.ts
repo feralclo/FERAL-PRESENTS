@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRepAuth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { submitShopifyOrder } from "@/lib/market/shopify";
+import { sendClaimConfirmation } from "@/lib/market/emails";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -162,7 +163,7 @@ export async function POST(
         .maybeSingle(),
       db
         .from("platform_market_product_variants")
-        .select("id, title, external_variant_id, ep_price")
+        .select("id, title, external_variant_id, ep_price, option1")
         .eq("id", variantId)
         .maybeSingle(),
     ]);
@@ -217,6 +218,30 @@ export async function POST(
         error_message: errorMessage,
       })
       .eq("id", result.claim_id);
+
+    // Fire-and-forget Entry-branded "we got your order" email. Only on
+    // successful supplier submission — failed submissions get a different
+    // resolution path (admin retry / refund) and a confirmation would
+    // be misleading. Awaiting a noop-safe send would block the API
+    // response on Resend latency, so we don't.
+    if (nextStatus === "submitted_to_supplier") {
+      const variantTitle = (variant as { title?: string | null } | null)?.title ?? null;
+      const variantOption1 = (variant as { option1?: string | null } | null)?.option1 ?? null;
+      void sendClaimConfirmation({
+        claimId: result.claim_id,
+        recipientEmail: validated.email,
+        recipientName: validated.name,
+        productTitle: (product as { title?: string } | null)?.title ?? "Entry Market item",
+        variantTitle: variantTitle ?? variantOption1,
+        epSpent: (variant as { ep_price?: number } | null)?.ep_price ?? 0,
+        shippingAddress: validated.address,
+        orderNumber: externalOrderNumber,
+      }).catch((err) => {
+        Sentry.captureException(err, {
+          extra: { step: "sendClaimConfirmation", claimId: result.claim_id },
+        });
+      });
+    }
 
     return NextResponse.json(
       {

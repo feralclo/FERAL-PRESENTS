@@ -226,6 +226,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/brand/", // Brand assets (logo SVG, public)
   "/api/og/", // Open Graph / generated cover images (public, content-addressed)
   "/api/campaigns/track", // Email open/click tracking pixels (public)
+  "/api/webhooks/", // External webhooks — auth via per-route HMAC verification
 ];
 
 const PUBLIC_API_EXACT_GETS = [

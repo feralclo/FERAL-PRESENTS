@@ -20,24 +20,17 @@ import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import type { VatSettings } from "@/types/settings";
 import type { TabWithSettingsProps } from "@/components/admin/event-editor/types";
 
-interface StripeAccount {
-  account_id: string;
-  email: string | null;
-  business_name: string | null;
-  charges_enabled: boolean;
-  details_submitted: boolean;
-}
-
 /**
- * Money — currency, VAT, payment method. Split out of SettingsTab so the
- * canvas can group "how does money flow" into one narrative beat.
- * Visibility / status / announcement / queue / SEO live in PublishSection.
+ * Money — currency, VAT, payments. Stripe is locked in as the only
+ * supported payment method on the canvas (the picker came out
+ * 2026-04-29 — Entry's product thesis is "this is the destination,"
+ * which contradicts External; Test was admin-only and reachable via
+ * SQL when needed). Existing Test/External events keep their stored
+ * value but the UI doesn't expose the switch.
  *
- * Polish pass (2026-04-29): Test + External payment methods only render
- * when the current event already has them — Stripe is the canonical
- * choice for new events. Merch booth cutoff was retired from the canvas
- * (advanced/edge case; clutters the default flow). Surface it later via
- * a dedicated event-merch settings page if promoter feedback asks.
+ * Stripe Connect account routing also retired from the canvas — the
+ * org's connected account is automatic. Multi-account routing for
+ * platform-owners lives at /admin/connect/ where it belongs.
  */
 export function MoneySection({
   event,
@@ -48,49 +41,27 @@ export function MoneySection({
   const orgId = useOrgId();
   const { currency: orgBaseCurrency } = useOrgCurrency();
 
-  const [stripeAccounts, setStripeAccounts] = useState<StripeAccount[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [orgVat, setOrgVat] = useState<VatSettings | null>(null);
-  const [isPlatformOwner, setIsPlatformOwner] = useState(false);
   const [stripeConnected, setStripeConnected] = useState<boolean | null>(null);
+  const [stripeAccountLabel, setStripeAccountLabel] = useState<string | null>(null);
 
+  // Connection probe — drives the "connect Stripe before going live"
+  // hint and shows the connected account name as a status pill.
   useEffect(() => {
-    (async () => {
-      try {
-        const [, stripeRes] = await Promise.all([
-          (async () => {
-            const supabase = getSupabaseClient();
-            if (!supabase) return;
-            const { data } = await supabase.auth.getUser();
-            if (data.user?.app_metadata?.is_platform_owner === true) {
-              setIsPlatformOwner(true);
-            }
-          })(),
-          fetch("/api/stripe/connect/my-account").catch(() => null),
-        ]);
-        if (stripeRes?.ok) {
-          const json = await stripeRes.json();
-          setStripeConnected(!!json.connected && !!json.charges_enabled);
-        } else {
-          setStripeConnected(false);
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (event.payment_method !== "stripe" || !isPlatformOwner) return;
-    setLoadingAccounts(true);
-    fetch("/api/stripe/connect")
-      .then((res) => res.json())
+    fetch("/api/stripe/connect/my-account")
+      .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
-        if (json.data) setStripeAccounts(json.data);
+        if (!json) {
+          setStripeConnected(false);
+          return;
+        }
+        setStripeConnected(!!json.connected && !!json.charges_enabled);
+        setStripeAccountLabel(
+          json.business_name || json.email || (json.connected ? "Connected account" : null)
+        );
       })
-      .catch(() => {})
-      .finally(() => setLoadingAccounts(false));
-  }, [event.payment_method, isPlatformOwner]);
+      .catch(() => setStripeConnected(false));
+  }, []);
 
   useEffect(() => {
     fetch(`/api/settings?key=${vatKey(orgId)}`)
@@ -119,63 +90,37 @@ export function MoneySection({
       ? "Invalid VAT number format"
       : null;
 
+  const isLegacyExternal = event.payment_method === "external";
+
   return (
     <div className="space-y-6">
-      <div className={isPlatformOwner ? "grid gap-4 sm:grid-cols-2" : ""}>
-        {isPlatformOwner && (
-          <div className="space-y-2">
-            <Label>Payment method</Label>
-            <Select
-              value={event.payment_method}
-              onValueChange={(v) => updateEvent("payment_method", v)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="stripe">Stripe</SelectItem>
-                {/* Test + External only surface when the event already
-                    uses them — Stripe is the canonical choice for new
-                    events. Existing Test/External events still display
-                    correctly without giving new ones the option. */}
-                {event.payment_method === "test" && (
-                  <SelectItem value="test">Test (legacy)</SelectItem>
-                )}
-                {event.payment_method === "external" && (
-                  <SelectItem value="external">External link (legacy)</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-        <div className="space-y-2">
-          <Label>Currency</Label>
-          <Select
-            value={event.currency}
-            onValueChange={(v) => updateEvent("currency", v)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="GBP">GBP (£)</SelectItem>
-              <SelectItem value="EUR">EUR (€)</SelectItem>
-              <SelectItem value="USD">USD ($)</SelectItem>
-              <SelectItem value="JPY">JPY (¥)</SelectItem>
-            </SelectContent>
-          </Select>
-          {orgBaseCurrency &&
-          (event.currency || "GBP").toUpperCase() === orgBaseCurrency.toUpperCase() ? (
-            <p className="text-[10px] text-muted-foreground/70">
-              Your org&apos;s default currency
-            </p>
-          ) : orgBaseCurrency ? (
-            <p className="text-[10px] text-warning">
-              Different from your base currency ({orgBaseCurrency}) — 1.5%
-              cross-currency surcharge applies
-            </p>
-          ) : null}
-        </div>
+      <div className="space-y-2">
+        <Label>Currency</Label>
+        <Select
+          value={event.currency}
+          onValueChange={(v) => updateEvent("currency", v)}
+        >
+          <SelectTrigger className="max-w-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="GBP">GBP (£)</SelectItem>
+            <SelectItem value="EUR">EUR (€)</SelectItem>
+            <SelectItem value="USD">USD ($)</SelectItem>
+            <SelectItem value="JPY">JPY (¥)</SelectItem>
+          </SelectContent>
+        </Select>
+        {orgBaseCurrency &&
+        (event.currency || "GBP").toUpperCase() === orgBaseCurrency.toUpperCase() ? (
+          <p className="text-[10px] text-muted-foreground/70">
+            Your org&apos;s default currency.
+          </p>
+        ) : orgBaseCurrency ? (
+          <p className="text-[10px] text-warning">
+            Different from your base currency ({orgBaseCurrency}) — 1.5%
+            cross-currency surcharge applies.
+          </p>
+        ) : null}
       </div>
 
       <div className="border-t border-border/40 pt-5">
@@ -185,9 +130,8 @@ export function MoneySection({
               Multi-currency checkout
             </Label>
             <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-              {event.payment_method === "external"
-                ? "Enable for merch pre-orders linked to this event."
-                : "Sell internationally — buyers see prices in their local currency, with a selector on the event page."}
+              Sell internationally — buyers see prices in their local currency
+              with a selector on the event page.
             </p>
           </div>
           <Switch
@@ -199,102 +143,65 @@ export function MoneySection({
         </div>
       </div>
 
-      {/* External link — platform owner only */}
-      {isPlatformOwner && event.payment_method === "external" && (
-        <div className="space-y-2 border-t border-border/40 pt-5">
-          <Label>Ticket link URL</Label>
-          <Input
-            type="url"
-            value={event.external_link || ""}
-            onChange={(e) =>
-              updateEvent("external_link", e.target.value || null)
-            }
-            placeholder="https://example.com/tickets"
-          />
-          <p className="text-[10px] text-muted-foreground/70">
-            Buyers redirect here. No on-page checkout.
-          </p>
-        </div>
-      )}
-
-      {/* Stripe account selector — platform owner only */}
-      {isPlatformOwner && event.payment_method === "stripe" && (
-        <div className="space-y-2 border-t border-border/40 pt-5">
-          <Label>Stripe account</Label>
-          {loadingAccounts ? (
-            <p className="text-xs text-muted-foreground">Loading accounts…</p>
-          ) : stripeAccounts.length > 0 ? (
-            <>
-              <Select
-                value={event.stripe_account_id || "__platform_default__"}
-                onValueChange={(v) =>
-                  updateEvent(
-                    "stripe_account_id",
-                    v === "__platform_default__" ? null : v
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__platform_default__">
-                    Platform default
-                  </SelectItem>
-                  {stripeAccounts.map((acc) => (
-                    <SelectItem
-                      key={acc.account_id}
-                      value={acc.account_id}
-                      disabled={!acc.charges_enabled}
-                    >
-                      {acc.business_name || acc.email || acc.account_id}
-                      {!acc.charges_enabled && " (not ready)"}
-                      {acc.charges_enabled && " ✓"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[10px] text-muted-foreground/70">
-                Which Connect account receives payments. &quot;Platform
-                default&quot; uses the global account from{" "}
-                <Link href="/admin/payments/" className="text-primary hover:underline">
-                  Payment settings
-                </Link>
-                .
-              </p>
-            </>
-          ) : (
-            <div className="rounded-md border border-border/50 bg-muted/20 p-3">
-              <p className="text-xs text-muted-foreground">
-                No Connect accounts found. Payments will use the global account
-                from{" "}
-                <Link href="/admin/payments/" className="text-primary hover:underline">
-                  Payment settings
-                </Link>
-                .
-              </p>
+      {/* Payments status — replaces the dropdown. We just tell the host
+          where money flows and link out for changes. */}
+      <div className="border-t border-border/40 pt-5">
+        <Label className="text-sm font-medium text-foreground">Payments</Label>
+        {stripeConnected === true && (
+          <div className="mt-2 flex items-center justify-between gap-3 rounded-md border border-success/25 bg-success/[0.04] px-3 py-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/60 motion-reduce:hidden" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
+              </span>
+              <span className="truncate text-[12px] text-foreground">
+                Payouts via{" "}
+                <span className="font-medium">
+                  {stripeAccountLabel || "your Stripe account"}
+                </span>
+              </span>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Stripe connection hint — regular tenants */}
-      {!isPlatformOwner &&
-        event.payment_method === "stripe" &&
-        stripeConnected === false && (
-          <div className="rounded-md border border-warning/20 bg-warning/[0.04] p-3">
-            <p className="text-xs text-muted-foreground">
+            <Link
+              href="/admin/payments/"
+              className="shrink-0 text-[11px] font-medium text-primary hover:underline"
+            >
+              Manage →
+            </Link>
+          </div>
+        )}
+        {stripeConnected === false && (
+          <div className="mt-2 rounded-md border border-warning/30 bg-warning/[0.04] p-3">
+            <p className="text-xs text-foreground">
               You need to{" "}
               <Link
                 href="/admin/payments/"
                 className="font-medium text-primary hover:underline"
               >
-                connect your payment account
+                connect your Stripe account
               </Link>{" "}
               before this event can go live.
             </p>
           </div>
         )}
+      </div>
+
+      {/* Legacy External event still in the system — give the host a
+          place to maintain its outbound URL. New events can't reach this
+          state via the canvas. */}
+      {isLegacyExternal && (
+        <div className="space-y-2 border-t border-border/40 pt-5">
+          <Label>Ticket link URL</Label>
+          <Input
+            type="url"
+            value={event.external_link || ""}
+            onChange={(e) => updateEvent("external_link", e.target.value || null)}
+            placeholder="https://example.com/tickets"
+          />
+          <p className="text-[10px] text-muted-foreground/70">
+            Legacy event — buyers redirect here. New events use Stripe checkout.
+          </p>
+        </div>
+      )}
 
       {/* VAT */}
       <div className="border-t border-border/40 pt-5 space-y-4">
@@ -323,7 +230,7 @@ export function MoneySection({
               }
             }}
           >
-            <SelectTrigger>
+            <SelectTrigger className="max-w-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

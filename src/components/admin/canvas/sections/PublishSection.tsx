@@ -100,6 +100,11 @@ export function PublishSection({
         </div>
       </div>
 
+      {/* Schedule ticket release — top-level toggle, sibling to Hype queue.
+          Both default off, both expand inline when enabled. They're
+          independent product tactics — you can run a hype queue on a
+          go-live event without scheduling a delayed release, and you
+          can schedule a release without theatrics. */}
       <div className="border-t border-border/40 pt-5 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
@@ -130,7 +135,7 @@ export function PublishSection({
         </div>
 
         {event.tickets_live_at && (
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-1">
             <div className="space-y-2">
               <Label>Tickets on sale</Label>
               <DateTimePicker
@@ -147,10 +152,7 @@ export function PublishSection({
                 <Input
                   value={event.announcement_title || ""}
                   onChange={(e) =>
-                    updateEvent(
-                      "announcement_title",
-                      e.target.value || null
-                    )
+                    updateEvent("announcement_title", e.target.value || null)
                   }
                   placeholder="Coming Soon"
                 />
@@ -179,94 +181,88 @@ export function PublishSection({
                 </span>
               </div>
             )}
+          </div>
+        )}
+      </div>
 
-            <div className="border-t border-border/30 pt-4 space-y-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <Label className="text-sm font-medium">Hype queue</Label>
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                    A countdown queue when tickets go live — builds urgency
-                    before the buying experience.
-                  </p>
-                </div>
-                <Switch
-                  checked={!!event.queue_enabled}
-                  onCheckedChange={(checked) => {
-                    updateEvent("queue_enabled", checked);
-                    if (checked && !event.queue_duration_seconds) {
-                      updateEvent("queue_duration_seconds", 45);
-                    }
-                    if (checked && !event.queue_window_minutes) {
-                      updateEvent("queue_window_minutes", 60);
-                    }
-                  }}
+      <div className="border-t border-border/40 pt-5 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <Label className="text-sm font-medium">Hype queue</Label>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+              A countdown queue when buyers try to checkout — builds urgency
+              before the buying experience.
+            </p>
+          </div>
+          <Switch
+            checked={!!event.queue_enabled}
+            onCheckedChange={(checked) => {
+              updateEvent("queue_enabled", checked);
+              if (checked && !event.queue_duration_seconds) {
+                updateEvent("queue_duration_seconds", 45);
+              }
+              if (checked && !event.queue_window_minutes) {
+                updateEvent("queue_window_minutes", 60);
+              }
+            }}
+          />
+        </div>
+
+        {event.queue_enabled && (
+          <div className="space-y-4 pt-1">
+            <div className="space-y-2">
+              <Label>
+                Queue duration:{" "}
+                <span className="font-normal text-muted-foreground">
+                  {event.queue_duration_seconds ?? 45}s
+                </span>
+              </Label>
+              <Slider
+                value={[event.queue_duration_seconds ?? 45]}
+                onValueChange={([v]) =>
+                  updateEvent("queue_duration_seconds", v)
+                }
+                min={15}
+                max={120}
+                step={5}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Queue title</Label>
+                <Input
+                  value={event.queue_title || ""}
+                  onChange={(e) =>
+                    updateEvent("queue_title", e.target.value || null)
+                  }
+                  placeholder="You're in the queue"
                 />
               </div>
-
-              {event.queue_enabled && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>
-                      Queue duration:{" "}
-                      <span className="font-normal text-muted-foreground">
-                        {event.queue_duration_seconds ?? 45}s
-                      </span>
-                    </Label>
-                    <Slider
-                      value={[event.queue_duration_seconds ?? 45]}
-                      onValueChange={([v]) =>
-                        updateEvent("queue_duration_seconds", v)
-                      }
-                      min={15}
-                      max={120}
-                      step={5}
-                    />
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Queue title</Label>
-                      <Input
-                        value={event.queue_title || ""}
-                        onChange={(e) =>
-                          updateEvent("queue_title", e.target.value || null)
-                        }
-                        placeholder="You're in the queue"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Queue subtitle</Label>
-                      <Input
-                        value={event.queue_subtitle || ""}
-                        onChange={(e) =>
-                          updateEvent(
-                            "queue_subtitle",
-                            e.target.value || null
-                          )
-                        }
-                        placeholder="Securing your spot"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2 max-w-[220px]">
-                    <Label>Active window (minutes)</Label>
-                    <Input
-                      type="number"
-                      value={event.queue_window_minutes ?? 60}
-                      onChange={(e) =>
-                        updateEvent(
-                          "queue_window_minutes",
-                          Math.max(
-                            15,
-                            Math.min(120, Number(e.target.value) || 60)
-                          )
-                        )
-                      }
-                      min={15}
-                      max={120}
-                    />
-                  </div>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label>Queue subtitle</Label>
+                <Input
+                  value={event.queue_subtitle || ""}
+                  onChange={(e) =>
+                    updateEvent("queue_subtitle", e.target.value || null)
+                  }
+                  placeholder="Securing your spot"
+                />
+              </div>
+            </div>
+            <div className="space-y-2 max-w-[220px]">
+              <Label>Active window (minutes)</Label>
+              <Input
+                type="number"
+                value={event.queue_window_minutes ?? 60}
+                onChange={(e) =>
+                  updateEvent(
+                    "queue_window_minutes",
+                    Math.max(15, Math.min(120, Number(e.target.value) || 60))
+                  )
+                }
+                min={15}
+                max={120}
+              />
             </div>
           </div>
         )}

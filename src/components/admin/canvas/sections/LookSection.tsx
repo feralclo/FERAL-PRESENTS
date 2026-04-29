@@ -18,51 +18,50 @@ export function LookSection({ event, updateEvent }: TabWithSettingsProps) {
   // compatibility, but unused — minimal sliders were retired with the
   // theme picker.
   return (
-    <div className="space-y-6">
-      <div className="grid gap-5 sm:grid-cols-2">
-        <ImageSlot
-          label="Cover (clean)"
-          hint="Square artwork, no baked-in text. Used in cards, tiles, and the iOS feed."
-          shape="square"
-          surface="card-tile"
-          value={event.cover_image_url || event.cover_image || ""}
-          onChange={(v) => {
-            // Dual-write: legacy cover_image keeps live web event pages,
-            // emails, and wallet passes correct; cover_image_url feeds
-            // iOS / Android / web-v2. One upload, every surface stays in sync.
-            updateEvent("cover_image", v);
-            updateEvent("cover_image_url", v);
-          }}
-          uploadKey={event.id ? `event_${event.id}_cover` : undefined}
-        />
-        <ImageSlot
-          label="Banner (wide)"
-          hint="16:9 hero. Background of the public event page."
-          shape="landscape"
-          surface="page-hero"
-          value={event.banner_image_url || event.hero_image || ""}
-          onChange={(v) => {
-            updateEvent("hero_image", v);
-            updateEvent("banner_image_url", v);
-          }}
-          uploadKey={event.id ? `event_${event.id}_banner` : undefined}
-        />
-      </div>
-
-      {/* Poster sits in its own row but constrained — full-width 4:5
-          made the slot tower over the section. A column-width tile keeps
-          the proportion honest and reads as "secondary asset". */}
-      <div className="max-w-[280px]">
-        <ImageSlot
-          label="Story share"
-          hint="Full poster with text, dates, and lineup baked in. Only used when reps share to Instagram/TikTok. Falls back to the cover if blank."
-          shape="portrait"
-          surface="story-share"
-          value={event.poster_image_url || ""}
-          onChange={(v) => updateEvent("poster_image_url", v)}
-          uploadKey={event.id ? `event_${event.id}_poster` : undefined}
-        />
-      </div>
+    // Three slots, three columns, top-aligned. The aspect ratios are
+    // intentionally different (1:1 / 16:9 / 4:5) — letting each tile
+    // honestly render its own shape reads cleaner than forcing them to a
+    // single height (which would either letterbox a square or stretch a
+    // banner). Equal-width columns + top-alignment gives a moodboard
+    // feel where the *shape variety* is part of the signal: this is
+    // what each asset actually is.
+    <div className="grid gap-4 sm:grid-cols-3 items-start">
+      <ImageSlot
+        label="Cover"
+        hint="Square artwork, no baked-in text. Cards, tiles, iOS feed."
+        shape="square"
+        surface="card-tile"
+        value={event.cover_image_url || event.cover_image || ""}
+        onChange={(v) => {
+          // Dual-write: legacy cover_image keeps live web event pages,
+          // emails, and wallet passes correct; cover_image_url feeds
+          // iOS / Android / web-v2. One upload, every surface stays in sync.
+          updateEvent("cover_image", v);
+          updateEvent("cover_image_url", v);
+        }}
+        uploadKey={event.id ? `event_${event.id}_cover` : undefined}
+      />
+      <ImageSlot
+        label="Banner"
+        hint="16:9 wide. Hero background on the public event page."
+        shape="landscape"
+        surface="page-hero"
+        value={event.banner_image_url || event.hero_image || ""}
+        onChange={(v) => {
+          updateEvent("hero_image", v);
+          updateEvent("banner_image_url", v);
+        }}
+        uploadKey={event.id ? `event_${event.id}_banner` : undefined}
+      />
+      <ImageSlot
+        label="Story share"
+        hint="Vertical poster with text baked in. For Instagram/TikTok shares. Falls back to the cover if blank."
+        shape="portrait"
+        surface="story-share"
+        value={event.poster_image_url || ""}
+        onChange={(v) => updateEvent("poster_image_url", v)}
+        uploadKey={event.id ? `event_${event.id}_poster` : undefined}
+      />
     </div>
   );
 }

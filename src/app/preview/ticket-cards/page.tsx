@@ -15,8 +15,8 @@ import {
 import type { TicketTypeRow } from "@/types/events";
 
 /**
- * Visual playground: bold reimaginings of the ticket card.
- * Internal — not linked from prod nav.
+ * Refined Original — same 2-row layout, every element rethought.
+ * Internal preview at /preview/ticket-cards/.
  */
 
 const SAMPLE_TICKETS: TicketTypeRow[] = [
@@ -91,436 +91,80 @@ const SAMPLE_TICKETS: TicketTypeRow[] = [
   },
 ];
 
-const VARIANTS = [
-  {
-    key: "editorial",
-    name: "Editorial",
-    blurb:
-      "No card boxes. Tickets become a typographic menu, separated by thin dividers — like the cocktail list at a Soho member's club. Tap '+ Add' to reveal an inline stepper. Selected row gets a 2px accent stripe on the left edge. Premium = restraint.",
-  },
-  {
-    key: "reveal",
-    name: "Reveal",
-    blurb:
-      "Each ticket collapses to a single 44px line: name · price · +. Tap to expand — description and stepper unfold below. You can see 6 tickets where we used to fit 2. Active rows stay expanded with quantity badge in the collapsed state.",
-  },
-  {
-    key: "tile",
-    name: "Tile Grid",
-    blurb:
-      "Two-column grid on mobile, four-column on desktop. Tickets are squarish tiles — name + price stacked, stepper at the bottom. You scan a grid instead of reading a list. Premium tiers can fill horizontally with tier color/treatment.",
-  },
-] as const;
-
-type VariantKey = (typeof VARIANTS)[number]["key"];
+const RETHINKS = [
+  ["Padding", "px-5 py-5 (~140px tall)", "px-4 py-3 (~90px tall)"],
+  ["Card spacing", "mb-2.5 between cards", "mb-1.5 — tighter rhythm"],
+  ["Name", "text-sm semibold", "text-[13px] bold, tighter tracking — more authoritative"],
+  ["Description", "text-[12px], leading-relaxed, mt-1.5", "text-[11px], leading-snug, mt-1 — quieter"],
+  ["Price", "text-base mono bold (top-right corner)", "same, but baseline-aligned with name"],
+  ["Stepper buttons", "44×44 chunky bordered container", "32×32 in a slim pill, rounded-full"],
+  ["Stepper qty", "text-base font-bold min-w-8", "text-sm font-semibold min-w-5"],
+  ["Active state", "border highlight + bg shift", "+ 2px accent stripe on left edge for clearer 'selected' read"],
+  ["Sold out", "'Sold out' replaces stepper", "same, in cleaner 10px tracked-out caps"],
+];
 
 export default function TicketCardPreviewPage() {
-  const [qtys, setQtys] = useState<Record<string, Record<string, number>>>(() =>
-    Object.fromEntries(VARIANTS.map((v) => [v.key, {}])),
-  );
-  const [activeVariant, setActiveVariant] = useState<VariantKey | "all">("all");
-
-  const update = (variant: VariantKey, ticketId: string, delta: number) => {
-    setQtys((prev) => {
-      const cur = prev[variant][ticketId] || 0;
-      const next = Math.max(0, Math.min(10, cur + delta));
-      return { ...prev, [variant]: { ...prev[variant], [ticketId]: next } };
-    });
+  const [qtys, setQtys] = useState<Record<string, number>>({});
+  const update = (id: string, delta: number) => {
+    setQtys((prev) => ({
+      ...prev,
+      [id]: Math.max(0, Math.min(10, (prev[id] || 0) + delta)),
+    }));
   };
 
   return (
     <div data-theme="midnight" className="min-h-screen bg-[#0a0a0c] text-foreground overflow-x-hidden">
-      <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
-        <header className="mb-10">
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        <header className="mb-8">
           <h1 className="font-[family-name:var(--font-sans)] text-2xl md:text-3xl font-bold tracking-[-0.01em] mb-2">
-            Three rethinks
+            Refined original
           </h1>
-          <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.12em] uppercase text-foreground/40 mb-4">
-            Different philosophies · pick the vibe
+          <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.12em] uppercase text-foreground/40">
+            Same 2-row layout. Every element rethought.
           </p>
-          <p className="text-sm text-foreground/60 mb-6 leading-relaxed">
-            Each variant uses identical sample tickets so the only thing changing is the design philosophy.
-            Tap on tickets to interact.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveVariant("all")}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-[11px] tracking-[0.06em] uppercase font-bold transition-colors",
-                activeVariant === "all"
-                  ? "bg-foreground text-background"
-                  : "bg-foreground/[0.06] text-foreground/70 hover:bg-foreground/[0.10]",
-              )}
-            >
-              Show all
-            </button>
-            {VARIANTS.map((v) => (
-              <button
-                key={v.key}
-                type="button"
-                onClick={() => setActiveVariant(v.key)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-[11px] tracking-[0.06em] uppercase font-bold transition-colors",
-                  activeVariant === v.key
-                    ? "bg-foreground text-background"
-                    : "bg-foreground/[0.06] text-foreground/70 hover:bg-foreground/[0.10]",
-                )}
-              >
-                {v.name}
-              </button>
-            ))}
-          </div>
         </header>
 
-        <div
-          className={cn(
-            "grid gap-10",
-            activeVariant === "all" ? "lg:grid-cols-3" : "max-w-md mx-auto",
-          )}
-        >
-          {VARIANTS.filter((v) => activeVariant === "all" || v.key === activeVariant).map((v) => (
-            <section key={v.key} className="flex flex-col">
-              <div className="mb-4">
-                <h2 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[-0.01em] mb-2">
-                  {v.name}
-                </h2>
-                <p className="text-[12px] text-foreground/50 leading-relaxed">{v.blurb}</p>
-              </div>
-
-              <div className="rounded-2xl border border-foreground/[0.08] bg-foreground/[0.015] p-3 max-w-[380px] w-full mx-auto">
-                {v.key === "editorial" && <EditorialList tickets={SAMPLE_TICKETS} qtys={qtys.editorial} update={(id, d) => update("editorial", id, d)} />}
-                {v.key === "reveal" && <RevealList tickets={SAMPLE_TICKETS} qtys={qtys.reveal} update={(id, d) => update("reveal", id, d)} />}
-                {v.key === "tile" && <TileList tickets={SAMPLE_TICKETS} qtys={qtys.tile} update={(id, d) => update("tile", id, d)} />}
-              </div>
-            </section>
+        {/* The cards */}
+        <div className="rounded-2xl border border-foreground/[0.08] bg-foreground/[0.015] p-3 max-w-[400px] w-full mx-auto mb-10">
+          {SAMPLE_TICKETS.map((tt) => (
+            <RefinedCard
+              key={tt.id}
+              ticket={tt}
+              qty={qtys[tt.id] || 0}
+              onAdd={() => update(tt.id, 1)}
+              onRemove={() => update(tt.id, -1)}
+            />
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
 
-interface ListProps {
-  tickets: TicketTypeRow[];
-  qtys: Record<string, number>;
-  update: (id: string, delta: number) => void;
-}
-
-function useTicketState(tt: TicketTypeRow, qty: number) {
-  const { convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
-  const tier = tt.tier || "standard";
-  const isSoldOut = tt.status === "sold_out";
-  const isActive = qty > 0;
-  const priceDisplay = fmtPrice(convertPrice(Number(tt.price), tt.price_overrides));
-  return { tier, isSoldOut, isActive, priceDisplay };
-}
-
-// ============================================================
-// 1. EDITORIAL — typographic menu, no boxes
-// ============================================================
-function EditorialList({ tickets, qtys, update }: ListProps) {
-  return (
-    <div>
-      {tickets.map((tt, i) => (
-        <EditorialRow
-          key={tt.id}
-          ticket={tt}
-          qty={qtys[tt.id] || 0}
-          isLast={i === tickets.length - 1}
-          onAdd={() => update(tt.id, 1)}
-          onRemove={() => update(tt.id, -1)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function EditorialRow({
-  ticket: tt,
-  qty,
-  isLast,
-  onAdd,
-  onRemove,
-}: {
-  ticket: TicketTypeRow;
-  qty: number;
-  isLast: boolean;
-  onAdd: () => void;
-  onRemove: () => void;
-}) {
-  const { tier, isSoldOut, isActive, priceDisplay } = useTicketState(tt, qty);
-  return (
-    <div
-      className={cn(
-        "relative transition-colors duration-200",
-        isSoldOut && "opacity-40",
-      )}
-    >
-      {/* Active accent stripe (left edge) */}
-      <div
-        className={cn(
-          "absolute left-0 top-2 bottom-2 w-[2px] rounded-full transition-all duration-300",
-          isActive ? "bg-foreground/80" : "bg-transparent",
-        )}
-        aria-hidden
-      />
-      <div
-        className={cn(
-          "flex items-center gap-3 py-4 px-3 transition-colors",
-          !isLast && "border-b border-foreground/[0.06]",
-          isActive && "bg-foreground/[0.025]",
-        )}
-      >
-        <div className="flex-1 min-w-0">
-          <h4
-            className={cn(
-              "font-[family-name:var(--font-sans)] text-[14px] font-semibold tracking-[0.05em] uppercase leading-tight",
-              TIER_TEXT_CLASSES[tier] || TIER_TEXT_CLASSES.standard,
-            )}
-          >
-            {tt.name}
-          </h4>
-          {tt.description ? (
-            <p
-              className={cn(
-                "font-[family-name:var(--font-display)] text-[11px] tracking-[0.01em] mt-1 truncate",
-                TIER_DESC_CLASSES[tier] || TIER_DESC_DEFAULT,
-              )}
-            >
-              {tt.description}
-            </p>
-          ) : null}
-        </div>
-        <div className="shrink-0 flex items-center gap-3">
-          <span
-            className={cn(
-              "font-[family-name:var(--font-mono)] text-[15px] font-bold tracking-[0.5px] tabular-nums",
-              TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
-            )}
-          >
-            {priceDisplay}
-          </span>
-          {isSoldOut ? (
-            <span className="font-[family-name:var(--font-mono)] text-[9px] font-bold tracking-[0.2em] uppercase text-foreground/40">
-              Sold out
-            </span>
-          ) : qty === 0 ? (
-            <button
-              type="button"
-              onClick={onAdd}
-              className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/50 hover:text-foreground transition-colors px-2 py-1 cursor-pointer"
-            >
-              + Add
-            </button>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={onRemove}
-                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-foreground/[0.08] active:scale-90 transition text-foreground/70 cursor-pointer"
-                aria-label="Remove"
-              >
-                <span className="text-base leading-none">−</span>
-              </button>
-              <span
-                className={cn(
-                  "font-[family-name:var(--font-mono)] text-sm font-bold min-w-4 text-center tabular-nums",
-                  TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground",
-                )}
-              >
-                {qty}
-              </span>
-              <button
-                type="button"
-                onClick={onAdd}
-                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-foreground/[0.08] active:scale-90 transition text-foreground cursor-pointer"
-                aria-label="Add"
-              >
-                <span className="text-base leading-none">+</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// 2. REVEAL — collapsed lines that expand on tap
-// ============================================================
-function RevealList({ tickets, qtys, update }: ListProps) {
-  const [openId, setOpenId] = useState<string | null>(null);
-  return (
-    <div className="flex flex-col gap-1.5">
-      {tickets.map((tt) => (
-        <RevealRow
-          key={tt.id}
-          ticket={tt}
-          qty={qtys[tt.id] || 0}
-          open={openId === tt.id}
-          onToggle={() => setOpenId((prev) => (prev === tt.id ? null : tt.id))}
-          onAdd={() => update(tt.id, 1)}
-          onRemove={() => update(tt.id, -1)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function RevealRow({
-  ticket: tt,
-  qty,
-  open,
-  onToggle,
-  onAdd,
-  onRemove,
-}: {
-  ticket: TicketTypeRow;
-  qty: number;
-  open: boolean;
-  onToggle: () => void;
-  onAdd: () => void;
-  onRemove: () => void;
-}) {
-  const { tier, isSoldOut, isActive, priceDisplay } = useTicketState(tt, qty);
-  return (
-    <div
-      className={cn(
-        "rounded-lg border transition-all duration-200 overflow-hidden",
-        isSoldOut
-          ? "opacity-40 border-foreground/[0.04] bg-foreground/[0.01]"
-          : isActive
-            ? "border-foreground/[0.18] bg-foreground/[0.04]"
-            : open
-              ? "border-foreground/[0.12] bg-foreground/[0.03]"
-              : "border-foreground/[0.06] bg-foreground/[0.015] hover:border-foreground/[0.10]",
-      )}
-    >
-      {/* Collapsed row — always visible */}
-      <button
-        type="button"
-        onClick={isSoldOut ? undefined : onToggle}
-        disabled={isSoldOut}
-        className="w-full flex items-center gap-3 px-3.5 py-3 text-left cursor-pointer disabled:cursor-not-allowed"
-      >
-        <div className="flex-1 min-w-0 flex items-center gap-2.5">
-          <span
-            className={cn(
-              "font-[family-name:var(--font-sans)] text-[13px] font-semibold tracking-[0.04em] uppercase leading-tight truncate",
-              TIER_TEXT_CLASSES[tier] || TIER_TEXT_CLASSES.standard,
-            )}
-          >
-            {tt.name}
-          </span>
-          {qty > 0 && !open && (
-            <span className="shrink-0 font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.1em] uppercase px-1.5 py-0.5 rounded bg-foreground/10 text-foreground tabular-nums">
-              ×{qty}
-            </span>
-          )}
-        </div>
-        <div className="shrink-0 flex items-center gap-2.5">
-          <span
-            className={cn(
-              "font-[family-name:var(--font-mono)] text-[14px] font-bold tracking-[0.5px] tabular-nums",
-              TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
-            )}
-          >
-            {priceDisplay}
-          </span>
-          {isSoldOut ? (
-            <span className="font-[family-name:var(--font-mono)] text-[9px] font-bold tracking-[0.2em] uppercase text-foreground/40">
-              Sold out
-            </span>
-          ) : (
-            <span
-              className={cn(
-                "w-6 h-6 flex items-center justify-center text-foreground/50 transition-transform duration-200",
-                open && "rotate-45",
-              )}
-            >
-              <span className="text-lg leading-none">+</span>
-            </span>
-          )}
-        </div>
-      </button>
-
-      {/* Expanded panel */}
-      <div
-        className={cn(
-          "grid transition-all duration-300 ease-out",
-          open && !isSoldOut ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-        )}
-      >
-        <div className="overflow-hidden">
-          <div className="px-3.5 pb-3 pt-1 border-t border-foreground/[0.06]">
-            {tt.description && (
-              <p
-                className={cn(
-                  "font-[family-name:var(--font-display)] text-[12px] tracking-[0.01em] mb-3 leading-snug",
-                  TIER_DESC_CLASSES[tier] || TIER_DESC_DEFAULT,
-                )}
-              >
-                {tt.description}
-              </p>
-            )}
-            <div className="flex items-center justify-between">
-              <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/40">
-                Quantity
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onRemove}
-                  disabled={qty === 0}
-                  className="w-9 h-9 flex items-center justify-center rounded-full bg-foreground/[0.04] hover:bg-foreground/[0.10] active:scale-90 transition text-foreground disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                  aria-label="Remove"
-                >
-                  <span className="text-base leading-none">−</span>
-                </button>
-                <span
-                  className={cn(
-                    "font-[family-name:var(--font-mono)] text-base font-bold min-w-6 text-center tabular-nums",
-                    isActive
-                      ? TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground"
-                      : "text-foreground/50",
-                  )}
-                >
-                  {qty}
+        {/* Rethink table */}
+        <section className="max-w-[680px] mx-auto">
+          <h2 className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.2em] uppercase text-foreground/40 mb-3">
+            What changed
+          </h2>
+          <div className="rounded-xl border border-foreground/[0.06] divide-y divide-foreground/[0.04]">
+            {RETHINKS.map(([label, was, now]) => (
+              <div key={label} className="grid grid-cols-[100px_1fr_1fr] gap-3 px-4 py-3 text-[12px] items-start">
+                <span className="font-[family-name:var(--font-sans)] font-semibold text-foreground/80 uppercase tracking-[0.04em] text-[11px]">
+                  {label}
                 </span>
-                <button
-                  type="button"
-                  onClick={onAdd}
-                  className="w-9 h-9 flex items-center justify-center rounded-full bg-foreground/[0.06] hover:bg-foreground/[0.12] active:scale-90 transition text-foreground cursor-pointer"
-                  aria-label="Add"
-                >
-                  <span className="text-base leading-none">+</span>
-                </button>
+                <span className="font-[family-name:var(--font-display)] text-foreground/40 leading-snug">
+                  <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.15em] uppercase text-foreground/30 block mb-0.5">
+                    Was
+                  </span>
+                  {was}
+                </span>
+                <span className="font-[family-name:var(--font-display)] text-foreground/80 leading-snug">
+                  <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.15em] uppercase text-foreground/50 block mb-0.5">
+                    Now
+                  </span>
+                  {now}
+                </span>
               </div>
-            </div>
+            ))}
           </div>
-        </div>
+        </section>
       </div>
-    </div>
-  );
-}
-
-// ============================================================
-// 3. TILE — 2-col grid of compact tiles
-// ============================================================
-function TileList({ tickets, qtys, update }: ListProps) {
-  return (
-    <div className="grid grid-cols-2 gap-2.5">
-      {tickets.map((tt) => (
-        <TileCard
-          key={tt.id}
-          ticket={tt}
-          qty={qtys[tt.id] || 0}
-          onAdd={() => update(tt.id, 1)}
-          onRemove={() => update(tt.id, -1)}
-        />
-      ))}
     </div>
   );
 }
@@ -531,7 +175,10 @@ const TIER_EFFECT: Record<string, string> = {
   valentine: "midnight-metallic-valentine",
 };
 
-function TileCard({
+// ============================================================
+// Refined Original — the proposal
+// ============================================================
+function RefinedCard({
   ticket: tt,
   qty,
   onAdd,
@@ -542,78 +189,100 @@ function TileCard({
   onAdd: () => void;
   onRemove: () => void;
 }) {
-  const { tier, isSoldOut, isActive, priceDisplay } = useTicketState(tt, qty);
+  const { convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
+  const tier = tt.tier || "standard";
   const tierEffect = TIER_EFFECT[tier] || "";
+  const isSoldOut = tt.status === "sold_out";
+  const isActive = qty > 0;
+  const priceDisplay = fmtPrice(convertPrice(Number(tt.price), tt.price_overrides));
+
   return (
-    <div
+    <article
+      role="article"
+      aria-label={`${tt.name} — ${priceDisplay}`}
       className={cn(
-        "relative rounded-xl p-3 flex flex-col transition-all duration-200 min-h-[120px]",
-        isSoldOut && "opacity-40",
+        "relative px-4 py-3 mb-1.5 rounded-xl transition-all duration-200",
+        "max-[480px]:px-3.5 max-[480px]:py-2.5",
+        // Sold out
+        isSoldOut && "opacity-40 pointer-events-none",
+        // Standard tier
         !tierEffect && "bg-foreground/[0.025] border border-foreground/[0.06]",
-        !tierEffect && isActive && !isSoldOut && "border-foreground/[0.20] bg-foreground/[0.05]",
+        !tierEffect && !isSoldOut && "hover:border-foreground/[0.12] hover:bg-foreground/[0.04]",
+        !tierEffect && isActive && !isSoldOut && "border-foreground/[0.18] bg-foreground/[0.045]",
+        // Tier
         tierEffect,
         tierEffect && isActive && !isSoldOut && "midnight-active",
       )}
     >
-      {/* Top: name + price stacked */}
-      <div className="flex-1 min-h-0 mb-2">
-        <h4
-          className={cn(
-            "font-[family-name:var(--font-sans)] text-[12px] font-semibold tracking-[0.05em] uppercase leading-tight",
-            TIER_TEXT_CLASSES[tier] || TIER_TEXT_CLASSES.standard,
-          )}
-        >
-          {tt.name}
-        </h4>
-        {tt.description && (
-          <p
+      {/* Active accent stripe — subtle visual cue that this row is selected */}
+      <span
+        className={cn(
+          "absolute left-0 top-3 bottom-3 w-[2px] rounded-full transition-all duration-300",
+          isActive && !tierEffect ? "bg-foreground/50" : "bg-transparent",
+        )}
+        aria-hidden
+      />
+
+      {/* Row 1: name + description (left) | price (right) */}
+      <div className="relative z-[1] flex justify-between items-start gap-3 mb-2.5 max-[480px]:mb-2">
+        <div className="flex-1 min-w-0">
+          <h4
             className={cn(
-              "font-[family-name:var(--font-display)] text-[10px] tracking-[0.01em] mt-1 line-clamp-2 leading-snug",
-              TIER_DESC_CLASSES[tier] || TIER_DESC_DEFAULT,
+              "font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] font-bold tracking-[0.06em] uppercase leading-tight",
+              TIER_TEXT_CLASSES[tier] || TIER_TEXT_CLASSES.standard,
             )}
           >
-            {tt.description}
-          </p>
-        )}
-      </div>
-
-      {/* Bottom: price + stepper */}
-      <div className="flex items-center justify-between gap-2">
+            {tt.name}
+          </h4>
+          {tt.description ? (
+            <p
+              className={cn(
+                "font-[family-name:var(--font-display)] text-[11px] tracking-[0.01em] leading-snug mt-1",
+                TIER_DESC_CLASSES[tier] || TIER_DESC_DEFAULT,
+              )}
+            >
+              {tt.description}
+            </p>
+          ) : null}
+        </div>
         <span
           className={cn(
-            "font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.5px] tabular-nums",
+            "shrink-0 font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.5px] tabular-nums leading-none mt-0.5",
             TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
           )}
         >
           {priceDisplay}
         </span>
+      </div>
+
+      {/* Row 2: stepper right-aligned (or sold-out label) */}
+      <div className="relative z-[1] flex justify-end items-center">
         {isSoldOut ? (
-          <span className="font-[family-name:var(--font-mono)] text-[8px] font-bold tracking-[0.2em] uppercase text-foreground/40">
+          <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.2em] uppercase text-foreground/40">
             Sold out
           </span>
-        ) : qty === 0 ? (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-foreground/[0.06] hover:bg-foreground/[0.12] active:scale-90 transition text-foreground cursor-pointer"
-            aria-label="Add"
-          >
-            <span className="text-base leading-none">+</span>
-          </button>
         ) : (
-          <div className="flex items-center gap-0.5">
+          <div
+            className={cn(
+              "inline-flex items-center bg-foreground/[0.03] rounded-full border transition-colors duration-200 p-px",
+              isActive ? "border-foreground/[0.20]" : "border-foreground/[0.08]",
+            )}
+          >
             <button
               type="button"
               onClick={onRemove}
-              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-foreground/[0.10] active:scale-90 transition text-foreground/70 cursor-pointer"
-              aria-label="Remove"
+              disabled={qty === 0}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-foreground/70 hover:bg-foreground/[0.08] active:scale-90 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer touch-manipulation"
+              aria-label={`Remove ${tt.name}`}
             >
-              <span className="text-sm leading-none">−</span>
+              <span className="text-base leading-none">−</span>
             </button>
             <span
               className={cn(
-                "font-[family-name:var(--font-mono)] text-[13px] font-bold min-w-4 text-center tabular-nums",
-                TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground",
+                "font-[family-name:var(--font-mono)] text-sm font-semibold min-w-5 text-center tabular-nums px-1 select-none",
+                isActive
+                  ? TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground"
+                  : "text-foreground/40",
               )}
             >
               {qty}
@@ -621,14 +290,14 @@ function TileCard({
             <button
               type="button"
               onClick={onAdd}
-              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-foreground/[0.10] active:scale-90 transition text-foreground cursor-pointer"
-              aria-label="Add"
+              className="w-8 h-8 flex items-center justify-center rounded-full text-foreground hover:bg-foreground/[0.08] active:scale-90 transition cursor-pointer touch-manipulation"
+              aria-label={`Add ${tt.name}`}
             >
-              <span className="text-sm leading-none">+</span>
+              <span className="text-base leading-none">+</span>
             </button>
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 }

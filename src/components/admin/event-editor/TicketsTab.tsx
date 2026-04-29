@@ -5,24 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Layers, Plus, Sparkles, Ticket } from "lucide-react";
+import { ChevronDown, Layers, Plus, Ticket, X } from "lucide-react";
 import { TicketCard } from "./TicketCard";
-import {
-  TemplatePreviewDialog,
-  type PendingTemplate,
-  type TemplateOverrides,
-} from "./TemplatePreviewDialog";
-import { TemplateUndoBanner } from "./TemplateUndoBanner";
 import { useOrgId } from "@/components/OrgProvider";
 import { vatKey } from "@/lib/constants";
-import {
-  EVENT_TEMPLATE_LIST,
-  type EventTemplate,
-} from "@/lib/event-templates";
-import {
-  TIER_TEMPLATE_LIST,
-  type TierTemplate,
-} from "@/lib/tier-templates";
 import { makeTmpTicketId } from "@/lib/ticket-tmp-id";
 import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
@@ -30,29 +16,21 @@ import type { VatSettings } from "@/types/settings";
 import type { TicketsTabProps } from "./types";
 
 /**
- * State retained after a template applies so the host can undo the
- * action without manually deleting tickets / groups. Includes the inserse
- * of every change the apply made.
- */
-interface LastTemplateApply {
-  /** Display copy for the banner. */
-  message: string;
-  /** tmp-* ids of tickets that were inserted by this apply. */
-  insertedTicketIds: string[];
-  /** Group name that was newly created by this apply (if any). */
-  createdGroup?: string;
-  /** Previous release-mode value for the (possibly created) group, so
-   *  we can put it back on undo. `undefined` = the group key wasn't in
-   *  the release_mode object at all and should be removed on undo. */
-  prevGroupReleaseMode?: "all" | "sequential" | undefined;
-}
-
-/**
- * Phase 4 — release-strategy controls (group create/rename/delete/reorder
- * + release-mode toggle) live in the Release Strategy panel above. This
- * component now owns the *ticket* surface only: list, drag-to-reorder,
- * add, bulk-add from event/tier templates, and per-card editing. Group
- * dividers above tickets are read-only chips; group config is in the panel.
+ * Phase 4.9 simplification — removed the in-editor "From template" menu
+ * entirely. Templates belong at the Start Moment (`/admin/events/new`),
+ * not at edit time, because:
+ *   - Pre-filled names + prices ("Early bird, £10") are presumptuous —
+ *     hosts have their own naming conventions and pricing
+ *   - The release-pattern job is already covered by the Release Strategy
+ *     panel above this component
+ * For the rare bulk-add case, the "Add ticket" button has a dropdown
+ * count ("Add 4") that inserts blank rows.
+ *
+ * Release-strategy controls (group create/rename/delete/reorder + release-
+ * mode toggle) live in the Release Strategy panel above. This component
+ * owns the *ticket* surface only: list, drag-to-reorder, add (with
+ * optional count), and per-card editing. Group dividers are read-only
+ * chips; group config is in the panel.
  */
 export function TicketsTab({
   event,
@@ -131,13 +109,6 @@ export function TicketsTab({
     [setTicketTypes]
   );
 
-  /* ── Templates: preview-then-apply with undo ─────────────────────── */
-
-  /** What's currently in the preview dialog. Null when the dialog is closed. */
-  const [pendingTemplate, setPendingTemplate] =
-    useState<PendingTemplate | null>(null);
-  /** State retained for the undo banner. Null when no banner is up. */
-  const [lastApply, setLastApply] = useState<LastTemplateApply | null>(null);
   /** Ticket ids that should pulse with an "I'm new!" highlight — clears
    *  after 1.4s so the pulse reads as a brief cue, not decoration. */
   const [highlightIds, setHighlightIds] = useState<Set<string>>(new Set());
@@ -149,245 +120,45 @@ export function TicketsTab({
     return () => clearTimeout(t);
   }, []);
 
-  const addTicketType = useCallback(() => {
-    const tmpId = makeTmpTicketId();
-    setTicketTypes((prev) => [
-      ...prev,
-      {
-        // Temporary client-side id so per-card Group assignment works
-        // before save. handleSave on the editor page strips `tmp-*` from
-        // the API payload and translates tmp→real keys in
-        // ticket_group_map after the response. See `lib/ticket-tmp-id.ts`.
-        id: tmpId,
-        org_id: orgId,
-        event_id: event.id || "",
-        name: "",
-        description: "",
-        price: 0,
-        capacity: undefined,
-        sold: 0,
-        sort_order: prev.length,
-        includes_merch: false,
-        status: "active" as const,
-        min_per_order: 1,
-        max_per_order: 10,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as TicketTypeRow,
-    ]);
-    flashHighlight([tmpId]);
-  }, [event.id, setTicketTypes, orgId, flashHighlight]);
-
   /**
-   * Apply an event template using the host's edited values (name, price,
-   * capacity per tier). Each new ticket gets a `tmp-*` id so the undo
-   * banner can target it precisely.
+   * Add `count` blank tickets at once. Used by both the single "Add ticket"
+   * button (count=1) and the "Add multiple" mini-popover. New tickets get
+   * tmp-* client ids so the per-card Group dropdown works pre-save.
    */
-  const applyEventTemplate = useCallback(
-    (template: EventTemplate, overrides: TemplateOverrides) => {
-      const newRows = template.ticket_types.map((seed, i) => ({
-        id: makeTmpTicketId(),
-        sort_offset: seed.sort_order ?? i,
-        seed,
-        edit: overrides.tiers[i],
-      }));
-
+  const addTicketTypes = useCallback(
+    (count: number) => {
+      const safeCount = Math.max(1, Math.min(20, Math.floor(count)));
+      const newIds = Array.from({ length: safeCount }, () => makeTmpTicketId());
       setTicketTypes((prev) => {
         const baseOrder = prev.length;
-        const seeded = newRows.map(({ id, sort_offset, seed, edit }) => ({
-          id,
-          org_id: orgId,
-          event_id: event.id || "",
-          // Edited fields — names and prices the host actually wants.
-          name: edit?.name ?? seed.name,
-          price: edit?.price ?? seed.price,
-          capacity: edit?.capacity ?? seed.capacity,
-          // Structural fields — pulled from the template, not editable.
-          description: seed.description || "",
-          sold: 0,
-          sort_order: baseOrder + sort_offset,
-          includes_merch: false,
-          status: "active" as const,
-          min_per_order: seed.min_per_order ?? 1,
-          max_per_order: seed.max_per_order ?? 10,
-          tier: (seed.tier === "vip" ? "platinum" : "standard") as
-            | "standard"
-            | "platinum",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })) as TicketTypeRow[];
-        return [...prev, ...seeded];
+        const newRows = newIds.map(
+          (id, i) =>
+            ({
+              id,
+              org_id: orgId,
+              event_id: event.id || "",
+              name: "",
+              description: "",
+              price: 0,
+              capacity: undefined,
+              sold: 0,
+              sort_order: baseOrder + i,
+              includes_merch: false,
+              status: "active" as const,
+              min_per_order: 1,
+              max_per_order: 10,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }) as TicketTypeRow
+        );
+        return [...prev, ...newRows];
       });
-
-      const insertedIds = newRows.map((r) => r.id);
-      flashHighlight(insertedIds);
-
-      setLastApply({
-        message: `Added ${insertedIds.length} ticket${insertedIds.length === 1 ? "" : "s"} from ${template.label}`,
-        insertedTicketIds: insertedIds,
-      });
+      flashHighlight(newIds);
     },
     [event.id, setTicketTypes, orgId, flashHighlight]
   );
 
-  /**
-   * Apply a tier template — appends tickets (with the host's edits),
-   * optionally creates a group (with the host's edited group name),
-   * optionally flips that group to sequential. Captures every change in
-   * `lastApply` so undo can put everything back.
-   */
-  const applyTierTemplate = useCallback(
-    (template: TierTemplate, overrides: TemplateOverrides) => {
-      const newRows = template.tiers.map((tier, i) => ({
-        id: makeTmpTicketId(),
-        sort_offset: i,
-        seed: tier,
-        edit: overrides.tiers[i],
-      }));
-
-      setTicketTypes((prev) => {
-        const baseOrder = prev.length;
-        const seeded = newRows.map(({ id, sort_offset, seed, edit }) => ({
-          id,
-          org_id: orgId,
-          event_id: event.id || "",
-          name: edit?.name ?? seed.name,
-          price: edit?.price ?? seed.price,
-          capacity: edit?.capacity ?? seed.capacity,
-          description: seed.description || "",
-          sold: 0,
-          sort_order: baseOrder + sort_offset,
-          includes_merch: false,
-          status: "active" as const,
-          min_per_order: seed.min_per_order ?? 1,
-          max_per_order: seed.max_per_order ?? 10,
-          tier: "standard" as const,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })) as TicketTypeRow[];
-        return [...prev, ...seeded];
-      });
-
-      const insertedIds = newRows.map((r) => r.id);
-
-      // Track exactly what we changed for undo.
-      let createdGroup: string | undefined;
-      let prevGroupReleaseMode: "all" | "sequential" | undefined;
-
-      // Use the host's edited group name when set, fall back to the
-      // template's default. Empty string falls back too — empty groups
-      // wouldn't display sensibly.
-      const editedGroupName =
-        overrides.groupName && overrides.groupName.trim().length > 0
-          ? overrides.groupName.trim()
-          : template.group_name;
-
-      if (editedGroupName) {
-        if (!groups.includes(editedGroupName)) {
-          createdGroup = editedGroupName;
-          updateSetting("ticket_groups", [...groups, editedGroupName]);
-        }
-
-        const existingMap =
-          (settings.ticket_group_map as Record<string, string | null>) || {};
-        const updatedMap = { ...existingMap };
-        for (const id of insertedIds) {
-          updatedMap[id] = editedGroupName;
-        }
-        updateSetting("ticket_group_map", updatedMap);
-
-        if (template.release_mode === "sequential") {
-          const releaseMode =
-            (settings.ticket_group_release_mode as Record<
-              string,
-              "all" | "sequential"
-            >) || {};
-          prevGroupReleaseMode = releaseMode[editedGroupName]; // undefined if absent
-          updateSetting("ticket_group_release_mode", {
-            ...releaseMode,
-            [editedGroupName]: "sequential",
-          });
-        }
-      }
-
-      flashHighlight(insertedIds);
-
-      setLastApply({
-        message: `Added ${insertedIds.length} ticket${insertedIds.length === 1 ? "" : "s"} from ${template.label}`,
-        insertedTicketIds: insertedIds,
-        createdGroup,
-        prevGroupReleaseMode,
-      });
-    },
-    [event.id, setTicketTypes, orgId, groups, settings, updateSetting, flashHighlight]
-  );
-
-  /** Open the confirmation dialog with the picked template. */
-  const previewTemplate = useCallback((pending: PendingTemplate) => {
-    setPendingTemplate(pending);
-  }, []);
-
-  /** Confirm the dialog → run the right apply path with the host's edits. */
-  const confirmPendingTemplate = useCallback(
-    (overrides: TemplateOverrides) => {
-      if (!pendingTemplate) return;
-      if (pendingTemplate.kind === "event") {
-        applyEventTemplate(pendingTemplate.template, overrides);
-      } else {
-        applyTierTemplate(pendingTemplate.template, overrides);
-      }
-      setPendingTemplate(null);
-    },
-    [pendingTemplate, applyEventTemplate, applyTierTemplate]
-  );
-
-  /** Reverse the most-recent template apply. */
-  const undoLastApply = useCallback(() => {
-    if (!lastApply) return;
-    const { insertedTicketIds, createdGroup, prevGroupReleaseMode } =
-      lastApply;
-    const insertedSet = new Set(insertedTicketIds);
-
-    // 1. Remove the inserted tickets. Their ids are tmp-* — no API
-    // delete-ids tracking needed because they were never persisted.
-    setTicketTypes((prev) =>
-      prev
-        .filter((tt) => !insertedSet.has(tt.id))
-        // Re-tighten sort_order so we don't leave holes.
-        .map((tt, i) => ({ ...tt, sort_order: i }))
-    );
-
-    // 2. Strip the inserted ids from ticket_group_map.
-    const map =
-      (settings.ticket_group_map as Record<string, string | null>) || {};
-    const cleanedMap: Record<string, string | null> = {};
-    for (const [k, v] of Object.entries(map)) {
-      if (!insertedSet.has(k)) cleanedMap[k] = v;
-    }
-    updateSetting("ticket_group_map", cleanedMap);
-
-    // 3. Remove the group if we created it.
-    if (createdGroup) {
-      updateSetting(
-        "ticket_groups",
-        groups.filter((g) => g !== createdGroup)
-      );
-      const releaseMode =
-        (settings.ticket_group_release_mode as Record<
-          string,
-          "all" | "sequential"
-        >) || {};
-      const next = { ...releaseMode };
-      if (prevGroupReleaseMode != null) {
-        next[createdGroup] = prevGroupReleaseMode;
-      } else {
-        delete next[createdGroup];
-      }
-      updateSetting("ticket_group_release_mode", next);
-    }
-
-    setLastApply(null);
-  }, [lastApply, setTicketTypes, settings, updateSetting, groups]);
+  const addTicketType = useCallback(() => addTicketTypes(1), [addTicketTypes]);
 
   const removeTicketType = useCallback(
     (index: number) => {
@@ -517,37 +288,8 @@ export function TicketsTab({
     <div className="space-y-4">
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={addTicketType}>
-          <Plus size={14} />
-          Add ticket
-        </Button>
-        <BulkAddMenu
-          onPickEventTemplate={(template) =>
-            previewTemplate({ kind: "event", template })
-          }
-          onPickTierTemplate={(template) =>
-            previewTemplate({ kind: "tier", template })
-          }
-        />
+        <AddTicketControl onAdd={addTicketTypes} />
       </div>
-
-      <TemplatePreviewDialog
-        pending={pendingTemplate}
-        existingTicketCount={
-          ticketTypes.filter((tt) => !isSystemTicket(tt)).length
-        }
-        currency={event.currency || "GBP"}
-        onCancel={() => setPendingTemplate(null)}
-        onConfirm={confirmPendingTemplate}
-      />
-
-      {lastApply && (
-        <TemplateUndoBanner
-          message={lastApply.message}
-          onUndo={undoLastApply}
-          onDismiss={() => setLastApply(null)}
-        />
-      )}
 
       {ticketTypes.length === 0 ? (
         <Card className="py-0 gap-0">
@@ -699,105 +441,117 @@ export function TicketsTab({
 }
 
 /**
- * Bulk-add menu — surfaces both event templates (Concert / Club / Festival
- * / Conference / Private) and tier templates (Phase 4.5: Early-bird
- * waterfall, Tiered pricing, etc.). Templates are organised in two
- * sections so the host can quickly distinguish "give me a typical event
- * shape" from "give me a release pattern".
+ * Add-ticket control — single button that adds one blank ticket, with a
+ * tiny chevron beside it that opens a count input for batch-add. No
+ * templates, no opinionated names, no release-mode magic. The release
+ * strategy job lives in the Release Strategy panel above; this control's
+ * only job is "make me N empty rows."
  */
-function BulkAddMenu({
-  onPickEventTemplate,
-  onPickTierTemplate,
+function AddTicketControl({
+  onAdd,
 }: {
-  onPickEventTemplate: (template: EventTemplate) => void;
-  onPickTierTemplate: (template: TierTemplate) => void;
+  onAdd: (count: number) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [count, setCount] = useState(3);
   const ref = useRef<HTMLDivElement>(null);
 
+  // Close on outside click.
   useEffect(() => {
-    if (!open) return;
+    if (!batchOpen) return;
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
+        setBatchOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  }, [batchOpen]);
+
+  const submit = () => {
+    onAdd(count);
+    setBatchOpen(false);
+  };
 
   return (
     <div className="relative" ref={ref}>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        <Sparkles size={13} className="text-primary/80" />
-        From template
-        <ChevronDown
-          size={12}
-          className={cn(
-            "ml-0.5 transition-transform duration-200",
-            open && "rotate-180"
-          )}
-        />
-      </Button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute left-0 top-full z-50 mt-1 w-72 rounded-md border border-border bg-card py-1 shadow-lg"
+      <div className="inline-flex items-stretch overflow-hidden rounded-md">
+        <Button
+          size="sm"
+          onClick={() => onAdd(1)}
+          className="rounded-r-none border-r border-primary-foreground/15"
         >
-          {/* Event templates — full event shapes */}
-          <div className="px-3 pt-2 pb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-            Event shapes
-          </div>
-          {EVENT_TEMPLATE_LIST.map((template) => (
-            <button
-              key={`event-${template.key}`}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                onPickEventTemplate(template);
-                setOpen(false);
-              }}
-              className="flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none"
-            >
-              <span className="text-[12px] font-medium text-foreground">
-                {template.label}
-              </span>
-              <span className="text-[10px] text-muted-foreground/85 leading-tight">
-                {template.ticket_types.map((t) => t.name).join(" · ")}
-              </span>
-            </button>
-          ))}
+          <Plus size={14} />
+          Add ticket
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          aria-haspopup="dialog"
+          aria-expanded={batchOpen}
+          aria-label="Add multiple tickets"
+          onClick={() => setBatchOpen((v) => !v)}
+          className="rounded-l-none px-2"
+        >
+          <ChevronDown
+            size={14}
+            className={cn(
+              "transition-transform duration-200",
+              batchOpen && "rotate-180"
+            )}
+          />
+        </Button>
+      </div>
 
-          {/* Tier templates — release patterns */}
-          <div className="mt-1 border-t border-border/40 px-3 pt-2 pb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-            Release patterns
-          </div>
-          {TIER_TEMPLATE_LIST.map((tpl) => (
-            <button
-              key={`tier-${tpl.key}`}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                onPickTierTemplate(tpl);
-                setOpen(false);
+      {batchOpen && (
+        <div
+          role="dialog"
+          aria-label="Add multiple tickets"
+          className="absolute left-0 top-full z-50 mt-1 w-64 rounded-md border border-border bg-card p-3 shadow-lg space-y-2"
+        >
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+            Add multiple
+          </p>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Adds N blank tickets. Name and price each one in the cards
+            below.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={count}
+              onChange={(e) =>
+                setCount(
+                  Math.max(
+                    1,
+                    Math.min(20, parseInt(e.target.value, 10) || 1)
+                  )
+                )
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submit();
+                }
+                if (e.key === "Escape") setBatchOpen(false);
               }}
-              className="flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none"
+              autoFocus
+              className="w-16 rounded-md border border-border/60 bg-background px-2 py-1 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-1"
+            />
+            <Button size="sm" onClick={submit}>
+              Add {count} ticket{count === 1 ? "" : "s"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setBatchOpen(false)}
+              aria-label="Cancel"
+              className="ml-auto text-muted-foreground/70 hover:text-foreground transition-colors"
             >
-              <span className="text-[12px] font-medium text-foreground">
-                {tpl.label}
-              </span>
-              <span className="text-[10px] text-muted-foreground/85 leading-tight">
-                {tpl.tiers.map((t) => t.name).join(" → ")}
-                {tpl.release_mode === "sequential" && " · sequential"}
-              </span>
+              <X size={13} />
             </button>
-          ))}
+          </div>
         </div>
       )}
     </div>

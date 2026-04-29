@@ -331,14 +331,30 @@ export function ReleaseStrategyPanel({
           </AdminButton>
         </div>
       ) : (
-        <AdminButton
-          size="sm"
-          variant="outline"
-          leftIcon={<Plus />}
-          onClick={() => setNewGroupOpen(true)}
-        >
-          New group
-        </AdminButton>
+        <div className="space-y-2">
+          <AdminButton
+            size="sm"
+            variant="outline"
+            leftIcon={<Plus />}
+            onClick={() => setNewGroupOpen(true)}
+          >
+            New group
+          </AdminButton>
+          {/* Discoverability hint — shown when the host has tickets but
+             hasn't used groups yet. Explains the path to sequential
+             release without forcing a big banner. */}
+          {ticketTypes.filter((tt) => !isSystemTicket(tt)).length >= 2 &&
+            groups.length === 0 && (
+              <p className="text-[11px] leading-relaxed text-muted-foreground/85">
+                <span className="font-mono uppercase tracking-wider text-muted-foreground/70">
+                  Tip
+                </span>
+                {" — "}want a waterfall? Switch <span className="text-foreground">General tickets</span>{" "}
+                to <span className="text-foreground">Sequential</span> above, or make a group
+                here to bracket a few tiers together.
+              </p>
+            )}
+        </div>
       )}
     </section>
   );

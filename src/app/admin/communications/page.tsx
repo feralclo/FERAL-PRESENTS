@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AdminPageHeader } from "@/components/admin/ui";
 import {
   Mail,
   Megaphone,
@@ -193,7 +194,12 @@ export default function CommunicationsPage() {
   }, [orgId]);
 
   return (
-    <div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="Communications"
+        subtitle="Email, wallet passes, and the automations that keep buyers in the loop."
+      />
+
       {/* Stats row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard

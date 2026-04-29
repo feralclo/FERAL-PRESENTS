@@ -6,6 +6,7 @@ import { TABLES } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
+import { AdminPageHeader } from "@/components/admin/ui";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -121,13 +122,10 @@ export default function TrafficAnalytics() {
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
-      {/* Header */}
-      <div>
-        <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">Traffic Analytics</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Real-time conversion funnel &middot; {conversionRate}% overall conversion
-        </p>
-      </div>
+      <AdminPageHeader
+        title="Traffic Analytics"
+        subtitle={`Real-time conversion funnel · ${conversionRate}% overall conversion`}
+      />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

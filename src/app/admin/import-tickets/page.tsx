@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { AdminPageHeader } from "@/components/admin/ui";
 import {
   Card,
   CardContent,
@@ -360,15 +361,11 @@ export default function ImportTicketsPage() {
   // ── Render ──
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      {/* Header */}
       <div className="mb-6">
-        <h1 className="text-lg font-semibold tracking-tight">
-          Import External Tickets
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Import tickets from Skiddle, Eventbrite, RA, or any external platform
-          so they can be scanned with the Entry scanner.
-        </p>
+        <AdminPageHeader
+          title="Import External Tickets"
+          subtitle="Import tickets from Skiddle, Eventbrite, RA, or any external platform so they can be scanned with the Entry scanner."
+        />
       </div>
 
       {/* Step Indicator */}

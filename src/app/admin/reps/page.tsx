@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AdminPageHeader } from "@/components/admin/ui";
 import {
   UsersRound,
   Gift,
@@ -79,15 +80,10 @@ function RepsHubPageInner() {
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
-      {/* Page Header */}
-      <div>
-        <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
-          Rep Programme
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Recruit, manage, and reward your brand ambassadors
-        </p>
-      </div>
+      <AdminPageHeader
+        title="Rep Programme"
+        subtitle="Recruit, manage, and reward your brand ambassadors"
+      />
 
       {/* Quick link to event leaderboards */}
       <Link

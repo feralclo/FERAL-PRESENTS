@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AdminPageHeader } from "@/components/admin/ui";
 import {
   Select,
   SelectTrigger,
@@ -146,15 +147,10 @@ export function PlansPage() {
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
-      <div>
-        <h1 className="text-lg font-semibold text-foreground">
-          Platform Plans
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Define fee tiers and assign orgs to plans. Monthly billing collection
-          is not yet implemented.
-        </p>
-      </div>
+      <AdminPageHeader
+        title="Platform Plans"
+        subtitle="Define fee tiers and assign orgs to plans. Monthly billing collection is not yet implemented."
+      />
 
       {saveMsg && (
         <div

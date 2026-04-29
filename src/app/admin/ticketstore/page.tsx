@@ -67,7 +67,7 @@ export default function TicketStorePage() {
     <div className="mx-auto max-w-2xl space-y-8 px-6 py-8">
       {/* Header */}
       <div>
-        <h1 className="text-lg font-semibold text-foreground">Storefront</h1>
+        <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">Storefront</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Customize how your event pages look. Choose a color vibe, upload your logo,
           and pick fonts — all changes apply to every event page instantly.

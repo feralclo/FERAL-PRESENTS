@@ -361,7 +361,7 @@ export default function EventBoardsPage() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
+            <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
               Event Boards
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">

@@ -203,8 +203,8 @@ export default function StripeConnectPage() {
 
   return (
     <div style={{ maxWidth: 1000 }}>
-      <h1 className="admin-page-title">Stripe Connect</h1>
-      <p className="admin-page-subtitle">
+      <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">Stripe Connect</h1>
+      <p className="mt-1.5 text-sm text-muted-foreground">
         Platform-level controls for Stripe Connect — fees, splits, and account management.
       </p>
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
+import { AdminPageHeader } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -138,21 +139,16 @@ export default function MerchPage() {
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
-            Products
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your merch catalog. Create products here, then add them to event pre-order collections or ticket bundles.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus size={14} />
-          Create Merch
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Products"
+        subtitle="Your merch catalog. Create products here, then add them to event pre-order collections or ticket bundles."
+        actions={
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus size={14} />
+            Create merch
+          </Button>
+        }
+      />
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit">

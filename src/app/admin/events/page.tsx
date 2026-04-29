@@ -8,6 +8,7 @@ import { TABLES } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AdminPageHeader } from "@/components/admin/ui";
 import { Input } from "@/components/ui/input";
 import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
@@ -244,26 +245,25 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">Events</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create and manage your events</p>
-        </div>
-        <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
-          {showCreate ? (
-            <>
-              <X size={14} />
-              Cancel
-            </>
-          ) : (
-            <>
-              <Plus size={14} />
-              Create event
-            </>
-          )}
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Events"
+        subtitle="Create and manage your events"
+        actions={
+          <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
+            {showCreate ? (
+              <>
+                <X size={14} />
+                Cancel
+              </>
+            ) : (
+              <>
+                <Plus size={14} />
+                Create event
+              </>
+            )}
+          </Button>
+        }
+      />
 
       {/* Create event Form */}
       {showCreate && (

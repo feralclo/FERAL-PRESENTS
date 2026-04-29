@@ -579,7 +579,7 @@ function OrdersContent() {
               >
                 <ArrowLeft size={12} /> Back to Customers
               </Link>
-              <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
+              <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
                 {customerNameParam}&apos;s Orders
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -588,7 +588,7 @@ function OrdersContent() {
             </>
           ) : (
             <>
-              <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
+              <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
                 Orders
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">

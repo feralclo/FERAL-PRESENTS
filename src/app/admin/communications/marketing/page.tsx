@@ -81,7 +81,7 @@ export default function MarketingPage() {
           <ChevronLeft size={14} />
           Communications
         </Link>
-        <h1 className="font-mono text-base font-semibold tracking-wider text-foreground uppercase">
+        <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
           Marketing Automation
         </h1>
         <p className="text-sm text-muted-foreground mt-1">

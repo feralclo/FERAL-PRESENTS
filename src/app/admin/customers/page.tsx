@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
+import { AdminPageHeader } from "@/components/admin/ui";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -155,14 +156,11 @@ export default function CustomersPage() {
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-6">
-        <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
-          Customers
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Customer profiles and spending patterns
-        </p>
+        <AdminPageHeader
+          title="Customers"
+          subtitle="Customer profiles and spending patterns"
+        />
       </div>
 
       {/* Stats Row */}

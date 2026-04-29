@@ -671,7 +671,7 @@ export default function AbandonedCartsPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
+              <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
                 Abandoned Carts
               </h1>
               {hotCount > 0 && (

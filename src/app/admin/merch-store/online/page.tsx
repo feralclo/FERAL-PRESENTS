@@ -28,7 +28,7 @@ export default function OnlineStorePage() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
+          <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
             Online Store
           </h1>
           <Badge variant="default" className="gap-1 text-[10px]">

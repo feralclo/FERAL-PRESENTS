@@ -636,7 +636,7 @@ function PageHeader({
   return (
     <div>
       <div className="flex items-center gap-2">
-        <h1 className="font-mono text-sm font-bold uppercase tracking-[2px]">
+        <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
           Payments
         </h1>
         {!livemode && (

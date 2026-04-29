@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AdminPageHeader } from "@/components/admin/ui";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/date-picker";
@@ -327,17 +328,16 @@ export default function DiscountsPage() {
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">Discounts</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create and manage discount codes for your events</p>
-        </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus size={14} />
-          Create Discount
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Discounts"
+        subtitle="Create and manage discount codes for your events"
+        actions={
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus size={14} />
+            Create discount
+          </Button>
+        }
+      />
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit">

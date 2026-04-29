@@ -601,7 +601,32 @@ When you upgrade an existing surface to use the new wrapper components, log it h
 |---|---|---|---|
 | `src/app/admin/page.tsx` (dashboard) | ✅ | 2026-04-27 | Phase 0.2 pilot — AdminPageHeader, AdminCard, AdminBadge, FreshTenantHero |
 | `src/app/admin/layout.tsx` (shell + sidebar) | ✅ | 2026-04-27 | Phase 0.3 — AdminBadge for Live indicator, overlay token cleanup |
-| `src/app/admin/events/page.tsx` (list) | 🟨 | 2026-04-27 | Phase 1 — CTA verbs unified (Phase 1.9), slug-collision chips (1.2), inline-delete removed (1.5). Card swap to AdminCard pending. |
+| `src/app/admin/events/page.tsx` (list) | 🟨 | 2026-04-29 | AdminPageHeader applied. CTA verbs (1.9), slug chips (1.2), delete merged (1.5). Card swap to AdminCard pending. |
+| `src/app/admin/orders/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped. AdminPageHeader pending — header has 2 conditional H1s. |
+| `src/app/admin/customers/page.tsx` | 🟨 | 2026-04-29 | AdminPageHeader applied. |
+| `src/app/admin/guest-list/page.tsx` | 🟨 | 2026-04-29 | AdminPageHeader applied. |
+| `src/app/admin/discounts/page.tsx` | 🟨 | 2026-04-29 | AdminPageHeader applied. CTA "Create discount". |
+| `src/app/admin/popup/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (header has live status badge). |
+| `src/app/admin/artists/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (header has icon + action button). |
+| `src/app/admin/merch/page.tsx` | 🟨 | 2026-04-29 | AdminPageHeader applied. CTA "Create merch". |
+| `src/app/admin/merch-store/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (header has enabled badge). |
+| `src/app/admin/abandoned-carts/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (header has hot-cart badge). |
+| `src/app/admin/import-tickets/page.tsx` | 🟨 | 2026-04-29 | AdminPageHeader applied. |
+| `src/app/admin/communications/page.tsx` | 🟨 | 2026-04-29 | AdminPageHeader added (page had no header before). |
+| `src/app/admin/communications/marketing/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (back-link + breadcrumb structure). |
+| `src/app/admin/communications/transactional/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped. |
+| `src/app/admin/campaigns/page.tsx` | 🟨 | 2026-04-29 | AdminPageHeader applied. |
+| `src/app/admin/campaigns/email/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (header has back-link + icon). |
+| `src/app/admin/traffic/page.tsx` | 🟨 | 2026-04-29 | AdminPageHeader applied with dynamic subtitle. |
+| `src/app/admin/reps/page.tsx` | 🟨 | 2026-04-29 | AdminPageHeader applied. |
+| `src/app/admin/reps/event-boards/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (back-link structure). |
+| `src/app/admin/promoter/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (icon + live preview structure). |
+| `src/app/admin/ep/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (icon + refresh button structure). |
+| `src/app/admin/payments/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (test-mode badge structure). |
+| `src/app/admin/plans/page.tsx` | 🟨 | 2026-04-29 | AdminPageHeader applied. |
+| `src/app/admin/connect/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (was using legacy `admin-page-title` class). |
+| `src/app/admin/ticketstore/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped. |
+| `src/app/admin/merch-store/online/page.tsx` | 🟨 | 2026-04-29 | H1 typography swapped (Coming Soon badge structure). |
 | `src/components/admin/event-editor/EventEditorHeader.tsx` | 🟨 | 2026-04-27 | Phase 1.9 — Save → "Save". Wrapper migration pending. |
 | `src/components/admin/event-editor/SettingsTab.tsx` | 🟨 | 2026-04-27 | Phase 1.3 (live gates) + Phase 1.10 (Mobile Experience card). Wrapper migration pending. |
 | `src/components/admin/event-editor/TicketCard.tsx` | 🟨 | 2026-04-27 | Phase 1.4 (VAT preview). Wrapper migration pending. |

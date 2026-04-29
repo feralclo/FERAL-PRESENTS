@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AdminPageHeader } from "@/components/admin/ui";
 import {
   ChevronRight,
   Mail,
@@ -34,14 +35,11 @@ const CHANNELS = [
 export default function CampaignsPage() {
   return (
     <div>
-      {/* Header */}
       <div className="mb-6">
-        <h1 className="font-mono text-base font-semibold tracking-wider text-foreground uppercase">
-          Campaigns
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Create and send targeted campaigns to your audience.
-        </p>
+        <AdminPageHeader
+          title="Campaigns"
+          subtitle="Create and send targeted campaigns to your audience."
+        />
       </div>
 
       {/* Channel cards */}

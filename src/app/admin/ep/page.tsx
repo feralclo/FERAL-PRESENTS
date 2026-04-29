@@ -223,7 +223,7 @@ export default function EpAdminPage() {
         <div className="flex items-center gap-3">
           <Coins size={20} className="text-primary" />
           <div>
-            <h1 className="font-mono text-sm font-bold uppercase tracking-[2px] text-foreground">
+            <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
               EP
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">

@@ -185,7 +185,7 @@ export default function MerchStorePage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
+            <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
               Event Pre-orders
             </h1>
             <Badge

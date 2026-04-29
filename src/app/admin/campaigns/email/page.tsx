@@ -78,7 +78,7 @@ export default function EmailCampaignsPage() {
             <Mail size={16} className="text-primary" />
           </div>
           <div>
-            <h1 className="font-mono text-base font-semibold tracking-wider text-foreground uppercase">
+            <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
               Email Campaigns
             </h1>
             <p className="text-xs text-muted-foreground">

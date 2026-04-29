@@ -12,6 +12,7 @@ import { GuestsTab } from "@/components/admin/guest-list/GuestsTab";
 import { ArtistLinksTab } from "@/components/admin/guest-list/ArtistLinksTab";
 import { SettingsTab } from "@/components/admin/guest-list/SettingsTab";
 import { ApplicationsTab } from "@/components/admin/guest-list/ApplicationsTab";
+import { AdminPageHeader } from "@/components/admin/ui";
 
 export default function GuestListPage() {
   const orgId = useOrgId();
@@ -87,11 +88,10 @@ export default function GuestListPage() {
 
   return (
     <div className="space-y-6 p-6 lg:p-8 min-w-0 overflow-x-hidden">
-      {/* Header */}
-      <div>
-        <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">Guest List</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage invitations, artist submissions, and access levels</p>
-      </div>
+      <AdminPageHeader
+        title="Guest List"
+        subtitle="Manage invitations, artist submissions, and access levels"
+      />
 
       {/* Event selector */}
       <EventSelector

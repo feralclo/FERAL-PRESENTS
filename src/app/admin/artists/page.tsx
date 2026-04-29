@@ -343,7 +343,7 @@ export default function ArtistsPage() {
             <Mic2 size={18} className="text-primary" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Artists</h1>
+            <h1 className="text-[24px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">Artists</h1>
             <p className="text-xs text-muted-foreground">
               Manage your artist catalog
             </p>

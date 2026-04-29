@@ -1,39 +1,29 @@
 "use client";
 
-import { Heart } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
-const TIERS = [
-  {
-    id: "standard" as const,
-    label: "Standard",
-    desc: "Default clean style",
-    classes: "bg-card border-primary/40 text-foreground",
-    activeClasses: "ring-2 ring-primary border-primary",
-  },
-  {
-    id: "platinum" as const,
-    label: "Platinum",
-    desc: "Silver/VIP shimmer",
-    classes: "bg-gradient-to-br from-[#1e1e2a] to-card border-[#e5e4e2]/30 text-[#e5e4e2]",
-    activeClasses: "ring-2 ring-[#e5e4e2] border-[#e5e4e2]",
-  },
-  {
-    id: "black" as const,
-    label: "Black",
-    desc: "Dark obsidian premium",
-    classes: "bg-gradient-to-br from-[#0a0a0a] to-card border-white/20 text-foreground",
-    activeClasses: "ring-2 ring-white/50 border-white/50",
-  },
-  {
-    id: "valentine" as const,
-    label: "Valentine",
-    desc: "Pink-red with hearts",
-    classes: "bg-gradient-to-br from-[#2a0a14] to-[#1f0810] border-[#e8365d]/30 text-[#ff7eb3]",
-    activeClasses: "ring-2 ring-[#e8365d] border-[#e8365d]",
-    icon: true,
-  },
-];
+/**
+ * Replaces the previous 4-tile picker (Standard / Platinum / Black /
+ * Valentine) with a single binary "VIP styling" toggle.
+ *
+ * Why: Black and Valentine had near-zero adoption (1 + 2 events
+ * respectively as of 2026-04-29) and the 4-tile UI made tier feel like
+ * a meaningful product decision. It isn't — it's a visual treatment.
+ * One knob, one decision, faster to grok.
+ *
+ * Mapping:
+ * - Toggle OFF → tier="standard"
+ * - Toggle ON  → tier="platinum"
+ *
+ * Legacy values: events stored as "black" or "valentine" still load
+ * correctly (TierValue type is unchanged); the toggle reads as ON for
+ * any non-standard value. Switching the toggle off coerces back to
+ * "standard". A host who wants to keep their legacy tier just doesn't
+ * touch the toggle.
+ */
+
+const VIP_TIERS = new Set(["platinum", "black", "valentine"] as const);
 
 export type TierValue = "standard" | "platinum" | "black" | "valentine";
 
@@ -44,31 +34,35 @@ interface TierSelectorProps {
 }
 
 export function TierSelector({ value, onChange, className }: TierSelectorProps) {
+  const isVip = VIP_TIERS.has(value as "platinum" | "black" | "valentine");
+  const isLegacyTier = value === "black" || value === "valentine";
+
   return (
-    <div className={cn("grid grid-cols-2 gap-2", className)}>
-      {TIERS.map((tier) => {
-        const isActive = value === tier.id;
-        return (
-          <button
-            key={tier.id}
-            type="button"
-            onClick={() => onChange(tier.id)}
-            className={cn(
-              "rounded-md border px-3 py-2.5 text-center transition-all duration-150 cursor-pointer",
-              tier.classes,
-              isActive && tier.activeClasses
+    <div className={cn("space-y-2", className)}>
+      <div className="flex items-center justify-between gap-4 rounded-md border border-border/50 bg-card/40 px-3 py-2.5">
+        <div className="flex-1 min-w-0">
+          <div className="text-[12px] font-medium text-foreground">
+            VIP styling
+          </div>
+          <div className="text-[10px] leading-tight text-muted-foreground/85 mt-0.5">
+            Silver shimmer treatment on the buyer-side ticket card.
+            {isLegacyTier && (
+              <>
+                {" "}
+                <span className="text-warning/90">
+                  This ticket uses a legacy &quot;{value}&quot; style — toggle off to revert.
+                </span>
+              </>
             )}
-          >
-            <span className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider">
-              {tier.icon && <Heart size={10} />}
-              {tier.label}
-            </span>
-            <span className="block text-[10px] opacity-60 mt-0.5">
-              {tier.desc}
-            </span>
-          </button>
-        );
-      })}
+          </div>
+        </div>
+        <Switch
+          checked={isVip}
+          onCheckedChange={(checked) =>
+            onChange(checked ? "platinum" : "standard")
+          }
+        />
+      </div>
     </div>
   );
 }

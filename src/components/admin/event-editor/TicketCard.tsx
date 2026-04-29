@@ -23,7 +23,7 @@ import { TierSelector, type TierValue } from "@/components/admin/TierSelector";
 import { MerchImageGallery } from "@/components/admin/MerchImageGallery";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import { toDatetimeLocal, fromDatetimeLocal } from "@/lib/date-utils";
-import { AlertTriangle, ChevronDown, GripVertical, Lock, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, GripVertical, Lock, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CurrencyPriceOverrides } from "@/components/admin/CurrencyPriceOverrides";
 import type { TicketTypeRow } from "@/types/events";
@@ -84,9 +84,17 @@ export function TicketCard({
   vatIncludesPrice,
 }: TicketCardProps) {
   const [open, setOpen] = useState(false);
+  // Advanced fields default to closed — most events don't need per-ticket
+  // sale windows or per-ticket order limits. Auto-open if the ticket
+  // already uses any of those (host needs to see the values they set).
+  const [advancedOpen, setAdvancedOpen] = useState(
+    !!(ticket.sale_start || ticket.sale_end) ||
+      ticket.min_per_order > 1 ||
+      ticket.max_per_order !== 10
+  );
   const currSym = CURRENCY_SYMBOLS[currency] || currency;
-  const tierLabel = ticket.tier || "standard";
   const cardId = ticket.id || `new-${index}`;
+  const isVip = ticket.tier && ticket.tier !== "standard";
 
   // VAT preview — only shown when the event has VAT enabled. We always
   // surface the GROSS amount the buyer pays, even when prices are entered
@@ -132,9 +140,11 @@ export function TicketCard({
             <span className="font-mono text-xs tabular-nums text-muted-foreground">
               {formatPrice(Number(ticket.price), currency)}
             </span>
-            <Badge variant="outline" className="text-[10px] font-mono uppercase">
-              {tierLabel}
-            </Badge>
+            {isVip && (
+              <Badge variant="outline" className="text-[10px] font-mono uppercase">
+                VIP
+              </Badge>
+            )}
             {waitingFor && (
               <Badge
                 variant="secondary"
@@ -198,13 +208,10 @@ export function TicketCard({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Ticket Design Tier</Label>
-              <TierSelector
-                value={(ticket.tier || "standard") as TierValue}
-                onChange={(tier) => onUpdate(index, "tier", tier)}
-              />
-            </div>
+            <TierSelector
+              value={(ticket.tier || "standard") as TierValue}
+              onChange={(tier) => onUpdate(index, "tier", tier)}
+            />
 
             <div className="space-y-2">
               <Label>Group</Label>
@@ -290,57 +297,86 @@ export function TicketCard({
               />
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Min per Order</Label>
-                <Input
-                  type="number"
-                  value={ticket.min_per_order}
-                  onChange={(e) =>
-                    onUpdate(index, "min_per_order", Number(e.target.value))
-                  }
-                  min="1"
+            {/* Advanced disclosure — sale window + per-ticket order
+                limits. Almost no event needs per-ticket sale windows
+                (the org-wide announcement schedule covers the common
+                case in PublishSection). Min/max per order on each
+                ticket is also a power-user knob — defaults are
+                1 / 10. Hidden by default; auto-opens if the ticket
+                already has non-default values for any of these. */}
+            <div className="border-t border-border/40 pt-3">
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen((v) => !v)}
+                aria-expanded={advancedOpen}
+                aria-controls={`ticket-advanced-${cardId}`}
+                className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1 text-left text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-1"
+              >
+                <span className="font-mono uppercase tracking-[0.16em] text-[10px]">
+                  Advanced
+                </span>
+                <ChevronRight
+                  size={13}
+                  className={cn(
+                    "transition-transform duration-200",
+                    advancedOpen && "rotate-90"
+                  )}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>Max per Order</Label>
-                <Input
-                  type="number"
-                  value={ticket.max_per_order}
-                  onChange={(e) =>
-                    onUpdate(index, "max_per_order", Number(e.target.value))
-                  }
-                  min="1"
-                />
-              </div>
-            </div>
+              </button>
+              <div
+                id={`ticket-advanced-${cardId}`}
+                hidden={!advancedOpen}
+                className="space-y-4 pt-3"
+              >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Min per order</Label>
+                    <Input
+                      type="number"
+                      value={ticket.min_per_order}
+                      onChange={(e) =>
+                        onUpdate(index, "min_per_order", Number(e.target.value))
+                      }
+                      min="1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Max per order</Label>
+                    <Input
+                      type="number"
+                      value={ticket.max_per_order}
+                      onChange={(e) =>
+                        onUpdate(index, "max_per_order", Number(e.target.value))
+                      }
+                      min="1"
+                    />
+                  </div>
+                </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Sale Start</Label>
-                <DateTimePicker
-                  value={toDatetimeLocal(ticket.sale_start)}
-                  onChange={(v) =>
-                    onUpdate(
-                      index,
-                      "sale_start",
-                      fromDatetimeLocal(v)
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Sale End</Label>
-                <DateTimePicker
-                  value={toDatetimeLocal(ticket.sale_end)}
-                  onChange={(v) =>
-                    onUpdate(
-                      index,
-                      "sale_end",
-                      fromDatetimeLocal(v)
-                    )
-                  }
-                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Sale starts</Label>
+                    <DateTimePicker
+                      value={toDatetimeLocal(ticket.sale_start)}
+                      onChange={(v) =>
+                        onUpdate(index, "sale_start", fromDatetimeLocal(v))
+                      }
+                    />
+                    <p className="text-[10px] text-muted-foreground/70">
+                      Per-ticket override. Most events use the event-wide
+                      release schedule in Publish.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Sale ends</Label>
+                    <DateTimePicker
+                      value={toDatetimeLocal(ticket.sale_end)}
+                      onChange={(v) =>
+                        onUpdate(index, "sale_end", fromDatetimeLocal(v))
+                      }
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 

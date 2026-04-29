@@ -133,9 +133,15 @@ function ActualPlaceAutocomplete({
   // Suppress the next autocomplete fetch — set right after a selection so
   // updating `value` to the chosen place name doesn't re-open the dropdown.
   const suppressNextFetchRef = useRef(false);
+  // Only fetch suggestions once the user has actually typed in this input.
+  // Without this, a pre-populated value (event editor loading existing data,
+  // parent state hydration) would trigger a fetch on mount and pop the
+  // dropdown open before the user has even clicked the field.
+  const userHasTypedRef = useRef(false);
 
   /* Debounced autocomplete fetch */
   useEffect(() => {
+    if (!userHasTypedRef.current) return;
     if (suppressNextFetchRef.current) {
       suppressNextFetchRef.current = false;
       return;
@@ -330,7 +336,14 @@ function ActualPlaceAutocomplete({
       <Input
         id={id}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          // Mark interaction so the autocomplete useEffect starts firing.
+          // Programmatic value changes (initial mount, parent re-renders,
+          // suppressed selection updates) never flip this flag, so they
+          // don't pop the dropdown open.
+          userHasTypedRef.current = true;
+          onChange(e.target.value);
+        }}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder={placeholder}

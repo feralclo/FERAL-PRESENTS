@@ -37,7 +37,7 @@ const cspDirectives = [
   // Iframes: GTM noscript, Stripe Connect onboarding, Stripe.js, Google Pay
   "frame-src 'self' https://www.googletagmanager.com https://connect.stripe.com https://js.stripe.com https://pay.google.com",
   // API calls: Supabase REST/Realtime, Stripe, Google Pay, Meta, Klaviyo, GTM, Mux streaming + analytics, Sentry
-  `connect-src 'self' ${supabaseUrl} wss://${supabaseUrl.replace("https://", "")} https://api.stripe.com https://pay.google.com https://www.googleapis.com https://www.gstatic.com https://www.googletagmanager.com https://connect.facebook.net https://graph.facebook.com https://manage.kmail-lists.com https://stream.mux.com https://*.mux.com https://inferred.litix.io${sentryHost ? ` https://${sentryHost}` : ""}`,
+  `connect-src 'self' ${supabaseUrl} wss://${supabaseUrl.replace("https://", "")} https://api.stripe.com https://pay.google.com https://www.googleapis.com https://places.googleapis.com https://www.gstatic.com https://www.googletagmanager.com https://connect.facebook.net https://graph.facebook.com https://manage.kmail-lists.com https://stream.mux.com https://*.mux.com https://inferred.litix.io${sentryHost ? ` https://${sentryHost}` : ""}`,
   // Forms only submit to same origin
   "form-action 'self'",
   // Prevent <base> tag hijacking

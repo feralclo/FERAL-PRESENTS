@@ -65,8 +65,11 @@ export async function GET() {
     // rep_follows columns: follower_id / followee_id (not the
     // *_rep_id aliases used in some sibling tables — match the existing
     // leaderboard usage).
+    // Note: `email_verified` lives on auth.users (email_confirmed_at), not
+    // reps — selecting it on reps used to silently null the whole row.
     const [
       repRes,
+      authUserRes,
       approvedMembershipsRes,
       pendingMembershipsRes,
       followingPromotersRes,
@@ -76,9 +79,10 @@ export async function GET() {
     ] = await Promise.all([
       db
         .from("reps")
-        .select("display_name, photo_url, email_verified, onboarding_completed")
+        .select("display_name, photo_url, onboarding_completed")
         .eq("id", repId)
         .maybeSingle(),
+      db.auth.admin.getUserById(auth.rep.auth_user_id),
       db
         .from("rep_promoter_memberships")
         .select("id", { count: "exact", head: true })
@@ -116,13 +120,12 @@ export async function GET() {
     type RepRow = {
       display_name: string | null;
       photo_url: string | null;
-      email_verified: boolean | null;
       onboarding_completed: boolean | null;
     };
     const repRow = (repRes.data ?? null) as RepRow | null;
     const hasDisplayName = !!repRow?.display_name?.trim();
     const hasPhoto = !!repRow?.photo_url?.trim();
-    const emailVerified = !!repRow?.email_verified;
+    const emailVerified = !!authUserRes.data?.user?.email_confirmed_at;
     const onboardingCompleted = !!repRow?.onboarding_completed;
 
     const approvedCount = approvedMembershipsRes.count ?? 0;

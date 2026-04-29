@@ -11,11 +11,14 @@
  * Env (from .env.local):
  *   NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
- *   APPLE_REVIEW_PASSWORD   (optional — generated if unset; printed at the end)
+ *   APPLE_REVIEW_ACCOUNT_PASSWORD  (preferred — matches iOS docs/asc-metadata.md)
+ *   APPLE_REVIEW_PASSWORD          (legacy fallback)
+ *   If neither is set, a fresh password is generated and printed.
  *
  * On success the script prints the reviewer email + password as JSON so
  * you can paste it into App Store Connect and into the team 1Password
- * sealed note. Add APPLE_REVIEW_PASSWORD to Vercel env as a follow-up.
+ * sealed note. Make sure APPLE_REVIEW_ACCOUNT_EMAIL/PASSWORD are set in
+ * Vercel env (prod+preview+dev) — iOS reads them from there.
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -315,7 +318,12 @@ async function ensureMutualFollow(aRepId: string, bRepId: string) {
 }
 
 async function main() {
-  const password = process.env.APPLE_REVIEW_PASSWORD || generatePassword();
+  // Prefer the canonical APPLE_REVIEW_ACCOUNT_PASSWORD that iOS reads;
+  // fall back to the legacy APPLE_REVIEW_PASSWORD; otherwise generate.
+  const password =
+    process.env.APPLE_REVIEW_ACCOUNT_PASSWORD ||
+    process.env.APPLE_REVIEW_PASSWORD ||
+    generatePassword();
 
   console.log(`→ Ensuring auth user: ${REVIEW_EMAIL}`);
   const reviewerAuthId = await ensureAuthUser(REVIEW_EMAIL, password);
@@ -373,7 +381,7 @@ async function main() {
   console.log(
     "\nNext:\n" +
       "  1. Copy password into 1Password (team sealed note).\n" +
-      "  2. Add APPLE_REVIEW_PASSWORD to Vercel env (prod+preview+dev).\n" +
+      "  2. Set APPLE_REVIEW_ACCOUNT_EMAIL + APPLE_REVIEW_ACCOUNT_PASSWORD in Vercel env (prod+preview+dev).\n" +
       "  3. Paste credentials into App Store Connect → Demo Account.\n"
   );
 }

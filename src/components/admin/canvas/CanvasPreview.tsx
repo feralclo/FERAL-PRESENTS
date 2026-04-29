@@ -729,6 +729,33 @@ function TicketRow({
             : formatPrice(Number(ticket.price), currency)}
         </div>
       </div>
+      {/* Quantity stepper — buyer-side parity. Highlighted row shows qty=1
+          like a "selected" tier; others show 0. Decorative, non-interactive. */}
+      {!soldOut && (
+        <div className="mt-3 flex items-center justify-end">
+          <div className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.04] p-0.5">
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-hidden="true"
+              className="h-7 w-7 rounded-md text-[14px] text-white/80"
+            >
+              −
+            </button>
+            <span className="min-w-5 text-center font-mono text-[11px] font-bold text-white/75">
+              {highlighted ? 1 : 0}
+            </span>
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-hidden="true"
+              className="h-7 w-7 rounded-md text-[14px] text-white/80"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

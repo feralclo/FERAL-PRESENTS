@@ -50,7 +50,7 @@ export function StorySection({
       </div>
 
       <div className="space-y-2">
-        <Label>About</Label>
+        <Label>About this event</Label>
         <Textarea
           value={event.about_text || ""}
           onChange={(e) => updateEvent("about_text", e.target.value)}
@@ -58,8 +58,9 @@ export function StorySection({
           rows={5}
         />
         <p className="text-[10px] text-muted-foreground/70">
-          Aim for 80+ characters — buyers convert better when they understand
-          the offer.
+          Main body copy on the public event page, shown under the hero.
+          Aim for 80+ characters — buyers convert better when they
+          understand the offer.
         </p>
       </div>
 
@@ -74,15 +75,16 @@ export function StorySection({
       </div>
 
       <div className="space-y-2">
-        <Label>Details</Label>
+        <Label>Fine print</Label>
         <Textarea
           value={event.details_text || ""}
           onChange={(e) => updateEvent("details_text", e.target.value)}
-          placeholder="Entry requirements, age policy, venue info…"
+          placeholder="Entry requirements, age policy, venue access info, what to bring…"
           rows={4}
         />
         <p className="text-[10px] text-muted-foreground/70">
-          The fine print. Renders below About in a quieter type weight.
+          Renders below About in a quieter type weight on the event page —
+          for the practical details buyers need but don&apos;t come for.
         </p>
       </div>
     </div>

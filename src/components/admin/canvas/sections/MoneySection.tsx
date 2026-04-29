@@ -28,22 +28,23 @@ interface StripeAccount {
   details_submitted: boolean;
 }
 
-interface MoneySectionProps extends TabWithSettingsProps {
-  hasMerch?: boolean;
-}
-
 /**
  * Money — currency, VAT, payment method. Split out of SettingsTab so the
  * canvas can group "how does money flow" into one narrative beat.
  * Visibility / status / announcement / queue / SEO live in PublishSection.
+ *
+ * Polish pass (2026-04-29): Test + External payment methods only render
+ * when the current event already has them — Stripe is the canonical
+ * choice for new events. Merch booth cutoff was retired from the canvas
+ * (advanced/edge case; clutters the default flow). Surface it later via
+ * a dedicated event-merch settings page if promoter feedback asks.
  */
 export function MoneySection({
   event,
   updateEvent,
   settings,
   updateSetting,
-  hasMerch = false,
-}: MoneySectionProps) {
+}: TabWithSettingsProps) {
   const orgId = useOrgId();
   const { currency: orgBaseCurrency } = useOrgCurrency();
 
@@ -132,9 +133,17 @@ export function MoneySection({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="test">Test (simulated)</SelectItem>
                 <SelectItem value="stripe">Stripe</SelectItem>
-                <SelectItem value="external">External link</SelectItem>
+                {/* Test + External only surface when the event already
+                    uses them — Stripe is the canonical choice for new
+                    events. Existing Test/External events still display
+                    correctly without giving new ones the option. */}
+                {event.payment_method === "test" && (
+                  <SelectItem value="test">Test (legacy)</SelectItem>
+                )}
+                {event.payment_method === "external" && (
+                  <SelectItem value="external">External link (legacy)</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -286,48 +295,6 @@ export function MoneySection({
             </p>
           </div>
         )}
-
-      {/* Merch collection cutoff */}
-      {hasMerch && (
-        <div className="border-t border-border/40 pt-5 space-y-4">
-          <div>
-            <Label className="text-sm font-medium">Merch booth closes at</Label>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-              Cutoff time shown on confirmation emails and PDF tickets.
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              type="time"
-              value={(settings.merch_collection_cutoff as string) || ""}
-              onChange={(e) =>
-                updateSetting(
-                  "merch_collection_cutoff",
-                  e.target.value || undefined
-                )
-              }
-              placeholder="e.g. 22:00"
-            />
-            {settings.merch_collection_cutoff && (
-              <div className="flex items-center text-xs text-muted-foreground">
-                Buyers see: &quot;Collect before{" "}
-                {(() => {
-                  const [h, m] = (settings.merch_collection_cutoff as string)
-                    .split(":")
-                    .map(Number);
-                  if (isNaN(h)) return settings.merch_collection_cutoff as string;
-                  const period = h >= 12 ? "pm" : "am";
-                  const hour = h % 12 || 12;
-                  return m
-                    ? `${hour}:${String(m).padStart(2, "0")}${period}`
-                    : `${hour}${period}`;
-                })()}
-                &quot;
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* VAT */}
       <div className="border-t border-border/40 pt-5 space-y-4">

@@ -40,16 +40,16 @@ export function IdentitySection({ event, updateEvent }: TabProps) {
       </div>
 
       <div className="space-y-2">
-        <Label>Short description</Label>
+        <Label>Search blurb</Label>
         <Textarea
           value={event.description || ""}
           onChange={(e) => updateEvent("description", e.target.value)}
-          placeholder="One paragraph that surfaces in search results and previews."
+          placeholder="One sentence that shows in Google results and link previews when someone shares the event."
           rows={3}
         />
         <p className="text-[10px] text-muted-foreground/70">
-          Different from the full About text in the Story section — this is
-          the meta-description used in search and link previews.
+          Surfaces in search results and Instagram/WhatsApp link previews.
+          Different from the &quot;About&quot; copy in the Story section.
         </p>
       </div>
 

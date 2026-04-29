@@ -499,7 +499,6 @@ export default function EventEditorPage() {
           updateEvent={updateEvent}
           settings={settings}
           updateSetting={updateSetting}
-          hasMerch={ticketTypes.some((tt) => tt.includes_merch || tt.product_id)}
         />
       </CanvasSection>
 

@@ -5,11 +5,13 @@ White-label events + ticketing platform ("Shopify for Events"). Today powers FER
 
 ## Status
 
-**Beta**: `BETA_MODE = true` (`lib/beta.ts`). Promoters apply via invite → wizard → dashboard. Queued: multi-tenant audit (`AUDIT-PROMPT.md`), Midnight redesign (`MIDNIGHT-REDESIGN-PROMPT.md`).
+**Beta**: `BETA_MODE = true` (`lib/beta.ts`). Queued initiatives: multi-tenant audit (`AUDIT-PROMPT.md`), Midnight redesign (`MIDNIGHT-REDESIGN-PROMPT.md`).
 
-**Rep Platform v2** (shipped 2026-04-22, spec v2.0): backend rebuild for native iOS app at `~/Projects/entry-ios/`. Source of truth `ENTRY-IOS-BACKEND-SPEC.md`. Introduces platform-wide EP currency, promoter first-class entity, cross-org rep identity, follow graphs, push fanout, signed-URL uploads, ledger-backed quest/claim flows. Legacy web `/rep/*` is FROZEN.
+**Rep Platform v2** (spec v2.0, shipped 2026-04-22): backend for native iOS app at `~/Projects/entry-ios/`. Source of truth `ENTRY-IOS-BACKEND-SPEC.md`. EP currency, promoters as first-class entities, follow graph, push fanout, ledger-backed flows. Legacy web `/rep/*` FROZEN.
 
-**Round 2** (locked 2026-04-24): Stories (Spotify-backed), Entry Market (platform-only ex-Shopify), public rep profiles, moderation, event attendance, App Store readiness (terms/privacy/account-delete/activity).
+**Round 2** (locked 2026-04-24): Stories, Entry Market (platform-only, ex-Shopify), public rep profiles, moderation, event attendance, App Store readiness (terms/privacy/account-delete/activity, reviewer seed `scripts/seed-apple-review.ts`).
+
+**Event Builder Rebuild**: Phases 0–1 ✅ shipped 2026-04-29 (admin design language doc, dashboard pilot, 33 quick wins inc. Aura removal, H1 typography, Google Places). Phase 2 next (`/admin/events/new`), Phase 3 (canvas + live preview). Plan: `EVENT-BUILDER-PLAN.md`. **Admin design system: `docs/admin-ux-design.md` — read before any `/admin/*` UI work.** Public surfaces use Midnight (glass-on-dark) — never mix.
 
 ## Build Standards (CRITICAL)
 
@@ -19,7 +21,7 @@ Scaling to 1000+ tenants. Production-grade — no shortcuts.
 2. **Multi-tenant always** — tenant queries filter by `org_id`. Settings keys via `{org_id}_*` helpers. Mentally test with non-FERAL org.
 3. **Mobile-first 375px** — 70%+ buyers on phones. Touch targets ≥44px.
 4. **Follow existing patterns** — find the closest equivalent before inventing.
-5. **Test what matters** — `npm test` before commit; `npm run test:integration` for payment/checkout/EP; new hooks need tests.
+5. **Test what matters** — `npm test` before commit; integration tests for payment/checkout/EP; new hooks need tests.
 6. **No dead code** — no commented-out code, unused imports, TODO placeholders.
 7. **Proper error handling** — 400/401/403/404/500. try/catch + Sentry on unexpected.
 8. **Right Supabase client** — `getSupabaseAdmin()` for data, `getSupabaseServer()` for auth only. Wrong client = silent data loss.
@@ -38,17 +40,17 @@ src/
 │   ├── event/[slug]/, events/, shop/[slug]/
 │   ├── scanner/, guest-list/, invite/, auth/
 │   ├── privacy/, terms/      # App Store legal (live 2026-04-26)
-│   ├── admin/                # 32 dirs (see Admin Pages Index)
-│   ├── rep/                  # FROZEN v1 web (14 pages)
-│   └── api/                  # 276 route handlers
-├── components/               # 135 files / 13 dirs
-│   ├── admin/                # 60 files + admin/ui/ wrappers; subs: command dashboard event-editor guest-list reps ui
+│   ├── admin/                # 33 dirs (see Admin Pages Index)
+│   ├── rep/                  # FROZEN v1 web (12 pages)
+│   └── api/                  # 280 route handlers
+├── components/               # 194 files / 11 subdirs
+│   ├── admin/                # 66 files; subs: command dashboard event-editor guest-list reps ui
 │   ├── midnight/             # 27 theme components
 │   ├── ui/                   # 28 shadcn/ui (Radix)
 │   ├── event, checkout, shop, scanner, events, rep, landing, layout
-│   └── OrgProvider.tsx, CurrencyProvider.tsx, SmartLogo.tsx
+│   └── OrgProvider.tsx (+ useOrgId), CurrencyProvider.tsx, SmartLogo.tsx
 ├── hooks/                    # 21 hooks
-├── lib/                      # 100 modules (74 root + currency/ ep/ market/ push/ spotify/ stripe/ supabase/ uploads/)
+├── lib/                      # 76 root files + 8 subdirs (currency/ ep/ market/ push/ spotify/ stripe/ supabase/ uploads/)
 ├── styles/, types/
 ```
 
@@ -61,7 +63,7 @@ Tenant-scoped tables have `org_id`. **Never hardcode `"feral"`.** Rep/platform/E
 
 Middleware resolves: admin host + logged in → `org_users` (user.id → org_id); tenant host → `domains` (hostname → org_id); fallback → `"feral"`. Hosts: `admin.entry.events` = admin; `{slug}.entry.events` = tenant; custom domains via `domains`; `localhost`/`*.vercel.app` = dev.
 
-Access: server `getOrgId()`, auth API `auth.orgId`, public API `getOrgIdFromRequest(req)`, client `useOrgId()`. Middleware caches 60s.
+Access: server `getOrgId()`, auth API `auth.orgId`, public API `getOrgIdFromRequest(req)`, client `useOrgId()` (from `components/OrgProvider.tsx`). Middleware caches 60s.
 
 ### Auth & Security
 
@@ -77,13 +79,13 @@ Event pages → `NativeCheckout` → `ExpressCheckout` (Apple/Google Pay). Payme
 External tickets: `payment_method:"external"` → `MidnightExternalPage`. Imported: CSV via `/admin/import-tickets/`, no public surface.
 
 **Stripe Connect (dual-path):**
-- **Custom** (default tenant flow): `/admin/payments/` — five-state machine (incomplete → action-needed → under-review → needs-bank → live). Pre-fills email/country from auth metadata. Hosted KYC (NOT embedded ConnectJS — switched after compliance review). Routes `/api/stripe/connect/my-account/*`.
-- **OAuth Standard**: `/api/stripe/connect/oauth/{start,callback}` — for tenants with existing Stripe accounts authorising Entry as a platform.
+- **Custom** (default tenant flow): `/admin/payments/` — five-state machine (incomplete → action-needed → under-review → needs-bank → live). Hosted KYC (not embedded ConnectJS). Routes `/api/stripe/connect/my-account/*`.
+- **OAuth Standard**: `/api/stripe/connect/oauth/{start,callback}` — for tenants with existing Stripe accounts.
 - **Platform admin**: `/admin/connect/` (owner only) — all accounts, fee defaults, capabilities.
 - Per-event: `event.stripe_account_id` → `{org_id}_stripe_account` → platform. GBP/EUR/USD smallest unit. Rate limit 10/min/IP.
 - **Apple Pay sync** (`lib/apple-pay.ts`): every active tenant domain auto-registered on its Connect account. Idempotent — called on domain create/verify, page load, webhook.
 
-**Plans**: Starter (free, 3.5%+30p min) / Pro (£29/mo, 2%+10p min). PLANS data `lib/plans-data.ts` (pure, client-safe); getters `lib/plans.ts`. Stored `{org_id}_plan`. Billing `/api/billing/checkout` → Stripe Checkout → webhook.
+**Plans**: Starter (free, 3.5%+30p min) / Pro (£29/mo, 2%+10p min). PLANS data `lib/plans-data.ts`; getters `lib/plans.ts`. Stored `{org_id}_plan`. Billing `/api/billing/checkout` → Stripe Checkout → webhook.
 
 **EP economy** (separate flow): see Rep Platform v2.
 
@@ -91,37 +93,39 @@ External tickets: `payment_method:"external"` → `MidnightExternalPage`. Import
 `lib/refund.ts` — atomic, idempotent. Update order → cancel tickets → `decrement_sold()` → decrement discount usage → sync customer totals → `reverse_rep_attribution()` → send refund email once → record `orders.refunded_by`. Both `POST /api/orders/[id]/refund` (admin) and webhook (`charge.refunded`) use it.
 
 ### Theme System
-Single theme **Midnight**. Aura was removed in Phase 1.10 of EVENT-BUILDER-PLAN (2026-04-27); tenant identity ships through branding accents/logo/fonts, not theme swap. Routing: `external` → `MidnightExternalPage`; default → `MidnightEventPage`; `tickets_live_at` future → `MidnightAnnouncementPage` (countdown + signup); `queue_enabled` + `queue_window_minutes` → `MidnightQueuePage` (`useHypeQueue`; `?preview=tickets` bypasses). Builder UI `/admin/ticketstore/`.
+Single theme **Midnight**. Tenant identity ships via branding (accents/logo/fonts), not theme swap. Routing: `external` → `MidnightExternalPage`; default → `MidnightEventPage`; `tickets_live_at` future → `MidnightAnnouncementPage` (countdown + signup); `queue_enabled` + `queue_window_minutes` → `MidnightQueuePage` (`useHypeQueue`; `?preview=tickets` bypasses). Builder UI `/admin/ticketstore/`.
 
 ### Error Monitoring (Sentry)
 Three layers: Sentry (crash + replay 5%/100% on error), Payment Monitor (`payment_events`), AI Digest (Haiku every 6h). Config `sentry.{client,server,edge}.config.ts`. Tunnel `/api/monitoring`. Context via `setSentryOrgContext()`/`setSentryUserContext()`. Boundaries `global-error.tsx`, `admin/error.tsx`, `event/[slug]/error.tsx`. Health `/admin/backend/health/`.
 
 ### White-Label Branding
-`{org_id}_branding` in `site_settings`: logo, name, colors, fonts, copyright, accent presets. Event layout server-renders CSS vars (no FOUC). Client `useBranding()`. API `/api/branding`. **Logo PNG**: `GET /api/brand/logo-png?variant=black|white|violet&size=N&width=W&height=H` — rasterises wordmark via `next/og` for Stripe Dashboard (rejects SVG-with-web-fonts). **Wallet sync** (`lib/wallet-brand-sync.ts`) mirrors branding into Apple/Google Wallet passes async on save. Helpers: `lib/color-presets.ts`, `lib/font-pairings.ts`, `lib/logo-contrast.ts`.
+`{org_id}_branding` in `site_settings`: logo, name, colors, fonts, copyright, accent presets. Event layout server-renders CSS vars (no FOUC). Client `useBranding()`. API `/api/branding`. **Logo PNG**: `GET /api/brand/logo-png?variant=black|white|violet&size=N&width=W&height=H` — rasterises wordmark via `next/og` (Stripe Dashboard rejects SVG-with-web-fonts). **Wallet sync** (`lib/wallet-brand-sync.ts`) mirrors branding into Apple/Google Wallet passes async on save. Helpers: `lib/color-presets.ts`, `lib/font-pairings.ts`, `lib/logo-contrast.ts`.
 
 ### Sequential Ticket Release
-Per-group, reveal one-at-a-time on sellout. Computed from `sold`/`capacity`. Config `ticket_group_release_mode` in EventSettings JSONB. Logic `lib/ticket-visibility.ts`; server validates via `validateSequentialPurchase()`.
+Per-group, reveal one-at-a-time on sellout (computed from `sold`/`capacity`). Config `ticket_group_release_mode` in EventSettings JSONB. Logic `lib/ticket-visibility.ts`; server validates via `validateSequentialPurchase()`.
 
 ### Artist / Lineup
 `artists` + `event_artists` (junction `sort_order`). Admin CRUD `/admin/artists/`, `ArtistLineupEditor` in event editor. `events.lineup` string[] fallback.
 
 ### Beta Signup
-`/admin/signup/` (or `signup-google/`) → invite code → `/admin/beta/` → owner approves → email → signup → `/admin/onboarding/` → dashboard. `provisionOrg()` (`lib/signup.ts`) creates `org_users`, `domains`, `site_settings`, seeds `promoters`.
+`/admin/signup/` (or `/signup-google/`) → invite → `/admin/beta/` → owner approves → email → signup → `/admin/onboarding/`. `provisionOrg()` (`lib/signup.ts`) creates `org_users`, `domains`, `site_settings`, seeds `promoters`.
 
 ### Onboarding Wizard
-`/admin/onboarding/` — **Identity → Branding → Finish**, then `/admin/`. The 9-section long-form (binary VAT, Connect-in-wizard, URL-paste brand import, first-event creator) was scrapped — anti-patterns no major commerce platform ships. Post-wizard setup lives on dashboard via `OnboardingChecklist`.
+`/admin/onboarding/` — **Identity → Branding → Finish**. Post-wizard setup lives on dashboard via `OnboardingChecklist` — when extending, link to existing surfaces, don't reproduce in-wizard.
 
-- Identity: name + country + brand. Country sets currency/timezone/VAT via `provisionOrg`. Pre-fills from `user_metadata`.
-- Branding: logo + 6 accent presets + custom hex + wallet sync. Finish: address + dashboard handoff.
-- `BrandPreview.tsx`: live mobile event-page render in phone frame — don't replace with stub mockup (rejected v1). `Shell.tsx`: three-dot progress, no "Step N of N".
-- `OnboardingChecklist` (`components/admin/`) in `/admin/page.tsx` pulls from `/api/stripe/connect/my-account`, `/api/domains`, `/api/branding`, `/api/events`, `/api/team`. Dismissable via localStorage.
-- Pre-org: `wizard_state_{authUserId}` row (`wizardStateKey()`). Submit: `POST /api/onboarding` writes `{org_id}_onboarding`. When extending: link to existing surfaces, don't reproduce in-wizard. Tests `src/__tests__/onboarding-wizard.test.tsx`.
+- Identity: name + country + brand → `provisionOrg` sets currency/timezone/VAT (pre-fills from `user_metadata`).
+- Branding: logo + 6 accent presets + custom hex + wallet sync. `BrandPreview.tsx` = live mobile event-page render in phone frame.
+- `OnboardingChecklist` in `/admin/page.tsx` pulls `/api/stripe/connect/my-account`, `/api/domains`, `/api/branding`, `/api/events`, `/api/team`. Dismissable via localStorage.
+- Pre-org state: `wizardStateKey(authUserId)`. Submit: `POST /api/onboarding` → `{org_id}_onboarding`. Tests: `src/__tests__/onboarding-wizard.test.tsx`.
 
 ### Request Flow (Event Pages)
-`/event/[slug]/` → middleware (org_id) → RootLayout (`<OrgProvider>`) → EventLayout (Server Component, parallel fetch event + settings + branding, CSS vars + `data-theme`) → `MidnightEventPage`.
+`/event/[slug]/` → middleware (org_id) → RootLayout (`<OrgProvider>`) → EventLayout (SC; parallel-fetches event/settings/branding; sets CSS vars + `data-theme`) → `MidnightEventPage`.
 
 ### Caching
 Event + admin: `force-dynamic`, `cache:"no-store"`. CDN: event `s-maxage=60, swr=300`; admin `no-cache` (`vercel.json`). Media `max-age=31536000, immutable`. Apple Pay verify `max-age=86400`. **Vercel Data Cache OFF** for `/api/branding` + `/api/stripe/connect/*` (cross-tenant leak fix Mar 2026) — use `cache:"no-store"` on internal fetches there.
+
+### Content Security Policy
+Defined in `next.config.ts` (`cspDirectives`). Currently allows: GTM, Meta Pixel, Stripe.js, Google Pay (scripts/frames); Google Fonts (style/font); Stripe Connect, Mux player (frame/media/worker); Supabase (incl. wss), Stripe API, Google Pay, Meta CAPI, Klaviyo, GTM, Mux streaming + analytics, Sentry, **`places.googleapis.com`** (connect). **When adding any new external SDK/API: update CSP in `next.config.ts` first.** Forgetting this → silent browser blocks no Sentry breadcrumb catches. Domain change checklist: `URL-CHANGE-CHECKLIST.md`.
 
 ---
 
@@ -140,15 +144,14 @@ Free open signup (`POST /api/auth/mobile-signup`, `/rep-portal/signup`, or Googl
 ### Rep Auth
 - Cookie (web v1): `requireRepAuth()` → `{rep}`.
 - Bearer (native): `POST /api/auth/mobile-login` → `{access_token, refresh_token, rep, settings}`. `/mobile-refresh` rotates. Header `Bearer <jwt>`.
-- Google Sign-In: live (Supabase OAuth provider), mobile + web.
-- Apple Sign-In: deferred — stub at `/api/auth/mobile-login-apple`, env vars not set.
+- Google Sign-In live (Supabase OAuth, mobile + web). Apple Sign-In deferred (Known Gap #5).
 
 ### Two-Token Economy (XP + EP)
 - **XP** (`reps.points_balance`): platform-wide, never spent. Drives leveling (`lib/xp-levels.ts`) + tiers (`lib/rep-tiers.ts`, Rookie→Mythic). `awardPoints()` writes `rep_points_log` + cache.
 - **EP** (`reps.currency_balance`): platform-wide, REAL MONEY. 1 EP = £0.01, 10% platform cut at payout (both in `platform_ep_config`). All movement flows through `ep_ledger` (append-only, trigger-enforced). Cache via `ep_ledger_rep_cache_sync`. Drift surfaced by `ep_rep_balance_drift` view.
 
 ### EP Economy Flow
-1. Tenant buys EP → Stripe PI webhook → `tenant_purchase` ledger → +float. Off-session card: `{org_id}_ep_billing` (`epBillingKey()`).
+1. Tenant buys EP → Stripe PI webhook → `tenant_purchase` ledger → +float. Off-session card: `epBillingKey()`.
 2. Quest approved w/ `ep_reward > 0` → `award_quest_ep` → `tenant_quest_debit` + `rep_quest_credit` (atomic).
 3. Rep claims (shop or market) → `claim_reward_atomic` / `claim_market_product_atomic` → `rep_shop_debit`.
 4. Fulfillment via `lib/rep-reward-fulfillment.ts` (digital_ticket/guest_list/merch/custom); failure → `cancel_claim_and_refund` / `cancel_market_claim_and_refund` → `rep_shop_reversal`.
@@ -160,7 +163,7 @@ Free open signup (`POST /api/auth/mobile-signup`, `/rep-portal/signup`, or Googl
 `rep_rewards.reward_type`: `milestone|shop|manual`. Adds `ep_cost`, `xp_threshold`, `stock` (NULL=∞), `fulfillment_kind` (digital_ticket|guest_list|merch|custom). `rep_reward_claims` adds `ep_spent`, `fulfillment_payload`, `fulfillment_reference`; status `claimed|fulfilling|fulfilled|cancelled|failed`.
 
 ### Push Notifications
-Dispatcher `lib/push/fanout.ts`. One `NotificationPayload` → 3 transports: APNs (`apns.ts`, stubbed pending env), FCM (`fcm.ts`, stubbed pending env), web (`web.ts`, functional via VAPID). `createNotification()` in `lib/rep-notifications.ts` writes `rep_notifications` + fans out to `device_tokens`. Legacy `rep_push_subscriptions` only fires if rep has no `device_tokens` (prevents double-send). Every attempt logged in `notification_deliveries`; `invalid_token` auto-disables. `read_at` synced via `rep_notifications_read_sync` trigger. **Types**: `RepNotificationType` (`src/types/reps.ts`) + DB CHECK must match — add new types in BOTH.
+Dispatcher `lib/push/fanout.ts`. One `NotificationPayload` → 3 transports: APNs (`apns.ts`, live HTTP/2 + ES256 JWT), FCM (`fcm.ts`, stubbed — see Known Gap #2), web (`web.ts`, VAPID). `createNotification()` in `lib/rep-notifications.ts` writes `rep_notifications` + fans out to `device_tokens`. Legacy `rep_push_subscriptions` only fires if rep has no `device_tokens` (prevents double-send). Every attempt logged in `notification_deliveries`; `invalid_token` auto-disables. `read_at` synced via trigger. **Types**: `RepNotificationType` (`src/types/reps.ts`) + DB CHECK must match — add new types in BOTH.
 
 ### Media Uploads
 Rep-uploaded: `POST /api/rep-portal/uploads/signed-url` → client PUTs direct to Supabase Storage → `POST /uploads/complete` verifies + returns `public_url`. Bucket `rep-media` (public-read, server-signed writes). Caps in `lib/uploads/rep-media-config.ts`: avatar 2MB, banner 3MB, quest_proof 8MB, story_image 8MB, story_video 50MB (mp4/quicktime). Legacy `/api/upload` base64 still used for tenant branding + admin uploads. Quest video via `/api/upload-video` → Mux `mp4_support: capped-1080p`. Helpers in `lib/mux.ts`: `getMuxStreamUrl()`, `getMuxDownloadUrl()`, `getMuxThumbnailUrl()`.
@@ -169,23 +172,21 @@ Rep-uploaded: `POST /api/rep-portal/uploads/signed-url` → client PUTs direct t
 **Seasons** cut — leaderboard is rolling-30-day, iOS formats masthead client-side. **Rank snapshots** (`rep_rank_snapshots`): weekly cron freezes per-promoter rolling-30-day rank; `leaderboard.delta_week` = today vs 5–10-day-old snapshot. **Streaks** (`rep_streaks`): dashboard GET calls `mark_rep_active` (idempotent per day); nightly `reset_stale_streaks` zeros `current_streak` for reps 2+ days inactive; `best_streak` permanent.
 
 ### Account Deletion (App Store) + Activity Feed
-`DELETE /api/rep-portal/me` — soft-delete: `status='deleted'`, PII scrubbed (email → `deleted-{id}@entry.local`, name/photo/phone/bio/socials/DOB cleared), `auth_user_id` detached, device tokens + push subs removed, memberships → `left`, blocks/reports/follows preserved. `rep.id` PRESERVED for ledger/orders FKs.
+`DELETE /api/rep-portal/me` — soft-delete: `status='deleted'`, PII scrubbed, `auth_user_id` detached, device tokens removed, memberships → `left`, blocks/reports/follows preserved. **`rep.id` PRESERVED** for ledger/orders FKs.
 
-`GET /api/rep-portal/me/activity` — personal feed (quest approvals, level-ups, claims, rejections, rank movements; newest-first paginated). Distinct from `feed` (peer ticker).
+`GET /api/rep-portal/me/activity` — personal feed (quest approvals, level-ups, claims, rejections, rank movements; paginated). Distinct from `feed` (peer ticker).
 
 ### Admin Reps (`/admin/reps/`)
 6 tabs: Dashboard, Reps, Quests, Reports (submissions), Rewards, Settings. Permissions: `perm_reps` (parent) + `perm_reps_{manage,content,award,settings}` (sub-perms auto-clear when parent off).
 
 ### Paused / Deferred
-- **Poster drops** — paused. No table; `dashboard.feed` returns peer + story activity.
-- **Apple Sign-In** — deferred (Google live; App Store 4.8 only triggers when third-party SSO offered).
-- **Platform bonus EP** — schema-ready, no code path.
+See Known Gaps for poster drops, Apple Sign-In, Entry Market admin UI, story moderation queue. Schema-ready but no code path: **Platform bonus EP**.
 
 ---
 
 ## Stories (Round 2)
 
-Mandatory-Spotify-track ephemeral posts by reps, 24h expiry. `rep_stories` carries full Spotify snapshot at submit (track_id, preview_url, clip_start/length, title, artist, album_image, external_url, artists jsonb) + `track_start_offset_ms`, `view_count`, `expires_at`, `deleted_at`, `moderation_removed_by`, `moderation_reason`, `visibility`. `rep_story_views` logs impressions; trigger `rsv_count_sync` maintains count. Snapshotting at submit stabilises playback even if upstream changes.
+Mandatory-Spotify-track ephemeral posts by reps, 24h expiry. `rep_stories` snapshots full Spotify track at submit (track_id, preview_url, clip_start/length, title, artist, album_image, external_url, artists jsonb) + `track_start_offset_ms`, `view_count`, `expires_at`, `deleted_at`, `moderation_*`, `visibility`. Snapshot stabilises playback if upstream changes. `rep_story_views` logs impressions; trigger `rsv_count_sync` syncs count.
 
 Spotify (`lib/spotify/`): `client.ts` (Client Credentials), `preview-resolver.ts` (3-source fallback Spotify → iTunes → Deezer ISRC). Routes `/api/rep-portal/stories/*` (create, feed grouped 24h, single-rep timeline, view-log, delete). Cron `cron/stories-expire` hourly. Mapper `lib/stories-mapper.ts` (DB → iOS DTO) — use in any endpoint surfacing a story.
 
@@ -274,19 +275,19 @@ Wrong client → silent data loss (RLS empty arrays).
 - Never `createClient()` with anon key server-side.
 
 ### Row-Level Security
-All tables EXCEPT `rep_event_attendance` have RLS enabled (this is known — populated by trigger only, not exposed to user reads). `auth_user_org_id()` maps `auth.uid()` → `org_id` via `org_users`/`reps`. **anon**: INSERT on `traffic_events`/`popup_events`, SELECT public content. **authenticated**: CRUD scoped to `org_id`. **service_role**: bypass all (every API route via `getSupabaseAdmin()`).
+All tables EXCEPT `rep_event_attendance` have RLS enabled (`rep_event_attendance` is trigger-populated, not user-readable). `auth_user_org_id()` maps `auth.uid()` → `org_id` via `org_users`/`reps`. **anon**: INSERT on `traffic_events`/`popup_events`, SELECT public content. **authenticated**: CRUD scoped to `org_id`. **service_role**: bypass all (every API route via `getSupabaseAdmin()`).
 
 ### External Service Rules (CRITICAL)
-MCP: **Supabase** (schema, queries, migrations) + **Vercel** (deployments, logs). Use MCP — NEVER give user SQL to run. **Stripe** has no MCP — Dashboard. If MCP token expired, ask user to run `/mcp` (display visibly). Never assume table/column exists unless documented here.
+MCP: **Supabase** (schema, queries, migrations) + **Vercel** (deployments, logs). NEVER give user SQL to run. **Stripe** has no MCP — Dashboard only. MCP expired → ask user to run `/mcp` (display visibly). Never assume table/column exists unless documented here.
 
 ### Settings Keys
-JSONB in `site_settings`. **Always use helpers in `lib/constants.ts`, never hardcode.** Per-org pattern `{org_id}_*` covers branding, themes, VAT, homepage, reps, automations (cart/announcement), popup, marketing, email, wallet, events list, stripe account, EP billing (off-session card), plan, onboarding, merch store, scanner (assignments + live tokens), guest list (3 keys), waitlist (per-event), campaign sends. Also `{org_id}_pdf_ticket` (no helper) and `{org_id}_event_{slug}` per-event overrides. Platform singletons: `platformBillingKey()`, `exchangeRatesKey()` + raw `platform_payment_digest|health_digest|beta_applications|beta_invite_codes|entry_platform_xp`. Pre-org: `wizardStateKey(authUserId)`. Media: `media_*` (no helper).
+JSONB in `site_settings`. **Always use helpers in `lib/constants.ts`, never hardcode.** Per-org `{org_id}_*` helpers cover branding, themes, VAT, homepage, reps, automations (cart/announcement), popup, marketing, email, wallet, events-list, stripe-account, EP-billing (off-session card), plan, onboarding, merch-store, scanner (assignments + live tokens), guest-list (3 keys), waitlist (per-event), campaigns. Raw (no helper): `{org_id}_pdf_ticket`, `{org_id}_event_{slug}`, `media_*`. Platform singletons: `platformBillingKey()`, `exchangeRatesKey()` + raw `platform_payment_digest|health_digest|beta_applications|beta_invite_codes|entry_platform_xp`. Pre-org: `wizardStateKey(authUserId)`.
 
 ⚠️ **`TABLES` constant lags ~24 tables** (rep social/EP/market/notification). Update opportunistically; raw strings accepted in interim.
 
 ---
 
-## API Routes (276 handlers)
+## API Routes (280 handlers)
 
 ### Critical Path (Payment → Order)
 - `POST /api/stripe/payment-intent` — create PI (validates tickets + sequential, discounts + VAT, rate-limited)
@@ -322,15 +323,15 @@ Events, Artists, Merch, Customers, Discounts (`validate|auto|seed`), Settings, B
 - Admin dashboards: `admin/{live-sessions,checkout-health,orders-stats,uk-events}`
 - Integrations: `mux/*`, `email/*`, `wallet/status`, `upload`, `upload-video`, scanner (4), merch-store (5)
 
-### Vercel Cron (13 in `vercel.json`)
-- `*/5 * * * *` `cron/announcement-emails` — steps 2–4 dispatch
-- `*/10 * * * *` `cron/abandoned-carts` — recovery
-- `*/15 * * * *` `cron/guest-list-reminders` (RSVP); `cron/domain-verify-poll` (custom-domain check)
-- `*/30 * * * *` `cron/stripe-health` — payment health
-- `0 * * * *` `cron/stories-expire` (soft-delete expired stories); `cron/event-reminders` (push 24h+2h before rep-enabled events; deduped via `rep_event_reminders`)
-- `0 */6 * * *` `cron/payment-digest`, `cron/exchange-rates`
-- `0 19 * * *` `cron/streak-at-risk` — daily nudge to reps with active streak + 0 XP today (UTC)
-- `5 0 * * *` `cron/rep-streak-reset`; `0 2 * * 1` `cron/rep-rank-snapshots` (weekly); `0 3 1 * *` `cron/ep-payouts` (monthly tenant EP → cash)
+### Vercel Cron (13 in `vercel.json`, all under `/api/cron/`)
+- `*/5 * * * *` `announcement-emails` (steps 2–4 dispatch)
+- `*/10 * * * *` `abandoned-carts` (recovery)
+- `*/15 * * * *` `guest-list-reminders` (RSVP); `domain-verify-poll`
+- `*/30 * * * *` `stripe-health`
+- `0 * * * *` `stories-expire`; `event-reminders` (24h + 2h before rep-enabled events; deduped via `rep_event_reminders`)
+- `0 */6 * * *` `payment-digest`, `exchange-rates`
+- `0 19 * * *` `streak-at-risk` (UTC; reps with active streak + 0 XP today)
+- `5 0 * * *` `rep-streak-reset`; `0 2 * * 1` `rep-rank-snapshots` (weekly); `0 3 1 * *` `ep-payouts` (monthly tenant EP → cash)
 
 ---
 
@@ -360,9 +361,9 @@ Events, Artists, Merch, Customers, Discounts (`validate|auto|seed`), Settings, B
 
 Vitest + @testing-library/react (jsdom). Config `vitest.config.ts` (projects `unit` + `integration`). Setup `src/__tests__/setup.ts`. Scripts: `npm test` (unit, ~1.6s), `npm run test:integration` (real DB, ~97s), `npm run test:all`. Integration suites include EP money-path tests asserting zero `ep_rep_balance_drift` after every state change. Real Supabase + Stripe mocked, scoped to `org_id = '__test_integration__'`.
 
-**Pre-push** (`.git/hooks/pre-push`) runs `npm test` AND `npx tsc --noEmit -p tsconfig.build.json`. The TS check catches build errors vitest doesn't type-check. Never skip. `tsconfig.build.json` excludes test files to match `next build`. **CI**: `vercel-build` runs unit tests before `next build`. Failed tests = failed deploy.
+**Pre-push** (`.git/hooks/pre-push`) runs `npm test` AND `npx tsc --noEmit -p tsconfig.build.json` (excludes test files to match `next build`). Never skip — TS check catches build errors vitest doesn't type-check. **CI**: `vercel-build` runs unit tests before `next build`. Failed tests = failed deploy.
 
-**MANDATORY before committing**: `npm test`. Payment/checkout/EP changes (`stripe/`, `lib/orders.ts`, `lib/stripe/`, `lib/refund.ts`, `lib/ep/`, checkout components) → also `npm run test:integration` before pushing. New hooks need test files; new API routes should have tests; referential-stability tests mandatory for hooks with object/function deps. Test state, API shape, edge cases, payment flows — not UI/CSS.
+**MANDATORY before committing**: `npm test`. Payment/checkout/EP changes (`stripe/`, `lib/orders.ts`, `lib/stripe/`, `lib/refund.ts`, `lib/ep/`, checkout components) → also run `npm run test:integration`. New hooks/API routes need tests; referential-stability tests mandatory for hooks with object/function deps. Test state, API shape, edge cases, payment flows — not UI/CSS.
 
 ---
 
@@ -380,13 +381,13 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 
 ## Design & CSS
 
-**Brand**: Admin/Entry primary `#8B5CF6` (Electric Violet); gradient `linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)`. Public event pages tenant-configurable (accent, bg, card tokens in `base.css :root`). Admin tokens via `@theme inline` in `tailwind.css` (semantic: background, foreground, primary, card, border, destructive, success, warning, info) — use classes, never hardcode hex.
+**Brand**: Admin/Entry primary `#8B5CF6` (Electric Violet); gradient `linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)`. Public event pages tenant-configurable (accent/bg/card tokens in `base.css :root`). Admin tokens via `@theme inline` in `tailwind.css` (bg, fg, primary, card, border, destructive, success, warning, info) — use classes, never hardcode hex.
 
 **CSS systems**: Landing = hand-written (`base.css`, `header.css`). Event pages = Tailwind + `midnight.css`/`midnight-effects.css`/`hero-effects.css`. Admin = Tailwind + shadcn/ui + `command.css`. Rep v1 = Tailwind + `rep-effects.css`. Scanner = Tailwind + `scanner.css`.
 
 **Isolation/layer (DO NOT BREAK)**: `@layer theme, admin-reset;` then `@import "tailwindcss/utilities"` UNLAYERED. Never `layer(utilities)` or global `*` resets. Scopes: `[data-admin]`, `[data-theme="midnight"]`, `[data-rep]`.
 
-**Components**: Midnight imports CSS only in orchestrator (`MidnightEventPage`); children don't. Mobile-first 375px, `prefers-reduced-motion` supported. Admin pages `"use client"` w/ shadcn/ui; settings fetch from `site_settings`, save via `/api/settings`; uploads POST base64 to `/api/upload` for tenant branding (rep media uses signed-URL). shadcn/ui in `components/ui/` (28), Radix + `cn()` from `@/lib/utils`.
+**Components**: Midnight imports CSS only in orchestrator (`MidnightEventPage`); children don't. Mobile-first 375px, `prefers-reduced-motion` supported. Admin pages `"use client"` w/ shadcn/ui; settings fetch from `site_settings`, save via `/api/settings`; tenant branding uploads POST base64 to `/api/upload`. shadcn/ui in `components/ui/` (28), Radix + `cn()` from `@/lib/utils`.
 
 ---
 
@@ -398,13 +399,13 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 
 **Paid applications**: Stripe CardNumber/Expiry/CVC. `/api/guest-list/application-payment` (card only), `/api/guest-list/application-confirm` → `issueGuestListTicket()`. Webhook backup on `metadata.type === "guest_list_application"`. Don't show fee on Step 1 (acceptance) — let buyer feel accepted first; price only on payment page.
 
-**Files**: `lib/guest-list.ts`, `types/guest-list.ts`, `app/admin/guest-list/page.tsx` + `components/admin/guest-list/` (4 tabs), `app/guest-list/` (public: rsvp, submit, apply, accept). Settings: `guestListSettingsKey()`, `guestListSubmissionsKey()`, `guestListCampaignsKey()`. Scanner syncs `guest_list.checked_in` on scan.
+**Files**: `lib/guest-list.ts`, `types/guest-list.ts`, `components/admin/guest-list/` (4 tabs), `app/guest-list/` (public: rsvp, submit, apply, accept). Settings keys: `guestListSettingsKey()`, `guestListSubmissionsKey()`, `guestListCampaignsKey()`.
 
 ---
 
 ## Admin Pages Index
 
-`/admin/*` — 34 directories (`requireAuth()` unless flagged owner-only).
+`/admin/*` — 33 directories (`requireAuth()` unless flagged owner-only).
 
 - **Daily ops**: `/` (dashboard + `OnboardingChecklist`), `/events/` + `/[slug]/` (Content/Design/Details/Tickets/Waitlist/SEO tabs), `/orders/`, `/customers/`, `/scanner/`, `/guest-list/` (4 tabs), `/abandoned-carts/`, `/import-tickets/` (CSV via `lib/import-csv.ts` + `lib/import-tickets.ts`; `payment_method:"imported"`, no email), `/discounts/`, `/popup/`, `/artists/`, `/merch/`, `/merch-store/`.
 - **Brand & content**: `/onboarding/` (3-step), `/settings/` (9 subs: branding, domains, general, plan, search-social, integrations, users, finance, scanner), `/ticketstore/` (theme builder).
@@ -419,7 +420,7 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 ## Known Gaps
 
 1. **Google Ads + TikTok tracking** — placeholders only.
-2. **FCM transport stubbed** — `lib/push/fcm.ts` has envelope builder + `isConfigured()` but the service-account → access-token → v1 send is still a TODO returning `status:"skipped"`. Not blocking iOS; will need finishing for Android. APNs is live (`lib/push/apns.ts` does ES256 JWT + HTTP/2 POST against `api.push.apple.com[/development]`); requires `APNS_AUTH_KEY_P8` (PEM) + `APNS_KEY_ID` + `APNS_TEAM_ID` + `APNS_BUNDLE_ID` + `APNS_USE_SANDBOX`. Web push works (VAPID). **APNs gateway-routing rule (verified 2026-04-29):** the gateway is determined by the **provisioning profile** at signing time, NOT the source `.entitlements` file — App-Store-Connect-distributed builds (TestFlight + App Store) ALWAYS hit the production gateway (`api.push.apple.com`) regardless of what `aps-environment` reads in source. So `APNS_USE_SANDBOX=false` is correct for TestFlight and App Store; only flip to `true` when pushing to Xcode-signed local dev builds. Sending production-profile tokens to the sandbox host returns `BadDeviceToken`, which is what burned us during the first end-to-end test — the symptom is misleading because the token itself is valid.
+2. **FCM transport stubbed** — `lib/push/fcm.ts` has envelope builder + `isConfigured()` but service-account → access-token → v1 send is TODO (`status:"skipped"`). Not blocking iOS; needed for Android. APNs is live (`lib/push/apns.ts`, ES256 JWT + HTTP/2). Web push live (VAPID). APNs gateway-routing rule: see Env Vars → Push.
 3. **Web `/rep/*`** — frozen. Rebuild to v2 spec post-iOS-launch.
 4. **Poster drops** — paused. No table; `dashboard.feed` = peer + story activity.
 5. **Apple Sign-In** — deferred. Google IS live; App Store 4.8 only triggers when third-party SSO offered.
@@ -433,8 +434,5 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 ## Document Maintenance
 
 1. Read at session start — the map.
-2. Update after architecture changes (tables, routes, modules, admin pages).
-3. Delete deprecated references when the deprecation lands — no dead-code docs.
-4. Keep under 40K chars — compress, don't drop info.
-5. Wrong docs = wrong assumptions. Undocumented = unknown.
-6. New features → update the relevant section AND Admin Pages Index AND Known Gaps if partial.
+2. Update after architecture changes (tables, routes, modules, admin pages). New feature → update the section AND Admin Pages Index AND Known Gaps if partial.
+3. Delete deprecated references when the deprecation lands. Keep under 40K chars — compress, don't drop info. Wrong docs = wrong assumptions; undocumented = unknown.

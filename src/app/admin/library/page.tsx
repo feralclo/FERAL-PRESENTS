@@ -1,15 +1,14 @@
-"use client";
-
-import { LibraryWorkspace } from "@/components/admin/library/LibraryWorkspace";
+import { Suspense } from "react";
+import { LibraryShell } from "@/components/admin/library/LibraryShell";
 
 /**
  * /admin/library — top-level cover library.
  *
- * Single source of truth for tenant-uploaded creative used across the
- * platform: quest covers (3:4 portrait), event covers (1:1 square), and
- * future kinds. Promoted from a tab inside /admin/reps because event
- * covers aren't rep-specific — keeping the page anchored to the rep
- * surface narrowed its mental model.
+ * The shell renders a campaigns rail + canvas on desktop, chip strip on
+ * mobile. When no campaign is active the right pane is the existing
+ * `LibraryWorkspace` (the "All assets" multi-kind grid). When one is
+ * active, the pane becomes the `CampaignDetailView` — stat row, linked
+ * quests, top assets, plus a campaign-scoped grid.
  *
  * Discoverable from:
  *   - the admin sidebar (top-level "Library" entry)
@@ -18,5 +17,11 @@ import { LibraryWorkspace } from "@/components/admin/library/LibraryWorkspace";
  *   - the event editor Look section ("Browse cover library")
  */
 export default function AdminLibraryPage() {
-  return <LibraryWorkspace />;
+  // useSearchParams (inside LibraryShell) requires a Suspense boundary in
+  // a server component shell; loading.tsx provides the actual skeleton.
+  return (
+    <Suspense fallback={null}>
+      <LibraryShell />
+    </Suspense>
+  );
 }

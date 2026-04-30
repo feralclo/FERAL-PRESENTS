@@ -221,6 +221,10 @@ export interface RepQuest {
   reference_url?: string | null;
   uses_sound: boolean;
   sales_target?: number | null;
+  // Pool-quest mode: when 'pool', shareables come from a campaign
+  // (LIBRARY-CAMPAIGNS-PLAN.md). 'single' = legacy single-asset behaviour.
+  asset_mode?: "single" | "pool" | null;
+  asset_campaign_tag?: string | null;
   created_at: string;
   updated_at: string;
   // Joined / enriched

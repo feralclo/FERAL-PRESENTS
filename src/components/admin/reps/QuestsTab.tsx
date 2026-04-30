@@ -58,6 +58,7 @@ import dynamic from "next/dynamic";
 import * as tus from "tus-js-client";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { CoverImagePicker } from "@/components/admin/CoverImagePicker";
+import { QuestPoolPicker } from "@/components/admin/reps/QuestPoolPicker";
 import { isMuxPlaybackId } from "@/lib/mux";
 import { prepareUploadFile } from "@/lib/uploads/prepare-upload";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -159,6 +160,11 @@ export function QuestsTab() {
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [contentPickerOpen, setContentPickerOpen] = useState(false);
   const [autoApprove, setAutoApprove] = useState(false);
+  // Pool-quest mode: when 'pool', the quest pulls shareables from a
+  // campaign instead of using a single uploaded shareable. Reps see a
+  // rotating slice (see LIBRARY-CAMPAIGNS-PLAN.md).
+  const [assetMode, setAssetMode] = useState<"single" | "pool">("single");
+  const [assetCampaignTag, setAssetCampaignTag] = useState<string>("");
 
   // Events list for event picker + date awareness + cover cascade.
   // v2 has three image slots per event — we ONLY want cover_image_url here
@@ -292,6 +298,8 @@ export function QuestsTab() {
     setProofType("screenshot");
     setCoverImageUrl("");
     setAutoApprove(false);
+    setAssetMode("single");
+    setAssetCampaignTag("");
     setVideoError("");
     setDialogStep("type");
     setFormTab(0);
@@ -323,6 +331,8 @@ export function QuestsTab() {
     // lingers only on legacy rows. Populate from whichever the row has.
     setCoverImageUrl(q.cover_image_url || q.image_url || "");
     setAutoApprove(q.auto_approve ?? false);
+    setAssetMode(q.asset_mode === "pool" ? "pool" : "single");
+    setAssetCampaignTag(q.asset_campaign_tag ?? "");
     setVideoError("");
     setDialogStep("form");
     setFormTab(0);
@@ -381,6 +391,11 @@ export function QuestsTab() {
       uses_sound: usesSound,
       sales_target: questType === "sales_milestone" && salesTarget ? Number(salesTarget) : null,
       event_id: eventId || null,
+      // Pool-quest mode: shareables come from a campaign instead of one
+      // uploaded asset (LIBRARY-CAMPAIGNS-PLAN.md).
+      asset_mode: assetMode,
+      asset_campaign_tag:
+        assetMode === "pool" && assetCampaignTag ? assetCampaignTag : null,
     };
     try {
       const url = editId ? `/api/reps/quests/${editId}` : "/api/reps/quests";
@@ -424,6 +439,8 @@ export function QuestsTab() {
     );
     setCoverImageUrl(q.cover_image_url || q.image_url || "");
     setAutoApprove(q.auto_approve ?? false);
+    setAssetMode(q.asset_mode === "pool" ? "pool" : "single");
+    setAssetCampaignTag(q.asset_campaign_tag ?? "");
     setVideoError("");
     setDialogStep("form"); // skip type picker — we know the type
     setFormTab(0);
@@ -1593,7 +1610,23 @@ export function QuestsTab() {
                       separate (Details tab, in-app hero only). */}
                 {currentTabLabel === "Content" && (
                   <div className="space-y-4">
-                    {questType === "story_share" ? (
+                    {/* Pool / single shareable mode toggle. Pool = pulls
+                        from a campaign; reps see a rotating slice. See
+                        LIBRARY-CAMPAIGNS-PLAN.md. */}
+                    <QuestPoolPicker
+                      mode={assetMode}
+                      campaignTag={assetCampaignTag}
+                      onModeChange={setAssetMode}
+                      onCampaignChange={setAssetCampaignTag}
+                    />
+
+                    {assetMode === "pool" ? (
+                      <p className="text-xs text-muted-foreground">
+                        Each rep sees up to 10 shareables from this
+                        campaign, sorted to feel fresh. New uploads
+                        appear at the top.
+                      </p>
+                    ) : questType === "story_share" ? (
                       <p className="text-xs text-muted-foreground">
                         Upload the <span className="font-medium text-foreground">asset reps share</span> — image or short video. Reps download it and post it to their TikTok or Instagram story with their personal discount link.
                       </p>
@@ -1613,8 +1646,10 @@ export function QuestsTab() {
                         is set yet (we have nothing to copy). When toggled
                         on, the same URL is shared between the in-app cover
                         and the rep's downloadable asset. Toggling off only
-                        clears the shareable if it still matches the cover. */}
-                    {coverImageUrl && (
+                        clears the shareable if it still matches the cover.
+                        Hidden in pool mode — pool quests never use a single
+                        shareable. */}
+                    {assetMode === "single" && coverImageUrl && (
                       <div className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
                         <div className="flex items-start gap-2.5 min-w-0">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1648,6 +1683,7 @@ export function QuestsTab() {
                         />
                       </div>
                     )}
+                    {assetMode === "single" && (
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1.5">
                         <Upload size={12} />
@@ -1753,6 +1789,7 @@ export function QuestsTab() {
                         previewTitle={title || "Your story share"}
                       />
                     </div>
+                    )}
                   </div>
                 )}
 

@@ -120,6 +120,8 @@ export async function POST(request: NextRequest) {
       accent_hex,
       accent_hex_secondary,
       auto_approve = false,
+      asset_mode,
+      asset_campaign_tag,
     } = body;
 
     if (!title || !quest_type || points_reward == null) {
@@ -259,6 +261,11 @@ export async function POST(request: NextRequest) {
         reference_url: reference_url?.trim() || null,
         uses_sound: Boolean(uses_sound),
         sales_target: quest_type === "sales_milestone" ? Number(sales_target) : null,
+        asset_mode: asset_mode === "pool" ? "pool" : "single",
+        asset_campaign_tag:
+          asset_mode === "pool" && typeof asset_campaign_tag === "string" && asset_campaign_tag
+            ? asset_campaign_tag
+            : null,
       })
       .select()
       .single();

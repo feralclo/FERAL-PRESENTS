@@ -99,6 +99,8 @@ export async function PUT(
       "accent_hex",
       "accent_hex_secondary",
       "auto_approve",
+      "asset_mode",
+      "asset_campaign_tag",
     ];
 
     const updates: Record<string, unknown> = {};

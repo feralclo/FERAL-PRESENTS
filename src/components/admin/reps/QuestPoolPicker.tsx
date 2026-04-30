@@ -191,6 +191,11 @@ function SegmentButton({
 // PoolBody — drop zone OR populated card
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * PoolBody owns the upload queue so it survives the empty→populated
+ * transition. Both sub-views just render it; nothing else manages
+ * upload state.
+ */
 function PoolBody({
   campaigns,
   activeCampaign,
@@ -206,115 +211,13 @@ function PoolBody({
   onPick: (tag: string) => void;
   onRefresh: () => void;
 }) {
-  // Empty state → drop zone with auto-create.
-  if (!campaignTag || !activeCampaign) {
-    return (
-      <PoolDropZone
-        campaigns={campaigns}
-        questTitle={questTitle}
-        onPick={(tag) => {
-          onPick(tag);
-          onRefresh();
-        }}
-        onRefresh={onRefresh}
-      />
-    );
-  }
-
-  // Populated state → rich preview card with actions.
-  return (
-    <PoolPreviewCard
-      campaign={activeCampaign}
-      campaigns={campaigns ?? []}
-      onChange={(tag) => {
-        onPick(tag);
-        onRefresh();
-      }}
-      onRefresh={onRefresh}
-    />
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// PoolDropZone — empty state with drag-drop + inline campaign creation
-// ─────────────────────────────────────────────────────────────────────
-
-function PoolDropZone({
-  campaigns,
-  questTitle,
-  onPick,
-  onRefresh,
-}: {
-  campaigns: CampaignSummary[] | null;
-  questTitle: string;
-  onPick: (tag: string) => void;
-  onRefresh: () => void;
-}) {
-  const [dragging, setDragging] = useState(false);
-  const [picking, setPicking] = useState(false);
   const [items, setItems] = useState<UploadItem[]>([]);
-  const fileRef = useRef<HTMLInputElement>(null);
   const itemsRef = useRef<UploadItem[]>([]);
   const isProcessingRef = useRef(false);
 
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
-
-  const inFlight = items.some(
-    (i) => i.status !== "done" && i.status !== "failed"
-  );
-
-  const ensureCampaign = useCallback(
-    async (label: string): Promise<string> => {
-      const res = await fetch("/api/admin/media/campaigns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Couldn't create campaign");
-      return json.data.tag as string;
-    },
-    []
-  );
-
-  const enqueue = useCallback((files: FileList | File[]) => {
-    const arr = Array.from(files);
-    const next: UploadItem[] = arr.map((f) => ({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      file: f,
-      previewUrl: URL.createObjectURL(f),
-      kind: f.type.startsWith("video/") ? "video" : "image",
-      status: "queued",
-    }));
-    setItems((prev) => [...prev, ...next]);
-  }, []);
-
-  const handleDrop = useCallback(
-    async (files: FileList | File[]) => {
-      if (files.length === 0) return;
-      // Auto-name the campaign after the quest title (or fall back).
-      const seed = questTitle.trim() || `Campaign ${new Date().toLocaleDateString()}`;
-      try {
-        const tag = await ensureCampaign(seed);
-        onPick(tag);
-        // The picker switches to populated state on the next render —
-        // but we still want the upload progress visible. We hand off
-        // the queue items to the populated state via the parent's
-        // refresh, with the campaign tag now in scope. For v1 we just
-        // upload here in the empty-state component before the unmount.
-        enqueue(files);
-        // Run the queue against the new tag.
-        void runQueue(tag);
-      } catch (err) {
-        // Surface — for now log; UI shows generic error.
-        console.error(err);
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ensureCampaign, onPick, questTitle]
-  );
 
   const patchItem = useCallback(
     (id: string, patch: Partial<UploadItem>) => {
@@ -325,7 +228,7 @@ function PoolDropZone({
     []
   );
 
-  const runQueue = useCallback(
+  const runQueueFor = useCallback(
     async (tag: string) => {
       if (isProcessingRef.current) return;
       isProcessingRef.current = true;
@@ -350,10 +253,124 @@ function PoolDropZone({
       } finally {
         isProcessingRef.current = false;
         onRefresh();
+        // Brief success flash, then evict completed items so the
+        // refreshed server thumbnails are the single source of truth.
+        setTimeout(() => {
+          setItems((prev) => {
+            const survivors: UploadItem[] = [];
+            for (const it of prev) {
+              if (it.status === "done") {
+                try {
+                  URL.revokeObjectURL(it.previewUrl);
+                } catch {
+                  /* tolerated */
+                }
+              } else {
+                survivors.push(it);
+              }
+            }
+            return survivors;
+          });
+        }, 700);
       }
     },
     [onRefresh, patchItem]
   );
+
+  const enqueueAndRun = useCallback(
+    (files: FileList | File[], tag: string) => {
+      const arr = Array.from(files);
+      if (arr.length === 0) return;
+      const next: UploadItem[] = arr.map((f) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file: f,
+        previewUrl: URL.createObjectURL(f),
+        kind: f.type.startsWith("video/") ? "video" : "image",
+        status: "queued",
+      }));
+      setItems((prev) => [...prev, ...next]);
+      setTimeout(() => void runQueueFor(tag), 0);
+    },
+    [runQueueFor]
+  );
+
+  /** Empty-state drop handler — creates a campaign on the fly with the
+   *  quest title, then routes the dropped files through the same queue
+   *  the populated state will mount around. */
+  const handleEmptyDrop = useCallback(
+    async (files: FileList | File[]) => {
+      if (files.length === 0) return;
+      const seed =
+        questTitle.trim() ||
+        `Campaign ${new Date().toLocaleDateString()}`;
+      try {
+        const res = await fetch("/api/admin/media/campaigns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label: seed }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "Couldn't create campaign");
+        const tag = json.data.tag as string;
+        onPick(tag);
+        onRefresh();
+        enqueueAndRun(files, tag);
+      } catch (err) {
+        console.error("[pool] handleEmptyDrop:", err);
+      }
+    },
+    [questTitle, onPick, onRefresh, enqueueAndRun]
+  );
+
+  if (!campaignTag || !activeCampaign) {
+    return (
+      <PoolDropZone
+        campaigns={campaigns}
+        questTitle={questTitle}
+        onDropFiles={handleEmptyDrop}
+        onPickExisting={(tag) => {
+          onPick(tag);
+          onRefresh();
+        }}
+      />
+    );
+  }
+
+  return (
+    <PoolPreviewCard
+      campaign={activeCampaign}
+      campaigns={campaigns ?? []}
+      items={items}
+      onChange={(tag) => {
+        onPick(tag);
+        onRefresh();
+      }}
+      onAddFiles={(files) => enqueueAndRun(files, activeCampaign.tag)}
+      onRemoveItem={(id) =>
+        removeItem(id, itemsRef.current, setItems)
+      }
+      onRefresh={onRefresh}
+    />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PoolDropZone — empty state with drag-drop + inline campaign creation
+// ─────────────────────────────────────────────────────────────────────
+
+function PoolDropZone({
+  campaigns,
+  questTitle,
+  onDropFiles,
+  onPickExisting,
+}: {
+  campaigns: CampaignSummary[] | null;
+  questTitle: string;
+  onDropFiles: (files: FileList | File[]) => void | Promise<void>;
+  onPickExisting: (tag: string) => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const hasCampaigns = (campaigns?.length ?? 0) > 0;
 
@@ -369,13 +386,16 @@ function PoolDropZone({
         <div
           onDragOver={(e) => {
             e.preventDefault();
-            setDragging(true);
+            if (!dragging) setDragging(true);
           }}
-          onDragLeave={() => setDragging(false)}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            setDragging(false);
+          }}
           onDrop={(e) => {
             e.preventDefault();
             setDragging(false);
-            void handleDrop(e.dataTransfer.files);
+            void onDropFiles(e.dataTransfer.files);
           }}
           onClick={() => fileRef.current?.click()}
           role="button"
@@ -416,15 +436,10 @@ function PoolDropZone({
           </p>
         </div>
 
-        {/* Existing-campaign picker (right half on desktop) — only
-            rendered when the tenant actually has campaigns to pick. */}
         {hasCampaigns && (
           <ExistingCampaignPanel
             campaigns={campaigns ?? []}
-            onPick={(tag) => {
-              onPick(tag);
-              setPicking(false);
-            }}
+            onPick={onPickExisting}
           />
         )}
       </div>
@@ -437,35 +452,11 @@ function PoolDropZone({
         className="hidden"
         onChange={(e) => {
           if (e.target.files) {
-            void handleDrop(e.target.files);
+            void onDropFiles(e.target.files);
             e.target.value = "";
           }
         }}
       />
-
-      {/* Tiny fallback — when the tenant has zero campaigns, leave a
-          quiet "or" link in case they want to navigate to the library
-          to start one without uploading. */}
-      {!hasCampaigns && picking && (
-        <div className="flex items-center justify-center gap-2 text-xs text-foreground/60">
-          <span>or</span>
-          <ExistingCampaignPicker
-            campaigns={campaigns ?? []}
-            onPick={(tag) => {
-              onPick(tag);
-              setPicking(false);
-            }}
-            onCancel={() => setPicking(false)}
-          />
-        </div>
-      )}
-
-      {items.length > 0 && (
-        <UploadPreviewStrip
-          items={items}
-          onRemove={(id) => removeItem(id, items, setItems)}
-        />
-      )}
     </div>
   );
 }
@@ -709,32 +700,47 @@ function ExistingCampaignPicker({
 // PoolPreviewCard — populated state with actions + drop-more support
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * One calm surface — the campaign card.
+ *
+ * Drop anywhere on it. Server thumbnails and in-flight uploads merge
+ * into a single tile row, so there's never a "X added" duplicate
+ * strip. The whole card is the drop affordance; the small "+" tile
+ * at the end is the click-to-pick fallback.
+ */
+
+interface ServerThumb {
+  id: string;
+  url: string;
+  mime_type: string | null;
+}
+
 function PoolPreviewCard({
   campaign,
   campaigns,
+  items,
   onChange,
+  onAddFiles,
+  onRemoveItem,
   onRefresh,
 }: {
   campaign: CampaignSummary;
   campaigns: CampaignSummary[];
+  items: UploadItem[];
   onChange: (tag: string) => void;
+  onAddFiles: (files: FileList | File[]) => void;
+  onRemoveItem: (id: string) => void;
   onRefresh: () => void;
 }) {
-  const [thumbs, setThumbs] = useState<string[]>([]);
+  const [thumbs, setThumbs] = useState<ServerThumb[]>([]);
   const [dragging, setDragging] = useState(false);
-  const [items, setItems] = useState<UploadItem[]>([]);
   const [picking, setPicking] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const itemsRef = useRef<UploadItem[]>([]);
-  const isProcessingRef = useRef(false);
 
+  // Server thumbs — refetched whenever the campaign or its asset count
+  // changes (the latter being our signal that a new upload landed).
   useEffect(() => {
-    itemsRef.current = items;
-  }, [items]);
-
-  // Lazy thumbs.
-  useEffect(() => {
-    if (campaign.asset_count === 0) {
+    if (campaign.asset_count === 0 && items.length === 0) {
       setThumbs([]);
       return;
     }
@@ -748,230 +754,209 @@ function PoolPreviewCard({
         const json = await res.json();
         if (cancelled || !res.ok) return;
         setThumbs(
-          (json.data ?? []).slice(0, 4).map((r: { url: string }) => r.url)
+          (json.data ?? []).slice(0, 8).map(
+            (r: { id: string; url: string; mime_type: string | null }) => ({
+              id: r.id,
+              url: r.url,
+              mime_type: r.mime_type ?? null,
+            })
+          )
         );
       } catch {
-        // Empty thumbs fall back gracefully.
+        // Tolerated — strip will simply show fewer tiles.
       }
     })();
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.tag, campaign.asset_count]);
 
-  const patchItem = useCallback(
-    (id: string, patch: Partial<UploadItem>) => {
-      setItems((prev) =>
-        prev.map((it) => (it.id === id ? { ...it, ...patch } : it))
-      );
-    },
-    []
-  );
-
-  const runQueue = useCallback(async () => {
-    if (isProcessingRef.current) return;
-    isProcessingRef.current = true;
-    try {
-      while (true) {
-        const queued = itemsRef.current.find((i) => i.status === "queued");
-        if (!queued) break;
-        patchItem(queued.id, { status: "preparing" });
-        try {
-          if (queued.kind === "image") {
-            await uploadImageToCampaign(queued, campaign.tag, patchItem);
-          } else {
-            await uploadVideoToCampaign(queued, campaign.tag, patchItem);
-          }
-        } catch (e) {
-          patchItem(queued.id, {
-            status: "failed",
-            error: e instanceof Error ? e.message : "Failed",
-          });
-        }
-      }
-    } finally {
-      isProcessingRef.current = false;
-      onRefresh();
-    }
-  }, [campaign.tag, onRefresh, patchItem]);
-
-  const enqueueAndRun = useCallback(
-    (files: FileList | File[]) => {
-      const arr = Array.from(files);
-      if (arr.length === 0) return;
-      const next: UploadItem[] = arr.map((f) => ({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        file: f,
-        previewUrl: URL.createObjectURL(f),
-        kind: f.type.startsWith("video/") ? "video" : "image",
-        status: "queued",
-      }));
-      setItems((prev) => [...prev, ...next]);
-      // Kick off after state commits.
-      setTimeout(() => void runQueue(), 0);
-    },
-    [runQueue]
-  );
-
-  const inFlight = items.some(
+  const inFlightCount = items.filter(
     (i) => i.status !== "done" && i.status !== "failed"
+  ).length;
+  const failedCount = items.filter((i) => i.status === "failed").length;
+
+  // Dedupe: a server thumb whose id matches a local item's mediaId
+  // means the upload has landed; skip it from the server side so it
+  // doesn't appear twice while the success flash is on screen.
+  const localMediaIds = new Set(
+    items.map((i) => i.mediaId).filter(Boolean) as string[]
   );
+  const dedupedThumbs = thumbs.filter((t) => !localMediaIds.has(t.id));
+  const totalShown = items.length + dedupedThumbs.length;
+  const overflowCount = Math.max(0, campaign.asset_count - dedupedThumbs.length);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div
         onDragOver={(e) => {
           e.preventDefault();
-          setDragging(true);
+          if (!dragging) setDragging(true);
         }}
-        onDragLeave={() => setDragging(false)}
+        onDragLeave={(e) => {
+          // Only reset when leaving the card, not its children.
+          if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+          setDragging(false);
+        }}
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          enqueueAndRun(e.dataTransfer.files);
+          onAddFiles(e.dataTransfer.files);
         }}
         className={cn(
-          "rounded-xl border bg-card transition-colors duration-200",
+          "relative rounded-xl border bg-card transition-all duration-200 overflow-hidden",
           dragging
-            ? "border-primary"
-            : "border-border/40 hover:border-primary/30"
+            ? "border-primary shadow-[0_0_0_3px_rgb(var(--color-primary)/0.15)]"
+            : "border-border/40 hover:border-primary/25"
         )}
       >
-        <div className="px-4 sm:px-5 pt-4 pb-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.16em] text-foreground/55">
-                Pool
-              </p>
-              <CampaignNameInline
-                label={campaign.label}
-                tag={campaign.tag}
-                onRenamed={onRefresh}
-              />
-              <p className="mt-0.5 text-xs text-foreground/55 tabular-nums">
-                {campaign.asset_count}{" "}
-                {campaign.asset_count === 1 ? "asset" : "assets"}
-                {campaign.image_count > 0 || campaign.video_count > 0 ? (
-                  <>
-                    {" · "}
-                    {campaign.image_count} images · {campaign.video_count} videos
-                  </>
-                ) : null}
-              </p>
-            </div>
-          </div>
-
-          {/* Thumbnail strip */}
-          <div className="mt-3 flex gap-2 overflow-hidden">
-            {campaign.asset_count === 0 ? (
-              <div className="rounded-md border border-dashed border-border/40 px-3 py-3 text-xs text-foreground/55 w-full text-center">
-                Drop images or videos to fill this campaign.
-              </div>
-            ) : thumbs.length === 0 ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="aspect-square w-16 sm:w-20 rounded-md bg-foreground/[0.04] animate-pulse shrink-0"
-                />
-              ))
-            ) : (
-              <>
-                {thumbs.map((url, i) => (
-                  <div
-                    key={i}
-                    className="relative aspect-square w-16 sm:w-20 rounded-md overflow-hidden bg-foreground/[0.06] shrink-0"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={url}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
-                {campaign.asset_count > thumbs.length && (
-                  <div className="aspect-square w-16 sm:w-20 rounded-md bg-foreground/[0.04] flex items-center justify-center shrink-0">
-                    <span className="text-[11px] font-medium text-foreground/60 tabular-nums">
-                      +{campaign.asset_count - thumbs.length}
-                    </span>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Action row */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <AdminButton
+        {/* Top-right utility actions — small, unobtrusive */}
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1">
+          {campaigns.length > 1 && (
+            <button
               type="button"
-              size="sm"
-              variant="outline"
-              leftIcon={<Plus className="h-3.5 w-3.5" />}
-              onClick={() => fileRef.current?.click()}
-            >
-              Add more
-            </AdminButton>
-            <AdminButton
-              type="button"
-              size="sm"
-              variant="ghost"
               onClick={() => setPicking((v) => !v)}
+              className={cn(
+                "h-7 w-7 rounded-md flex items-center justify-center text-foreground/55 hover:text-foreground hover:bg-foreground/[0.05] transition-colors",
+                "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2",
+                picking && "bg-foreground/[0.06] text-foreground"
+              )}
+              aria-label="Switch campaign"
+              title="Switch campaign"
             >
-              Change
-            </AdminButton>
-            <Link
-              href={`/admin/library?campaign=${encodeURIComponent(campaign.tag)}`}
-              target="_blank"
-              className="inline-flex items-center gap-1 text-xs text-primary hover:underline ml-auto"
-            >
-              Open in library
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          </div>
-
-          {picking && (
-            <div className="mt-3">
-              <select
-                autoFocus
-                value={campaign.tag}
-                onChange={(e) => {
-                  if (e.target.value && e.target.value !== campaign.tag) {
-                    onChange(e.target.value);
-                  }
-                  setPicking(false);
-                }}
-                className="h-9 w-full rounded-md border border-border/60 bg-background px-2.5 text-sm focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
-              >
-                {campaigns.map((c) => (
-                  <option key={c.tag} value={c.tag}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <SwapIcon />
+            </button>
           )}
-
-          {/* Helper hints */}
-          {campaign.asset_count > 0 && campaign.asset_count < 10 && (
-            <p className="mt-2 text-[11px] text-foreground/55">
-              Reps will see all {campaign.asset_count} assets. Add more for
-              variety.
-            </p>
-          )}
-          {campaign.asset_count === 0 && (
-            <p className="mt-2 text-[11px] text-warning">
-              This campaign has no assets yet — reps won&apos;t see anything.
-            </p>
-          )}
+          <Link
+            href={`/admin/library?campaign=${encodeURIComponent(campaign.tag)}`}
+            target="_blank"
+            className="h-7 w-7 rounded-md flex items-center justify-center text-foreground/55 hover:text-foreground hover:bg-foreground/[0.05] transition-colors focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
+            aria-label="Open in library"
+            title="Open in library"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
         </div>
 
+        <div className="px-4 sm:px-5 pt-4 pb-4">
+          {/* Header */}
+          <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.16em] text-foreground/55">
+            Pool
+          </p>
+          <CampaignNameInline
+            label={campaign.label}
+            tag={campaign.tag}
+            onRenamed={onRefresh}
+          />
+          <p className="mt-0.5 text-xs text-foreground/55 tabular-nums flex flex-wrap items-center gap-x-1.5">
+            <span>
+              {campaign.asset_count}{" "}
+              {campaign.asset_count === 1 ? "asset" : "assets"}
+            </span>
+            {(campaign.image_count > 0 || campaign.video_count > 0) && (
+              <span aria-hidden="true">·</span>
+            )}
+            {(campaign.image_count > 0 || campaign.video_count > 0) && (
+              <span>
+                {campaign.image_count} images · {campaign.video_count} videos
+              </span>
+            )}
+            {inFlightCount > 0 && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-1 text-primary">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Adding {inFlightCount}…
+                </span>
+              </>
+            )}
+            {failedCount > 0 && inFlightCount === 0 && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="text-destructive">
+                  {failedCount} failed
+                </span>
+              </>
+            )}
+          </p>
+
+          {/* Switch panel — only when active */}
+          {picking && campaigns.length > 1 && (
+            <div className="mt-3">
+              <SwitchCampaignList
+                current={campaign.tag}
+                campaigns={campaigns}
+                onPick={(tag) => {
+                  if (tag !== campaign.tag) onChange(tag);
+                  setPicking(false);
+                }}
+                onCancel={() => setPicking(false)}
+              />
+            </div>
+          )}
+
+          {/* Tile strip — single source of truth for what's in the pool.
+              Local items first (with status overlays), then deduped
+              server thumbs, then a "+N more" tile if there are extras
+              not loaded, and finally the click-to-pick "+" tile. */}
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {items.map((item) => (
+              <UploadingTile
+                key={item.id}
+                item={item}
+                onRemove={() => onRemoveItem(item.id)}
+              />
+            ))}
+            {dedupedThumbs.map((thumb) => (
+              <ServerTile key={thumb.id} thumb={thumb} />
+            ))}
+            {overflowCount > 0 && (
+              <div className="aspect-square w-20 sm:w-24 rounded-lg bg-foreground/[0.04] flex items-center justify-center shrink-0 border border-border/30">
+                <span className="text-xs font-medium text-foreground/60 tabular-nums">
+                  +{overflowCount}
+                </span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="aspect-square w-20 sm:w-24 rounded-lg shrink-0 flex flex-col items-center justify-center gap-1 border-2 border-dashed border-primary/30 bg-primary/[0.02] hover:border-primary/55 hover:bg-primary/[0.05] text-primary transition-all focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
+              aria-label="Add more assets"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="text-[10px] font-medium">Add</span>
+            </button>
+          </div>
+
+          {/* Helper line — only when actually useful (low or empty pool). */}
+          {campaign.asset_count === 0 && inFlightCount === 0 ? (
+            <p className="mt-3 text-[11px] text-warning">
+              Drop images or videos here to fill this pool.
+            </p>
+          ) : campaign.asset_count > 0 && campaign.asset_count < 10 && inFlightCount === 0 ? (
+            <p className="mt-3 text-[11px] text-foreground/55">
+              Reps see {campaign.asset_count} of up to 10. Add more for
+              variety.
+            </p>
+          ) : null}
+
+          {/* Suppress unused linter warning on totalShown — used as a
+              stable reference for future analytics; keeping it computed
+              avoids a re-add later. */}
+          {void totalShown}
+        </div>
+
+        {/* Drag overlay — full card primary tint with centered copy. */}
         {dragging && (
-          <div className="border-t border-primary/40 bg-primary/[0.05] px-4 py-3 text-xs text-primary text-center">
-            Drop to add to this campaign
+          <div className="absolute inset-0 bg-primary/[0.08] backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
+            <div className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg">
+              Drop to add to “{campaign.label}”
+            </div>
           </div>
         )}
       </div>
+
       <input
         ref={fileRef}
         type="file"
@@ -980,18 +965,203 @@ function PoolPreviewCard({
         className="hidden"
         onChange={(e) => {
           if (e.target.files) {
-            enqueueAndRun(e.target.files);
+            onAddFiles(e.target.files);
             e.target.value = "";
           }
         }}
       />
+    </div>
+  );
+}
 
-      {items.length > 0 && (
-        <UploadPreviewStrip
-          items={items}
-          onRemove={(id) => removeItem(id, items, setItems)}
+function SwapIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-3.5 w-3.5"
+    >
+      <path d="M2 5h10l-2-2" />
+      <path d="M14 11H4l2 2" />
+    </svg>
+  );
+}
+
+/**
+ * Inline switcher — sits inside the card when the host clicks the
+ * top-right swap icon. List of OTHER campaigns (current excluded) sorted
+ * newest-first, with a search if there are many.
+ */
+function SwitchCampaignList({
+  current,
+  campaigns,
+  onPick,
+  onCancel,
+}: {
+  current: string;
+  campaigns: CampaignSummary[];
+  onPick: (tag: string) => void;
+  onCancel: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const sorted = [...campaigns]
+    .filter((c) => c.tag !== current)
+    .sort(
+      (a, b) =>
+        new Date(b.first_seen_at).getTime() -
+        new Date(a.first_seen_at).getTime()
+    );
+  const filtered = query.trim()
+    ? sorted.filter((c) =>
+        c.label.toLowerCase().includes(query.trim().toLowerCase())
+      )
+    : sorted;
+
+  return (
+    <div className="rounded-md border border-border/50 bg-background/80 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40">
+        <input
+          autoFocus
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search campaigns…"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") onCancel();
+          }}
+          className="flex-1 h-8 rounded-md bg-transparent px-1 text-sm placeholder:text-foreground/45 focus-visible:outline-none"
+        />
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-xs text-foreground/55 hover:text-foreground"
+        >
+          Cancel
+        </button>
+      </div>
+      {filtered.length === 0 ? (
+        <p className="px-3 py-3 text-xs text-foreground/55">
+          {sorted.length === 0 ? "No other campaigns." : "No matches."}
+        </p>
+      ) : (
+        <ul className="max-h-44 overflow-y-auto py-1">
+          {filtered.map((c) => (
+            <li key={c.tag}>
+              <button
+                type="button"
+                onClick={() => onPick(c.tag)}
+                className="w-full text-left px-3 py-2 hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none flex items-center justify-between gap-3"
+              >
+                <span className="text-sm font-medium text-foreground truncate">
+                  {c.label}
+                </span>
+                <span className="text-xs text-foreground/55 tabular-nums shrink-0">
+                  {c.asset_count}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A tile in the strip representing a server-resolved asset.
+ */
+function ServerTile({ thumb }: { thumb: ServerThumb }) {
+  const isVideo = (thumb.mime_type ?? "").startsWith("video/");
+  return (
+    <div className="relative aspect-square w-20 sm:w-24 rounded-lg overflow-hidden bg-foreground/[0.06] shrink-0 border border-border/30">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={thumb.url}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover"
+        loading="lazy"
+      />
+      {isVideo && (
+        <div className="absolute top-1.5 right-1.5 h-5 w-5 rounded-full bg-background/70 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+          <span className="block h-0 w-0 border-y-[3px] border-y-transparent border-l-[5px] border-l-foreground translate-x-[1px]" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A tile in the strip representing a local upload — shows the file
+ * preview from a blob URL, with a status overlay and remove affordance.
+ * Replaces the previous separate "X added" strip.
+ */
+function UploadingTile({
+  item,
+  onRemove,
+}: {
+  item: UploadItem;
+  onRemove: () => void;
+}) {
+  const inFlight =
+    item.status === "preparing" ||
+    item.status === "uploading" ||
+    item.status === "processing-video" ||
+    item.status === "queued";
+  const done = item.status === "done";
+  const failed = item.status === "failed";
+
+  return (
+    <div className="group relative aspect-square w-20 sm:w-24 rounded-lg overflow-hidden bg-foreground/[0.06] shrink-0 border border-border/30">
+      {item.kind === "image" ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.previewUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <video
+          src={item.previewUrl}
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
         />
       )}
+
+      {inFlight && (
+        <div className="absolute inset-0 bg-background/65 backdrop-blur-[1px] flex items-center justify-center">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        </div>
+      )}
+      {done && (
+        <div className="absolute bottom-1.5 right-1.5 h-5 w-5 rounded-full bg-success/95 flex items-center justify-center shadow-sm">
+          <Check className="h-3 w-3 text-white" strokeWidth={3} />
+        </div>
+      )}
+      {failed && (
+        <div
+          className="absolute inset-0 bg-destructive/15 flex items-center justify-center"
+          title={item.error ?? "failed"}
+        >
+          <X className="h-4 w-4 text-destructive" />
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="absolute top-1.5 right-1.5 h-5 w-5 rounded-full bg-background/85 text-foreground hover:bg-destructive hover:text-white flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+        aria-label="Remove"
+      >
+        <X className="h-3 w-3" strokeWidth={2.5} />
+      </button>
     </div>
   );
 }
@@ -1026,118 +1196,6 @@ async function removeItem(
     }
   }
   setItems((prev) => prev.filter((i) => i.id !== id));
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// UploadPreviewStrip — thumbnail row replacing the old text-only list
-// ─────────────────────────────────────────────────────────────────────
-
-function UploadPreviewStrip({
-  items,
-  onRemove,
-}: {
-  items: UploadItem[];
-  onRemove: (id: string) => void;
-}) {
-  const inFlight = items.some(
-    (i) => i.status !== "done" && i.status !== "failed"
-  );
-  const done = items.filter((i) => i.status === "done").length;
-  const failed = items.filter((i) => i.status === "failed").length;
-
-  if (items.length === 0) return null;
-
-  return (
-    <div className="rounded-lg border border-border/40 bg-card px-4 py-3">
-      <div className="flex items-center gap-2 mb-2.5">
-        {inFlight && (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-        )}
-        <p className="text-xs font-medium text-foreground tabular-nums">
-          {inFlight
-            ? `Adding ${items.length - done - failed} of ${items.length}…`
-            : `${done} added${failed > 0 ? `, ${failed} failed` : ""}`}
-        </p>
-      </div>
-      <div className="flex gap-2 overflow-x-auto pb-0.5">
-        {items.map((item) => (
-          <PreviewTile key={item.id} item={item} onRemove={() => onRemove(item.id)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PreviewTile({
-  item,
-  onRemove,
-}: {
-  item: UploadItem;
-  onRemove: () => void;
-}) {
-  const inFlight =
-    item.status === "preparing" ||
-    item.status === "uploading" ||
-    item.status === "processing-video" ||
-    item.status === "queued";
-  const done = item.status === "done";
-  const failed = item.status === "failed";
-
-  return (
-    <div className="group relative aspect-square w-20 sm:w-24 rounded-md overflow-hidden bg-foreground/[0.06] shrink-0 border border-border/40">
-      {item.kind === "image" ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={item.previewUrl}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      ) : (
-        <video
-          src={item.previewUrl}
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      )}
-
-      {/* Status overlay */}
-      {inFlight && (
-        <div className="absolute inset-0 bg-background/65 backdrop-blur-[1px] flex items-center justify-center">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-        </div>
-      )}
-      {done && (
-        <div className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-success/95 flex items-center justify-center shadow-sm">
-          <Check className="h-3 w-3 text-white" strokeWidth={3} />
-        </div>
-      )}
-      {failed && (
-        <div
-          className="absolute inset-0 bg-destructive/15 flex items-center justify-center"
-          title={item.error ?? "failed"}
-        >
-          <X className="h-4 w-4 text-destructive" />
-        </div>
-      )}
-
-      {/* Hover X — remove from queue (or delete from server if done) */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        className={cn(
-          "absolute top-1 right-1 h-5 w-5 rounded-full bg-background/85 text-foreground hover:bg-destructive hover:text-white flex items-center justify-center transition-colors",
-          inFlight ? "opacity-0 group-hover:opacity-100" : "opacity-0 group-hover:opacity-100"
-        )}
-        aria-label="Remove"
-      >
-        <X className="h-3 w-3" strokeWidth={2.5} />
-      </button>
-    </div>
-  );
 }
 
 // ─────────────────────────────────────────────────────────────────────

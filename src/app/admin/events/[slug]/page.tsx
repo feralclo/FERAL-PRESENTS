@@ -21,8 +21,7 @@ import { CanvasShell } from "@/components/admin/canvas/CanvasShell";
 import { CanvasShellSkeleton } from "@/components/admin/canvas/CanvasShellSkeleton";
 import { CanvasSection } from "@/components/admin/canvas/CanvasSection";
 import { CanvasPreview } from "@/components/admin/canvas/CanvasPreview";
-import { ReadinessCard } from "@/components/admin/canvas/ReadinessCard";
-import { PublishCard } from "@/components/admin/canvas/PublishCard";
+import { EditorHero } from "@/components/admin/canvas/EditorHero";
 import { SectionNav } from "@/components/admin/canvas/SectionNav";
 import { useCanvasSync } from "@/components/admin/canvas/useCanvasSync";
 import { IdentitySection } from "@/components/admin/canvas/sections/IdentitySection";
@@ -194,7 +193,7 @@ export default function EventEditorPage() {
   }, []);
 
   /**
-   * Save flow. Returns true on success. PublishCard awaits this so it
+   * Save flow. Returns true on success. EditorHero awaits this so it
    * can transition to the "You're live" sheet only after the server
    * confirms.
    */
@@ -481,6 +480,88 @@ export default function EventEditorPage() {
     [event, ticketTypes, eventArtists, stripeConnected, isPlatformOwner]
   );
 
+  /** Collapsed-section summaries. When a section is closed AND has
+   *  filled-in content, the header shows this one-liner instead of the
+   *  generic subtitle so a host can scan the editor and see what's set. */
+  const sectionSummaries = useMemo(() => {
+    if (!event) {
+      return {
+        identity: undefined,
+        story: undefined,
+        look: undefined,
+        tickets: undefined,
+        money: undefined,
+        publish: undefined,
+      };
+    }
+
+    const dateText = event.date_start
+      ? new Date(event.date_start).toLocaleDateString(undefined, {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        })
+      : null;
+
+    const identityParts: string[] = [];
+    if (event.name) identityParts.push(event.name);
+    if (dateText) identityParts.push(dateText);
+    if (event.venue_name) identityParts.push(`at ${event.venue_name}`);
+
+    const lineupCount =
+      eventArtists.length + (event.lineup?.length || 0);
+    const aboutLen = (event.about_text || event.description || "").trim().length;
+    const storyParts: string[] = [];
+    if (lineupCount > 0)
+      storyParts.push(`${lineupCount} ${lineupCount === 1 ? "act" : "acts"}`);
+    if (aboutLen >= 80) storyParts.push("description set");
+
+    const lookSlots = [
+      event.cover_image_url || event.cover_image,
+      event.banner_image_url || event.hero_image,
+      event.poster_image_url,
+    ];
+    const lookCount = lookSlots.filter(Boolean).length;
+
+    const ticketCount = ticketTypes.length;
+    const onSale = ticketTypes.filter(
+      (t) => (t.status ?? "active") === "active"
+    ).length;
+    const ticketParts: string[] = [];
+    if (ticketCount > 0) {
+      ticketParts.push(`${ticketCount} ${ticketCount === 1 ? "tier" : "tiers"}`);
+      if (onSale !== ticketCount) {
+        ticketParts.push(
+          `${onSale} on sale`
+        );
+      }
+    }
+
+    const moneyParts: string[] = [];
+    if (event.currency) moneyParts.push(event.currency);
+    if (event.payment_method === "stripe") {
+      moneyParts.push(stripeConnected ? "Stripe ✓" : "Stripe");
+    } else if (event.payment_method) {
+      moneyParts.push(event.payment_method);
+    }
+    if (event.vat_registered) moneyParts.push("VAT");
+
+    const publishParts: string[] = [event.status];
+    if (event.visibility) publishParts.push(event.visibility);
+
+    return {
+      identity: identityParts.length ? identityParts.join(" · ") : undefined,
+      story: storyParts.length ? storyParts.join(" · ") : undefined,
+      look:
+        lookCount > 0 ? `${lookCount} of 3 images set` : undefined,
+      tickets: ticketParts.length
+        ? ticketParts.join(" · ")
+        : undefined,
+      money: moneyParts.length ? moneyParts.join(" · ") : undefined,
+      publish: publishParts.join(" · "),
+    };
+  }, [event, eventArtists, ticketTypes, stripeConnected]);
+
   // Per-section completeness chips. Map each readiness rule's status to
   // the section it sits on, then aggregate.
   const sectionCompleteness = useMemo(() => {
@@ -539,8 +620,8 @@ export default function EventEditorPage() {
         anchor="identity"
         eventId={eventId}
         title="Identity"
-        eyebrow="01 — The basics"
         subtitle="What it is, when, and where."
+        collapsedSummary={sectionSummaries.identity}
         completeness={sectionCompleteness.identity}
         onActivate={sync.focus}
         focusRequest={sync.focusRequest}
@@ -553,8 +634,8 @@ export default function EventEditorPage() {
         anchor="story"
         eventId={eventId}
         title="Story"
-        eyebrow="02 — The pitch"
-        subtitle="Tag line, about, lineup, fine-print details."
+        subtitle="How you'll pitch it."
+        collapsedSummary={sectionSummaries.story}
         completeness={sectionCompleteness.story}
         onActivate={sync.focus}
         focusRequest={sync.focusRequest}
@@ -572,8 +653,8 @@ export default function EventEditorPage() {
         anchor="look"
         eventId={eventId}
         title="Look"
-        eyebrow="03 — The visuals"
-        subtitle="Cover, banner, poster, theme."
+        subtitle="Visual identity."
+        collapsedSummary={sectionSummaries.look}
         completeness={sectionCompleteness.look}
         onActivate={sync.focus}
         focusRequest={sync.focusRequest}
@@ -591,8 +672,8 @@ export default function EventEditorPage() {
         anchor="tickets"
         eventId={eventId}
         title="Tickets"
-        eyebrow="04 — The product"
-        subtitle="Tiers, capacity, release strategy, waitlist."
+        subtitle="What people pay for."
+        collapsedSummary={sectionSummaries.tickets}
         completeness={sectionCompleteness.tickets}
         onActivate={sync.focus}
         focusRequest={sync.focusRequest}
@@ -614,8 +695,8 @@ export default function EventEditorPage() {
         anchor="money"
         eventId={eventId}
         title="Money"
-        eyebrow="05 — The flow"
-        subtitle="Currency, multi-currency, VAT, payment account."
+        subtitle="VAT and payments."
+        collapsedSummary={sectionSummaries.money}
         completeness={sectionCompleteness.money}
         onActivate={sync.focus}
         focusRequest={sync.focusRequest}
@@ -633,8 +714,8 @@ export default function EventEditorPage() {
         anchor="publish"
         eventId={eventId}
         title="Publish"
-        eyebrow="06 — Going live"
-        subtitle="Status, visibility, announcement, queue, SEO."
+        subtitle="Going live."
+        collapsedSummary={sectionSummaries.publish}
         completeness={sectionCompleteness.publish}
         onActivate={sync.focus}
         focusRequest={sync.focusRequest}
@@ -656,13 +737,13 @@ export default function EventEditorPage() {
 
   const previewPane = (
     <div className="flex flex-col">
-      <div className="space-y-3 border-b border-border/40 px-4 py-4">
-        <ReadinessCard report={readiness} onJumpToSection={sync.focus} />
-        <PublishCard
+      <div className="border-b border-border/40 px-4 py-4">
+        <EditorHero
           event={event}
           report={readiness}
           onSetStatus={setStatus}
           onSave={handleSave}
+          onJumpToSection={sync.focus}
         />
       </div>
       <div className="relative min-h-[700px]">

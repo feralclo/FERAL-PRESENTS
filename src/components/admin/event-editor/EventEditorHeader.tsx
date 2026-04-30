@@ -7,16 +7,13 @@ import { Button } from "@/components/ui/button";
 import { EventViewTabs } from "@/components/admin/event-overview/EventViewTabs";
 import {
   ArrowLeft,
-  ChevronDown,
-  ExternalLink,
-  Eye,
-  Ticket,
-  Users,
+  MoreHorizontal,
   Save,
   Trash2,
   Loader2,
   Copy,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Event } from "@/types/events";
 
 const STATUS_VARIANT = {
@@ -32,11 +29,30 @@ interface EventEditorHeaderProps {
   saving: boolean;
   onSave: () => void;
   onDelete: () => void;
-  /** Optional — when provided, renders a Duplicate button that calls this. */
+  /** Optional — when provided, the overflow menu shows a Duplicate item. */
   onDuplicate?: () => void;
   duplicating?: boolean;
 }
 
+/**
+ * Editor header — slimmed down to match the overview's design language.
+ *
+ * Surface (always visible):  Back · Title · Status · View tabs · Save
+ * Overflow menu (⋯):         Duplicate · Delete
+ *
+ * Removed from previous version:
+ *   - Inline Preview button (redundant with the EventViewTabs "Public"
+ *     tab which already opens /event/[slug] in a new window)
+ *   - Slug span (the URL preview already lives in the Identity section,
+ *     and the Public tab opens the actual page)
+ *   - Inline Delete + Duplicate buttons (rare actions, hidden behind ⋯
+ *     so they don't compete with Save for attention)
+ *   - Announcement / Queue / Tickets preview split-button (if a host
+ *     wants those they can use the Public tab and append ?preview=...)
+ *
+ * Save stays as the lone primary action — that's the action a host
+ * does ten times per session, the rest are once-in-a-blue-moon.
+ */
 export function EventEditorHeader({
   event,
   saving,
@@ -45,29 +61,20 @@ export function EventEditorHeader({
   onDuplicate,
   duplicating = false,
 }: EventEditorHeaderProps) {
-  const isAnnouncement =
-    event.tickets_live_at && new Date(event.tickets_live_at) > new Date();
-  const hasQueueEnabled = !!event.queue_enabled;
-  const hasSplitPreview = isAnnouncement || hasQueueEnabled;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  // Close popover on outside click
+  // Close overflow menu on outside click.
   useEffect(() => {
-    if (!previewOpen) return;
+    if (!menuOpen) return;
     function handleClick(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setPreviewOpen(false);
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [previewOpen]);
-
-  const previewUrl = `/event/${event.slug}/?t=${Date.now()}`;
-  const ticketPreviewUrl = `/event/${event.slug}/?t=${Date.now()}&preview=tickets`;
-  const queuePreviewUrl = `/event/${event.slug}/?t=${Date.now()}&preview=queue`;
+  }, [menuOpen]);
 
   return (
     <div className="space-y-3">
@@ -78,140 +85,71 @@ export function EventEditorHeader({
         <ArrowLeft size={14} />
         Events
       </Link>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
             {event.name || "Untitled Event"}
           </h1>
-          <Badge
-            variant={STATUS_VARIANT[event.status] || "secondary"}
-          >
+          <Badge variant={STATUS_VARIANT[event.status] || "secondary"}>
             {event.status}
           </Badge>
-          <span className="hidden font-mono text-xs text-muted-foreground/60 sm:inline">
-            /event/{event.slug}/
-          </span>
           <EventViewTabs slug={event.slug} active="edit" />
         </div>
         <div className="flex items-center gap-2">
-          {onDuplicate && (
+          <div className="relative" ref={menuRef}>
             <Button
               variant="outline"
               size="sm"
-              onClick={onDuplicate}
-              disabled={duplicating}
-              title="Duplicate this event"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="More actions"
+              aria-expanded={menuOpen}
+              title="More actions"
+              className="px-2"
             >
-              {duplicating ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Copy size={14} />
-              )}
-              {duplicating ? "Duplicating…" : "Duplicate"}
+              <MoreHorizontal size={14} />
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onDelete}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 size={14} />
-            Delete
-          </Button>
-
-          {/* Preview button — split when announcement or queue is enabled */}
-          {hasSplitPreview ? (
-            <div className="relative" ref={popoverRef}>
-              <div className="flex items-stretch">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="rounded-r-none border-r-0"
-                >
-                  <a
-                    href={previewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+            {menuOpen && (
+              <div className="absolute right-0 top-full z-40 mt-1 w-48 overflow-hidden rounded-md border border-border bg-card shadow-lg">
+                {onDuplicate && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDuplicate();
+                    }}
+                    disabled={duplicating}
+                    className={cn(
+                      "flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-foreground transition-colors",
+                      "hover:bg-muted/60 disabled:opacity-60",
+                      "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-1"
+                    )}
                   >
-                    <ExternalLink size={14} />
-                    Preview
-                  </a>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-l-none px-1.5 border-l border-border/50"
-                  onClick={() => setPreviewOpen((v) => !v)}
+                    {duplicating ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <Copy size={13} />
+                    )}
+                    {duplicating ? "Duplicating…" : "Duplicate event"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDelete();
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-2 border-t border-border/40 px-3 py-2 text-left text-xs text-destructive transition-colors",
+                    "hover:bg-destructive/[0.06]",
+                    "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-1"
+                  )}
                 >
-                  <ChevronDown size={12} />
-                </Button>
+                  <Trash2 size={13} />
+                  Delete event
+                </button>
               </div>
-              {previewOpen && (
-                <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-md border border-border bg-card shadow-lg py-1">
-                  {isAnnouncement && (
-                    <a
-                      href={previewUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted/50 transition-colors"
-                      onClick={() => setPreviewOpen(false)}
-                    >
-                      <Eye size={13} className="text-muted-foreground shrink-0" />
-                      <div>
-                        <div className="font-medium">Announcement Page</div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5">What visitors see now</div>
-                      </div>
-                    </a>
-                  )}
-                  {hasQueueEnabled && (
-                    <a
-                      href={queuePreviewUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted/50 transition-colors"
-                      onClick={() => setPreviewOpen(false)}
-                    >
-                      <Users size={13} className="text-muted-foreground shrink-0" />
-                      <div>
-                        <div className="font-medium">Queue Page</div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5">Preview the hype queue</div>
-                      </div>
-                    </a>
-                  )}
-                  <a
-                    href={ticketPreviewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted/50 transition-colors"
-                    onClick={() => setPreviewOpen(false)}
-                  >
-                    <Ticket size={13} className="text-muted-foreground shrink-0" />
-                    <div>
-                      <div className="font-medium">Ticket Page</div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">Preview the buying experience</div>
-                    </div>
-                  </a>
-                </div>
-              )}
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-            >
-              <a
-                href={previewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink size={14} />
-                Preview
-              </a>
-            </Button>
-          )}
+            )}
+          </div>
 
           <Button size="sm" onClick={onSave} disabled={saving}>
             {saving ? (

@@ -23,10 +23,13 @@ interface CanvasSectionProps {
   eventId: string;
   /** Section title — H2 typography. */
   title: string;
-  /** Optional eyebrow above the title. UPPERCASE Space Mono. */
-  eyebrow?: string;
   /** Optional one-line context under the title. */
   subtitle?: string;
+  /** When the section is collapsed AND has filled-in content, show a
+   *  one-line summary of what's set ("Summer Solstice · 10 May at
+   *  Invisible Wind Factory") instead of just the title. Lets a host
+   *  scan the editor and see what's done without expanding everything. */
+  collapsedSummary?: string;
   /** Completeness pill on the right — `${ok}/${total}`. */
   completeness?: { ok: number; total: number };
   /** Default-open state on first visit. After that localStorage wins. */
@@ -50,8 +53,8 @@ export function CanvasSection({
   anchor,
   eventId,
   title,
-  eyebrow,
   subtitle,
+  collapsedSummary,
   completeness,
   defaultOpen = true,
   onActivate,
@@ -170,11 +173,6 @@ export function CanvasSection({
         )}
       >
         <div className="min-w-0 flex-1">
-          {eyebrow && (
-            <div className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-              {eyebrow}
-            </div>
-          )}
           <div className="flex items-center gap-2.5">
             <h2 className="text-[18px] font-semibold leading-tight text-foreground">
               {title}
@@ -183,9 +181,16 @@ export function CanvasSection({
               <CompletenessPill ok={completeness.ok} total={completeness.total} tone={completionTone} />
             )}
           </div>
-          {subtitle && (
+          {/* When closed AND we have a real summary string, show it
+              instead of the subtitle — gives the host a scan-line of
+              what's filled in without expanding. */}
+          {!open && collapsedSummary ? (
+            <p className="mt-1 truncate text-xs text-muted-foreground">
+              {collapsedSummary}
+            </p>
+          ) : subtitle ? (
             <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-          )}
+          ) : null}
         </div>
         <button
           type="button"

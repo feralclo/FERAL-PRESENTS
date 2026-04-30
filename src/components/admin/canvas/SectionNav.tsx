@@ -1,28 +1,28 @@
 "use client";
 
-import { Check, AlertTriangle, Circle } from "lucide-react";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ReadinessReport } from "@/lib/event-readiness";
+import type { ReadinessReport, ReadinessRule } from "@/lib/event-readiness";
 import type { CanvasAnchor } from "./useCanvasSync";
 
 /**
- * Sticky horizontal section navigator that sits above the form pane in
- * the editor. Six pills, one per canvas section, each carrying a tiny
- * status icon: green check when every rule on that section is ok,
- * yellow warn when there's at least one warn or fail (recommended),
- * red dot when there's a publish-blocking required rule failing.
+ * Wizard-style progress strip across the top of the form pane. Replaces
+ * the cramped pill-row that shipped earlier. Each cell is roomy enough
+ * to read at a glance:
  *
- * Click any pill → calls onJump, which the editor wires to sync.focus
- * (force-opens + scrolls the form section, pulses the preview block).
+ *   01 · Identity
+ *   ready
+ *   ▔▔▔▔▔▔▔▔▔ (green underline)
  *
- * Why this exists: the canvas form is six narrative sections in one long
- * scroll. Great for first-create. Painful for editing a live event where
- * the host knows exactly which section they want. Tabs would lose the
- * scroll-narrative; this nav keeps both — tap to jump, scroll to read.
+ *   02 · Story
+ *   needs description
+ *   ▔▔▔▔▔▔▔▔▔ (warning underline)
  *
- * Sticky placement: above the form pane, NOT page-level. The preview
- * pane has its own sticky scroll, so a page-level sticky would cover
- * the editor header on scroll. We attach to the form column only.
+ * Click any cell → sync.focus(anchor) (already wired to force-open and
+ * scroll the matching section). Mobile: horizontal scroll with snap.
+ *
+ * Shipping principle: tell the host the answer ("needs cover image"),
+ * don't make them count check-marks. Same family as the new EditorHero.
  */
 
 interface SectionNavProps {
@@ -33,117 +33,168 @@ interface SectionNavProps {
 interface SectionMeta {
   anchor: CanvasAnchor;
   label: string;
-  /** Two-letter shorthand shown on tight mobile widths. */
-  short: string;
 }
 
 const SECTIONS: SectionMeta[] = [
-  { anchor: "identity", label: "Identity", short: "ID" },
-  { anchor: "story", label: "Story", short: "ST" },
-  { anchor: "look", label: "Look", short: "LK" },
-  { anchor: "tickets", label: "Tickets", short: "TK" },
-  { anchor: "money", label: "Money", short: "$$" },
-  { anchor: "publish", label: "Publish", short: "PB" },
+  { anchor: "identity", label: "Identity" },
+  { anchor: "story", label: "Story" },
+  { anchor: "look", label: "Look" },
+  { anchor: "tickets", label: "Tickets" },
+  { anchor: "money", label: "Money" },
+  { anchor: "publish", label: "Publish" },
 ];
 
-type SectionStatus = "complete" | "warning" | "blocking" | "empty";
+type SectionMood = "complete" | "needs_required" | "needs_optional" | "empty";
 
-function statusForSection(
-  anchor: CanvasAnchor,
-  report: ReadinessReport
+interface SectionStatus {
+  mood: SectionMood;
+  text: string;
+}
+
+/** Same imperative labels EditorHero uses, kept local so the nav stays
+ *  self-contained — duplicating ~10 lines is cheaper than coupling. */
+const ACTION_LABEL: Partial<Record<ReadinessRule["id"], string>> = {
+  date_in_future: "needs date",
+  ticket_on_sale: "needs a ticket",
+  payment_ready: "connect payments",
+  cover_image: "needs cover image",
+  description: "needs description",
+  lineup: "add lineup",
+  seo_title: "add share title",
+  doors_time: "add doors time",
+  banner_image: "add wide banner",
+};
+
+function sectionStatus(
+  rules: ReadinessRule[],
+  anchor: CanvasAnchor
 ): SectionStatus {
-  const rules = report.rules.filter((r) => r.anchor === anchor);
-  if (rules.length === 0) return "empty";
+  const sectionRules = rules.filter((r) => r.anchor === anchor);
+  if (sectionRules.length === 0) return { mood: "empty", text: "—" };
 
-  // Required + failing → blocking publish.
-  const blocking = rules.some(
+  const requiredFails = sectionRules.filter(
     (r) => r.severity === "required" && r.status !== "ok"
   );
-  if (blocking) return "blocking";
+  const optionalFails = sectionRules.filter(
+    (r) => r.severity !== "required" && r.status !== "ok"
+  );
 
-  // Anything not ok at all → warning (recommended/nice-to-have not done).
-  const anyWarn = rules.some((r) => r.status !== "ok");
-  if (anyWarn) return "warning";
+  if (requiredFails.length === 0 && optionalFails.length === 0) {
+    return { mood: "complete", text: "ready" };
+  }
 
-  return "complete";
+  if (requiredFails.length > 0) {
+    if (requiredFails.length === 1) {
+      const r = requiredFails[0];
+      return {
+        mood: "needs_required",
+        text: ACTION_LABEL[r.id] ?? "1 thing left",
+      };
+    }
+    return {
+      mood: "needs_required",
+      text: `${requiredFails.length} steps`,
+    };
+  }
+
+  // Only optional nudges left — section is publish-safe.
+  if (optionalFails.length === 1) {
+    const r = optionalFails[0];
+    return {
+      mood: "needs_optional",
+      text: ACTION_LABEL[r.id] ?? "looks good",
+    };
+  }
+  return {
+    mood: "needs_optional",
+    text: "looks good",
+  };
 }
+
+const MOOD_TINT: Record<SectionMood, string> = {
+  complete: "border-success/60 text-success",
+  needs_required: "border-warning/60 text-warning",
+  needs_optional: "border-primary/40 text-primary",
+  empty: "border-border/40 text-muted-foreground/60",
+};
+
+const MOOD_HOVER: Record<SectionMood, string> = {
+  complete: "hover:bg-success/[0.04]",
+  needs_required: "hover:bg-warning/[0.04]",
+  needs_optional: "hover:bg-primary/[0.04]",
+  empty: "hover:bg-foreground/[0.03]",
+};
 
 export function SectionNav({ report, onJump }: SectionNavProps) {
   return (
     <nav
       aria-label="Editor sections"
       className={cn(
-        "sticky top-0 z-20 -mx-4 mb-4 border-b border-border/40 bg-background/85 px-4 pb-2 pt-3 backdrop-blur-md",
+        "sticky top-0 z-20 -mx-4 mb-4 border-b border-border/40 bg-background/85 px-4 py-2 backdrop-blur-md",
         "sm:-mx-6 sm:px-6",
-        "lg:-mx-0 lg:rounded-xl lg:border lg:border-border/40 lg:bg-card/60 lg:px-3 lg:py-2"
+        "lg:-mx-0 lg:rounded-xl lg:border lg:border-border/40 lg:bg-card/60 lg:px-2 lg:py-2"
       )}
     >
-      <ul className="flex gap-1 overflow-x-auto scrollbar-none lg:flex-wrap lg:overflow-visible">
+      <ul
+        className={cn(
+          "flex gap-1 overflow-x-auto scrollbar-none scroll-smooth snap-x snap-mandatory",
+          "lg:gap-1 lg:overflow-visible lg:snap-none"
+        )}
+      >
         {SECTIONS.map((section, i) => {
-          const status = statusForSection(section.anchor, report);
+          const status = sectionStatus(report.rules, section.anchor);
           return (
-            <li key={section.anchor} className="shrink-0">
+            <li
+              key={section.anchor}
+              className="min-w-[140px] shrink-0 snap-start lg:flex-1 lg:min-w-0"
+            >
               <button
                 type="button"
                 onClick={() => onJump(section.anchor)}
-                aria-label={`Jump to ${section.label}`}
+                aria-label={`Jump to ${section.label} — ${status.text}`}
                 className={cn(
-                  "group inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors",
+                  "group relative flex w-full flex-col items-start gap-0.5 rounded-md px-2.5 py-2 text-left transition-colors",
                   "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-1",
-                  "hover:bg-foreground/[0.04]"
+                  MOOD_HOVER[status.mood]
                 )}
               >
-                <span className="font-mono text-[9px] tabular-nums text-muted-foreground/50">
-                  0{i + 1}
-                </span>
-                <span className="text-foreground/85 group-hover:text-foreground">
-                  {section.label}
-                </span>
-                <StatusDot status={status} />
+                <div className="flex w-full items-center gap-1.5">
+                  <span className="font-mono text-[9px] tabular-nums text-muted-foreground/60">
+                    0{i + 1}
+                  </span>
+                  <span className="text-[12px] font-semibold leading-tight text-foreground">
+                    {section.label}
+                  </span>
+                  {status.mood === "complete" && (
+                    <Check size={10} className="ml-auto text-success" />
+                  )}
+                </div>
+                <div
+                  className={cn(
+                    "truncate font-mono text-[10px] uppercase tracking-[0.10em]",
+                    status.mood === "complete"
+                      ? "text-success/85"
+                      : status.mood === "needs_required"
+                        ? "text-warning/95"
+                        : status.mood === "needs_optional"
+                          ? "text-primary/85"
+                          : "text-muted-foreground/60"
+                  )}
+                >
+                  {status.text}
+                </div>
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "mt-1 h-0.5 w-full rounded-full border-b-2",
+                    MOOD_TINT[status.mood]
+                  )}
+                />
               </button>
             </li>
           );
         })}
       </ul>
     </nav>
-  );
-}
-
-function StatusDot({ status }: { status: SectionStatus }) {
-  if (status === "complete") {
-    return (
-      <Check
-        size={11}
-        className="text-success"
-        aria-label="Section complete"
-      />
-    );
-  }
-  if (status === "blocking") {
-    return (
-      <span
-        className="relative inline-flex h-1.5 w-1.5"
-        aria-label="Required step incomplete"
-      >
-        <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60 motion-safe:animate-ping motion-reduce:hidden" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive" />
-      </span>
-    );
-  }
-  if (status === "warning") {
-    return (
-      <AlertTriangle
-        size={11}
-        className="text-warning"
-        aria-label="Recommended step incomplete"
-      />
-    );
-  }
-  return (
-    <Circle
-      size={9}
-      className="text-muted-foreground/40"
-      aria-label="Section empty"
-    />
   );
 }

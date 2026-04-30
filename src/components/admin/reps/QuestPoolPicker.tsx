@@ -1008,6 +1008,16 @@ function SwitchCampaignList({
   onCancel: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const draftRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (creating) draftRef.current?.focus();
+  }, [creating]);
+
   const sorted = [...campaigns]
     .filter((c) => c.tag !== current)
     .sort(
@@ -1020,6 +1030,93 @@ function SwitchCampaignList({
         c.label.toLowerCase().includes(query.trim().toLowerCase())
       )
     : sorted;
+
+  const submitNew = useCallback(async () => {
+    const label = draft.trim();
+    if (!label || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/media/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "Couldn't create");
+        return;
+      }
+      onPick(json.data.tag);
+      setCreating(false);
+      setDraft("");
+    } catch {
+      setError("Network error");
+    } finally {
+      setBusy(false);
+    }
+  }, [draft, busy, onPick]);
+
+  if (creating) {
+    return (
+      <div className="rounded-md border border-border/50 bg-background/80 overflow-hidden">
+        <div className="px-3 py-2 border-b border-border/40">
+          <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.16em] text-foreground/60">
+            New campaign
+          </p>
+        </div>
+        <div className="p-3 space-y-2">
+          <input
+            ref={draftRef}
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="e.g. Spring 26 push"
+            maxLength={80}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void submitNew();
+              } else if (e.key === "Escape") {
+                setCreating(false);
+                setDraft("");
+              }
+            }}
+            className="w-full h-9 rounded-md border border-border/60 bg-background px-2.5 text-sm text-foreground placeholder:text-foreground/45 focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
+          />
+          {error && (
+            <p className="text-[11px] text-destructive" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <AdminButton
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setCreating(false);
+                setDraft("");
+                setError("");
+              }}
+            >
+              Back
+            </AdminButton>
+            <AdminButton
+              type="button"
+              variant="primary"
+              size="sm"
+              loading={busy}
+              disabled={!draft.trim() || busy}
+              onClick={() => void submitNew()}
+            >
+              Create + use
+            </AdminButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-md border border-border/50 bg-background/80 overflow-hidden">
@@ -1067,6 +1164,20 @@ function SwitchCampaignList({
           ))}
         </ul>
       )}
+      <div className="border-t border-border/40">
+        <button
+          type="button"
+          onClick={() => {
+            setCreating(true);
+            setError("");
+            setDraft(query.trim());
+          }}
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/[0.04] transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New campaign
+        </button>
+      </div>
     </div>
   );
 }

@@ -66,6 +66,15 @@ const KIND_COPY: Record<
       "Upload a 9:16 image — the kind reps post to TikTok, Instagram, or a story — and it'll be saved here for reuse on every future quest.",
     sr: "Choose a shareable",
   },
+  quest_asset: {
+    eyebrow: "Campaign asset",
+    title: "Pick a campaign asset",
+    confirm: "Use this asset",
+    emptyHeading: "No campaign assets yet",
+    emptyHint:
+      "Upload images and videos to a campaign and reps see a rotating feed of them inside the quest.",
+    sr: "Choose a campaign asset",
+  },
   reward_cover: {
     eyebrow: "Reward cover",
     title: "Pick a reward cover",
@@ -107,6 +116,7 @@ const KIND_FILTER_LABEL: Record<TenantMediaKind | "all", string> = {
   all: "All assets",
   quest_cover: "Covers",
   quest_content: "Shareables",
+  quest_asset: "Campaign assets",
   event_cover: "Event covers",
   reward_cover: "Reward covers",
   generic: "Generic",

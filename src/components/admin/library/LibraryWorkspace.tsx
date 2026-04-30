@@ -53,7 +53,12 @@ interface GroupSummary {
   count: number;
 }
 
-type KindFilter = "all" | "quest_cover" | "event_cover" | "quest_content";
+type KindFilter =
+  | "all"
+  | "quest_cover"
+  | "event_cover"
+  | "quest_content"
+  | "quest_asset";
 type SortMode = "recent" | "popular";
 
 const KIND_LABEL: Record<KindFilter, string> = {
@@ -61,6 +66,7 @@ const KIND_LABEL: Record<KindFilter, string> = {
   quest_cover: "Quest covers",
   event_cover: "Event covers",
   quest_content: "Shareables",
+  quest_asset: "Campaign assets",
 };
 
 
@@ -254,7 +260,7 @@ export function LibraryWorkspace({
 
       {/* Kind filter chips — always visible so admins know what they're seeing */}
       <div className="flex flex-wrap gap-1.5">
-        {(["all", "quest_cover", "event_cover", "quest_content"] as const).map((k) => (
+        {(["all", "quest_cover", "event_cover", "quest_content", "quest_asset"] as const).map((k) => (
           <FilterChip
             key={k}
             active={kindFilter === k}
@@ -593,6 +599,7 @@ function CategoriesEditor({
     { kind: "quest_cover", label: "Quest cover" },
     { kind: "event_cover", label: "Event cover" },
     { kind: "quest_content", label: "Shareable" },
+    { kind: "quest_asset", label: "Campaign asset" },
   ];
   const kindsList = row.kinds && row.kinds.length ? row.kinds : [row.kind];
   const isLastChecked = kindsList.length === 1;

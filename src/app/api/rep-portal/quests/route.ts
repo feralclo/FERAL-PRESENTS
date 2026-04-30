@@ -6,7 +6,22 @@ import {
   buildQuestShareUrl,
   fetchPrimaryDomains,
 } from "@/lib/rep-share-url";
+import { getMuxThumbnailUrl, isMuxPlaybackId } from "@/lib/mux";
 import * as Sentry from "@sentry/nextjs";
+
+/** Resolve the best thumbnail URL for a quest_asset row. Mux video uses
+ *  the thumbnail endpoint; everything else uses the canonical URL. */
+function thumbForRow(row: {
+  url: string;
+  storage_key: string | null;
+  mime_type: string | null;
+}): string {
+  const isVideo = (row.mime_type ?? "").startsWith("video/");
+  if (isVideo && row.storage_key && isMuxPlaybackId(row.storage_key)) {
+    return getMuxThumbnailUrl(row.storage_key);
+  }
+  return row.url;
+}
 
 /**
  * GET /api/rep-portal/quests
@@ -123,7 +138,7 @@ export async function GET(request: NextRequest) {
           ep_reward, sales_target, max_completions, starts_at, expires_at,
           cover_image_url, image_url, banner_image_url, video_url,
           accent_hex, accent_hex_secondary, status, promoter_id, event_id,
-          auto_approve,
+          auto_approve, asset_mode, asset_campaign_tag,
           event:events(id, name, slug, date_start, cover_image_url, cover_image, org_id)
         `
       )
@@ -259,6 +274,8 @@ export async function GET(request: NextRequest) {
       promoter_id: string | null;
       event_id: string | null;
       auto_approve: boolean;
+      asset_mode: "single" | "pool";
+      asset_campaign_tag: string | null;
       event:
         | {
             id: string;
@@ -291,6 +308,99 @@ export async function GET(request: NextRequest) {
       if (ev?.org_id) eventOrgIds.push(ev.org_id);
     }
     const domainsByOrgId = await fetchPrimaryDomains(eventOrgIds);
+
+    // Batch-fetch pool summaries for every pool quest. One query covers
+    // every (org, tag) pair: filter by org_id IN (...) + tags overlap on
+    // the union of tags, then bucket client-side. Avoids N+1 when a rep
+    // has multiple pool quests across teams.
+    type PoolSummary = {
+      count: number;
+      image_count: number;
+      video_count: number;
+      sample_thumbs: string[];
+    };
+    const poolSummaryByQuestId = new Map<string, PoolSummary>();
+    const poolQuests = rawQuests.filter(
+      (q) => q.asset_mode === "pool" && !!q.asset_campaign_tag
+    );
+    if (poolQuests.length > 0) {
+      const orgIdsForPools: string[] = [];
+      const tagsForPools: string[] = [];
+      const orgIdByQuestId = new Map<string, string>();
+      for (const q of poolQuests) {
+        const ev = Array.isArray(q.event) ? q.event[0] ?? null : q.event;
+        const oid = ev?.org_id ?? null;
+        if (!oid || !q.asset_campaign_tag) continue;
+        orgIdByQuestId.set(q.id, oid);
+        orgIdsForPools.push(oid);
+        tagsForPools.push(q.asset_campaign_tag);
+      }
+      const uniqueOrgIds = Array.from(new Set(orgIdsForPools));
+      const uniqueTags = Array.from(new Set(tagsForPools));
+      if (uniqueOrgIds.length > 0 && uniqueTags.length > 0) {
+        const { data: poolRows } = await db
+          .from("tenant_media")
+          .select(
+            "id, url, storage_key, mime_type, tags, org_id, created_at"
+          )
+          .in("org_id", uniqueOrgIds)
+          .eq("kind", "quest_asset")
+          .is("deleted_at", null)
+          .overlaps("tags", uniqueTags)
+          .order("created_at", { ascending: false });
+
+        // Bucket by (org_id::tag) — a row tagged with multiple campaigns
+        // counts in each bucket.
+        const buckets = new Map<
+          string,
+          Array<{
+            id: string;
+            url: string;
+            storage_key: string | null;
+            mime_type: string | null;
+          }>
+        >();
+        for (const row of (poolRows ?? []) as Array<{
+          id: string;
+          url: string;
+          storage_key: string | null;
+          mime_type: string | null;
+          tags: string[] | null;
+          org_id: string;
+        }>) {
+          const tags = row.tags ?? [];
+          for (const tag of tags) {
+            if (!uniqueTags.includes(tag)) continue;
+            const key = `${row.org_id}::${tag}`;
+            const list = buckets.get(key) ?? [];
+            list.push(row);
+            buckets.set(key, list);
+          }
+        }
+
+        for (const q of poolQuests) {
+          const oid = orgIdByQuestId.get(q.id);
+          if (!oid || !q.asset_campaign_tag) continue;
+          const list = buckets.get(`${oid}::${q.asset_campaign_tag}`) ?? [];
+          let imageCount = 0;
+          let videoCount = 0;
+          for (const row of list) {
+            if ((row.mime_type ?? "").startsWith("video/")) videoCount += 1;
+            else imageCount += 1;
+          }
+          const sampleThumbs: string[] = [];
+          for (const row of list.slice(0, 3)) {
+            sampleThumbs.push(thumbForRow(row));
+          }
+          poolSummaryByQuestId.set(q.id, {
+            count: list.length,
+            image_count: imageCount,
+            video_count: videoCount,
+            sample_thumbs: sampleThumbs,
+          });
+        }
+      }
+    }
 
     const shaped = rawQuests.map((q) => {
       const subs = submissionsByQuestId.get(q.id) ?? [];
@@ -383,6 +493,19 @@ export async function GET(request: NextRequest) {
               }
             : null,
         },
+        // Pool-quest fields (locked iOS contract — see
+        // docs/ios-quest-pool-contract.md). `asset_pool` is null for
+        // single-asset quests; iOS branches on `asset_mode`.
+        asset_mode: q.asset_mode,
+        asset_pool:
+          q.asset_mode === "pool"
+            ? poolSummaryByQuestId.get(q.id) ?? {
+                count: 0,
+                image_count: 0,
+                video_count: 0,
+                sample_thumbs: [],
+              }
+            : null,
       };
     });
 

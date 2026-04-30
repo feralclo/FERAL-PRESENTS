@@ -27,10 +27,15 @@ export const TENANT_MEDIA_IMAGE_TYPES = [
 export const TENANT_MEDIA_BUCKET_BYTES_MAX = 25 * 1024 * 1024;
 
 export const TENANT_MEDIA_KINDS = {
-  quest_cover:  { prefix: "quest-covers",  maxBytes: 25 * 1024 * 1024 },
-  event_cover:  { prefix: "event-covers",  maxBytes: 25 * 1024 * 1024 },
-  reward_cover: { prefix: "reward-covers", maxBytes: 25 * 1024 * 1024 },
-  generic:      { prefix: "generic",       maxBytes: 25 * 1024 * 1024 },
+  quest_cover:   { prefix: "quest-covers",   maxBytes: 25 * 1024 * 1024 },
+  // Story / shareable creative for quests — what reps download and post to
+  // TikTok/Instagram. Distinct from quest_cover because content can have
+  // baked-in text and is typically 9:16 portrait vs the cover's clean 3:4
+  // designed for iOS overlay. Video content still flows through Mux (separate).
+  quest_content: { prefix: "quest-content",  maxBytes: 25 * 1024 * 1024 },
+  event_cover:   { prefix: "event-covers",   maxBytes: 25 * 1024 * 1024 },
+  reward_cover:  { prefix: "reward-covers",  maxBytes: 25 * 1024 * 1024 },
+  generic:       { prefix: "generic",        maxBytes: 25 * 1024 * 1024 },
 } as const;
 
 export type TenantMediaKind = keyof typeof TENANT_MEDIA_KINDS;

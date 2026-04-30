@@ -59,7 +59,7 @@ import * as tus from "tus-js-client";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { CoverImagePicker } from "@/components/admin/CoverImagePicker";
 import { isMuxPlaybackId } from "@/lib/mux";
-import { processImageFile } from "@/lib/image-utils";
+import { prepareUploadFile } from "@/lib/uploads/prepare-upload";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
@@ -157,6 +157,7 @@ export function QuestsTab() {
   const [proofType, setProofType] = useState<QuestProofType>("screenshot");
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const [contentPickerOpen, setContentPickerOpen] = useState(false);
   const [autoApprove, setAutoApprove] = useState(false);
 
   // Events list for event picker + date awareness + cover cascade.
@@ -507,41 +508,58 @@ export function QuestsTab() {
     setVideoError("");
 
     if (file.type.startsWith("image/")) {
-      // ── Image branch — uses the same /api/upload flow as the cover
-      // image picker on this same form (ImageUpload). Proven, works.
-      // Storage is base64-in-site_settings, served via /api/media/{key}.
-      // We absoluteise the URL with window.location.origin so iOS gets a
-      // fetchable URL (it would otherwise see a bare /api/media/... path).
-      //
-      // Why not Supabase Storage signed URLs: every variant of the signed-
-      // URL upload (raw fetch PUT, SDK uploadToSignedUrl) hits a CORS
-      // preflight that the artist-media bucket rejects, surfacing as the
-      // unhelpful "Failed to fetch" TypeError.
+      // ── Image branch ────────────────────────────────────────────────
+      // Routed through the tenant-media pipeline — accepts up to 25MB,
+      // runs Sharp server-side (resize 1200×1600 + WebP + strip EXIF),
+      // and saves a tenant_media row of kind='quest_content' so the
+      // upload appears in the cover library for reuse on the next quest.
       setVideoUploading(true);
       setVideoProgress(0);
-      setVideoStatus("Compressing image...");
+      setVideoStatus("Preparing image...");
       try {
-        const compressed = await processImageFile(file);
-        if (!compressed) throw new Error("Could not read image");
+        // Client-side downscale for huge originals — pass-through under 5MB.
+        const upload = await prepareUploadFile(file);
 
         setVideoStatus("Uploading image...");
-        const key = `quest-${editId || "new"}-${Date.now()}`;
-        const res = await fetch("/api/upload", {
+        setVideoProgress(20);
+        const signedRes = await fetch("/api/admin/media/signed-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageData: compressed, key }),
+          body: JSON.stringify({
+            kind: "quest_content",
+            content_type: upload.type,
+            size_bytes: upload.size,
+          }),
         });
-        const json = await res.json();
-        if (!res.ok || !json.url) {
-          throw new Error(json.error || `Upload failed (${res.status})`);
+        const signedJson = await signedRes.json();
+        if (!signedRes.ok || !signedJson.data) {
+          throw new Error(signedJson.error || "Upload failed");
         }
 
-        // /api/upload returns a relative path — make it absolute so iOS
-        // (and any other consumer of video_url) can fetch directly.
-        const absoluteUrl = json.url.startsWith("http")
-          ? json.url
-          : `${window.location.origin}${json.url}`;
-        setVideoUrl(absoluteUrl);
+        setVideoProgress(50);
+        const putRes = await fetch(signedJson.data.upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": upload.type },
+          body: upload,
+        });
+        if (!putRes.ok) throw new Error("Upload to storage failed");
+
+        setVideoStatus("Saving...");
+        setVideoProgress(80);
+        const completeRes = await fetch("/api/admin/media/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key: signedJson.data.key,
+            kind: "quest_content",
+          }),
+        });
+        const completeJson = await completeRes.json();
+        if (!completeRes.ok || !completeJson.data) {
+          throw new Error(completeJson.error || "Save failed");
+        }
+
+        setVideoUrl(completeJson.data.url);
         setVideoStatus("");
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Unknown error";
@@ -1640,7 +1658,7 @@ export function QuestsTab() {
                           <span className={`text-xs font-medium ${dragActive ? "text-primary" : "text-muted-foreground"}`}>
                             {dragActive ? "Drop to upload" : "Click or drop an image or video"}
                           </span>
-                          <span className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP, MP4, MOV, WebM — max 200MB for video</span>
+                          <span className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP up to 25MB · MP4, MOV, WebM up to 200MB</span>
                           <input
                             ref={videoInputRef}
                             type="file"
@@ -1650,6 +1668,20 @@ export function QuestsTab() {
                           />
                         </label>
                       )}
+                      {/* Library reuse — only useful when there's no asset
+                          uploaded yet AND no upload in flight. The library
+                          stores images (kind=quest_content); video is Mux-only
+                          and not in the library. */}
+                      {!videoUrl && !videoUploading && (
+                        <button
+                          type="button"
+                          onClick={() => setContentPickerOpen(true)}
+                          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-card px-3 py-2 text-[12px] text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                        >
+                          <ImageLucide size={13} />
+                          Or browse the cover library
+                        </button>
+                      )}
                       {videoError && (
                         <div className="flex items-start gap-1.5 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">
                           <AlertCircle size={12} className="text-destructive mt-0.5 shrink-0" />
@@ -1657,8 +1689,18 @@ export function QuestsTab() {
                         </div>
                       )}
                       <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-                        We pick the right pipeline automatically — images go straight to Supabase Storage, videos go through Mux for streaming + a downloadable 1080p MP4. Picking a new file replaces the previous one. Leave blank for quests with no downloadable asset.
+                        We pick the right pipeline automatically — images go straight to Supabase Storage (saved to your library for reuse), videos go through Mux for streaming + a downloadable 1080p MP4. Picking a new file replaces the previous one. Leave blank for quests with no downloadable asset.
                       </p>
+                      <CoverImagePicker
+                        open={contentPickerOpen}
+                        onOpenChange={setContentPickerOpen}
+                        value={videoUrl && !isMuxPlaybackId(videoUrl) ? videoUrl : ""}
+                        onChange={(v) => setVideoUrl(v)}
+                        kind="quest_content"
+                        templatesEnabled={false}
+                        previewAspect="9/16"
+                        previewTitle={title || "Your story share"}
+                      />
                     </div>
                   </div>
                 )}

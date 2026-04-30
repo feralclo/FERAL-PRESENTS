@@ -61,10 +61,17 @@ export function compressImage(
 }
 
 /** Process an image file with progressive compression to stay under ~600KB.
- *  PNG limit is higher (1.2MB) since they don't compress as aggressively. */
+ *  PNG limit is higher (1.2MB) since they don't compress as aggressively.
+ *
+ *  Hard input cap is 15MB. The output is base64-encoded and stored in JSONB
+ *  on `site_settings`, which has a Postgres TOAST row size limit — pushing
+ *  the input cap higher risks silent row-size failures. Surfaces that
+ *  legitimately need bigger photos (cover library, quest content) go
+ *  through the tenant-media pipeline instead, which uploads direct to
+ *  Storage and accepts up to 25MB. */
 export async function processImageFile(file: File): Promise<string | null> {
-  if (file.size > 10 * 1024 * 1024) {
-    alert("Image too large. Maximum is 10MB.");
+  if (file.size > 15 * 1024 * 1024) {
+    alert("Image too large. Maximum is 15MB.");
     return null;
   }
   const isPng = file.type === "image/png";

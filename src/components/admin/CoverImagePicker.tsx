@@ -65,8 +65,9 @@ export interface CoverImagePickerProps {
    *  1:1). Defaults to true. */
   templatesEnabled?: boolean;
   /** Aspect ratio of the live preview frame. "3/4" (default) for quest cards,
-   *  "1/1" for event covers, "16/9" for banners. Tiles in the grid stay 3/4. */
-  previewAspect?: "3/4" | "1/1" | "16/9";
+   *  "1/1" for event covers, "9/16" for story content, "16/9" for banners.
+   *  Tiles in the grid stay 3/4. */
+  previewAspect?: "3/4" | "1/1" | "9/16" | "16/9";
 }
 
 export function CoverImagePicker({
@@ -790,12 +791,19 @@ function PhonePreview({
   cover: string;
   title: string;
   accent: string;
-  aspect: "3/4" | "1/1" | "16/9";
+  aspect: "3/4" | "1/1" | "9/16" | "16/9";
 }) {
   // The preview matches the surface this picker is targeting:
-  //   3/4 — quest card hero (iOS), 1/1 — event cover tile, 16/9 — banner.
+  //   3/4 — quest card hero (iOS), 1/1 — event cover tile,
+  //   9/16 — quest content / story share, 16/9 — banner.
   const aspectClass =
-    aspect === "1/1" ? "aspect-square" : aspect === "16/9" ? "aspect-video" : "aspect-[3/4]";
+    aspect === "1/1"
+      ? "aspect-square"
+      : aspect === "16/9"
+      ? "aspect-video"
+      : aspect === "9/16"
+      ? "aspect-[9/16]"
+      : "aspect-[3/4]";
   return (
     <div className={cn("mx-auto w-[200px] rounded-2xl overflow-hidden border border-border/60 bg-card relative shadow-lg", aspectClass)}>
       {cover ? (

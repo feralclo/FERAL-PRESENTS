@@ -31,6 +31,65 @@ import {
 import { prepareUploadFile } from "@/lib/uploads/prepare-upload";
 import { cn } from "@/lib/utils";
 
+// Kind-specific UI copy. Lets one component serve quest covers, event
+// covers, and shareable story content without hard-coding "cover" everywhere.
+const KIND_COPY: Record<
+  TenantMediaKind,
+  {
+    eyebrow: string;
+    title: string;
+    confirm: string;
+    emptyHeading: string;
+    emptyHint: string;
+    /** Used in the dialog's sr-only DialogTitle for screen readers. */
+    sr: string;
+  }
+> = {
+  quest_cover: {
+    eyebrow: "Cover image",
+    title: "Pick a cover",
+    confirm: "Use this cover",
+    emptyHeading: "No covers yet",
+    emptyHint:
+      "Every cover you upload is saved here for the next quest. Start with a template or upload your first image.",
+    sr: "Choose a cover image",
+  },
+  event_cover: {
+    eyebrow: "Event cover",
+    title: "Pick an event cover",
+    confirm: "Use this cover",
+    emptyHeading: "No event covers yet",
+    emptyHint:
+      "Every cover you upload is saved here for the next event. Upload one to start your library.",
+    sr: "Choose an event cover",
+  },
+  quest_content: {
+    eyebrow: "Shareable asset",
+    title: "Pick a shareable asset",
+    confirm: "Use this asset",
+    emptyHeading: "No shareable assets yet",
+    emptyHint:
+      "Upload a 9:16 image (the kind reps post to TikTok or Instagram) and it'll be saved here for reuse on every future quest.",
+    sr: "Choose a shareable asset",
+  },
+  reward_cover: {
+    eyebrow: "Reward cover",
+    title: "Pick a reward cover",
+    confirm: "Use this cover",
+    emptyHeading: "No reward covers yet",
+    emptyHint: "Upload one to start your library.",
+    sr: "Choose a reward cover",
+  },
+  generic: {
+    eyebrow: "Image",
+    title: "Pick an image",
+    confirm: "Use this image",
+    emptyHeading: "Library is empty",
+    emptyHint: "Upload one to start your library.",
+    sr: "Choose an image",
+  },
+};
+
 interface TenantMediaRow {
   id: string;
   url: string;
@@ -112,6 +171,8 @@ export function CoverImagePicker({
     onOpenChange(false);
   }, [onChange, onOpenChange]);
 
+  const copy = KIND_COPY[kind];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -126,7 +187,7 @@ export function CoverImagePicker({
           "md:max-w-5xl"
         )}
       >
-        <DialogTitle className="sr-only">Choose a cover image</DialogTitle>
+        <DialogTitle className="sr-only">{copy.sr}</DialogTitle>
 
         {/* Drag-handle pill — shown only on the mobile sheet form. */}
         <div className="md:hidden flex justify-center pt-2 pb-1">
@@ -134,24 +195,15 @@ export function CoverImagePicker({
         </div>
 
         <div className="flex h-[min(82vh,720px)] max-md:h-[min(85dvh,calc(85dvh))] flex-col">
-          {/* Header */}
-          <div className="border-b border-border/60 px-5 py-4 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                Cover image
-              </p>
-              <h2 className="text-base font-semibold text-foreground mt-0.5">
-                Pick a cover
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors"
-              aria-label="Close"
-            >
-              <X size={16} />
-            </button>
+          {/* Header — close button is rendered by DialogContent itself in
+              the top-right corner; no need for a duplicate one here. */}
+          <div className="border-b border-border/60 px-5 py-4 pr-12">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+              {copy.eyebrow}
+            </p>
+            <h2 className="text-base font-semibold text-foreground mt-0.5">
+              {copy.title}
+            </h2>
           </div>
 
           {/* Tabs */}
@@ -184,6 +236,8 @@ export function CoverImagePicker({
               {tab === "library" && (
                 <LibraryGrid
                   kind={kind}
+                  emptyHeading={copy.emptyHeading}
+                  emptyHint={copy.emptyHint}
                   selected={selected}
                   onSelect={setSelected}
                   onSwitchToUpload={() => setTab("upload")}
@@ -230,7 +284,7 @@ export function CoverImagePicker({
               className="text-muted-foreground hover:text-destructive"
             >
               <Trash2 size={14} className="mr-1.5" />
-              Clear cover
+              Clear
             </Button>
             <div className="flex items-center gap-2">
               <Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
@@ -243,7 +297,7 @@ export function CoverImagePicker({
                 disabled={!selected || selected === value}
               >
                 <Check size={14} className="mr-1.5" />
-                Use this image
+                {copy.confirm}
               </Button>
             </div>
           </div>
@@ -352,12 +406,16 @@ function CategoryChip({
 
 function LibraryGrid({
   kind,
+  emptyHeading,
+  emptyHint,
   selected,
   onSelect,
   onSwitchToUpload,
   onSwitchToTemplates,
 }: {
   kind: TenantMediaKind;
+  emptyHeading: string;
+  emptyHint: string;
   selected: string;
   onSelect: (url: string) => void;
   onSwitchToUpload: () => void;
@@ -442,10 +500,9 @@ function LibraryGrid({
         <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
           <ImageIcon size={20} className="text-primary" />
         </div>
-        <h3 className="text-base font-semibold text-foreground">Your library is empty</h3>
+        <h3 className="text-base font-semibold text-foreground">{emptyHeading}</h3>
         <p className="text-sm text-muted-foreground mt-1.5 max-w-sm">
-          Every cover you upload is saved here for next time.
-          {onSwitchToTemplates ? " Start with a template or upload your first image." : " Upload your first image."}
+          {emptyHint}
         </p>
         <div className="flex gap-2 mt-5">
           <Button size="sm" onClick={onSwitchToUpload}>

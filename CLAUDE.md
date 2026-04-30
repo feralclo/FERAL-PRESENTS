@@ -414,7 +414,7 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 - **Brand & content**: `/onboarding/` (3-step), `/settings/` (9 subs: branding, domains, general, plan, search-social, integrations, users, finance, scanner), `/ticketstore/` (theme builder).
 - **Marketing**: `/marketing/` (Klaviyo), `/communications/` (templates), `/campaigns/` + `/email/` (live: guest-list outreach), `/traffic/`.
 - **Rep program**: `/reps/` (6 tabs: Dashboard / Reps / Rewards / Quests / Reports / Settings — Library promoted to `/admin/library/`), `/promoter/` (public profile), `/ep/` (Float / Earned / Ledger / Payouts + Buy EP).
-- **Creative**: `/library/` (Cover Library — multi-kind grid with optional campaign-group labels; uploads go through Sharp → WebP). Shared between Rep Programme + Events editor.
+- **Creative**: `/library/` (Library — multi-kind grid covering quest covers, event covers, and story assets, with optional campaign-group labels; uploads go through Sharp → WebP). Shared between Rep Programme + Events editor + the inline picker (`<CoverImagePicker kind=…>`) on each cover/asset surface.
 - **Money**: `/payments/` (Stripe Custom 5-state), `/finance/` → `/settings/finance/`, `/plans/`.
 - **Owner only**: `/connect/` (all Stripe accounts, fee defaults), `/command/` (UK command center: globe + map + live sessions), `/platform-settings/`, `/backend/` (8 subs: beta, plans, health, tenants, payment-health, platform-settings, connect, xp), `/beta/`.
 - **Auth**: `/login/`, `/signup/`, `/account/`, `/invite/[token]/`.

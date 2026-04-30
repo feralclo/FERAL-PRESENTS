@@ -54,7 +54,7 @@ export function LookSection({ event, updateEvent }: TabWithSettingsProps) {
           className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-card px-3 py-2 text-[12px] text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
         >
           <Library size={13} />
-          Browse cover library
+          Browse library
         </button>
         <CoverImagePicker
           open={coverPickerOpen}

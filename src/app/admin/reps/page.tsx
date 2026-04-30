@@ -116,9 +116,9 @@ function RepsHubPageInner() {
             <Library size={18} className="text-primary/70" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground">Cover Library</p>
+            <p className="text-sm font-medium text-foreground">Library</p>
             <p className="text-xs text-muted-foreground">
-              Reusable creative for quests + events, organised by campaign
+              Reusable creative — covers, story assets, organised by campaign
             </p>
           </div>
           <ExternalLink size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />

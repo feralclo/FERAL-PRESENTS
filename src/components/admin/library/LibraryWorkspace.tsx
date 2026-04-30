@@ -62,7 +62,7 @@ const KIND_ASPECT: Record<TenantMediaKind, string> = {
 };
 
 /**
- * The cover library workspace.
+ * The library workspace.
  *
  * Multi-kind grid (quest + event covers, future kinds slot in via the
  * filter chip), with optional "group" labels for campaign-style organisation
@@ -197,13 +197,13 @@ export function LibraryWorkspace({
   return (
     <div className={cn("space-y-6", !embedded && "p-6 lg:p-8")}>
       <AdminPageHeader
-        title="Cover library"
+        title="Library"
         subtitle={
           rows === null
             ? "Loading…"
             : rows.length === 0
             ? "Empty — your first upload lands here"
-            : `${rows.length} cover${rows.length === 1 ? "" : "s"} · ${formatBytes(totalBytes)} stored`
+            : `${rows.length} asset${rows.length === 1 ? "" : "s"} · ${formatBytes(totalBytes)} stored`
         }
         actions={<BulkUploadButton onUploaded={() => void load()} groups={groups} />}
       />

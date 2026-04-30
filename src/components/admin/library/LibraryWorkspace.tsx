@@ -18,6 +18,7 @@ import {
   TENANT_MEDIA_KINDS,
   type TenantMediaKind,
 } from "@/lib/uploads/tenant-media-config";
+import { prepareUploadFile } from "@/lib/uploads/prepare-upload";
 import { cn } from "@/lib/utils";
 
 interface MediaRow {
@@ -537,6 +538,11 @@ function GroupEditor({
   );
 }
 
+interface UploadFailure {
+  filename: string;
+  reason: string;
+}
+
 function BulkUploadButton({
   onUploaded,
   groups,
@@ -547,31 +553,81 @@ function BulkUploadButton({
   const [showOptions, setShowOptions] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [kind, setKind] = useState<TenantMediaKind>("quest_cover");
-  const [uploading, setUploading] = useState<{ done: number; total: number } | null>(
-    null
-  );
+  const [uploading, setUploading] = useState<
+    | {
+        done: number;
+        total: number;
+        currentName: string;
+        phase: string;
+      }
+    | null
+  >(null);
+  const [failures, setFailures] = useState<UploadFailure[]>([]);
+  const [successCount, setSuccessCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const cap = TENANT_MEDIA_KINDS[kind].maxBytes;
 
   const trigger = useCallback(() => {
+    setFailures([]);
+    setSuccessCount(0);
     setShowOptions(true);
   }, []);
 
   const handleFiles = useCallback(
     async (files: FileList) => {
-      const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      const list = Array.from(files);
       if (!list.length) return;
-      setUploading({ done: 0, total: list.length });
-      let done = 0;
+      const localFailures: UploadFailure[] = [];
+      let localSuccess = 0;
       const tags = groupName.trim() ? [groupName.trim().slice(0, 60)] : undefined;
-      for (const file of list) {
-        if (file.size > cap) {
-          done += 1;
-          setUploading({ done, total: list.length });
+
+      for (let i = 0; i < list.length; i++) {
+        const rawFile = list[i];
+
+        // Pre-flight checks BEFORE any prep so the user gets crisp feedback.
+        if (!rawFile.type.startsWith("image/")) {
+          localFailures.push({
+            filename: rawFile.name,
+            reason: "Not an image file",
+          });
+          setUploading({
+            done: i + 1,
+            total: list.length,
+            currentName: rawFile.name,
+            phase: "Skipped",
+          });
           continue;
         }
+        if (rawFile.size > cap) {
+          localFailures.push({
+            filename: rawFile.name,
+            reason: `Over ${Math.round(cap / 1024 / 1024)}MB cap (${Math.round(rawFile.size / 1024 / 1024)}MB)`,
+          });
+          setUploading({
+            done: i + 1,
+            total: list.length,
+            currentName: rawFile.name,
+            phase: "Skipped",
+          });
+          continue;
+        }
+
         try {
+          setUploading({
+            done: i,
+            total: list.length,
+            currentName: rawFile.name,
+            phase: "Preparing",
+          });
+          const file = await prepareUploadFile(rawFile);
           const dims = await readDims(file);
+
+          setUploading({
+            done: i,
+            total: list.length,
+            currentName: rawFile.name,
+            phase: "Uploading",
+          });
           const signedRes = await fetch("/api/admin/media/signed-url", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -582,16 +638,34 @@ function BulkUploadButton({
             }),
           });
           const signedJson = await signedRes.json();
-          if (!signedRes.ok || !signedJson.data) continue;
+          if (!signedRes.ok || !signedJson.data) {
+            localFailures.push({
+              filename: rawFile.name,
+              reason: signedJson.error || "Server rejected upload",
+            });
+            continue;
+          }
 
           const putRes = await fetch(signedJson.data.upload_url, {
             method: "PUT",
             headers: { "Content-Type": file.type },
             body: file,
           });
-          if (!putRes.ok) continue;
+          if (!putRes.ok) {
+            localFailures.push({
+              filename: rawFile.name,
+              reason: "Upload to storage failed",
+            });
+            continue;
+          }
 
-          await fetch("/api/admin/media/complete", {
+          setUploading({
+            done: i,
+            total: list.length,
+            currentName: rawFile.name,
+            phase: "Saving",
+          });
+          const completeRes = await fetch("/api/admin/media/complete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -602,15 +676,32 @@ function BulkUploadButton({
               tags,
             }),
           });
-        } catch {
-          // Per-file fail-quiet — keep working through the batch.
+          if (!completeRes.ok) {
+            const completeJson = await completeRes.json().catch(() => ({}));
+            localFailures.push({
+              filename: rawFile.name,
+              reason: completeJson.error || "Save failed",
+            });
+            continue;
+          }
+          localSuccess += 1;
+        } catch (err) {
+          localFailures.push({
+            filename: rawFile.name,
+            reason: err instanceof Error ? err.message : "Unknown error",
+          });
         }
-        done += 1;
-        setUploading({ done, total: list.length });
       }
+
       setUploading(null);
-      setShowOptions(false);
-      setGroupName("");
+      setFailures(localFailures);
+      setSuccessCount(localSuccess);
+      // Keep dialog open if there were any failures so admin can review;
+      // close + reset if everything succeeded.
+      if (localFailures.length === 0) {
+        setShowOptions(false);
+        setGroupName("");
+      }
       onUploaded();
     },
     [kind, groupName, cap, onUploaded]
@@ -622,7 +713,7 @@ function BulkUploadButton({
         {uploading ? (
           <>
             <Loader2 size={14} className="animate-spin mr-1.5" />
-            Uploading {uploading.done}/{uploading.total}…
+            {uploading.phase} {uploading.done + 1}/{uploading.total}…
           </>
         ) : (
           <>
@@ -697,16 +788,61 @@ function BulkUploadButton({
               </p>
             </div>
 
+            {/* Per-file results — only shown after a batch with at least one
+                rejection. Lets the admin see what didn't make it without
+                re-running the whole upload. */}
+            {(failures.length > 0 || successCount > 0) && !uploading && (
+              <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-3">
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="font-medium text-foreground">
+                    {successCount > 0 && (
+                      <span className="text-success">
+                        {successCount} uploaded
+                      </span>
+                    )}
+                    {successCount > 0 && failures.length > 0 && " · "}
+                    {failures.length > 0 && (
+                      <span className="text-destructive">
+                        {failures.length} skipped
+                      </span>
+                    )}
+                  </span>
+                </div>
+                {failures.length > 0 && (
+                  <ul className="space-y-1 text-[11px]">
+                    {failures.map((f, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-muted-foreground"
+                      >
+                        <span className="truncate font-mono text-foreground">
+                          {f.filename}
+                        </span>
+                        <span>—</span>
+                        <span className="shrink-0 text-destructive/90">
+                          {f.reason}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-2 pt-1">
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => setShowOptions(false)}
+                onClick={() => {
+                  setShowOptions(false);
+                  setFailures([]);
+                  setSuccessCount(0);
+                }}
               >
-                Cancel
+                {failures.length > 0 ? "Done" : "Cancel"}
               </Button>
               <Button size="sm" onClick={() => fileRef.current?.click()}>
-                Choose files
+                {failures.length > 0 ? "Try more" : "Choose files"}
               </Button>
             </div>
           </div>

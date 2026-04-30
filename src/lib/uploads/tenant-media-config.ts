@@ -18,13 +18,19 @@ export const TENANT_MEDIA_IMAGE_TYPES = [
   "image/heif",
 ] as const;
 
-export const TENANT_MEDIA_BUCKET_BYTES_MAX = 10 * 1024 * 1024;
+// Raised from 10MB → 25MB after admins tried bulk-uploading phone photos
+// at full resolution (HEIC + 48MP routinely > 8MB). Sharp on the server
+// always resizes to fit 1200×1600 + WebP, so what gets to iOS is identical
+// (~60–200KB per cover). The cap protects against pathological uploads
+// (50MP scans, multi-page PDFs as images, etc) and matches the bucket's
+// storage.file_size_limit.
+export const TENANT_MEDIA_BUCKET_BYTES_MAX = 25 * 1024 * 1024;
 
 export const TENANT_MEDIA_KINDS = {
-  quest_cover:  { prefix: "quest-covers",  maxBytes: 8 * 1024 * 1024 },
-  event_cover:  { prefix: "event-covers",  maxBytes: 8 * 1024 * 1024 },
-  reward_cover: { prefix: "reward-covers", maxBytes: 8 * 1024 * 1024 },
-  generic:      { prefix: "generic",       maxBytes: 8 * 1024 * 1024 },
+  quest_cover:  { prefix: "quest-covers",  maxBytes: 25 * 1024 * 1024 },
+  event_cover:  { prefix: "event-covers",  maxBytes: 25 * 1024 * 1024 },
+  reward_cover: { prefix: "reward-covers", maxBytes: 25 * 1024 * 1024 },
+  generic:      { prefix: "generic",       maxBytes: 25 * 1024 * 1024 },
 } as const;
 
 export type TenantMediaKind = keyof typeof TENANT_MEDIA_KINDS;

@@ -28,6 +28,7 @@ import {
   TENANT_MEDIA_KINDS,
   type TenantMediaKind,
 } from "@/lib/uploads/tenant-media-config";
+import { prepareUploadFile } from "@/lib/uploads/prepare-upload";
 import { cn } from "@/lib/utils";
 
 interface TenantMediaRow {
@@ -548,23 +549,27 @@ function UploadPane({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(
-    async (file: File) => {
+    async (rawFile: File) => {
       setError("");
-      const cap = TENANT_MEDIA_KINDS[kind].maxBytes;
-      if (file.size > cap) {
-        setError(`File too large. Max ${Math.round(cap / 1024 / 1024)}MB.`);
+      if (!rawFile.type.startsWith("image/")) {
+        setError("Only images are supported.");
         return;
       }
-      if (!file.type.startsWith("image/")) {
-        setError("Only images are supported.");
+      const cap = TENANT_MEDIA_KINDS[kind].maxBytes;
+      if (rawFile.size > cap) {
+        setError(`File too large. Max ${Math.round(cap / 1024 / 1024)}MB.`);
         return;
       }
 
       try {
+        setProgress({ phase: "Preparing upload…", pct: 5 });
+        // Client-side downscale for large originals — pass-through for small
+        // files. Keeps cellular uploads fast without changing what reaches iOS.
+        const file = await prepareUploadFile(rawFile);
+
         // Measure dimensions locally so we can store them in tenant_media.
         const dims = await readImageDimensions(file);
 
-        setProgress({ phase: "Preparing upload…", pct: 5 });
         const signedRes = await fetch("/api/admin/media/signed-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -679,7 +684,7 @@ function UploadPane({
       <p className="text-sm text-muted-foreground mt-1.5">
         {progress
           ? "Don't close this dialog — almost there."
-          : `JPG, PNG, or WebP · up to ${Math.round(TENANT_MEDIA_KINDS[kind].maxBytes / 1024 / 1024)}MB`}
+          : `JPG, PNG, WebP, or HEIC · up to ${Math.round(TENANT_MEDIA_KINDS[kind].maxBytes / 1024 / 1024)}MB · auto-optimised on upload`}
       </p>
 
       {progress && (

@@ -6,6 +6,7 @@ import { Loader2, Upload, Trash2, AlertTriangle } from "lucide-react";
 import { processImageFile } from "@/lib/image-utils";
 import { cn } from "@/lib/utils";
 import type { TenantMediaKind } from "@/lib/uploads/tenant-media-config";
+import { prepareUploadFile } from "@/lib/uploads/prepare-upload";
 
 /**
  * One image slot in the Look section. Replaces the bare ImageUpload with a
@@ -125,13 +126,16 @@ export function ImageSlot({
           // Direct-to-Storage signed URL → /complete runs Sharp (resize +
           // WebP + strip EXIF) and writes a tenant_media row, so the file
           // appears in the library for reuse on the next event/quest.
+          // Client-side downscale for huge originals so cellular uploads
+          // stay reasonable — pass-through for files already small.
+          const upload = await prepareUploadFile(file);
           const signedRes = await fetch("/api/admin/media/signed-url", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               kind: mediaKind,
-              content_type: file.type,
-              size_bytes: file.size,
+              content_type: upload.type,
+              size_bytes: upload.size,
             }),
           });
           const signedJson = await signedRes.json();
@@ -140,8 +144,8 @@ export function ImageSlot({
           } else {
             const putRes = await fetch(signedJson.data.upload_url, {
               method: "PUT",
-              headers: { "Content-Type": file.type },
-              body: file,
+              headers: { "Content-Type": upload.type },
+              body: upload,
             });
             if (!putRes.ok) {
               setUploadError("Upload to storage failed");

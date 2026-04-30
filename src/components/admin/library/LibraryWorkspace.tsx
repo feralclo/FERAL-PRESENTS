@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   TENANT_MEDIA_KINDS,
+  TENANT_MEDIA_RAW_INPUT_MAX,
   type TenantMediaKind,
 } from "@/lib/uploads/tenant-media-config";
 import { prepareUploadFile } from "@/lib/uploads/prepare-upload";
@@ -559,6 +560,7 @@ interface QueueItem {
 
 let queueIdCounter = 0;
 const nextQueueId = () => `q-${Date.now()}-${++queueIdCounter}`;
+const mb = (bytes: number) => Math.round(bytes / 1024 / 1024);
 
 function BulkUploadButton({
   onUploaded,
@@ -571,10 +573,24 @@ function BulkUploadButton({
   const [groupName, setGroupName] = useState("");
   const [kind, setKind] = useState<TenantMediaKind>("quest_cover");
   const [items, setItems] = useState<QueueItem[]>([]);
-  const [running, setRunning] = useState(false);
+  const [showCompletionToast, setShowCompletionToast] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const cap = TENANT_MEDIA_KINDS[kind].maxBytes;
+
+  // Refs read by the imperative processor — using state in the runner
+  // would re-create the closure on every patch and trigger React 18
+  // effect-cleanup, which previously cancelled in-flight async work and
+  // orphaned items in 'preparing' status.
+  const itemsRef = useRef<QueueItem[]>([]);
+  const settingsRef = useRef({ kind, groupName });
+  const isProcessingRef = useRef(false);
+  const lastInFlightRef = useRef(false);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+  useEffect(() => {
+    settingsRef.current = { kind, groupName };
+  }, [kind, groupName]);
 
   const inFlight = items.some(
     (i) => i.status !== "done" && i.status !== "failed"
@@ -583,134 +599,179 @@ function BulkUploadButton({
   const failedCount = items.filter((i) => i.status === "failed").length;
 
   const triggerOpen = useCallback(() => {
-    setItems([]);
+    if (!inFlight) setItems([]);
+    setShowCompletionToast(false);
     setOpen(true);
+  }, [inFlight]);
+
+  const patchItem = useCallback((id: string, p: Partial<QueueItem>) => {
+    setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...p } : x)));
   }, []);
 
-  // Add files to the queue. Files that fail validation upfront land as
-  // 'failed' immediately so the user sees them in the list rather than
-  // having them silently dropped.
+  // Single async loop that drains the queue. Idempotent re-entry guarded
+  // by isProcessingRef. Reads the next 'queued' item via itemsRef so a
+  // patch (status update) doesn't invalidate the closure.
+  const runProcessor = useCallback(async () => {
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    try {
+      while (true) {
+        const target = itemsRef.current.find((i) => i.status === "queued");
+        if (!target) break;
+        const id = target.id;
+        const file = target.file;
+
+        try {
+          patchItem(id, { status: "preparing" });
+          // Auto-downscale BEFORE the cap check so a 32MB phone photo
+          // (which compresses to ~3MB) gets accepted, not rejected.
+          const prepped = await prepareUploadFile(file);
+          const cap = TENANT_MEDIA_KINDS[settingsRef.current.kind].maxBytes;
+          if (prepped.size > cap) {
+            patchItem(id, {
+              status: "failed",
+              error: `Still over ${mb(cap)}MB after compression — try resizing first`,
+            });
+            continue;
+          }
+          const dims = await readDims(prepped);
+
+          patchItem(id, { status: "uploading" });
+          const signedRes = await fetch("/api/admin/media/signed-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              kind: settingsRef.current.kind,
+              content_type: prepped.type,
+              size_bytes: prepped.size,
+            }),
+          });
+          const signedJson = await signedRes.json();
+          if (!signedRes.ok || !signedJson.data) {
+            patchItem(id, {
+              status: "failed",
+              error: signedJson.error || "Server rejected upload",
+            });
+            continue;
+          }
+
+          const putRes = await fetch(signedJson.data.upload_url, {
+            method: "PUT",
+            headers: { "Content-Type": prepped.type },
+            body: prepped,
+          });
+          if (!putRes.ok) {
+            patchItem(id, {
+              status: "failed",
+              error: "Upload to storage failed",
+            });
+            continue;
+          }
+
+          patchItem(id, { status: "saving" });
+          const tags = settingsRef.current.groupName.trim()
+            ? [settingsRef.current.groupName.trim().slice(0, 60)]
+            : undefined;
+          const completeRes = await fetch("/api/admin/media/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              key: signedJson.data.key,
+              kind: settingsRef.current.kind,
+              width: dims?.width ?? null,
+              height: dims?.height ?? null,
+              tags,
+            }),
+          });
+          if (!completeRes.ok) {
+            const completeJson = await completeRes.json().catch(() => ({}));
+            patchItem(id, {
+              status: "failed",
+              error: completeJson.error || "Save failed",
+            });
+            continue;
+          }
+          patchItem(id, { status: "done" });
+        } catch (err) {
+          patchItem(id, {
+            status: "failed",
+            error: err instanceof Error ? err.message : "Unknown error",
+          });
+        }
+      }
+    } finally {
+      isProcessingRef.current = false;
+      onUploaded();
+    }
+  }, [patchItem, onUploaded]);
+
+  // Add files to the queue. Pre-flight only catches the things prep can't
+  // recover from (non-images, files so big canvas would crash). The real
+  // size validation runs inside the processor AFTER downscale, which is
+  // why a 32MB phone photo can succeed.
   const addFiles = useCallback(
     (files: File[]) => {
       if (!files.length) return;
       const next: QueueItem[] = files.map((f) => {
         if (!f.type.startsWith("image/")) {
-          return { id: nextQueueId(), file: f, status: "failed", error: "Not an image" };
-        }
-        if (f.size > cap) {
-          const mb = Math.round(f.size / 1024 / 1024);
-          const capMb = Math.round(cap / 1024 / 1024);
           return {
             id: nextQueueId(),
             file: f,
             status: "failed",
-            error: `Over ${capMb}MB cap (${mb}MB)`,
+            error: "Not an image",
+          };
+        }
+        if (f.size > TENANT_MEDIA_RAW_INPUT_MAX) {
+          return {
+            id: nextQueueId(),
+            file: f,
+            status: "failed",
+            error: `Too big to load in browser (${mb(f.size)}MB) — resize first`,
           };
         }
         return { id: nextQueueId(), file: f, status: "queued" };
       });
       setItems((prev) => [...prev, ...next]);
+      void runProcessor();
     },
-    [cap]
+    [runProcessor]
   );
 
-  // Process one item at a time. Started by an effect when there's queued
-  // work and we're not already running. Updates that item's status as it
-  // moves through prepare → upload → save → done/failed.
-  useEffect(() => {
-    if (running) return;
-    const next = items.find((i) => i.status === "queued");
-    if (!next) {
-      // Whole batch is settled — refresh the library page.
-      if (items.some((i) => i.status === "done")) onUploaded();
-      return;
-    }
-
-    let cancelled = false;
-    const patch = (id: string, p: Partial<QueueItem>) =>
-      setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...p } : x)));
-
-    setRunning(true);
-    (async () => {
-      const tags = groupName.trim() ? [groupName.trim().slice(0, 60)] : undefined;
-      try {
-        patch(next.id, { status: "preparing" });
-        const file = await prepareUploadFile(next.file);
-        const dims = await readDims(file);
-        if (cancelled) return;
-
-        patch(next.id, { status: "uploading" });
-        const signedRes = await fetch("/api/admin/media/signed-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            kind,
-            content_type: file.type,
-            size_bytes: file.size,
-          }),
-        });
-        const signedJson = await signedRes.json();
-        if (!signedRes.ok || !signedJson.data) {
-          patch(next.id, {
-            status: "failed",
-            error: signedJson.error || "Server rejected upload",
-          });
-          return;
-        }
-
-        const putRes = await fetch(signedJson.data.upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-        if (!putRes.ok) {
-          patch(next.id, { status: "failed", error: "Upload to storage failed" });
-          return;
-        }
-        if (cancelled) return;
-
-        patch(next.id, { status: "saving" });
-        const completeRes = await fetch("/api/admin/media/complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            key: signedJson.data.key,
-            kind,
-            width: dims?.width ?? null,
-            height: dims?.height ?? null,
-            tags,
-          }),
-        });
-        if (!completeRes.ok) {
-          const completeJson = await completeRes.json().catch(() => ({}));
-          patch(next.id, {
-            status: "failed",
-            error: completeJson.error || "Save failed",
-          });
-          return;
-        }
-        patch(next.id, { status: "done" });
-      } catch (err) {
-        patch(next.id, {
-          status: "failed",
-          error: err instanceof Error ? err.message : "Unknown error",
-        });
-      } finally {
-        setRunning(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [items, running, kind, groupName, onUploaded]);
-
   const handleClose = useCallback(() => {
-    if (inFlight) return; // don't let the user lose the dialog mid-upload
     setOpen(false);
-    setItems([]);
-    setGroupName("");
+    if (!inFlight) {
+      setItems([]);
+      setGroupName("");
+    }
+    // If items are still in-flight, leave state intact — uploads continue
+    // in the background and the floating toast tracks them.
   }, [inFlight]);
+
+  // Warn before navigating away with uploads in flight (only fires for full
+  // page reload / tab close — Next.js client-side nav unmounts the
+  // component, which is a separate concern).
+  useEffect(() => {
+    if (!inFlight) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [inFlight]);
+
+  // When a batch settles while the dialog is closed, briefly show a
+  // success/failure toast so the admin notices it even if they walked away.
+  useEffect(() => {
+    const justFinished =
+      lastInFlightRef.current && !inFlight && items.length > 0;
+    lastInFlightRef.current = inFlight;
+    if (justFinished && !open) {
+      setShowCompletionToast(true);
+      const t = setTimeout(() => setShowCompletionToast(false), 6000);
+      return () => clearTimeout(t);
+    }
+  }, [inFlight, items.length, open]);
 
   return (
     <>
@@ -740,52 +801,28 @@ function BulkUploadButton({
               <button
                 type="button"
                 onClick={handleClose}
-                disabled={inFlight}
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors"
                 aria-label="Close"
+                title={inFlight ? "Hide — uploads continue in background" : "Close"}
               >
                 <X size={16} />
               </button>
             </div>
 
-            {/* Settings — kind + group. Disabled while a batch is in flight
-                so the destination can't change for files mid-upload. */}
-            <fieldset
-              disabled={inFlight}
-              className="space-y-3 disabled:opacity-60 disabled:pointer-events-none"
-            >
+            {/* Settings — kind + group. Editable even while uploads are in
+                flight; the processor reads via settingsRef so any change
+                applies to NOT-YET-STARTED items only. */}
+            <div className="space-y-3">
               <div className="space-y-1.5">
-                <label className="text-[12px] font-medium text-foreground">
-                  What kind of asset?
+                <label className="text-[11px] font-medium text-muted-foreground">
+                  Asset type
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <KindRadio
-                    active={kind === "quest_cover"}
-                    onClick={() => setKind("quest_cover")}
-                    label="Quest cover"
-                    hint="3:4, no text — iOS overlays it"
-                  />
-                  <KindRadio
-                    active={kind === "event_cover"}
-                    onClick={() => setKind("event_cover")}
-                    label="Event cover"
-                    hint="1:1 square, web + iOS"
-                  />
-                  <KindRadio
-                    active={kind === "quest_content"}
-                    onClick={() => setKind("quest_content")}
-                    label="Story content"
-                    hint="9:16, reps post to TikTok / IG"
-                  />
-                </div>
+                <KindSegmented value={kind} onChange={setKind} />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[12px] font-medium text-foreground">
-                  Group{" "}
-                  <span className="text-muted-foreground font-normal">
-                    (optional)
-                  </span>
+                <label className="text-[11px] font-medium text-muted-foreground">
+                  Group <span className="font-normal">(optional)</span>
                 </label>
                 <Input
                   value={groupName}
@@ -793,6 +830,7 @@ function BulkUploadButton({
                   placeholder="e.g. Bob Marley Tribute"
                   list="bulk-group-suggestions"
                   maxLength={60}
+                  className="h-9"
                 />
                 <datalist id="bulk-group-suggestions">
                   {groups.map((g) => (
@@ -800,7 +838,7 @@ function BulkUploadButton({
                   ))}
                 </datalist>
               </div>
-            </fieldset>
+            </div>
 
             {/* Drop-zone — accepts drag-and-drop AND click-to-browse. Always
                 visible (vs the old "Choose files" button) so the affordance
@@ -843,8 +881,8 @@ function BulkUploadButton({
               <p className="text-[13px] font-medium text-foreground">
                 {dragging ? "Drop to add to the queue" : "Drop images, or click to browse"}
               </p>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                JPG, PNG, WebP, or HEIC · up to {Math.round(cap / 1024 / 1024)}MB · auto-optimised
+              <p className="text-[11px] text-muted-foreground/70 mt-1">
+                JPG, PNG, WebP, HEIC · auto-resized + WebP-optimised
               </p>
             </div>
 
@@ -860,18 +898,34 @@ function BulkUploadButton({
             )}
 
             <div className="flex items-center justify-end gap-2 pt-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleClose}
-                disabled={inFlight}
-              >
-                {inFlight ? "Working…" : items.length > 0 ? "Done" : "Cancel"}
+              {inFlight && (
+                <span className="text-[11px] text-muted-foreground mr-auto">
+                  Uploads continue if you close this
+                </span>
+              )}
+              <Button size="sm" variant="ghost" onClick={handleClose}>
+                {inFlight ? "Hide" : items.length > 0 ? "Done" : "Cancel"}
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Floating toast — appears when uploads are running but the dialog
+          is hidden, plus briefly after a batch settles. Click anywhere on
+          the toast (except the dismiss X) to re-open the dialog. */}
+      {!open && (inFlight || showCompletionToast) && (
+        <BackgroundUploadToast
+          items={items}
+          inFlight={inFlight}
+          onClick={() => {
+            setShowCompletionToast(false);
+            setOpen(true);
+          }}
+          onDismiss={() => setShowCompletionToast(false)}
+        />
+      )}
+
       <input
         ref={fileRef}
         type="file"
@@ -938,38 +992,95 @@ function QueueRow({ item }: { item: QueueItem }) {
   );
 }
 
-function KindRadio({
-  active,
-  onClick,
-  label,
-  hint,
+function KindSegmented({
+  value,
+  onChange,
 }: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  hint: string;
+  value: TenantMediaKind;
+  onChange: (k: TenantMediaKind) => void;
 }) {
+  const options: { kind: TenantMediaKind; label: string; aspect: string }[] = [
+    { kind: "quest_cover", label: "Quest cover", aspect: "3:4" },
+    { kind: "event_cover", label: "Event cover", aspect: "1:1" },
+    { kind: "quest_content", label: "Story content", aspect: "9:16" },
+  ];
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-start gap-0.5 rounded-md border px-3 py-2.5 text-left transition-colors",
-        active
-          ? "border-primary bg-primary/5"
-          : "border-border hover:border-border/80"
-      )}
+    <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted/30 p-1">
+      {options.map((o) => (
+        <button
+          key={o.kind}
+          type="button"
+          onClick={() => onChange(o.kind)}
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-2 text-center transition-colors",
+            value === o.kind
+              ? "bg-card shadow-sm text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <span className="text-[12px] font-medium">{o.label}</span>
+          <span className="text-[10px] font-mono text-muted-foreground/70">
+            {o.aspect}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BackgroundUploadToast({
+  items,
+  onClick,
+  onDismiss,
+  inFlight,
+}: {
+  items: QueueItem[];
+  onClick: () => void;
+  onDismiss: () => void;
+  inFlight: boolean;
+}) {
+  const done = items.filter((i) => i.status === "done").length;
+  const failed = items.filter((i) => i.status === "failed").length;
+  const total = items.length;
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border border-border bg-card shadow-xl px-3.5 py-3 flex items-center gap-3"
     >
-      <span
-        className={cn(
-          "text-sm font-medium",
-          active ? "text-primary" : "text-foreground"
+      <div className="shrink-0 h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center">
+        {inFlight ? (
+          <Loader2 size={16} className="animate-spin text-primary" />
+        ) : failed > 0 ? (
+          <AlertCircle size={16} className="text-warning" />
+        ) : (
+          <Check size={16} className="text-success" />
         )}
-      >
-        {label}
-      </span>
-      <span className="text-[10px] text-muted-foreground">{hint}</span>
-    </button>
+      </div>
+      <button type="button" onClick={onClick} className="flex-1 text-left">
+        <p className="text-[13px] font-medium text-foreground">
+          {inFlight
+            ? `Uploading ${Math.min(done + 1, total)} of ${total}…`
+            : failed > 0
+            ? `${done} uploaded · ${failed} skipped`
+            : `${done} uploaded`}
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          {inFlight ? "Click to view progress" : "Click to view"}
+        </p>
+      </button>
+      {!inFlight && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors"
+          aria-label="Dismiss"
+        >
+          <X size={14} />
+        </button>
+      )}
+    </div>
   );
 }
 

@@ -124,7 +124,10 @@ describe("POST /api/admin/media/signed-url", () => {
       buildPost("http://localhost/api/admin/media/signed-url", {
         kind: "quest_cover",
         content_type: "image/jpeg",
-        size_bytes: 50 * 1024 * 1024,
+        // Cap is 50MB; client always downscales before requesting a
+        // signed URL, so the only way this fires in real life is a
+        // genuinely pathological upload. 100MB safely exceeds it.
+        size_bytes: 100 * 1024 * 1024,
       })
     );
     expect(res.status).toBe(413);

@@ -54,7 +54,8 @@ These are settled — don't relitigate without putting an entry in the Decision 
 
 ## Phase 0 — Schema + Foundations (target: 0.5 day)
 
-### 0.1 Migration: extend tenant_media kind, rep_quests, new download table ⬜
+### 0.1 Migration: extend tenant_media kind, rep_quests, new download table ✅
+**Outcome (2026-04-30):** Applied as `library_campaigns_pool_quests` migration via Supabase MCP. tenant_media kind/kinds CHECK constraints rebuilt to include `quest_asset`. rep_quests gained `asset_mode` + `asset_campaign_tag` (default `'single'`/null). New `rep_asset_downloads` table with UNIQUE(rep_id, media_id), CASCADE refs, RLS on (self-read for authenticated, service-role bypass), three indexes for the rotation query.
 **Goal:** every persistent shape this feature needs exists, with the right indexes, before any UI is touched.
 **File:** `supabase/migrations/20260430_library_campaigns.sql`
 **SQL (apply via Supabase MCP `apply_migration`, never give to user to run):**
@@ -110,14 +111,16 @@ CREATE INDEX IF NOT EXISTS idx_tenant_media_tags_gin
 - Two `INSERT`s of the same `(rep_id, media_id)` into `rep_asset_downloads` — second raises 23505.
 - `EXPLAIN ANALYZE SELECT * FROM tenant_media WHERE tags @> ARRAY['x'] AND kind='quest_asset'` shows index scan, not seq scan.
 
-### 0.2 TypeScript types + constants ⬜
+### 0.2 TypeScript types + constants ✅
+**Outcome (2026-04-30):** `quest_asset` added to TENANT_MEDIA_KINDS in `lib/uploads/tenant-media-config.ts`. New `lib/library/campaign-tag.ts` with `slugifyCampaignLabel` (NFD + `\p{M}` strip, 80-char cap, hyphen-trim) and `isValidCampaignTag`. New `types/library-campaigns.ts` with shared DTOs for the admin UI + rep-facing API.
 **Files:**
 - `src/lib/uploads/tenant-media-config.ts` — add `quest_asset` to the `TenantMediaKind` union and the size cap config (videos up to 200 MB, images up to 12 MB — campaign uploads are pre-prepared, not phone snaps).
 - `src/types/library-campaigns.ts` (new) — shared types for the rep-facing API + admin pages: `CampaignAssetDTO`, `CampaignSummary`, `QuestPoolMode`, etc.
 - `src/lib/library/campaign-tag.ts` (new) — slugify helper: `"Only Numbers — Spring 26"` → `only-numbers-spring-26`. Stored as `tags[0]`. Display label kept in admin app state, never round-tripped through the slug.
 **Acceptance:** `npm run tsc` passes. New types exported and consumed by the helpers in the next phase.
 
-### 0.3 Pure-function rotation library + tests ⬜
+### 0.3 Pure-function rotation library + tests ✅
+**Outcome (2026-04-30):** Split into a pure ranker (`rotateAssets`) and a Supabase-fetching shell (`getRotatedAssetsForRep`, `summariseCampaignAssets`, `recordAssetDownload`). 23 unit tests cover never-used / mixed / all-used buckets, stable ordering, idempotent download log, and slugify edge cases (diacritics, em-dashes, unicode, length cap). All passing in `npm test`.
 **File:** `src/lib/library/asset-rotation.ts`
 **Exports:**
 - `getRotatedAssetsForRep({ orgId, repId, campaignTag, limit = 10 })` — runs the canonical SQL ordering, returns rich rows including `is_downloaded_by_me`, `my_last_used_at`, `download_count_total`.
@@ -138,7 +141,8 @@ CREATE INDEX IF NOT EXISTS idx_tenant_media_tags_gin
 
 The library page becomes a campaign-first workspace. Two-column layout on desktop; chip strip on mobile.
 
-### 1.1 Campaigns rail (desktop) + chip strip (mobile) ⬜
+### 1.1 Campaigns rail (desktop) + chip strip (mobile) ✅
+**Outcome (2026-04-30):** Two-column shell at `LibraryShell.tsx` wraps the existing 1280-line `LibraryWorkspace` (kept intact for "All assets") behind a campaign rail. URL state via `?campaign=<slug>` so the canvas is shareable. New `CampaignRail` (desktop) + `CampaignChipStrip` (mobile) read from the new `/api/admin/media/campaigns` endpoint and surface counts per row.
 **Goal:** campaigns become a first-class navigable surface alongside the all-assets view.
 **Files:**
 - `src/components/admin/library/CampaignRail.tsx` (new) — desktop left rail.
@@ -158,7 +162,8 @@ The library page becomes a campaign-first workspace. Two-column layout on deskto
 - Keyboard: `↑/↓` cycles rail rows, `Enter` activates. Focus ring uses `focus-visible:outline-primary/60`.
 - `prefers-reduced-motion` honoured (no slide-in on switch).
 
-### 1.2 Campaign canvas — the right pane ⬜
+### 1.2 Campaign canvas — the right pane ✅
+**Outcome (2026-04-30):** `CampaignDetailView` orchestrates three blocks above the asset grid: stat row (`CampaignStatRow` w/ MicroSparkline), `CampaignLinkedQuests` (deep-links into the quest editor), `CampaignTopAssets` (collapsible top-5 by download count). Stats land via `GET /api/admin/media/campaigns/[tag]/stats` (single-fetch).
 **Goal:** when a campaign is active, the canvas shows a rich detail surface (stats + linked quests + asset grid).
 **Files:**
 - `src/components/admin/library/CampaignCanvas.tsx` (new) — orchestrates the three blocks below the existing kind-filter row.
@@ -175,7 +180,8 @@ The library page becomes a campaign-first workspace. Two-column layout on deskto
 - "All assets" shows the existing grid with no campaign-specific blocks above (canvas is the unchanged shape).
 - Empty linked-quests case shows a hint card: `"This campaign isn't linked to any quests yet. Reps won't see it."` with a `Create quest` link.
 
-### 1.3 Campaign rename / delete / move-all ⬜
+### 1.3 Campaign rename / delete / move-all ✅
+**Outcome (2026-04-30):** `CampaignActions` owns rename + delete dialogs. PATCH rewrites every asset's `tags[0]` AND every linked `rep_quests.asset_campaign_tag` in one call. DELETE refuses with the linked-quest list when any quest still references the campaign; otherwise offers "move assets to All assets" (default) or "delete the assets too". Empty-campaign reservations live in `site_settings` so the rail can surface campaigns before the first upload.
 **Goal:** lifecycle operations without leaving the rail.
 **Files:**
 - `src/components/admin/library/CampaignActions.tsx` — context menu (right-click desktop, long-press mobile) on each rail row.
@@ -185,7 +191,8 @@ The library page becomes a campaign-first workspace. Two-column layout on deskto
 - Deleting a campaign with 0 linked quests + 0 assets succeeds. With assets, it asks: "Delete X assets too, or move them to All assets?" Move = clear `tags[0]` (preserve other tags). Delete = soft-delete via `deleted_at`.
 - Deleting a campaign with linked quests is blocked with copy: `"3 quests still pull from this campaign. Update them first."`
 
-### 1.4 Empty states + skeletons ⬜
+### 1.4 Empty states + skeletons ✅
+**Outcome (2026-04-30):** `LibraryShellSkeleton` (rail + grid ghost rows) + `app/admin/library/loading.tsx` boundary so first paint never blocks. `LibraryEmptyHero` for the "zero campaigns AND zero assets" case (single CTA → New campaign dialog). Per-campaign empty state inside `CampaignAssetGrid` (icon + copy + Upload CTA pre-targeted to the active campaign).
 **Goal:** ship loading + empty states at the same time as the populated state, per design doc Section 7 + 8.
 **Files:**
 - `src/components/admin/library/LibraryWorkspaceSkeleton.tsx` — full-page skeleton: rail with 4 ghost rows, canvas with stat row + 12 ghost tiles. No spinners.
@@ -203,7 +210,8 @@ The library page becomes a campaign-first workspace. Two-column layout on deskto
 
 The single most-visible polish surface. This is where the feature feels premium or doesn't.
 
-### 2.1 Bulk upload sheet/dialog ⬜
+### 2.1 Bulk upload sheet/dialog ✅
+**Outcome (2026-04-30):** `BulkUploadSheet` + `useBulkUpload`-style internal queue. Three concerns surfaced inline: drop zone (drag/click) → campaign chooser (combobox or "+ New campaign") → live progress list. Mixed image + video acceptance, parallelism cap of 3, friendly error copy ("That video's a bit big — try under 200 MB"). Closing mid-upload doesn't cancel the queue.
 **Goal:** a single `Upload` button drops in N files of mixed types, routes each through the right pipeline, lets the user keep working while videos process.
 **Files:**
 - `src/components/admin/library/BulkUploadSheet.tsx` (new) — the sheet/dialog body, drives the upload state machine.
@@ -221,7 +229,8 @@ The single most-visible polish surface. This is where the feature feels premium 
 - Friendly oversize copy: `"That video's a bit big — try under 200 MB"` (not "413: Payload Too Large").
 - File-type rejection inline before upload starts.
 
-### 2.2 Image pipeline for quest_asset ⬜
+### 2.2 Image pipeline for quest_asset ✅
+**Outcome (2026-04-30):** Existing signed-url + complete pipeline accepts `kind: 'quest_asset'` after the config update. Tags pass-through already in place. Sharp resize → WebP@q82 + EXIF strip applies unchanged.
 **Goal:** every uploaded image goes through Sharp → 1200px-long-edge WebP@q82 + EXIF strip. Same as `quest_cover` today.
 **Files:**
 - `src/app/api/admin/media/upload/route.ts` (or wherever the existing tenant-media upload completion lives) — accept `kind: 'quest_asset'`, accept the campaign label, write `tags[0]` accordingly.
@@ -231,7 +240,8 @@ The single most-visible polish surface. This is where the feature feels premium 
 - `tags[0]` correctly stores the campaign slug.
 - Original aspect ratio preserved.
 
-### 2.3 Video pipeline for quest_asset ⬜
+### 2.3 Video pipeline for quest_asset ✅
+**Outcome (2026-04-30):** Reuses the existing `/api/upload-video` (signed Supabase URL) → `/api/mux/upload` (server-side ingest, capped-1080p) flow. New `POST /api/admin/media/complete-video` polls for ready, extracts the public playback id, and inserts a `tenant_media` row with `kind='quest_asset'`, `mime_type='video/mp4'`, `storage_key=<playback_id>`, `url=<thumbnail URL>`. Rotation engine recognises Mux ids via `isMuxPlaybackId` and surfaces playback + download URLs to iOS.
 **Goal:** uploaded videos go through Mux capped-1080p, get a thumbnail, and land in `tenant_media` with `mime_type` set + a Mux playback ID stored.
 **Files:**
 - `src/lib/mux.ts` — verify `getMuxStreamUrl()`, `getMuxDownloadUrl()`, `getMuxThumbnailUrl()` work for the `quest_asset` kind without modification.
@@ -242,7 +252,8 @@ The single most-visible polish surface. This is where the feature feels premium 
 - Library grid renders video tiles correctly mixed with image tiles.
 - Mux thumbnail fetched as a `next/image`-friendly URL.
 
-### 2.4 Move assets between campaigns ⬜
+### 2.4 Move assets between campaigns ✅
+**Outcome (2026-04-30):** Sticky `BulkActionBar` slides up from bottom safe-area in `CampaignAssetGrid` whenever ≥1 tile is selected. Actions: **Cancel · Move to All assets · Delete**. Backend at `POST /api/admin/media/move` rewrites `tags[0]` and promotes `kind` to `quest_asset` when moving INTO a campaign (so existing covers/shareables can join a campaign without a re-upload).
 **Goal:** the bulk-action bar that slides up from the bottom when ≥1 tile is selected.
 **Files:**
 - `src/components/admin/library/BulkActionBar.tsx` (new) — sticky-bottom bar matching the canvas-editor sheet pattern.
@@ -256,7 +267,8 @@ The single most-visible polish surface. This is where the feature feels premium 
 
 ## Phase 3 — Quest Editor Integration (target: 0.5 day)
 
-### 3.1 Asset-mode radio + campaign combobox ⬜
+### 3.1 Asset-mode radio + campaign combobox ✅
+**Outcome (2026-04-30):** New `QuestPoolPicker` injected at the top of the QuestsTab Content tab — radio rows (Single asset / From a campaign) followed by a sentence-form combobox (`Pull from [campaign ▾] · 47 assets · Browse`). Single-asset upload UI is hidden in pool mode. Save body includes `asset_mode` + `asset_campaign_tag`; both POST and PUT routes (`/api/reps/quests` + `/[id]`) accept and persist them.
 **Goal:** a quest editor cleanly toggles between single-asset and pool modes without visual gear-shift.
 **Files:**
 - `src/components/admin/reps/QuestEditor.tsx` (or whichever file owns the quest editor's shareable picker — verify with grep) — add the `AdminRadio` group, conditionally render combobox vs existing single picker.
@@ -280,7 +292,8 @@ SHAREABLES
 - Combobox is searchable; typing a non-existent campaign offers `Create "{name}"` inline (creates the empty campaign + assigns).
 - Browse link opens a dialog/sheet showing the iOS-frame preview from 3.2.
 
-### 3.2 Browse-on-app preview (iOS frame mirror) ⬜
+### 3.2 Browse-on-app preview (iOS frame mirror) 🚫
+**Outcome (2026-04-30):** Cut for v1 — replaced by a `Browse` link from the picker straight into `/admin/library?campaign=<slug>` so the host sees the actual asset grid + stats. The dedicated phone-frame mirror was deferred; revisit when iOS ships its screen and we have a real visual to mirror.
 **Goal:** tenant clicks `Browse` and sees exactly what reps will see — same 10-asset rotation, same sort, same "Used" pills (rendered against a fake "viewer rep" with no download history so it shows a clean fresh state).
 **Files:**
 - `src/components/admin/reps/QuestPoolPreviewSheet.tsx` (new) — phone-frame mirror, fetches `/api/admin/media/campaigns/[tag]/preview?as=fresh-rep` (returns the rotated 10 with no `is_downloaded_by_me` flag set true).
@@ -290,7 +303,8 @@ SHAREABLES
 - Mobile-correct sizing (390×844 frame).
 - "Used" state demoable via a toggle in the preview top bar (`Show as: fresh rep | rep who's used 5`).
 
-### 3.3 Pool exhaustion + edge cases ⬜
+### 3.3 Pool exhaustion + edge cases ✅
+**Outcome (2026-04-30):** Inline hints inside `QuestPoolPicker`: empty campaign → amber warning ("reps won't see anything"); 1–9 assets → muted hint ("add more for variety"). Server-side, `GET /api/rep-portal/quests/[id]/assets` returns `rotation_position: 'fresh' | 'mixed' | 'all-used'` so iOS can display the right empty-state copy.
 **Goal:** quest editor surfaces these honestly so the tenant doesn't ship a quest that breaks for reps.
 **Files:** same as 3.1.
 **UX:**
@@ -306,7 +320,8 @@ SHAREABLES
 
 This phase ships the contract iOS will consume. Once 4.4 is published, iOS team can build the screen in parallel.
 
-### 4.1 GET /api/rep-portal/quests/[id]/assets ⬜
+### 4.1 GET /api/rep-portal/quests/[id]/assets ✅
+**Outcome (2026-04-30):** Live. Loads quest, validates pool mode + promoter membership, runs `getRotatedAssetsForRep` (LIMIT 10), returns DTOs matching the iOS contract. `media_kind`, `playback_url`, `thumbnail_url`, `is_downloaded_by_me`, `my_last_used_at`, `download_count_total`, plus `campaign.label` + `total_in_pool` + `rotation_position`. 400/403/404 paths covered.
 **Goal:** server returns 10 assets, sorted by the rotation rule, includes per-rep state.
 **File:** `src/app/api/rep-portal/quests/[id]/assets/route.ts` (new)
 **Auth:** `requireRepAuth()` → `{rep}`.
@@ -346,7 +361,8 @@ This phase ships the contract iOS will consume. Once 4.4 is published, iOS team 
 - Single SQL query (no N+1).
 - 401/403/400 paths covered.
 
-### 4.2 POST /api/rep-portal/quests/[id]/assets/[mediaId]/download ⬜
+### 4.2 POST /api/rep-portal/quests/[id]/assets/[mediaId]/download ✅
+**Outcome (2026-04-30):** Live. Cross-tenant guards (org match + campaign membership + media kind) before idempotent UPSERT into `rep_asset_downloads`. Returns canonical URL: image = public WebP (permanent), video = `getMuxDownloadUrl()` capped-1080p MP4. `first_time` flag drives the iOS one-shot UX hint.
 **Goal:** idempotent download log + canonical URL.
 **File:** `src/app/api/rep-portal/quests/[id]/assets/[mediaId]/download/route.ts` (new)
 **Auth:** `requireRepAuth()`.
@@ -367,7 +383,8 @@ This phase ships the contract iOS will consume. Once 4.4 is published, iOS team 
 - Cross-campaign abuse blocked: `mediaId` not in the quest's campaign → 403.
 - Logged to `rep_asset_downloads` with `quest_id` populated for analytics.
 
-### 4.3 Embed asset_mode + pool summary on existing quest endpoints ⬜
+### 4.3 Embed asset_mode + pool summary on existing quest endpoints ✅
+**Outcome (2026-04-30):** `/api/rep-portal/quests` GET now ships `asset_mode` + `asset_pool` (count, image_count, video_count, sample_thumbs) on every quest, computed via a single batched fetch (`org_id IN (...) + tags overlap` then bucketed client-side). Dashboard route's quests block stays aggregate-only — no shape change needed for iOS to detect pool mode there.
 **Goal:** every quest list/detail endpoint already consumed by iOS includes the new fields so iOS knows when to render the pool screen vs the single-asset screen.
 **Files (touch each, no new routes):**
 - `src/app/api/rep-portal/quests/route.ts`
@@ -390,7 +407,8 @@ This phase ships the contract iOS will consume. Once 4.4 is published, iOS team 
 - iOS can render a "47 assets" pill on the quest card without hitting the assets endpoint.
 - Existing single-asset quests serialize unchanged (asset_mode defaults to 'single' from the migration).
 
-### 4.4 Publish the iOS DTO contract doc ⬜
+### 4.4 Publish the iOS DTO contract doc ✅
+**Outcome (2026-04-30):** Shipped at `docs/ios-quest-pool-contract.md`. Detection rules, full request/response shapes, error catalog, suggested Swift model layer, Save-to-Photos flow, permissions, change policy. Promoted to "ship first, before any backend" so iOS can build against mocks in parallel.
 **Goal:** a single doc the iOS team can implement against, with no admin/web context.
 **File:** `docs/ios-quest-pool-contract.md` (new — sibling to `ENTRY-IOS-BACKEND-SPEC.md`)
 **Sections:**
@@ -409,19 +427,22 @@ This phase ships the contract iOS will consume. Once 4.4 is published, iOS team 
 
 ## Phase 5 — Analytics + Polish (target: 0.5 day)
 
-### 5.1 Top-assets analytics ⬜
+### 5.1 Top-assets analytics ✅
+**Outcome (2026-04-30):** Folded into the `/api/admin/media/campaigns/[tag]/stats` route (Phase 1.2 work). Returns `top_assets[]` (top-5 by all-time downloads) + `downloads_this_week` + `downloads_sparkline` (7-day daily counts). `CampaignTopAssets` consumes them in a collapsible panel; `CampaignStatRow` consumes the sparkline.
 **Goal:** the campaign canvas's "Top assets" block gets real numbers.
 **File:** `src/app/api/admin/media/campaigns/[tag]/stats/route.ts` (extend from 1.2) — add `top_assets: [{ media_id, ...media_fields, download_count: int }]`.
 **Acceptance:** sub-200ms response, single SQL query (`GROUP BY media_id` aggregate).
 
-### 5.2 Downloads-this-week sparkline ⬜
+### 5.2 Downloads-this-week sparkline ✅
+**Outcome (2026-04-30):** Embedded directly into `CampaignStatRow` via the existing `MicroSparkline` (`bar` variant). No new chart dep.
 **Goal:** subtle 7-day sparkline on the campaign stat tile, reusing `MicroSparkline` from the canvas editor (don't add a charting dep).
 **Files:**
 - `src/components/admin/library/CampaignStatRow.tsx` — embed the sparkline.
 - `src/lib/library/campaign-stats.ts` — pure function: `bucketDownloadsByDay(rows, 7)`.
 **Acceptance:** sparkline matches the visual language of the existing sales-timeline sparklines.
 
-### 5.3 CLAUDE.md updates ⬜
+### 5.3 CLAUDE.md updates ✅
+**Outcome (2026-04-30):** Quests + Rewards section now documents pool quests with the rotation rule, the new `rep_asset_downloads` table, and pointers to the iOS contract + this plan. Tenant-scoped tables list updated to include `quest_asset` kind. Activity-table list adds `rep_asset_downloads`. Rep self-service routes list includes the two new pool endpoints. Admin Pages Index → Creative entry rewritten for the rail + canvas + bulk upload sheet.
 **Goal:** the architecture map stays accurate.
 **Sections to update:**
 - "Database — Tables" — add `rep_asset_downloads`; update `tenant_media` kinds list with `quest_asset`.

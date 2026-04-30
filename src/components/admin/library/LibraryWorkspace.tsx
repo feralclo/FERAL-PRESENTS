@@ -63,13 +63,6 @@ const KIND_LABEL: Record<KindFilter, string> = {
   quest_content: "Shareables",
 };
 
-const KIND_ASPECT: Record<TenantMediaKind, string> = {
-  quest_cover: "3:4",
-  quest_content: "9:16",
-  event_cover: "1:1",
-  reward_cover: "3:4",
-  generic: "—",
-};
 
 /**
  * The library workspace.
@@ -458,12 +451,14 @@ function LibraryTile({
   onToggleKind: (id: string, kind: TenantMediaKind, checked: boolean) => void;
 }) {
   // The image is multi-categorised when its kinds[] has more than one
-  // entry. We surface that on the tile via stacked aspect pills so the
-  // admin sees at a glance "this is BOTH a cover and a shareable".
+  // Multi-kind images get a small "+N" chip top-left so admins see at a
+  // glance that this image is tagged for more than one category. Single-
+  // kind images get nothing — the image alone is the right amount of
+  // chrome (aspect ratios were noisy and inaccurate, since covers crop
+  // differently across surfaces and shareables can be 1:1 too).
   const kindsList: TenantMediaKind[] =
     row.kinds && row.kinds.length > 0 ? row.kinds : [row.kind];
-  const primaryKind = kindsList[0];
-  const additionalKinds = kindsList.slice(1);
+  const isMultiKind = kindsList.length > 1;
 
   return (
     <div className="group space-y-1.5">
@@ -475,22 +470,17 @@ function LibraryTile({
           className="absolute inset-0 w-full h-full object-cover"
           loading="lazy"
         />
-        {/* Aspect pills — top-left. Primary first, then any additional
-            categories the image has been tagged for. */}
-        <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
-          <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/55 text-white/85">
-            {KIND_ASPECT[primaryKind]}
+        {isMultiKind && (
+          <span
+            className="absolute top-2 left-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/85 text-primary-foreground inline-flex items-center gap-1"
+            title={`Tagged for: ${kindsList
+              .map((k) => (KIND_LABEL as Record<string, string>)[k] ?? k)
+              .join(" · ")}`}
+          >
+            <Layers size={10} />
+            {kindsList.length}
           </span>
-          {additionalKinds.map((k) => (
-            <span
-              key={k}
-              className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/85 text-primary-foreground"
-              title={`Also tagged as ${(KIND_LABEL as Record<string, string>)[k] ?? k}`}
-            >
-              + {KIND_ASPECT[k]}
-            </span>
-          ))}
-        </div>
+        )}
         {/* Usage pill — bottom-left */}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2.5">
           {row.usage_count > 0 ? (
@@ -599,10 +589,10 @@ function CategoriesEditor({
   row: MediaRow;
   onToggle: (id: string, kind: TenantMediaKind, checked: boolean) => void;
 }) {
-  const options: { kind: TenantMediaKind; label: string; aspect: string }[] = [
-    { kind: "quest_cover", label: "Quest cover", aspect: "3:4 portrait" },
-    { kind: "event_cover", label: "Event cover", aspect: "1:1 square" },
-    { kind: "quest_content", label: "Shareable", aspect: "9:16 vertical" },
+  const options: { kind: TenantMediaKind; label: string }[] = [
+    { kind: "quest_cover", label: "Quest cover" },
+    { kind: "event_cover", label: "Event cover" },
+    { kind: "quest_content", label: "Shareable" },
   ];
   const kindsList = row.kinds && row.kinds.length ? row.kinds : [row.kind];
   const isLastChecked = kindsList.length === 1;
@@ -612,7 +602,7 @@ function CategoriesEditor({
       <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
         Use this image for…
       </p>
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {options.map((opt) => {
           const checked = kindsList.includes(opt.kind);
           const wouldBeLast = checked && isLastChecked;
@@ -620,7 +610,7 @@ function CategoriesEditor({
             <li key={opt.kind}>
               <label
                 className={cn(
-                  "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-pointer",
+                  "flex items-center gap-2.5 px-2 py-2 rounded-md transition-colors cursor-pointer",
                   checked
                     ? "bg-primary/[0.06] hover:bg-primary/[0.10]"
                     : "hover:bg-foreground/[0.04]",
@@ -641,13 +631,8 @@ function CategoriesEditor({
                   }
                   className="h-3.5 w-3.5 accent-primary"
                 />
-                <span className="flex-1">
-                  <span className="text-[12px] font-medium text-foreground">
-                    {opt.label}
-                  </span>
-                  <span className="block text-[10px] font-mono text-muted-foreground/70">
-                    {opt.aspect}
-                  </span>
+                <span className="text-[12px] font-medium text-foreground">
+                  {opt.label}
                 </span>
               </label>
             </li>
@@ -655,7 +640,7 @@ function CategoriesEditor({
         })}
       </ul>
       <p className="text-[10px] text-muted-foreground/70 leading-relaxed pt-1">
-        Tag for every category this image works as. The same upload can show under multiple chips.
+        Tag every category this image works for — it'll show up under each chip in the library and the picker.
       </p>
     </div>
   );

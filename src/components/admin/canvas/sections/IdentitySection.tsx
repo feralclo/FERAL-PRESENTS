@@ -16,18 +16,25 @@ import type { TabProps } from "@/components/admin/event-editor/types";
  * Identity — the answers to "what / when / where", in the order a host
  * actually thinks. First section the canvas opens. Replaces DetailsTab.
  *
- * Slug behaviour: auto-tracks the event name unless the host explicitly
- * unlocks the field. Once unlocked, the host owns it — typing is direct,
- * the lock toggle is an opt-in. Most hosts never need to touch it.
+ * Slug behaviour: when locked, auto-tracks the event name. We infer the
+ * starting state on first render — if the existing slug already matches
+ * slugify(name), the host hasn't hand-tuned it, so locking is safe and
+ * future renames will follow. If the slugs diverge (e.g. an existing
+ * event whose URL was hand-edited), we start *unlocked* so we don't
+ * silently overwrite a custom URL the host cares about.
  */
 export function IdentitySection({ event, updateEvent }: TabProps) {
   const { timezone } = useOrgTimezone();
 
-  // Slug is locked-to-name until the host clicks the unlock toggle. When
-  // locked, every name change rewrites the slug. The unlock affordance is
-  // there so power users can hand-tune (e.g. share-friendly URL), but the
-  // 90% case never has to think about it.
-  const [slugLocked, setSlugLocked] = useState(true);
+  // Infer initial lock state once. If the slug looks like a fresh
+  // slugify(name), assume auto-tracking is fine. If the host hand-tuned
+  // the URL (slug !== slugify(name)), default to unlocked so renaming
+  // doesn't surprise them.
+  const [slugLocked, setSlugLocked] = useState(() => {
+    const expected = slugify(event.name || "");
+    if (!event.slug) return true;
+    return event.slug === expected;
+  });
   const [copied, setCopied] = useState(false);
   const lastNameRef = useRef(event.name);
 

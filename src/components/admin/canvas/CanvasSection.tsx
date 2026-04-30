@@ -38,6 +38,11 @@ interface CanvasSectionProps {
    *  linking via ?section= on the URL — overrides localStorage so the
    *  host actually lands on what the link promised. */
   deepLinkTarget?: boolean;
+  /** When the parent's CanvasSyncApi requests focus on this section,
+   *  force it open and scroll. Wired from the Readiness rail so clicking
+   *  a rule actually lands on the form fields, not on a closed
+   *  accordion. */
+  focusRequest?: { anchor: CanvasAnchor; nonce: number } | null;
   children: React.ReactNode;
 }
 
@@ -51,6 +56,7 @@ export function CanvasSection({
   defaultOpen = true,
   onActivate,
   deepLinkTarget = false,
+  focusRequest = null,
   children,
 }: CanvasSectionProps) {
   const storageKey = `entry_canvas_section_${eventId}_${anchor}`;
@@ -99,6 +105,26 @@ export function CanvasSection({
     },
     [storageKey]
   );
+
+  // Listen for focus requests fired by useCanvasSync.focus (clicking a
+  // readiness rule, for instance). Same shape as deepLinkTarget — force
+  // open + scroll — but driven by an in-app channel rather than the URL,
+  // and re-fires when the nonce ticks even if the anchor didn't change.
+  useEffect(() => {
+    if (!focusRequest) return;
+    if (focusRequest.anchor !== anchor) return;
+    setOpen(true);
+    persist(true);
+    if (typeof window === "undefined") return;
+    const id = `canvas-section-${anchor}`;
+    const el = document.getElementById(id);
+    if (el) {
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+    // nonce on focusRequest re-fires the effect for the same anchor.
+  }, [focusRequest, anchor, persist]);
 
   const handleHeaderClick = useCallback(() => {
     onActivate?.(anchor);

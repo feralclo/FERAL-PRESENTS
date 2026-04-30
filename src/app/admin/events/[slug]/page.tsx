@@ -540,6 +540,7 @@ export default function EventEditorPage() {
         subtitle="What it is, when, and where."
         completeness={sectionCompleteness.identity}
         onActivate={sync.focus}
+        focusRequest={sync.focusRequest}
         deepLinkTarget={deepLinkSection === "identity"}
       >
         <IdentitySection event={event} updateEvent={updateEvent} />
@@ -553,6 +554,7 @@ export default function EventEditorPage() {
         subtitle="Tag line, about, lineup, fine-print details."
         completeness={sectionCompleteness.story}
         onActivate={sync.focus}
+        focusRequest={sync.focusRequest}
         deepLinkTarget={deepLinkSection === "story"}
       >
         <StorySection
@@ -571,6 +573,7 @@ export default function EventEditorPage() {
         subtitle="Cover, banner, poster, theme."
         completeness={sectionCompleteness.look}
         onActivate={sync.focus}
+        focusRequest={sync.focusRequest}
         deepLinkTarget={deepLinkSection === "look"}
       >
         <LookSection
@@ -589,6 +592,7 @@ export default function EventEditorPage() {
         subtitle="Tiers, capacity, release strategy, waitlist."
         completeness={sectionCompleteness.tickets}
         onActivate={sync.focus}
+        focusRequest={sync.focusRequest}
         deepLinkTarget={deepLinkSection === "tickets"}
       >
         <TicketsSection
@@ -611,6 +615,7 @@ export default function EventEditorPage() {
         subtitle="Currency, multi-currency, VAT, payment account."
         completeness={sectionCompleteness.money}
         onActivate={sync.focus}
+        focusRequest={sync.focusRequest}
         deepLinkTarget={deepLinkSection === "money"}
       >
         <MoneySection
@@ -629,6 +634,7 @@ export default function EventEditorPage() {
         subtitle="Status, visibility, announcement, queue, SEO."
         completeness={sectionCompleteness.publish}
         onActivate={sync.focus}
+        focusRequest={sync.focusRequest}
         deepLinkTarget={deepLinkSection === "publish"}
       >
         <PublishSection

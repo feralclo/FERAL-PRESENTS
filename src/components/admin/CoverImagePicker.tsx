@@ -101,16 +101,6 @@ interface TenantMediaRow {
   group: string | null;
 }
 
-// Aspect badge per kind — shown on each tile so when an admin opens
-// "All assets" they see at a glance what each one is best suited for.
-const KIND_TILE_ASPECT: Record<TenantMediaKind, string> = {
-  quest_cover: "3:4",
-  quest_content: "9:16",
-  event_cover: "1:1",
-  reward_cover: "3:4",
-  generic: "—",
-};
-
 // Filter chip labels — "all" included for the cross-kind option that
 // lets a single image be reusable across cover and shareable slots.
 const KIND_FILTER_LABEL: Record<TenantMediaKind | "all", string> = {
@@ -551,13 +541,12 @@ function LibraryGrid({
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {rows.map((r) => {
-          // Mismatch only applies when the row hasn't been explicitly
-          // tagged for this kind. If admin marked a cover as also being
-          // a shareable (kinds includes both), no warning shows for either
-          // surface — they sanctioned the crop.
           const rowKinds = Array.isArray(r.kinds) && r.kinds.length ? r.kinds : [r.kind];
-          const kindMismatch = !rowKinds.includes(kind);
-          const displayKind = kindMismatch ? r.kind : kind;
+          // Multi-kind images get a small "+N" chip so the admin sees
+          // they're tagged for several uses. Aspect ratios were dropped
+          // (covers crop differently per surface, shareables can be
+          // any aspect) — adminship is the right scope, not pixel-math.
+          const isMultiKind = rowKinds.length > 1;
           return (
           <div key={r.id} className="space-y-1">
             <Tile
@@ -565,21 +554,16 @@ function LibraryGrid({
               selected={selected === r.url}
               onSelect={() => onSelect(r.url)}
               badge={
-                <span
-                  className={cn(
-                    "text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded",
-                    kindMismatch
-                      ? "bg-warning/85 text-black"
-                      : "bg-black/55 text-white/85"
-                  )}
-                  title={
-                    kindMismatch
-                      ? `${KIND_FILTER_LABEL[r.kind]} (${KIND_TILE_ASPECT[r.kind]}) — will be cropped to fit ${KIND_TILE_ASPECT[kind]}`
-                      : undefined
-                  }
-                >
-                  {KIND_TILE_ASPECT[displayKind]}
-                </span>
+                isMultiKind ? (
+                  <span
+                    className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/85 text-primary-foreground inline-flex items-center gap-1"
+                    title={`Tagged for: ${rowKinds
+                      .map((k) => KIND_FILTER_LABEL[k] ?? k)
+                      .join(" · ")}`}
+                  >
+                    {rowKinds.length}
+                  </span>
+                ) : null
               }
               secondaryBadge={
                 r.usage_count > 0 ? (

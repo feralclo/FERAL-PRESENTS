@@ -23,6 +23,7 @@ import { CanvasSection } from "@/components/admin/canvas/CanvasSection";
 import { CanvasPreview } from "@/components/admin/canvas/CanvasPreview";
 import { ReadinessCard } from "@/components/admin/canvas/ReadinessCard";
 import { PublishCard } from "@/components/admin/canvas/PublishCard";
+import { SectionNav } from "@/components/admin/canvas/SectionNav";
 import { useCanvasSync } from "@/components/admin/canvas/useCanvasSync";
 import { IdentitySection } from "@/components/admin/canvas/sections/IdentitySection";
 import { StorySection } from "@/components/admin/canvas/sections/StorySection";
@@ -532,6 +533,8 @@ export default function EventEditorPage() {
 
   const formPane = (
     <>
+      <SectionNav report={readiness} onJump={sync.focus} />
+
       <CanvasSection
         anchor="identity"
         eventId={eventId}

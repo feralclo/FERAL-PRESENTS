@@ -378,9 +378,13 @@ export default function EventsPage() {
               {filteredEvents.map((evt) => {
                 const stats = getTicketStats(evt);
                 const isArchived = evt.status === "archived";
+                const isDraft = evt.status === "draft";
                 const editHref = `/admin/events/${evt.slug}/`;
+                const overviewHref = `/admin/events/${evt.slug}/overview/`;
+                // Drafts have nothing to analyse — keep them on the editor.
+                // Everything else (live/past/cancelled) lands on overview.
+                const primaryHref = isDraft ? editHref : overviewHref;
                 const ticketsHref = `/admin/events/${evt.slug}/?section=tickets`;
-                const salesHref = `/admin/events/${evt.slug}/?section=tickets#sales`;
                 const pct =
                   stats.capacity && stats.capacity > 0
                     ? Math.min(100, Math.round((stats.sold / stats.capacity) * 100))
@@ -389,7 +393,7 @@ export default function EventsPage() {
                   <TableRow
                     key={evt.id}
                     className={isArchived ? "opacity-50" : "cursor-pointer"}
-                    onClick={() => !isArchived && router.push(editHref)}
+                    onClick={() => !isArchived && router.push(primaryHref)}
                   >
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[evt.status] || "secondary"}>
@@ -398,7 +402,7 @@ export default function EventsPage() {
                     </TableCell>
                     <TableCell>
                       <Link
-                        href={editHref}
+                        href={primaryHref}
                         className="font-medium text-foreground hover:text-primary transition-colors"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -465,25 +469,35 @@ export default function EventsPage() {
                       <div className="flex items-center justify-end gap-0.5">
                         {!isArchived && (
                           <>
+                            {!isDraft && (
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                asChild
+                                title="Overview"
+                                className="text-muted-foreground"
+                              >
+                                <Link
+                                  href={overviewHref}
+                                  aria-label="Event overview"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <TrendingUp size={12} />
+                                </Link>
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon-xs"
                               asChild
                               title="Edit"
                             >
-                              <Link href={editHref} aria-label="Edit event">
+                              <Link
+                                href={editHref}
+                                aria-label="Edit event"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Pencil size={12} />
-                              </Link>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              asChild
-                              title="Sales"
-                              className="text-muted-foreground"
-                            >
-                              <Link href={salesHref} aria-label="Sales for event">
-                                <TrendingUp size={12} />
                               </Link>
                             </Button>
                             <Button
@@ -493,7 +507,11 @@ export default function EventsPage() {
                               title="Tickets"
                               className="text-muted-foreground"
                             >
-                              <Link href={ticketsHref} aria-label="Tickets for event">
+                              <Link
+                                href={ticketsHref}
+                                aria-label="Tickets for event"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <CalendarDays size={12} />
                               </Link>
                             </Button>

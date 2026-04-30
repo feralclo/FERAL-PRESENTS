@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EventViewTabs } from "@/components/admin/event-overview/EventViewTabs";
 import {
   ArrowLeft,
   ChevronDown,
@@ -78,7 +79,7 @@ export function EventEditorHeader({
         Events
       </Link>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
             {event.name || "Untitled Event"}
           </h1>
@@ -87,9 +88,10 @@ export function EventEditorHeader({
           >
             {event.status}
           </Badge>
-          <span className="text-xs text-muted-foreground/60 font-mono">
+          <span className="hidden font-mono text-xs text-muted-foreground/60 sm:inline">
             /event/{event.slug}/
           </span>
+          <EventViewTabs slug={event.slug} active="edit" />
         </div>
         <div className="flex items-center gap-2">
           {onDuplicate && (

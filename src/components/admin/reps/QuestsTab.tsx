@@ -641,7 +641,7 @@ export function QuestsTab() {
           setVideoUploading(false);
           return;
         }
-        if (data.status === "errored") throw new Error("Mux processing failed");
+        if (data.status === "errored") throw new Error("Video processing failed — try a different file");
         setVideoStatus("Processing video...");
       }
       throw new Error("Processing timed out");
@@ -1593,9 +1593,19 @@ export function QuestsTab() {
                       separate (Details tab, in-app hero only). */}
                 {currentTabLabel === "Content" && (
                   <div className="space-y-4">
-                    <p className="text-xs text-muted-foreground">
-                      Upload <span className="font-medium text-foreground">one</span> shareable asset — either an image or a video. Reps download this and post it to their TikTok/Instagram with their personal discount link. This is separate from the in-app cover image on Details.
-                    </p>
+                    {questType === "story_share" ? (
+                      <p className="text-xs text-muted-foreground">
+                        Upload the <span className="font-medium text-foreground">asset reps share</span> — image or short video. Reps download it and post it to their TikTok or Instagram story with their personal discount link.
+                      </p>
+                    ) : questType === "social_post" ? (
+                      <p className="text-xs text-muted-foreground">
+                        Upload <span className="font-medium text-foreground">the post you want reps to recreate</span> — image or short video. Reps make their own version and post it. Optional if the reference link on Platform is enough.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        For content-creation quests, the rep <span className="font-medium text-foreground">makes their own</span> — focus on the instructions in <span className="font-mono">How to Complete</span> on the Platform tab. This upload is an <span className="font-medium text-foreground">optional reference</span> for inspiration.
+                      </p>
+                    )}
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1.5">
                         <Upload size={12} />
@@ -1689,7 +1699,7 @@ export function QuestsTab() {
                         </div>
                       )}
                       <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-                        We pick the right pipeline automatically — images go straight to Supabase Storage (saved to your library for reuse), videos go through Mux for streaming + a downloadable 1080p MP4. Picking a new file replaces the previous one. Leave blank for quests with no downloadable asset.
+                        Images get saved to your library for reuse on the next quest. Videos are streamed and given to reps as a downloadable 1080p MP4. Picking a new file replaces the previous one. Leave blank if there's no downloadable asset for this quest.
                       </p>
                       <CoverImagePicker
                         open={contentPickerOpen}

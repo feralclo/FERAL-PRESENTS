@@ -15,6 +15,9 @@ import type { BrandingSettings } from "@/types/settings";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getDefaultVatSettings } from "@/lib/country-vat";
 import { migrateWizardStateToOrg } from "@/lib/onboarding-state";
+import { slugify } from "@/lib/slug";
+
+export { slugify };
 
 /**
  * Self-service signup: shared org provisioning logic.
@@ -75,19 +78,6 @@ export const RESERVED_SLUGS = new Set([
   "rep",
   "reps",
 ]);
-
-/**
- * Convert a human-readable org name to a URL-safe slug.
- * Lowercase, replace non-alphanumeric with hyphens, trim, 3-40 chars.
- */
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-") // non-alphanumeric → hyphens
-    .replace(/^-+|-+$/g, "")     // trim leading/trailing hyphens
-    .slice(0, 40);               // max 40 chars
-}
 
 /**
  * Check if a slug is available for use as an org_id.

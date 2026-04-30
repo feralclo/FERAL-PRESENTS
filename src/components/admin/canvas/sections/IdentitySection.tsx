@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PlaceAutocomplete } from "@/components/admin/PlaceAutocomplete";
 import { useOrgTimezone } from "@/hooks/useOrgTimezone";
-import { slugify } from "@/lib/signup";
+import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import type { TabProps } from "@/components/admin/event-editor/types";
 

@@ -1606,6 +1606,48 @@ export function QuestsTab() {
                         For content-creation quests, the rep <span className="font-medium text-foreground">makes their own</span> — focus on the instructions in <span className="font-mono">How to Complete</span> on the Platform tab. This upload is an <span className="font-medium text-foreground">optional reference</span> for inspiration.
                       </p>
                     )}
+
+                    {/* Quick toggle — most quests want the cover image to also
+                        be the shareable. One click instead of "upload twice
+                        or pick from library again". Disabled when no cover
+                        is set yet (we have nothing to copy). When toggled
+                        on, the same URL is shared between the in-app cover
+                        and the rep's downloadable asset. Toggling off only
+                        clears the shareable if it still matches the cover. */}
+                    {coverImageUrl && (
+                      <div className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={coverImageUrl}
+                            alt=""
+                            className="h-9 w-9 rounded-md object-cover shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-foreground">
+                              Use cover image as the shareable too
+                            </p>
+                            <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">
+                              Same image, both surfaces. Saves uploading twice when one image works for both.
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={
+                            !!videoUrl &&
+                            !isMuxPlaybackId(videoUrl) &&
+                            videoUrl === coverImageUrl
+                          }
+                          onCheckedChange={(on) => {
+                            if (on) {
+                              setVideoUrl(coverImageUrl);
+                            } else if (videoUrl === coverImageUrl) {
+                              setVideoUrl("");
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1.5">
                         <Upload size={12} />

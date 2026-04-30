@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertCircle,
+  Check,
   Image as ImageIcon,
   Loader2,
   Plus,
@@ -538,10 +540,23 @@ function GroupEditor({
   );
 }
 
-interface UploadFailure {
-  filename: string;
-  reason: string;
+type QueueStatus =
+  | "queued"
+  | "preparing"
+  | "uploading"
+  | "saving"
+  | "done"
+  | "failed";
+
+interface QueueItem {
+  id: string;
+  file: File;
+  status: QueueStatus;
+  error?: string;
 }
+
+let queueIdCounter = 0;
+const nextQueueId = () => `q-${Date.now()}-${++queueIdCounter}`;
 
 function BulkUploadButton({
   onUploaded,
@@ -550,299 +565,300 @@ function BulkUploadButton({
   onUploaded: () => void;
   groups: GroupSummary[];
 }) {
-  const [showOptions, setShowOptions] = useState(false);
+  const [open, setOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [kind, setKind] = useState<TenantMediaKind>("quest_cover");
-  const [uploading, setUploading] = useState<
-    | {
-        done: number;
-        total: number;
-        currentName: string;
-        phase: string;
-      }
-    | null
-  >(null);
-  const [failures, setFailures] = useState<UploadFailure[]>([]);
-  const [successCount, setSuccessCount] = useState(0);
+  const [items, setItems] = useState<QueueItem[]>([]);
+  const [running, setRunning] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const cap = TENANT_MEDIA_KINDS[kind].maxBytes;
 
-  const trigger = useCallback(() => {
-    setFailures([]);
-    setSuccessCount(0);
-    setShowOptions(true);
+  const inFlight = items.some(
+    (i) => i.status !== "done" && i.status !== "failed"
+  );
+  const doneCount = items.filter((i) => i.status === "done").length;
+  const failedCount = items.filter((i) => i.status === "failed").length;
+
+  const triggerOpen = useCallback(() => {
+    setItems([]);
+    setOpen(true);
   }, []);
 
-  const handleFiles = useCallback(
-    async (files: FileList) => {
-      const list = Array.from(files);
-      if (!list.length) return;
-      const localFailures: UploadFailure[] = [];
-      let localSuccess = 0;
-      const tags = groupName.trim() ? [groupName.trim().slice(0, 60)] : undefined;
-
-      for (let i = 0; i < list.length; i++) {
-        const rawFile = list[i];
-
-        // Pre-flight checks BEFORE any prep so the user gets crisp feedback.
-        if (!rawFile.type.startsWith("image/")) {
-          localFailures.push({
-            filename: rawFile.name,
-            reason: "Not an image file",
-          });
-          setUploading({
-            done: i + 1,
-            total: list.length,
-            currentName: rawFile.name,
-            phase: "Skipped",
-          });
-          continue;
+  // Add files to the queue. Files that fail validation upfront land as
+  // 'failed' immediately so the user sees them in the list rather than
+  // having them silently dropped.
+  const addFiles = useCallback(
+    (files: File[]) => {
+      if (!files.length) return;
+      const next: QueueItem[] = files.map((f) => {
+        if (!f.type.startsWith("image/")) {
+          return { id: nextQueueId(), file: f, status: "failed", error: "Not an image" };
         }
-        if (rawFile.size > cap) {
-          localFailures.push({
-            filename: rawFile.name,
-            reason: `Over ${Math.round(cap / 1024 / 1024)}MB cap (${Math.round(rawFile.size / 1024 / 1024)}MB)`,
-          });
-          setUploading({
-            done: i + 1,
-            total: list.length,
-            currentName: rawFile.name,
-            phase: "Skipped",
-          });
-          continue;
+        if (f.size > cap) {
+          const mb = Math.round(f.size / 1024 / 1024);
+          const capMb = Math.round(cap / 1024 / 1024);
+          return {
+            id: nextQueueId(),
+            file: f,
+            status: "failed",
+            error: `Over ${capMb}MB cap (${mb}MB)`,
+          };
         }
-
-        try {
-          setUploading({
-            done: i,
-            total: list.length,
-            currentName: rawFile.name,
-            phase: "Preparing",
-          });
-          const file = await prepareUploadFile(rawFile);
-          const dims = await readDims(file);
-
-          setUploading({
-            done: i,
-            total: list.length,
-            currentName: rawFile.name,
-            phase: "Uploading",
-          });
-          const signedRes = await fetch("/api/admin/media/signed-url", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              kind,
-              content_type: file.type,
-              size_bytes: file.size,
-            }),
-          });
-          const signedJson = await signedRes.json();
-          if (!signedRes.ok || !signedJson.data) {
-            localFailures.push({
-              filename: rawFile.name,
-              reason: signedJson.error || "Server rejected upload",
-            });
-            continue;
-          }
-
-          const putRes = await fetch(signedJson.data.upload_url, {
-            method: "PUT",
-            headers: { "Content-Type": file.type },
-            body: file,
-          });
-          if (!putRes.ok) {
-            localFailures.push({
-              filename: rawFile.name,
-              reason: "Upload to storage failed",
-            });
-            continue;
-          }
-
-          setUploading({
-            done: i,
-            total: list.length,
-            currentName: rawFile.name,
-            phase: "Saving",
-          });
-          const completeRes = await fetch("/api/admin/media/complete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              key: signedJson.data.key,
-              kind,
-              width: dims?.width ?? null,
-              height: dims?.height ?? null,
-              tags,
-            }),
-          });
-          if (!completeRes.ok) {
-            const completeJson = await completeRes.json().catch(() => ({}));
-            localFailures.push({
-              filename: rawFile.name,
-              reason: completeJson.error || "Save failed",
-            });
-            continue;
-          }
-          localSuccess += 1;
-        } catch (err) {
-          localFailures.push({
-            filename: rawFile.name,
-            reason: err instanceof Error ? err.message : "Unknown error",
-          });
-        }
-      }
-
-      setUploading(null);
-      setFailures(localFailures);
-      setSuccessCount(localSuccess);
-      // Keep dialog open if there were any failures so admin can review;
-      // close + reset if everything succeeded.
-      if (localFailures.length === 0) {
-        setShowOptions(false);
-        setGroupName("");
-      }
-      onUploaded();
+        return { id: nextQueueId(), file: f, status: "queued" };
+      });
+      setItems((prev) => [...prev, ...next]);
     },
-    [kind, groupName, cap, onUploaded]
+    [cap]
   );
+
+  // Process one item at a time. Started by an effect when there's queued
+  // work and we're not already running. Updates that item's status as it
+  // moves through prepare → upload → save → done/failed.
+  useEffect(() => {
+    if (running) return;
+    const next = items.find((i) => i.status === "queued");
+    if (!next) {
+      // Whole batch is settled — refresh the library page.
+      if (items.some((i) => i.status === "done")) onUploaded();
+      return;
+    }
+
+    let cancelled = false;
+    const patch = (id: string, p: Partial<QueueItem>) =>
+      setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...p } : x)));
+
+    setRunning(true);
+    (async () => {
+      const tags = groupName.trim() ? [groupName.trim().slice(0, 60)] : undefined;
+      try {
+        patch(next.id, { status: "preparing" });
+        const file = await prepareUploadFile(next.file);
+        const dims = await readDims(file);
+        if (cancelled) return;
+
+        patch(next.id, { status: "uploading" });
+        const signedRes = await fetch("/api/admin/media/signed-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind,
+            content_type: file.type,
+            size_bytes: file.size,
+          }),
+        });
+        const signedJson = await signedRes.json();
+        if (!signedRes.ok || !signedJson.data) {
+          patch(next.id, {
+            status: "failed",
+            error: signedJson.error || "Server rejected upload",
+          });
+          return;
+        }
+
+        const putRes = await fetch(signedJson.data.upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        if (!putRes.ok) {
+          patch(next.id, { status: "failed", error: "Upload to storage failed" });
+          return;
+        }
+        if (cancelled) return;
+
+        patch(next.id, { status: "saving" });
+        const completeRes = await fetch("/api/admin/media/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key: signedJson.data.key,
+            kind,
+            width: dims?.width ?? null,
+            height: dims?.height ?? null,
+            tags,
+          }),
+        });
+        if (!completeRes.ok) {
+          const completeJson = await completeRes.json().catch(() => ({}));
+          patch(next.id, {
+            status: "failed",
+            error: completeJson.error || "Save failed",
+          });
+          return;
+        }
+        patch(next.id, { status: "done" });
+      } catch (err) {
+        patch(next.id, {
+          status: "failed",
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
+      } finally {
+        setRunning(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items, running, kind, groupName, onUploaded]);
+
+  const handleClose = useCallback(() => {
+    if (inFlight) return; // don't let the user lose the dialog mid-upload
+    setOpen(false);
+    setItems([]);
+    setGroupName("");
+  }, [inFlight]);
 
   return (
     <>
-      <Button size="sm" onClick={trigger} disabled={!!uploading}>
-        {uploading ? (
-          <>
-            <Loader2 size={14} className="animate-spin mr-1.5" />
-            {uploading.phase} {uploading.done + 1}/{uploading.total}…
-          </>
-        ) : (
-          <>
-            <Upload size={14} className="mr-1.5" />
-            Upload covers
-          </>
-        )}
+      <Button size="sm" onClick={triggerOpen}>
+        <Upload size={14} className="mr-1.5" />
+        Upload covers
       </Button>
 
-      {/* Options dialog — set kind + group, then pick files */}
-      {showOptions && (
+      {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4 max-h-[90dvh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
                   New uploads
                 </p>
                 <h3 className="text-base font-semibold text-foreground mt-0.5">
-                  Where do these covers go?
+                  {items.length === 0
+                    ? "Where do these covers go?"
+                    : inFlight
+                    ? `Uploading ${doneCount + 1} of ${items.length}…`
+                    : failedCount > 0
+                    ? `${doneCount} uploaded · ${failedCount} skipped`
+                    : `${doneCount} uploaded`}
                 </h3>
               </div>
               <button
                 type="button"
-                onClick={() => setShowOptions(false)}
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors"
+                onClick={handleClose}
+                disabled={inFlight}
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Close"
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[12px] font-medium text-foreground">
-                Use these covers for…
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <KindRadio
-                  active={kind === "quest_cover"}
-                  onClick={() => setKind("quest_cover")}
-                  label="Quests"
-                  hint="3:4 portrait, iOS feed"
-                />
-                <KindRadio
-                  active={kind === "event_cover"}
-                  onClick={() => setKind("event_cover")}
-                  label="Events"
-                  hint="1:1 square, web + iOS"
-                />
+            {/* Settings — kind + group. Disabled while a batch is in flight
+                so the destination can't change for files mid-upload. */}
+            <fieldset
+              disabled={inFlight}
+              className="space-y-3 disabled:opacity-60 disabled:pointer-events-none"
+            >
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-medium text-foreground">
+                  Use these covers for…
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <KindRadio
+                    active={kind === "quest_cover"}
+                    onClick={() => setKind("quest_cover")}
+                    label="Quests"
+                    hint="3:4 portrait, iOS feed"
+                  />
+                  <KindRadio
+                    active={kind === "event_cover"}
+                    onClick={() => setKind("event_cover")}
+                    label="Events"
+                    hint="1:1 square, web + iOS"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[12px] font-medium text-foreground">
-                Group{" "}
-                <span className="text-muted-foreground font-normal">(optional)</span>
-              </label>
-              <Input
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder="e.g. Bob Marley Tribute"
-                list="bulk-group-suggestions"
-                maxLength={60}
+              <div className="space-y-1.5">
+                <label className="text-[12px] font-medium text-foreground">
+                  Group{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </label>
+                <Input
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder="e.g. Bob Marley Tribute"
+                  list="bulk-group-suggestions"
+                  maxLength={60}
+                />
+                <datalist id="bulk-group-suggestions">
+                  {groups.map((g) => (
+                    <option key={g.name} value={g.name} />
+                  ))}
+                </datalist>
+              </div>
+            </fieldset>
+
+            {/* Drop-zone — accepts drag-and-drop AND click-to-browse. Always
+                visible (vs the old "Choose files" button) so the affordance
+                is obvious without a hunt. */}
+            <div
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                addFiles(Array.from(e.dataTransfer.files));
+              }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  fileRef.current?.click();
+                }
+              }}
+              className={cn(
+                "rounded-lg border-2 border-dashed cursor-pointer transition-colors px-4 py-6 text-center",
+                "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2",
+                dragging
+                  ? "border-primary/60 bg-primary/[0.05]"
+                  : "border-border/60 hover:border-primary/30"
+              )}
+            >
+              <Upload
+                size={20}
+                className={cn(
+                  "mx-auto mb-2",
+                  dragging ? "text-primary" : "text-muted-foreground/70"
+                )}
               />
-              <datalist id="bulk-group-suggestions">
-                {groups.map((g) => (
-                  <option key={g.name} value={g.name} />
-                ))}
-              </datalist>
-              <p className="text-[11px] text-muted-foreground">
-                Groups make a campaign of related creative easy to find later. Skip if these are general stock.
+              <p className="text-[13px] font-medium text-foreground">
+                {dragging ? "Drop to add to the queue" : "Drop images, or click to browse"}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                JPG, PNG, WebP, or HEIC · up to {Math.round(cap / 1024 / 1024)}MB · auto-optimised
               </p>
             </div>
 
-            {/* Per-file results — only shown after a batch with at least one
-                rejection. Lets the admin see what didn't make it without
-                re-running the whole upload. */}
-            {(failures.length > 0 || successCount > 0) && !uploading && (
-              <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-3">
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="font-medium text-foreground">
-                    {successCount > 0 && (
-                      <span className="text-success">
-                        {successCount} uploaded
-                      </span>
-                    )}
-                    {successCount > 0 && failures.length > 0 && " · "}
-                    {failures.length > 0 && (
-                      <span className="text-destructive">
-                        {failures.length} skipped
-                      </span>
-                    )}
-                  </span>
-                </div>
-                {failures.length > 0 && (
-                  <ul className="space-y-1 text-[11px]">
-                    {failures.map((f, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start gap-2 text-muted-foreground"
-                      >
-                        <span className="truncate font-mono text-foreground">
-                          {f.filename}
-                        </span>
-                        <span>—</span>
-                        <span className="shrink-0 text-destructive/90">
-                          {f.reason}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+            {/* Live queue — appears the instant files are added. Each row
+                shows status with an icon so it's never ambiguous what's
+                happening. */}
+            {items.length > 0 && (
+              <ul className="space-y-1 text-[12px] max-h-[200px] overflow-y-auto pr-1">
+                {items.map((item) => (
+                  <QueueRow key={item.id} item={item} />
+                ))}
+              </ul>
             )}
 
             <div className="flex items-center justify-end gap-2 pt-1">
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => {
-                  setShowOptions(false);
-                  setFailures([]);
-                  setSuccessCount(0);
-                }}
+                onClick={handleClose}
+                disabled={inFlight}
               >
-                {failures.length > 0 ? "Done" : "Cancel"}
-              </Button>
-              <Button size="sm" onClick={() => fileRef.current?.click()}>
-                {failures.length > 0 ? "Try more" : "Choose files"}
+                {inFlight ? "Working…" : items.length > 0 ? "Done" : "Cancel"}
               </Button>
             </div>
           </div>
@@ -855,11 +871,62 @@ function BulkUploadButton({
         multiple
         className="hidden"
         onChange={(e) => {
-          if (e.target.files) void handleFiles(e.target.files);
+          if (e.target.files) addFiles(Array.from(e.target.files));
           e.target.value = "";
         }}
       />
     </>
+  );
+}
+
+function QueueRow({ item }: { item: QueueItem }) {
+  const phase =
+    item.status === "queued"
+      ? "Queued"
+      : item.status === "preparing"
+      ? "Preparing…"
+      : item.status === "uploading"
+      ? "Uploading…"
+      : item.status === "saving"
+      ? "Saving…"
+      : item.status === "done"
+      ? "Uploaded"
+      : item.error ?? "Failed";
+
+  const isActive =
+    item.status === "preparing" ||
+    item.status === "uploading" ||
+    item.status === "saving";
+
+  return (
+    <li className="flex items-center gap-2 rounded-md border border-border/40 bg-muted/10 px-2.5 py-1.5">
+      <div className="shrink-0 w-4 h-4 flex items-center justify-center">
+        {item.status === "done" ? (
+          <Check size={13} className="text-success" />
+        ) : item.status === "failed" ? (
+          <AlertCircle size={13} className="text-destructive" />
+        ) : isActive ? (
+          <Loader2 size={13} className="animate-spin text-primary" />
+        ) : (
+          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+        )}
+      </div>
+      <span className="truncate flex-1 font-mono text-[11px] text-foreground">
+        {item.file.name}
+      </span>
+      <span
+        className={cn(
+          "shrink-0 text-[11px]",
+          item.status === "failed"
+            ? "text-destructive"
+            : item.status === "done"
+            ? "text-success"
+            : "text-muted-foreground"
+        )}
+      >
+        {phase}
+      </span>
+    </li>
   );
 }
 

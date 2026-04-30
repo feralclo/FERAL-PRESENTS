@@ -148,6 +148,8 @@ export function IdentitySection({ event, updateEvent }: TabProps) {
         </p>
       </div>
 
+      <SubHeading label="When" />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Start *</Label>
@@ -198,6 +200,8 @@ export function IdentitySection({ event, updateEvent }: TabProps) {
         </div>
       </div>
 
+      <SubHeading label="Where" />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Venue</Label>
@@ -228,7 +232,7 @@ export function IdentitySection({ event, updateEvent }: TabProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3 sm:items-end">
         <div className="space-y-2">
           <Label>City</Label>
           <PlaceAutocomplete
@@ -258,6 +262,22 @@ export function IdentitySection({ event, updateEvent }: TabProps) {
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Quiet inline divider with a Space-Mono eyebrow. Splits the dense
+ * Identity grid into "When" + "Where" without escalating to a second
+ * collapsible accordion.
+ */
+function SubHeading({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+        {label}
+      </span>
+      <span className="h-px flex-1 bg-border/40" />
     </div>
   );
 }

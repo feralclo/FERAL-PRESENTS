@@ -8,6 +8,7 @@ import { TABLES } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/components/admin/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
@@ -27,6 +28,11 @@ import {
   RotateCcw,
   Loader2,
   ArrowUpDown,
+  Search,
+  X,
+  Pencil,
+  TrendingUp,
+  Copy as CopyIcon,
 } from "lucide-react";
 import type { Event } from "@/types/events";
 import { fmtMoney } from "@/lib/format";
@@ -63,12 +69,14 @@ export default function EventsPage() {
   const [dateOrder, setDateOrder] = useState<"desc" | "asc">("desc");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Action state — delete is editor-only (open the editor and use the Delete
   // button there). The list keeps Archive/Unarchive for reversible row-level
   // actions; permanent deletion lives in one place to avoid the trap of two
   // half-baked confirmation flows that drift apart.
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const loadEvents = useCallback(async () => {
     const supabase = getSupabaseClient();
@@ -107,13 +115,21 @@ export default function EventsPage() {
       result = result.filter((e) => new Date(e.date_start).getTime() <= to);
     }
 
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter((e) => {
+        const haystack = `${e.name || ""} ${e.venue_name || ""} ${e.city || ""} ${e.slug || ""}`.toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
     result = [...result].sort((a, b) => {
       const diff = new Date(a.date_start).getTime() - new Date(b.date_start).getTime();
       return dateOrder === "asc" ? diff : -diff;
     });
 
     return result;
-  }, [events, statusFilter, dateOrder, dateFrom, dateTo]);
+  }, [events, statusFilter, dateOrder, dateFrom, dateTo, searchQuery]);
 
   // Status counts for tabs
   const statusCounts = useMemo(() => {
@@ -155,6 +171,24 @@ export default function EventsPage() {
     setActionLoading(null);
   };
 
+  const handleDuplicate = async (evt: EventWithTickets) => {
+    setDuplicatingId(evt.id);
+    try {
+      const res = await fetch(`/api/events/${evt.id}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (res.ok && json.data?.slug) {
+        router.push(`/admin/events/${json.data.slug}/`);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    setDuplicatingId(null);
+  };
+
   const getTicketStats = (evt: EventWithTickets) => {
     const types = evt.ticket_types || [];
     const sold = types.reduce((s, t) => s + (t.sold || 0), 0);
@@ -188,26 +222,52 @@ export default function EventsPage() {
       {!loading && events.length > 0 && (
         <Card className="py-0 gap-0">
           <CardContent className="p-4 space-y-3">
-            {/* Status tabs */}
-            <div className="flex gap-1 flex-wrap">
-              {STATUS_TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setStatusFilter(tab.key)}
-                  className={`rounded-md px-3 py-1.5 font-mono text-[11px] font-medium tracking-wide transition-all duration-200 ${
-                    statusFilter === tab.key
-                      ? "bg-primary/15 text-primary ring-1 ring-primary/20"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                  }`}
-                >
-                  {tab.label}
-                  {statusCounts[tab.key] ? (
-                    <span className="ml-1.5 text-[10px] opacity-60">
-                      {statusCounts[tab.key]}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
+            {/* Search + status tabs share a row on desktop, stack on mobile */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative flex-1 max-w-md">
+                <Search
+                  size={14}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60"
+                />
+                <Input
+                  type="search"
+                  placeholder="Search by name, venue, or city"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-9 pl-9 pr-8 text-xs"
+                  aria-label="Search events"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground/70 hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-1 gap-1 flex-wrap">
+                {STATUS_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setStatusFilter(tab.key)}
+                    className={`rounded-md px-3 py-1.5 font-mono text-[11px] font-medium tracking-wide transition-all duration-200 ${
+                      statusFilter === tab.key
+                        ? "bg-primary/15 text-primary ring-1 ring-primary/20"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    }`}
+                  >
+                    {tab.label}
+                    {statusCounts[tab.key] ? (
+                      <span className="ml-1.5 text-[10px] opacity-60">
+                        {statusCounts[tab.key]}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Date filters */}
@@ -279,12 +339,21 @@ export default function EventsPage() {
       ) : filteredEvents.length === 0 ? (
         <Card className="py-0 gap-0">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-sm text-muted-foreground">No events match the current filters</p>
+            <p className="text-sm text-muted-foreground">
+              {searchQuery
+                ? `No events match “${searchQuery}”`
+                : "No events match the current filters"}
+            </p>
             <Button
               variant="ghost"
               size="sm"
               className="mt-2 text-primary"
-              onClick={() => { setStatusFilter("all"); setDateFrom(""); setDateTo(""); }}
+              onClick={() => {
+                setStatusFilter("all");
+                setDateFrom("");
+                setDateTo("");
+                setSearchQuery("");
+              }}
             >
               Clear filters
             </Button>
@@ -299,21 +368,28 @@ export default function EventsPage() {
                 <TableHead>Event</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Venue</TableHead>
-                <TableHead className="text-right">Tickets</TableHead>
+                <TableHead>Tickets</TableHead>
                 <TableHead className="text-right">Revenue</TableHead>
                 <TableHead>Payment</TableHead>
-                <TableHead className="w-[100px]" />
+                <TableHead className="w-[200px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredEvents.map((evt) => {
                 const stats = getTicketStats(evt);
                 const isArchived = evt.status === "archived";
+                const editHref = `/admin/events/${evt.slug}/`;
+                const ticketsHref = `/admin/events/${evt.slug}/?section=tickets`;
+                const salesHref = `/admin/events/${evt.slug}/?section=tickets#sales`;
+                const pct =
+                  stats.capacity && stats.capacity > 0
+                    ? Math.min(100, Math.round((stats.sold / stats.capacity) * 100))
+                    : null;
                 return (
                   <TableRow
                     key={evt.id}
                     className={isArchived ? "opacity-50" : "cursor-pointer"}
-                    onClick={() => !isArchived && router.push(`/admin/events/${evt.slug}/`)}
+                    onClick={() => !isArchived && router.push(editHref)}
                   >
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[evt.status] || "secondary"}>
@@ -322,7 +398,7 @@ export default function EventsPage() {
                     </TableCell>
                     <TableCell>
                       <Link
-                        href={`/admin/events/${evt.slug}/`}
+                        href={editHref}
                         className="font-medium text-foreground hover:text-primary transition-colors"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -339,11 +415,35 @@ export default function EventsPage() {
                     <TableCell className="text-muted-foreground">
                       {evt.venue_name || "—"}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-xs tabular-nums">
-                      {stats.sold}
-                      {stats.capacity !== null ? (
-                        <span className="text-muted-foreground"> / {stats.capacity}</span>
-                      ) : null}
+                    <TableCell className="min-w-[140px]">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-baseline justify-between gap-2 font-mono text-xs tabular-nums">
+                          <span className="text-foreground">{stats.sold}</span>
+                          {stats.capacity !== null && (
+                            <span className="text-[10px] text-muted-foreground">
+                              of {stats.capacity}
+                              {pct !== null ? ` · ${pct}%` : ""}
+                            </span>
+                          )}
+                        </div>
+                        {pct !== null && (
+                          <div
+                            className="h-1 w-full overflow-hidden rounded-full bg-foreground/[0.06]"
+                            aria-label={`${pct}% sold`}
+                          >
+                            <div
+                              className={
+                                pct >= 90
+                                  ? "h-full bg-success"
+                                  : pct >= 50
+                                    ? "h-full bg-primary"
+                                    : "h-full bg-primary/60"
+                              }
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs tabular-nums text-success">
                       {fmtMoney(stats.revenue, evt.currency || "GBP")}
@@ -362,7 +462,58 @@ export default function EventsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center justify-end gap-0.5">
+                        {!isArchived && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              asChild
+                              title="Edit"
+                            >
+                              <Link href={editHref} aria-label="Edit event">
+                                <Pencil size={12} />
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              asChild
+                              title="Sales"
+                              className="text-muted-foreground"
+                            >
+                              <Link href={salesHref} aria-label="Sales for event">
+                                <TrendingUp size={12} />
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              asChild
+                              title="Tickets"
+                              className="text-muted-foreground"
+                            >
+                              <Link href={ticketsHref} aria-label="Tickets for event">
+                                <CalendarDays size={12} />
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              onClick={() => handleDuplicate(evt)}
+                              disabled={duplicatingId === evt.id}
+                              title="Duplicate"
+                              className="text-muted-foreground"
+                              aria-label="Duplicate event"
+                            >
+                              {duplicatingId === evt.id ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <CopyIcon size={12} />
+                              )}
+                            </Button>
+                          </>
+                        )}
                         {isArchived ? (
                           <Button
                             variant="ghost"
@@ -386,6 +537,7 @@ export default function EventsPage() {
                             disabled={actionLoading === evt.id}
                             title="Archive"
                             className="text-muted-foreground"
+                            aria-label="Archive event"
                           >
                             {actionLoading === evt.id ? (
                               <Loader2 size={12} className="animate-spin" />

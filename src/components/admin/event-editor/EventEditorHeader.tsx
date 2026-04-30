@@ -4,7 +4,18 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ExternalLink, Eye, Ticket, Users, Save, Trash2, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ExternalLink,
+  Eye,
+  Ticket,
+  Users,
+  Save,
+  Trash2,
+  Loader2,
+  Copy,
+} from "lucide-react";
 import type { Event } from "@/types/events";
 
 const STATUS_VARIANT = {
@@ -20,6 +31,9 @@ interface EventEditorHeaderProps {
   saving: boolean;
   onSave: () => void;
   onDelete: () => void;
+  /** Optional — when provided, renders a Duplicate button that calls this. */
+  onDuplicate?: () => void;
+  duplicating?: boolean;
 }
 
 export function EventEditorHeader({
@@ -27,6 +41,8 @@ export function EventEditorHeader({
   saving,
   onSave,
   onDelete,
+  onDuplicate,
+  duplicating = false,
 }: EventEditorHeaderProps) {
   const isAnnouncement =
     event.tickets_live_at && new Date(event.tickets_live_at) > new Date();
@@ -76,6 +92,22 @@ export function EventEditorHeader({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {onDuplicate && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDuplicate}
+              disabled={duplicating}
+              title="Duplicate this event"
+            >
+              {duplicating ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Copy size={14} />
+              )}
+              {duplicating ? "Duplicating…" : "Duplicate"}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

@@ -34,6 +34,10 @@ interface CanvasSectionProps {
   /** Called when the user clicks the header. The shell uses this to
    *  trigger the preview pulse + scroll. */
   onActivate?: (anchor: CanvasAnchor) => void;
+  /** When true, force this section open and scroll to it. Used for deep-
+   *  linking via ?section= on the URL — overrides localStorage so the
+   *  host actually lands on what the link promised. */
+  deepLinkTarget?: boolean;
   children: React.ReactNode;
 }
 
@@ -46,6 +50,7 @@ export function CanvasSection({
   completeness,
   defaultOpen = true,
   onActivate,
+  deepLinkTarget = false,
   children,
 }: CanvasSectionProps) {
   const storageKey = `entry_canvas_section_${eventId}_${anchor}`;
@@ -63,6 +68,25 @@ export function CanvasSection({
       /* localStorage may be unavailable (Safari private mode) — ignore */
     }
   }, [storageKey]);
+
+  // Deep-link target wins over both localStorage and default. Force open
+  // and scroll the section header into view once on mount. We run this
+  // *after* the localStorage hydration above by using a separate effect —
+  // React serialises effect ordering, so the scroll fires last.
+  useEffect(() => {
+    if (!deepLinkTarget) return;
+    setOpen(true);
+    if (typeof window === "undefined") return;
+    const id = `canvas-section-${anchor}`;
+    const el = document.getElementById(id);
+    if (el) {
+      // Defer one frame so the section body has time to render after the
+      // forced-open state flushes.
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [deepLinkTarget, anchor]);
 
   const persist = useCallback(
     (next: boolean) => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, brandingKey } from "@/lib/constants";
@@ -51,11 +51,39 @@ import type { EventArtist } from "@/types/artists";
  * Tickets / Money / Publish. Readiness rail + Publish card sit above the
  * preview. Save model unchanged: explicit central Save in the header.
  */
+const VALID_DEEP_LINK_SECTIONS = new Set([
+  "identity",
+  "story",
+  "look",
+  "tickets",
+  "money",
+  "publish",
+] as const);
+
+type DeepLinkSection =
+  | "identity"
+  | "story"
+  | "look"
+  | "tickets"
+  | "money"
+  | "publish";
+
 export default function EventEditorPage() {
   const orgId = useOrgId();
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const slug = params.slug as string;
+
+  // Deep-link via ?section=tickets — lets the events list (and external
+  // links) jump straight to a specific section instead of the host
+  // landing on Identity and scrolling. Only honoured on first paint;
+  // navigating between sections after that is the user's job.
+  const rawSection = searchParams.get("section");
+  const deepLinkSection: DeepLinkSection | null =
+    rawSection && VALID_DEEP_LINK_SECTIONS.has(rawSection as DeepLinkSection)
+      ? (rawSection as DeepLinkSection)
+      : null;
 
   const sync = useCanvasSync();
 
@@ -71,6 +99,7 @@ export default function EventEditorPage() {
   const [eventArtists, setEventArtists] = useState<EventArtist[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [stripeConnected, setStripeConnected] = useState<boolean | null>(null);
   const [isPlatformOwner, setIsPlatformOwner] = useState(false);
 
@@ -392,6 +421,28 @@ export default function EventEditorPage() {
     return ok;
   }, [event, ticketTypes, deletedTypeIds, settings, eventArtists, orgId]);
 
+  const handleDuplicate = useCallback(async () => {
+    if (!event) return;
+    setDuplicating(true);
+    setSaveMsg("");
+    try {
+      const res = await fetch(`/api/events/${event.id}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (res.ok && json.data?.slug) {
+        router.push(`/admin/events/${json.data.slug}/`);
+        return;
+      }
+      setSaveMsg(json.error || "Duplicate failed");
+    } catch {
+      setSaveMsg("Network error during duplicate");
+    }
+    setDuplicating(false);
+    setTimeout(() => setSaveMsg(""), 4000);
+  }, [event, router]);
+
   const handleDelete = useCallback(async () => {
     if (!event) return;
     setDeleting(true);
@@ -489,6 +540,7 @@ export default function EventEditorPage() {
         subtitle="What it is, when, and where."
         completeness={sectionCompleteness.identity}
         onActivate={sync.focus}
+        deepLinkTarget={deepLinkSection === "identity"}
       >
         <IdentitySection event={event} updateEvent={updateEvent} />
       </CanvasSection>
@@ -501,6 +553,7 @@ export default function EventEditorPage() {
         subtitle="Tag line, about, lineup, fine-print details."
         completeness={sectionCompleteness.story}
         onActivate={sync.focus}
+        deepLinkTarget={deepLinkSection === "story"}
       >
         <StorySection
           event={event}
@@ -518,6 +571,7 @@ export default function EventEditorPage() {
         subtitle="Cover, banner, poster, theme."
         completeness={sectionCompleteness.look}
         onActivate={sync.focus}
+        deepLinkTarget={deepLinkSection === "look"}
       >
         <LookSection
           event={event}
@@ -535,6 +589,7 @@ export default function EventEditorPage() {
         subtitle="Tiers, capacity, release strategy, waitlist."
         completeness={sectionCompleteness.tickets}
         onActivate={sync.focus}
+        deepLinkTarget={deepLinkSection === "tickets"}
       >
         <TicketsSection
           event={event}
@@ -556,6 +611,7 @@ export default function EventEditorPage() {
         subtitle="Currency, multi-currency, VAT, payment account."
         completeness={sectionCompleteness.money}
         onActivate={sync.focus}
+        deepLinkTarget={deepLinkSection === "money"}
       >
         <MoneySection
           event={event}
@@ -573,6 +629,7 @@ export default function EventEditorPage() {
         subtitle="Status, visibility, announcement, queue, SEO."
         completeness={sectionCompleteness.publish}
         onActivate={sync.focus}
+        deepLinkTarget={deepLinkSection === "publish"}
       >
         <PublishSection
           event={event}
@@ -623,6 +680,10 @@ export default function EventEditorPage() {
               void handleSave();
             }}
             onDelete={() => setShowDeleteConfirm(true)}
+            onDuplicate={() => {
+              void handleDuplicate();
+            }}
+            duplicating={duplicating}
           />
         }
         banner={

@@ -1618,6 +1618,7 @@ export function QuestsTab() {
                       campaignTag={assetCampaignTag}
                       onModeChange={setAssetMode}
                       onCampaignChange={setAssetCampaignTag}
+                      questTitle={title}
                     />
 
                     {assetMode === "pool" ? (
@@ -1726,10 +1727,10 @@ export function QuestsTab() {
                         </div>
                       ) : (
                         <label
-                          className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed py-6 cursor-pointer transition-colors ${
+                          className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed h-44 cursor-pointer transition-all duration-200 ${
                             dragActive
-                              ? "border-primary bg-primary/10"
-                              : "border-border bg-muted/20 hover:border-primary/40 hover:bg-muted/30"
+                              ? "border-primary bg-primary/[0.07]"
+                              : "border-primary/30 bg-primary/[0.02] hover:border-primary/55 hover:bg-primary/[0.05]"
                           }`}
                           onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
                           onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
@@ -1742,11 +1743,15 @@ export function QuestsTab() {
                             if (file) handleMediaUpload(file);
                           }}
                         >
-                          <Upload size={18} className={dragActive ? "text-primary" : "text-muted-foreground"} />
-                          <span className={`text-xs font-medium ${dragActive ? "text-primary" : "text-muted-foreground"}`}>
+                          <div className={`h-12 w-12 rounded-full flex items-center justify-center transition-transform duration-200 ${
+                            dragActive ? "bg-primary/15 scale-110" : "bg-primary/10"
+                          }`}>
+                            <Upload size={22} className="text-primary" />
+                          </div>
+                          <span className="text-base font-medium text-foreground">
                             {dragActive ? "Drop to upload" : "Click or drop an image or video"}
                           </span>
-                          <span className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP up to 25MB · MP4, MOV, WebM up to 200MB</span>
+                          <span className="text-xs text-foreground/55">We&apos;ll resize and compress for you.</span>
                           <input
                             ref={videoInputRef}
                             type="file"
@@ -1764,9 +1769,9 @@ export function QuestsTab() {
                         <button
                           type="button"
                           onClick={() => setContentPickerOpen(true)}
-                          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-card px-3 py-2 text-[12px] text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border/50 bg-card px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/[0.03] hover:text-primary focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
                         >
-                          <ImageLucide size={13} />
+                          <ImageLucide size={14} />
                           Or pick from your library
                         </button>
                       )}

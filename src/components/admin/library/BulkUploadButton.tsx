@@ -6,8 +6,16 @@ import { AdminButton } from "@/components/admin/ui";
 import { BulkUploadSheet } from "./BulkUploadSheet";
 
 interface BulkUploadButtonProps {
-  /** Pre-fills the campaign chooser with this slug. */
+  /** Pre-fills the destination chooser with this campaign slug.
+   *  When omitted, the sheet opens on "Save to library" and the
+   *  user can switch to a campaign inline. */
   defaultCampaign?: string;
+  /** Force campaign mode — disables the "Save to library" option.
+   *  Use on the campaign canvas where uploads should always land in
+   *  the active campaign. */
+  campaignRequired?: boolean;
+  /** Optional label override; default "Upload". */
+  label?: string;
   onUploaded: () => void;
 }
 
@@ -18,6 +26,8 @@ interface BulkUploadButtonProps {
  */
 export function BulkUploadButton({
   defaultCampaign,
+  campaignRequired,
+  label = "Upload",
   onUploaded,
 }: BulkUploadButtonProps) {
   const [open, setOpen] = useState(false);
@@ -29,12 +39,13 @@ export function BulkUploadButton({
         leftIcon={<Plus className="h-3.5 w-3.5" />}
         onClick={() => setOpen(true)}
       >
-        Upload
+        {label}
       </AdminButton>
       <BulkUploadSheet
         open={open}
         onOpenChange={setOpen}
         defaultCampaign={defaultCampaign}
+        campaignRequired={campaignRequired}
         onUploaded={() => {
           onUploaded();
         }}

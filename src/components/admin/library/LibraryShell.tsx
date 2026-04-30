@@ -3,28 +3,43 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { LibraryWorkspace } from "./LibraryWorkspace";
-import { CampaignRail } from "./CampaignRail";
-import { CampaignChipStrip } from "./CampaignChipStrip";
+import { CampaignsView } from "./CampaignsView";
 import { CampaignDetailView } from "./CampaignDetailView";
-import { LibraryEmptyHero } from "./LibraryEmptyHero";
+import { LibrarySelectionProvider } from "./LibrarySelectionContext";
+import { LibrarySelectionBar } from "./LibrarySelectionBar";
+import { AdminPageHeader } from "@/components/admin/ui";
+import { BulkUploadButton } from "./BulkUploadButton";
+import { cn } from "@/lib/utils";
 import type { CampaignSummary } from "@/types/library-campaigns";
 
+type Segment = "all" | "campaigns";
+
 /**
- * /admin/library — top-level library shell.
+ * /admin/library — top-level shell.
  *
- * Two-column workspace on desktop (campaigns rail + canvas), single
- * column with a chip strip on mobile.
+ * Mental model: the **library** is the master gallery of every creative
+ * the tenant has uploaded — covers, shareables, campaign assets, every
+ * kind. **Campaigns** are a layer applied on top, surfaced via a top
+ * segmented control + a bulk-action affordance ("Add to campaign") that
+ * fires when tiles are selected.
  *
- * Active campaign is reflected in the URL via `?campaign=<slug>` so the
- * canvas state is shareable. Absence of the param renders the existing
- * `LibraryWorkspace` as the "All assets" view.
+ * URL state:
+ *   ?view=campaigns      → render the Campaigns segment
+ *   ?campaign=<slug>     → render the detail view for one campaign
+ *   (default)            → render the All assets workspace
+ *
+ * Browse links from the quest editor pool picker land on
+ * `?campaign=<slug>` so a host always sees the same surface there.
  */
 export function LibraryShell() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeCampaign = searchParams.get("campaign");
+  const segmentParam = searchParams.get("view");
+  const initialSegment: Segment = segmentParam === "campaigns" ? "campaigns" : "all";
 
+  const [segment, setSegment] = useState<Segment>(initialSegment);
   const [campaigns, setCampaigns] = useState<CampaignSummary[] | null>(null);
   const [error, setError] = useState("");
 
@@ -50,7 +65,25 @@ export function LibraryShell() {
     void loadCampaigns();
   }, [loadCampaigns]);
 
-  const setActive = useCallback(
+  // Keep state in sync with the URL — back button restores segment.
+  useEffect(() => {
+    setSegment(segmentParam === "campaigns" ? "campaigns" : "all");
+  }, [segmentParam]);
+
+  const setSegmentUrl = useCallback(
+    (next: Segment) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "campaigns") params.set("view", "campaigns");
+      else params.delete("view");
+      // Clear any active campaign when changing segment.
+      params.delete("campaign");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    },
+    [pathname, router, searchParams]
+  );
+
+  const setActiveCampaign = useCallback(
     (tag: string | null) => {
       const params = new URLSearchParams(searchParams.toString());
       if (tag) params.set("campaign", tag);
@@ -69,93 +102,165 @@ export function LibraryShell() {
     [activeCampaign, campaigns]
   );
 
-  // Library is "completely empty" only if there are no campaigns AND
-  // no untagged assets. We approximate by waiting for campaigns to load
-  // and then peeking at the All-assets view shape via a HEAD-style call.
-  // Cheap heuristic: zero campaigns + zero loaded campaigns + we render
-  // the hero. The LibraryWorkspace itself surfaces its own empty state
-  // for the "no untagged assets but yes campaigns" case.
-  const showHero =
-    campaigns !== null &&
-    campaigns.length === 0 &&
-    !activeCampaign;
+  const totalAssets = useMemo(
+    () =>
+      (campaigns ?? []).reduce((acc, c) => acc + c.asset_count, 0),
+    [campaigns]
+  );
 
-  if (campaigns === null) {
-    return <LibraryShellSkeleton />;
+  // When a campaign is active in the URL, render its detail view —
+  // overrides the segment so deep-links from the quest editor always
+  // land on the right surface.
+  if (activeCampaign && activeSummary) {
+    return (
+      <LibrarySelectionProvider>
+        <div className="px-4 py-6 lg:px-8 lg:py-8 pb-24">
+          <CampaignDetailView
+            campaign={activeSummary}
+            onCampaignsChanged={() => void loadCampaigns()}
+            onClearActive={() => setActiveCampaign(null)}
+          />
+        </div>
+        <LibrarySelectionBar
+          campaigns={campaigns ?? []}
+          onCampaignsChanged={() => void loadCampaigns()}
+        />
+      </LibrarySelectionProvider>
+    );
   }
 
   return (
-    <div className="px-4 py-6 lg:px-8 lg:py-8">
-      <div className="lg:grid lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-8">
-        <aside className="hidden lg:block">
-          <CampaignRail
-            campaigns={campaigns}
-            activeTag={activeCampaign}
-            onSelect={setActive}
-            onCampaignsChanged={() => void loadCampaigns()}
-          />
-        </aside>
+    <LibrarySelectionProvider>
+      <div className="px-4 py-6 lg:px-8 lg:py-8 pb-24 space-y-6">
+        <AdminPageHeader
+          title="Library"
+          subtitle={subtitleFor(segment, campaigns, totalAssets)}
+          actions={
+            <BulkUploadButton onUploaded={() => void loadCampaigns()} />
+          }
+        />
 
-        <div className="lg:hidden mb-4">
-          <CampaignChipStrip
-            campaigns={campaigns}
-            activeTag={activeCampaign}
-            onSelect={setActive}
-            onCampaignsChanged={() => void loadCampaigns()}
-          />
+        <SegmentedControl
+          segment={segment}
+          assetsCount={totalAssets}
+          campaignsCount={campaigns?.length ?? 0}
+          onChange={(next) => {
+            setSegment(next);
+            setSegmentUrl(next);
+          }}
+        />
+
+        <div>
+          {segment === "all" ? (
+            <LibraryWorkspace embedded />
+          ) : (
+            <CampaignsView
+              campaigns={campaigns}
+              onSelect={(tag) => {
+                setActiveCampaign(tag);
+              }}
+              onCreated={() => void loadCampaigns()}
+            />
+          )}
         </div>
 
-        <section className="min-w-0">
-          {showHero ? (
-            <LibraryEmptyHero onCreated={() => void loadCampaigns()} />
-          ) : activeCampaign && activeSummary ? (
-            <CampaignDetailView
-              campaign={activeSummary}
-              onCampaignsChanged={() => void loadCampaigns()}
-              onClearActive={() => setActive(null)}
-            />
-          ) : (
-            <LibraryWorkspace embedded />
-          )}
-          {error ? (
-            <p className="mt-4 text-xs text-destructive">{error}</p>
-          ) : null}
-        </section>
+        {error && (
+          <p className="text-xs text-destructive" role="alert">
+            {error}
+          </p>
+        )}
       </div>
+
+      <LibrarySelectionBar
+        campaigns={campaigns ?? []}
+        onCampaignsChanged={() => void loadCampaigns()}
+      />
+    </LibrarySelectionProvider>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Sub-components
+// ─────────────────────────────────────────────────────────────────────
+
+function subtitleFor(
+  segment: Segment,
+  campaigns: CampaignSummary[] | null,
+  totalAssets: number
+): string {
+  if (campaigns === null) return "Loading…";
+  if (segment === "campaigns") {
+    if (campaigns.length === 0)
+      return "No campaigns yet — create one to bundle shareables for a quest";
+    return `${campaigns.length} campaign${campaigns.length === 1 ? "" : "s"}`;
+  }
+  if (totalAssets === 0)
+    return "Drop your first image and it'll live here";
+  return `${totalAssets} asset${totalAssets === 1 ? "" : "s"} · across all kinds`;
+}
+
+function SegmentedControl({
+  segment,
+  assetsCount,
+  campaignsCount,
+  onChange,
+}: {
+  segment: Segment;
+  assetsCount: number;
+  campaignsCount: number;
+  onChange: (segment: Segment) => void;
+}) {
+  return (
+    <div className="inline-flex p-1 rounded-lg border border-border/50 bg-card/50">
+      <Tab
+        active={segment === "all"}
+        onClick={() => onChange("all")}
+        label="All assets"
+        count={assetsCount}
+      />
+      <Tab
+        active={segment === "campaigns"}
+        onClick={() => onChange("campaigns")}
+        label="Campaigns"
+        count={campaignsCount}
+      />
     </div>
   );
 }
 
-/**
- * Skeleton matching the populated shell so first-paint feels instant
- * rather than empty.
- */
-function LibraryShellSkeleton() {
+function Tab({
+  active,
+  onClick,
+  label,
+  count,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+}) {
   return (
-    <div className="px-4 py-6 lg:px-8 lg:py-8">
-      <div className="lg:grid lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-8">
-        <div className="hidden lg:block">
-          <div className="rounded-xl border border-border/40 bg-card p-3 space-y-1.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-12 rounded-md bg-foreground/[0.04] animate-pulse"
-              />
-            ))}
-          </div>
-        </div>
-        <div className="space-y-6">
-          <div className="h-9 w-40 rounded-md bg-foreground/[0.04] animate-pulse" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div
-                key={i}
-                className="aspect-square rounded-lg bg-foreground/[0.04] animate-pulse"
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "h-9 inline-flex items-center gap-2 rounded-md px-4 text-sm font-medium transition-colors",
+        "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2",
+        active
+          ? "bg-primary/10 text-primary"
+          : "text-foreground/65 hover:text-foreground"
+      )}
+      aria-pressed={active}
+    >
+      <span>{label}</span>
+      <span
+        className={cn(
+          "text-[11px] font-mono tabular-nums px-1.5 py-0.5 rounded",
+          active ? "bg-primary/15 text-primary" : "bg-foreground/[0.06] text-foreground/55"
+        )}
+      >
+        {count}
+      </span>
+    </button>
   );
 }

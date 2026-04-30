@@ -5,7 +5,6 @@ import {
   AlertCircle,
   Check,
   Image as ImageIcon,
-  Layers,
   Loader2,
   Plus,
   Search,
@@ -18,17 +17,13 @@ import { AdminEmptyState, AdminPageHeader } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   TENANT_MEDIA_KINDS,
   TENANT_MEDIA_RAW_INPUT_MAX,
   type TenantMediaKind,
 } from "@/lib/uploads/tenant-media-config";
 import { prepareUploadFile } from "@/lib/uploads/prepare-upload";
 import { cn } from "@/lib/utils";
+import { useLibrarySelection } from "./LibrarySelectionContext";
 
 interface MediaRow {
   id: string;
@@ -188,46 +183,10 @@ export function LibraryWorkspace({
     }
   }, [editingId, editingValue, load]);
 
-  // Toggle a category on a row. Lets the same image live under multiple
-  // chips (e.g. cover that's also a great shareable). PATCH-as-you-go
-  // with optimistic UI so the popover feels snappy.
-  const toggleKind = useCallback(
-    async (id: string, kind: TenantMediaKind, checked: boolean) => {
-      const current = rows?.find((r) => r.id === id);
-      if (!current) return;
-      const next = checked
-        ? Array.from(new Set([...current.kinds, kind]))
-        : current.kinds.filter((k) => k !== kind);
-      // Refuse to leave the row with zero categories — every image must
-      // belong to at least one for the filter chips to find it.
-      if (next.length === 0) return;
-      // Optimistic: update local state, roll back on failure.
-      setRows(
-        (prev) =>
-          prev?.map((r) => (r.id === id ? { ...r, kinds: next } : r)) ?? null
-      );
-      try {
-        const res = await fetch(`/api/admin/media/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ kinds: next }),
-        });
-        if (!res.ok) throw new Error("PATCH failed");
-        // Refresh page in case the row should now / shouldn't appear under
-        // the active chip.
-        void load();
-      } catch {
-        // Roll back optimistic change.
-        setRows(
-          (prev) =>
-            prev?.map((r) =>
-              r.id === id ? { ...r, kinds: current.kinds } : r
-            ) ?? null
-        );
-      }
-    },
-    [rows, load]
-  );
+  // Per-tile category editing was deleted with the KindsPopover. Reps
+  // edit categories now via the bulk-selection bar's "Add to campaign /
+  // Move to category" actions, which are more discoverable and scale to
+  // multi-tile changes.
 
   const visible = useMemo(() => {
     if (!rows) return null;
@@ -246,17 +205,21 @@ export function LibraryWorkspace({
 
   return (
     <div className={cn("space-y-6", !embedded && "p-6 lg:p-8")}>
-      <AdminPageHeader
-        title="Library"
-        subtitle={
-          rows === null
-            ? "Loading…"
-            : rows.length === 0
-            ? "Empty — your first upload lands here"
-            : `${rows.length} asset${rows.length === 1 ? "" : "s"} · ${formatBytes(totalBytes)} stored`
-        }
-        actions={<BulkUploadButton onUploaded={() => void load()} groups={groups} />}
-      />
+      {!embedded && (
+        <AdminPageHeader
+          title="Library"
+          subtitle={
+            rows === null
+              ? "Loading…"
+              : rows.length === 0
+              ? "Empty — your first upload lands here"
+              : `${rows.length} asset${rows.length === 1 ? "" : "s"} · ${formatBytes(totalBytes)} stored`
+          }
+          actions={
+            <BulkUploadButton onUploaded={() => void load()} groups={groups} />
+          }
+        />
+      )}
 
       {/* Kind filter chips — always visible so admins know what they're seeing */}
       <div className="flex flex-wrap gap-1.5">
@@ -329,7 +292,7 @@ export function LibraryWorkspace({
       )}
 
       {visible === null ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 10 }).map((_, i) => (
             <div
               key={i}
@@ -351,7 +314,7 @@ export function LibraryWorkspace({
           </p>
         )
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {visible.map((r) => (
             <LibraryTile
               key={r.id}
@@ -365,7 +328,6 @@ export function LibraryWorkspace({
               onChangeEdit={setEditingValue}
               onSaveEdit={saveEditGroup}
               onCancelEdit={cancelEditGroup}
-              onToggleKind={toggleKind}
             />
           ))}
         </div>
@@ -442,7 +404,6 @@ function LibraryTile({
   onChangeEdit,
   onSaveEdit,
   onCancelEdit,
-  onToggleKind,
 }: {
   row: MediaRow;
   deleting: boolean;
@@ -454,98 +415,144 @@ function LibraryTile({
   onChangeEdit: (value: string) => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
-  onToggleKind: (id: string, kind: TenantMediaKind, checked: boolean) => void;
 }) {
-  // The image is multi-categorised when its kinds[] has more than one
-  // Multi-kind images get a small "+N" chip top-left so admins see at a
-  // glance that this image is tagged for more than one category. Single-
-  // kind images get nothing — the image alone is the right amount of
-  // chrome (aspect ratios were noisy and inaccurate, since covers crop
-  // differently across surfaces and shareables can be 1:1 too).
-  const kindsList: TenantMediaKind[] =
-    row.kinds && row.kinds.length > 0 ? row.kinds : [row.kind];
-  const isMultiKind = kindsList.length > 1;
+  const selection = useLibrarySelection();
+  const isSelected = selection.isSelected(row.id);
+  const anySelected = selection.count > 0;
+  const isVideo = (row.mime_type ?? "").startsWith("video/");
 
   return (
     <div className="group space-y-1.5">
-      <div className="relative aspect-[3/4] rounded-md overflow-hidden border border-border/60 bg-card">
+      <div
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
+        onClick={() => selection.toggle(row.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            selection.toggle(row.id);
+          }
+        }}
+        className={cn(
+          "relative aspect-[3/4] rounded-lg overflow-hidden bg-card cursor-pointer",
+          "transition-all duration-200",
+          "border-2",
+          isSelected
+            ? "border-primary shadow-[0_0_0_3px_rgb(var(--color-primary)/0.15)]"
+            : "border-border/40 hover:border-foreground/30",
+          "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
+        )}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={row.url}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover"
+          className={cn(
+            "absolute inset-0 w-full h-full object-cover transition-opacity duration-200",
+            isSelected && "opacity-90"
+          )}
           loading="lazy"
         />
-        {isMultiKind && (
-          <span
-            className="absolute top-2 left-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/85 text-primary-foreground inline-flex items-center gap-1"
-            title={`Tagged for: ${kindsList
-              .map((k) => (KIND_LABEL as Record<string, string>)[k] ?? k)
-              .join(" · ")}`}
-          >
-            <Layers size={10} />
-            {kindsList.length}
-          </span>
+
+        {/* Video play glyph — top-right corner so the selection
+            checkbox keeps the prime top-left position. */}
+        {isVideo && (
+          <div className="absolute top-2 right-2 h-7 w-7 rounded-full bg-background/70 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+            <span className="block h-0 w-0 border-y-[5px] border-y-transparent border-l-[7px] border-l-foreground translate-x-[1px]" />
+          </div>
         )}
-        {/* Usage pill — bottom-left */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2.5">
-          {row.usage_count > 0 ? (
-            <p className="text-[10px] font-mono uppercase tracking-wider text-white/85">
-              Used {row.usage_count}×
-            </p>
-          ) : (
-            <p className="text-[10px] font-mono uppercase tracking-wider text-white/55">
-              Unused
-            </p>
+
+        {/* Selection chip — top-left. Always visible once anything is
+            selected; subtly visible on hover otherwise. */}
+        <div
+          className={cn(
+            "absolute top-2 left-2 transition-opacity duration-200 pointer-events-none",
+            isSelected
+              ? "opacity-100"
+              : anySelected
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100"
           )}
-          <p className="text-[10px] text-white/55 mt-0.5">
-            {formatRelative(row.created_at)}
-          </p>
-        </div>
-        {/* Hover actions */}
-        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="p-1.5 rounded-md bg-black/55 text-white/80 hover:text-primary hover:bg-black/75 transition-colors"
-                aria-label="Categories"
-                title="Use this image for…"
-              >
-                <Layers size={12} />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="end"
-              className="w-[260px] p-3"
-              data-admin
-            >
-              <CategoriesEditor row={row} onToggle={onToggleKind} />
-            </PopoverContent>
-          </Popover>
-          <button
-            type="button"
-            onClick={onStartEdit}
-            className="p-1.5 rounded-md bg-black/55 text-white/80 hover:text-primary hover:bg-black/75 transition-colors"
-            aria-label={row.group ? "Edit group" : "Add to group"}
-            title={row.group ? "Edit group" : "Add to group"}
-          >
-            <Tag size={12} />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={deleting}
-            className="p-1.5 rounded-md bg-black/55 text-white/80 hover:text-destructive hover:bg-black/75 transition-colors"
-            aria-label="Delete from library"
-          >
-            {deleting ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <Trash2 size={12} />
+        >
+          <div
+            className={cn(
+              "h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors",
+              isSelected
+                ? "bg-primary border-primary"
+                : "bg-background/70 border-foreground/40 backdrop-blur-sm"
             )}
-          </button>
+          >
+            {isSelected && (
+              <svg
+                viewBox="0 0 16 16"
+                className="h-3.5 w-3.5 text-primary-foreground"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="3 8.5 6.5 12 13 5" />
+              </svg>
+            )}
+          </div>
         </div>
+
+        {/* Usage + timestamp readout — bottom gradient */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pointer-events-none">
+          <div className="flex items-baseline justify-between gap-2">
+            <p
+              className={cn(
+                "text-[10px] font-mono uppercase tracking-wider",
+                row.usage_count > 0 ? "text-white/85" : "text-white/55"
+              )}
+            >
+              {row.usage_count > 0 ? `Used ${row.usage_count}×` : "Unused"}
+            </p>
+            <p className="text-[10px] text-white/55">
+              {formatRelative(row.created_at)}
+            </p>
+          </div>
+        </div>
+
+        {/* Hover-revealed corner action — group/delete. Only when
+            nothing is selected (otherwise the bulk bar takes over). */}
+        {!anySelected && (
+          <div
+            className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartEdit();
+              }}
+              className="p-1.5 rounded-md bg-black/60 text-white/85 hover:text-primary hover:bg-black/75 transition-colors"
+              aria-label={row.group ? "Edit group" : "Add to group"}
+              title={row.group ? "Edit group" : "Add to group"}
+            >
+              <Tag size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              disabled={deleting}
+              className="p-1.5 rounded-md bg-black/60 text-white/85 hover:text-destructive hover:bg-black/75 transition-colors"
+              aria-label="Delete from library"
+            >
+              {deleting ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Trash2 size={12} />
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Group label (or inline editor) */}
@@ -576,79 +583,6 @@ function LibraryTile({
           Add group
         </button>
       )}
-    </div>
-  );
-}
-
-/**
- * The category multi-select that pops out from a tile's Layers button.
- * Lets one image live under multiple chips — admin uploads a 3:4 cover
- * and ticks "Shareable" to also have it appear under the 9:16 chip.
- *
- * Auto-saves via PATCH on each toggle (handled by the parent — this
- * component is purely presentational).
- */
-function CategoriesEditor({
-  row,
-  onToggle,
-}: {
-  row: MediaRow;
-  onToggle: (id: string, kind: TenantMediaKind, checked: boolean) => void;
-}) {
-  const options: { kind: TenantMediaKind; label: string }[] = [
-    { kind: "quest_cover", label: "Quest cover" },
-    { kind: "event_cover", label: "Event cover" },
-    { kind: "quest_content", label: "Shareable" },
-    { kind: "quest_asset", label: "Campaign asset" },
-  ];
-  const kindsList = row.kinds && row.kinds.length ? row.kinds : [row.kind];
-  const isLastChecked = kindsList.length === 1;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-        Use this image for…
-      </p>
-      <ul className="space-y-0.5">
-        {options.map((opt) => {
-          const checked = kindsList.includes(opt.kind);
-          const wouldBeLast = checked && isLastChecked;
-          return (
-            <li key={opt.kind}>
-              <label
-                className={cn(
-                  "flex items-center gap-2.5 px-2 py-2 rounded-md transition-colors cursor-pointer",
-                  checked
-                    ? "bg-primary/[0.06] hover:bg-primary/[0.10]"
-                    : "hover:bg-foreground/[0.04]",
-                  wouldBeLast && "cursor-not-allowed opacity-80"
-                )}
-                title={
-                  wouldBeLast
-                    ? "Every image must belong to at least one category"
-                    : undefined
-                }
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  disabled={wouldBeLast}
-                  onChange={(e) =>
-                    !wouldBeLast && onToggle(row.id, opt.kind, e.target.checked)
-                  }
-                  className="h-3.5 w-3.5 accent-primary"
-                />
-                <span className="text-[12px] font-medium text-foreground">
-                  {opt.label}
-                </span>
-              </label>
-            </li>
-          );
-        })}
-      </ul>
-      <p className="text-[10px] text-muted-foreground/70 leading-relaxed pt-1">
-        Tag every category this image works for — it'll show up under each chip in the library and the picker.
-      </p>
     </div>
   );
 }

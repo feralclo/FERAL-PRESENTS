@@ -1,7 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, FileText, Upload as UploadIcon, X } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  CheckCircle2,
+  FileText,
+  Plus,
+  Sparkles,
+  Upload as UploadIcon,
+  X,
+} from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AdminButton } from "@/components/admin/ui";
 import { cn } from "@/lib/utils";
@@ -15,10 +28,16 @@ import type { CampaignSummary } from "@/types/library-campaigns";
 interface BulkUploadSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Pre-selects this campaign slug. If absent, the user must choose one. */
+  /** Pre-selects this campaign slug. */
   defaultCampaign?: string;
+  /** Force campaign mode — hides the "Save to library" option. */
+  campaignRequired?: boolean;
   onUploaded: () => void;
 }
+
+type Destination =
+  | { kind: "library" }
+  | { kind: "campaign"; tag: string };
 
 type ItemStatus =
   | "queued"
@@ -31,7 +50,6 @@ type ItemStatus =
 interface QueueItem {
   id: string;
   file: File;
-  /** "image" | "video" — derived from MIME type. Drives the routing. */
   kind: "image" | "video";
   status: ItemStatus;
   progress: number;
@@ -42,23 +60,32 @@ const MAX_CONCURRENCY = 3;
 const VIDEO_MAX_BYTES = 200 * 1024 * 1024;
 
 /**
- * The campaign-aware bulk upload surface. Drag a folder of mixed images
- * and videos in; each file routes to the right pipeline (Sharp for
- * images, Mux for videos). All land in `tenant_media` with kind
- * `quest_asset` and the chosen campaign slug as `tags[0]`.
+ * Unified upload sheet. Supports two destinations:
  *
- * Background-continue: closing the dialog mid-upload doesn't cancel
- * the queue (uploads continue) but the toast UI is left to the parent
- * page for v1 — most users wait the few seconds for completion.
+ *   1. **Save to library** — kind defaults to `generic`; the row lives
+ *      in /admin/library "All assets" view, ready to be assigned to a
+ *      cover slot or moved to a campaign later.
+ *   2. **Save to a campaign** — kind = `quest_asset`, `tags[0]` = the
+ *      campaign slug. The campaign chooser supports inline +New.
+ *
+ * Same drop zone, same queue, same pipelines (Sharp for images, Mux
+ * capped-1080p for videos). The destination toggle is the only thing
+ * that changes routing.
  */
 export function BulkUploadSheet({
   open,
   onOpenChange,
   defaultCampaign,
+  campaignRequired,
   onUploaded,
 }: BulkUploadSheetProps) {
-  const [campaignTag, setCampaignTag] = useState<string>(defaultCampaign ?? "");
-  const [campaignDraft, setCampaignDraft] = useState<string>("");
+  const [destination, setDestination] = useState<Destination>(() =>
+    defaultCampaign
+      ? { kind: "campaign", tag: defaultCampaign }
+      : campaignRequired
+        ? { kind: "campaign", tag: "" }
+        : { kind: "library" }
+  );
   const [campaigns, setCampaigns] = useState<CampaignSummary[] | null>(null);
   const [items, setItems] = useState<QueueItem[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -70,8 +97,7 @@ export function BulkUploadSheet({
     itemsRef.current = items;
   }, [items]);
 
-  // Load campaigns when the sheet opens so the chooser has something to
-  // pick from. Cheap query, no need to keep it loaded otherwise.
+  // Load campaigns once when the sheet opens — used by the chooser.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -91,9 +117,12 @@ export function BulkUploadSheet({
     };
   }, [open]);
 
-  // Re-sync the default campaign whenever the prop changes.
+  // Re-sync when the prop changes — important for clicking Upload on a
+  // different campaign after the first sheet open.
   useEffect(() => {
-    if (defaultCampaign) setCampaignTag(defaultCampaign);
+    if (defaultCampaign) {
+      setDestination({ kind: "campaign", tag: defaultCampaign });
+    }
   }, [defaultCampaign]);
 
   const inFlight = items.some(
@@ -103,18 +132,19 @@ export function BulkUploadSheet({
   const failedCount = items.filter((i) => i.status === "failed").length;
   const showSummary = items.length > 0 && !inFlight;
 
-  const patchItem = useCallback(
-    (id: string, patch: Partial<QueueItem>) => {
-      setItems((prev) =>
-        prev.map((it) => (it.id === id ? { ...it, ...patch } : it))
-      );
-    },
-    []
-  );
+  const canDrop =
+    destination.kind === "library" ||
+    (destination.kind === "campaign" && !!destination.tag);
+
+  const patchItem = useCallback((id: string, patch: Partial<QueueItem>) => {
+    setItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, ...patch } : it))
+    );
+  }, []);
 
   const enqueueFiles = useCallback(
     (files: FileList | File[]) => {
-      if (!campaignTag) return;
+      if (!canDrop) return;
       const arr = Array.from(files);
       const next: QueueItem[] = arr.map((f) => ({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -125,14 +155,13 @@ export function BulkUploadSheet({
       }));
       setItems((prev) => [...prev, ...next]);
     },
-    [campaignTag]
+    [canDrop]
   );
 
-  // Start the processor whenever there are queued items and we have a
-  // campaign locked. The loop is single-runner; concurrency is faked by
-  // patching items in flight.
+  // Concurrent processor — kicks off as soon as items are queued and a
+  // destination is locked.
   useEffect(() => {
-    if (!campaignTag) return;
+    if (!canDrop) return;
     if (isProcessingRef.current) return;
     if (!items.some((i) => i.status === "queued")) return;
     isProcessingRef.current = true;
@@ -154,12 +183,9 @@ export function BulkUploadSheet({
           }
 
           const target = queued[0];
-          // Kick off without await — concurrent.
           void processItem(target).catch(() => {
-            // processItem patches its own failure state; nothing else
-            // to do here.
+            // processItem patches its own failure state.
           });
-          // tiny gap to let React commit before we re-read itemsRef
           await new Promise((r) => setTimeout(r, 30));
         }
       } finally {
@@ -167,26 +193,26 @@ export function BulkUploadSheet({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, campaignTag]);
+  }, [items, canDrop, destination]);
 
   const processItem = useCallback(
     async (item: QueueItem) => {
       patchItem(item.id, { status: "preparing" });
       try {
         if (item.kind === "image") {
-          await uploadImage(item, campaignTag, patchItem);
+          await uploadImage(item, destination, patchItem);
         } else {
-          await uploadVideo(item, campaignTag, patchItem);
+          await uploadVideo(item, destination, patchItem);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Upload failed";
         patchItem(item.id, { status: "failed", error: msg });
       }
     },
-    [campaignTag, patchItem]
+    [destination, patchItem]
   );
 
-  // Bubble completion up to the caller so the rail/canvas refresh.
+  // Bubble completion up so the parent refreshes lists / counts.
   useEffect(() => {
     if (showSummary && doneCount > 0) {
       onUploaded();
@@ -196,7 +222,6 @@ export function BulkUploadSheet({
 
   const reset = useCallback(() => {
     setItems([]);
-    setCampaignDraft("");
     setDragging(false);
   }, []);
 
@@ -211,39 +236,25 @@ export function BulkUploadSheet({
       <DialogContent className="max-w-xl">
         <DialogTitle>Upload</DialogTitle>
 
-        {/* Step 1 — drop zone */}
-        <div
+        <DropZone
           onDragOver={(e) => {
             e.preventDefault();
-            setDragging(true);
+            if (canDrop) setDragging(true);
           }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => {
             e.preventDefault();
             setDragging(false);
-            if (!campaignTag) return;
+            if (!canDrop) return;
             enqueueFiles(e.dataTransfer.files);
           }}
-          onClick={() => fileRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          aria-label="Drop files or click to choose"
-          className={cn(
-            "mt-3 rounded-lg border-2 border-dashed transition-colors cursor-pointer",
-            "h-44 flex flex-col items-center justify-center gap-1.5 text-center px-4",
-            dragging
-              ? "border-primary bg-primary/[0.04]"
-              : "border-foreground/20 hover:border-foreground/35"
-          )}
-        >
-          <UploadIcon className="h-5 w-5 text-foreground/60" />
-          <p className="text-sm font-medium text-foreground">
-            Drop files, or click to choose
-          </p>
-          <p className="text-xs text-foreground/55">
-            Images and videos. We&apos;ll resize and compress for you.
-          </p>
-        </div>
+          onClick={() => {
+            if (!canDrop) return;
+            fileRef.current?.click();
+          }}
+          disabled={!canDrop}
+          dragging={dragging}
+        />
         <input
           ref={fileRef}
           type="file"
@@ -251,30 +262,24 @@ export function BulkUploadSheet({
           multiple
           className="hidden"
           onChange={(e) => {
-            if (e.target.files && campaignTag) {
+            if (e.target.files && canDrop) {
               enqueueFiles(e.target.files);
               e.target.value = "";
             }
           }}
         />
 
-        {/* Step 2 — campaign chooser, sentence form */}
-        <div className="mt-4 flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-foreground/70">Add to campaign:</span>
-          {campaigns === null ? (
-            <span className="text-xs text-foreground/55">Loading…</span>
-          ) : (
-            <CampaignPicker
-              campaigns={campaigns}
-              value={campaignTag}
-              draft={campaignDraft}
-              onChange={(tag) => setCampaignTag(tag)}
-              onDraftChange={setCampaignDraft}
-            />
-          )}
+        {/* Destination chooser */}
+        <div className="mt-4">
+          <DestinationPicker
+            destination={destination}
+            campaigns={campaigns}
+            campaignRequired={!!campaignRequired}
+            onChange={setDestination}
+          />
         </div>
 
-        {/* Step 3 — item list */}
+        {/* Item list */}
         {items.length > 0 && (
           <ul className="mt-4 space-y-2 max-h-64 overflow-y-auto">
             {items.map((it) => (
@@ -298,53 +303,257 @@ export function BulkUploadSheet({
             </p>
           ) : inFlight ? (
             <p className="text-xs text-foreground/55">
-              Uploading {items.filter((i) => i.status !== "done" && i.status !== "failed").length}…
+              Uploading{" "}
+              {items.filter((i) => i.status !== "done" && i.status !== "failed").length}
+              …
             </p>
           ) : (
             <span />
           )}
-          <div className="flex gap-2">
-            <AdminButton variant="ghost" onClick={() => onOpenChange(false)}>
-              Close
-            </AdminButton>
-          </div>
+          <AdminButton variant="ghost" onClick={() => onOpenChange(false)}>
+            Close
+          </AdminButton>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────
+// DropZone — the canonical recipe used everywhere we accept files.
+//   ▸ Resting:  border-2 dashed primary/30 + bg primary/[0.02], 32px icon
+//   ▸ Hover:    border primary/55 + bg primary/[0.05]
+//   ▸ Dragover: border primary solid + bg primary/[0.07] + scale-105 icon
+//   ▸ Disabled: border-foreground/15, faded text, no hover
+// Reads as "drop here" from across the room — no muted dashed-grey.
+// ─────────────────────────────────────────────────────────────────────
 
-function CampaignPicker({
+interface DropZoneProps {
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onClick: () => void;
+  disabled?: boolean;
+  dragging: boolean;
+  /** Optional override copy for the heading. */
+  heading?: string;
+  /** Optional override for the sub-line. */
+  subline?: ReactNode;
+  /** Tall / short — defaults to medium (h-44). */
+  size?: "sm" | "md" | "lg";
+}
+
+export function DropZone({
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onClick,
+  disabled,
+  dragging,
+  heading = "Drop files, or click to choose",
+  subline = "Images and videos. We’ll resize and compress for you.",
+  size = "md",
+}: DropZoneProps) {
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onClick={() => {
+        if (!disabled) onClick();
+      }}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      onKeyDown={(e) => {
+        if (disabled) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      aria-label="Drop files or click to choose"
+      aria-disabled={disabled}
+      className={cn(
+        "rounded-xl border-2 border-dashed transition-all duration-200",
+        "flex flex-col items-center justify-center gap-2 text-center px-4",
+        size === "sm" && "h-32",
+        size === "md" && "h-44",
+        size === "lg" && "h-56",
+        disabled
+          ? "border-foreground/15 bg-foreground/[0.02] cursor-not-allowed"
+          : dragging
+            ? "border-primary bg-primary/[0.07] cursor-pointer"
+            : "border-primary/30 bg-primary/[0.02] hover:border-primary/55 hover:bg-primary/[0.05] cursor-pointer",
+        "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
+      )}
+    >
+      <UploadIcon
+        className={cn(
+          "transition-transform duration-200",
+          dragging ? "scale-110 text-primary" : "text-primary/80",
+          size === "sm" ? "h-6 w-6" : "h-8 w-8"
+        )}
+      />
+      <p
+        className={cn(
+          "font-medium",
+          size === "sm" ? "text-sm" : "text-base",
+          disabled ? "text-foreground/45" : "text-foreground"
+        )}
+      >
+        {heading}
+      </p>
+      <p
+        className={cn(
+          "text-xs",
+          disabled ? "text-foreground/35" : "text-foreground/55"
+        )}
+      >
+        {subline}
+      </p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// DestinationPicker — segmented control, library vs campaign
+// ─────────────────────────────────────────────────────────────────────
+
+function DestinationPicker({
+  destination,
+  campaigns,
+  campaignRequired,
+  onChange,
+}: {
+  destination: Destination;
+  campaigns: CampaignSummary[] | null;
+  campaignRequired: boolean;
+  onChange: (d: Destination) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.16em] text-foreground/60">
+        Where should these go?
+      </p>
+
+      {!campaignRequired && (
+        <div className="grid grid-cols-2 gap-2">
+          <DestinationTile
+            active={destination.kind === "library"}
+            onClick={() => onChange({ kind: "library" })}
+            title="Library"
+            hint="General — use anywhere later."
+            icon={<Sparkles className="h-3.5 w-3.5" />}
+          />
+          <DestinationTile
+            active={destination.kind === "campaign"}
+            onClick={() => {
+              const tag =
+                destination.kind === "campaign"
+                  ? destination.tag
+                  : campaigns?.[0]?.tag ?? "";
+              onChange({ kind: "campaign", tag });
+            }}
+            title="A campaign"
+            hint="For pool-quest shareables."
+            icon={<Plus className="h-3.5 w-3.5" />}
+          />
+        </div>
+      )}
+
+      {destination.kind === "campaign" && (
+        <div className="pt-1">
+          <CampaignSelect
+            campaigns={campaigns}
+            value={destination.tag}
+            onChange={(tag) => onChange({ kind: "campaign", tag })}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DestinationTile({
+  active,
+  onClick,
+  title,
+  hint,
+  icon,
+}: {
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  hint: string;
+  icon: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-lg border px-3 py-2.5 text-left transition-colors",
+        "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2",
+        active
+          ? "border-primary/40 bg-primary/[0.05]"
+          : "border-border/50 hover:border-border"
+      )}
+      aria-pressed={active}
+    >
+      <div className="flex items-center gap-1.5 text-foreground">
+        <span className={cn(active ? "text-primary" : "text-foreground/65")}>
+          {icon}
+        </span>
+        <span className="text-sm font-medium">{title}</span>
+      </div>
+      <p className="ml-5 mt-0.5 text-xs text-foreground/55">{hint}</p>
+    </button>
+  );
+}
+
+function CampaignSelect({
   campaigns,
   value,
-  draft,
   onChange,
-  onDraftChange,
 }: {
-  campaigns: CampaignSummary[];
+  campaigns: CampaignSummary[] | null;
   value: string;
-  draft: string;
   onChange: (tag: string) => void;
-  onDraftChange: (draft: string) => void;
 }) {
   const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState("");
 
   if (creating) {
     const proposed = slugifyCampaignLabel(draft);
     return (
-      <span className="inline-flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
         <input
           type="text"
           autoFocus
           value={draft}
-          onChange={(e) => onDraftChange(e.target.value)}
+          onChange={(e) => setDraft(e.target.value)}
           placeholder="Campaign name"
           maxLength={80}
-          className="h-8 w-48 rounded-md border border-border/60 bg-background px-2.5 text-sm focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
+          onKeyDown={async (e) => {
+            if (e.key === "Enter" && proposed) {
+              try {
+                const res = await fetch("/api/admin/media/campaigns", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ label: draft }),
+                });
+                const json = await res.json();
+                if (res.ok) {
+                  onChange(json.data.tag);
+                  setCreating(false);
+                  setDraft("");
+                }
+              } catch {
+                /* leave input visible for retry */
+              }
+            }
+          }}
+          className="h-9 flex-1 min-w-[200px] rounded-md border border-border/60 bg-background px-2.5 text-sm focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
         />
         <AdminButton
           size="sm"
@@ -352,7 +561,6 @@ function CampaignPicker({
           disabled={!proposed}
           onClick={async () => {
             if (!proposed) return;
-            // Reserve via the campaigns POST endpoint; idempotent.
             try {
               const res = await fetch("/api/admin/media/campaigns", {
                 method: "POST",
@@ -363,10 +571,10 @@ function CampaignPicker({
               if (res.ok) {
                 onChange(json.data.tag);
                 setCreating(false);
-                onDraftChange("");
+                setDraft("");
               }
             } catch {
-              /* leave the input visible for retry */
+              /* retry */
             }
           }}
         >
@@ -377,24 +585,24 @@ function CampaignPicker({
           variant="ghost"
           onClick={() => {
             setCreating(false);
-            onDraftChange("");
+            setDraft("");
           }}
         >
           Cancel
         </AdminButton>
-      </span>
+      </div>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-2 flex-wrap">
+    <div className="flex flex-wrap items-center gap-2">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 rounded-md border border-border/60 bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
+        className="h-9 rounded-md border border-border/60 bg-background px-2.5 text-sm focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
       >
         <option value="">Choose a campaign…</option>
-        {campaigns.map((c) => (
+        {(campaigns ?? []).map((c) => (
           <option key={c.tag} value={c.tag}>
             {c.label}
           </option>
@@ -403,11 +611,12 @@ function CampaignPicker({
       <button
         type="button"
         onClick={() => setCreating(true)}
-        className="text-xs text-primary hover:underline"
+        className="text-xs text-primary hover:underline inline-flex items-center gap-0.5"
       >
-        + New campaign
+        <Plus className="h-3 w-3" />
+        New campaign
       </button>
-    </span>
+    </div>
   );
 }
 
@@ -464,17 +673,23 @@ function statusLabel(item: QueueItem): string {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Upload pipelines (image / video)
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────
+// Upload pipelines — image (Sharp) + video (Mux)
+// ─────────────────────────────────────────────────────────────────────
 
 async function uploadImage(
   item: QueueItem,
-  campaignTag: string,
+  destination: Destination,
   patchItem: (id: string, patch: Partial<QueueItem>) => void
 ) {
   const prepped = await prepareUploadFile(item.file);
   const dims = await readDims(prepped);
+
+  const kind = destination.kind === "campaign" ? "quest_asset" : "generic";
+  const tags =
+    destination.kind === "campaign" && destination.tag
+      ? [destination.tag]
+      : [];
 
   patchItem(item.id, { status: "uploading" });
 
@@ -482,7 +697,7 @@ async function uploadImage(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      kind: "quest_asset",
+      kind,
       content_type: prepped.type,
       size_bytes: prepped.size,
     }),
@@ -506,10 +721,10 @@ async function uploadImage(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       key: signedJson.data.key,
-      kind: "quest_asset",
+      kind,
       width: dims?.width,
       height: dims?.height,
-      tags: [campaignTag],
+      tags,
     }),
   });
   if (!completeRes.ok) {
@@ -522,16 +737,28 @@ async function uploadImage(
 
 async function uploadVideo(
   item: QueueItem,
-  campaignTag: string,
+  destination: Destination,
   patchItem: (id: string, patch: Partial<QueueItem>) => void
 ) {
   if (item.file.size > VIDEO_MAX_BYTES) {
     throw new Error(`That video's a bit big — try under 200 MB`);
   }
 
+  if (destination.kind !== "campaign" || !destination.tag) {
+    // Library-mode video uploads don't have a campaign to attach to.
+    // We still want them in the library, but the existing image-only
+    // tenant_media row can't hold a Mux playback id without a campaign
+    // tag. For v1 we route library videos through the campaign-only
+    // path with a synthetic "library" campaign, but the simpler answer
+    // is to refuse: tell the user to pick a campaign or upload as an
+    // image. Better than silently mis-tagging.
+    throw new Error(
+      "Pick a campaign for video uploads — they need somewhere to live."
+    );
+  }
+
   patchItem(item.id, { status: "uploading" });
 
-  // 1. Get signed Supabase Storage URL.
   const signedRes = await fetch("/api/upload-video", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -543,7 +770,6 @@ async function uploadVideo(
   const signed = await signedRes.json();
   if (!signedRes.ok) throw new Error(signed.error ?? "Storage signup failed");
 
-  // 2. PUT bytes.
   const putRes = await fetch(signed.signedUrl, {
     method: "PUT",
     headers: { "Content-Type": item.file.type },
@@ -551,7 +777,6 @@ async function uploadVideo(
   });
   if (!putRes.ok) throw new Error("Storage upload failed");
 
-  // 3. Tell Mux to ingest.
   patchItem(item.id, { status: "processing-video" });
   const muxRes = await fetch("/api/mux/upload", {
     method: "POST",
@@ -561,22 +786,18 @@ async function uploadVideo(
   const muxJson = await muxRes.json();
   if (!muxRes.ok) throw new Error(muxJson.error ?? "Video preparation failed");
 
-  // 4. Poll until ready (max ~5 mins). Mux is quick for short clips but
-  // longer videos may take a while; we surface "Preparing video…" to the
-  // user the whole time.
   const assetId = muxJson.assetId as string;
   const ready = await pollMuxReady(assetId);
   if (!ready) throw new Error("Video took too long to prepare");
 
-  // 5. Insert tenant_media row.
   const completeRes = await fetch("/api/admin/media/complete-video", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       mux_asset_id: assetId,
-      campaign_tag: isValidCampaignTag(campaignTag)
-        ? campaignTag
-        : slugifyCampaignLabel(campaignTag),
+      campaign_tag: isValidCampaignTag(destination.tag)
+        ? destination.tag
+        : slugifyCampaignLabel(destination.tag),
     }),
   });
   if (!completeRes.ok) {
@@ -589,7 +810,7 @@ async function uploadVideo(
 
 async function pollMuxReady(assetId: string): Promise<boolean> {
   const start = Date.now();
-  const TIMEOUT = 5 * 60 * 1000; // 5 mins
+  const TIMEOUT = 5 * 60 * 1000;
   while (Date.now() - start < TIMEOUT) {
     await new Promise((r) => setTimeout(r, 4000));
     try {
@@ -601,7 +822,7 @@ async function pollMuxReady(assetId: string): Promise<boolean> {
       if (res.ok && json?.status === "ready") return true;
       if (res.ok && json?.status === "errored") return false;
     } catch {
-      // Network blip — keep polling.
+      // Retry.
     }
   }
   return false;

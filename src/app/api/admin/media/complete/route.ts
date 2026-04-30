@@ -183,6 +183,10 @@ export async function POST(request: NextRequest) {
       .insert({
         org_id: orgId,
         kind: declaredKind,
+        // Multi-category model: every new upload starts under the kind it
+        // was uploaded as. Admin can later toggle additional categories
+        // (e.g. "this cover is also a great shareable") via PATCH.
+        kinds: [declaredKind],
         source: "upload",
         url: publicUrl,
         storage_key: finalKey,

@@ -55,7 +55,11 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(500);
 
-    if (!allKinds) query = query.eq("kind", kindParam);
+    // Filter against kinds[] (array contains) — an image can belong to
+    // multiple categories so the same row appears under any chip its
+    // kinds[] mentions. The original `kind` column stays as the primary
+    // /uploaded-as kind, used for usage-count splitting below.
+    if (!allKinds) query = query.contains("kinds", [kindParam]);
     if (groupFilter) query = query.contains("tags", [groupFilter]);
 
     const { data: rows, error } = await query;
@@ -70,11 +74,13 @@ export async function GET(request: NextRequest) {
     // come from events.cover_image_url. We split the URL list by the
     // owning row's kind and run one query each. Cheap at our scale.
     const usageMap = new Map<string, number>();
+    const kindsOf = (r: { kinds?: string[] | null; kind: string }): string[] =>
+      Array.isArray(r.kinds) && r.kinds.length ? r.kinds : [r.kind];
     const questUrls = (rows ?? [])
-      .filter((r) => r.kind === "quest_cover")
+      .filter((r) => kindsOf(r).includes("quest_cover"))
       .map((r) => r.url);
     const eventUrls = (rows ?? [])
-      .filter((r) => r.kind === "event_cover")
+      .filter((r) => kindsOf(r).includes("event_cover"))
       .map((r) => r.url);
 
     if (questUrls.length) {

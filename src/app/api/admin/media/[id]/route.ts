@@ -6,14 +6,26 @@ import * as Sentry from "@sentry/nextjs";
 const BUCKET = "tenant-media";
 
 const MAX_GROUP_LENGTH = 60;
+const VALID_KINDS = [
+  "quest_cover",
+  "quest_content",
+  "event_cover",
+  "reward_cover",
+  "generic",
+] as const;
+type ValidKind = (typeof VALID_KINDS)[number];
 
 /**
  * PATCH /api/admin/media/[id] — update a tenant_media row's metadata.
  *
- * Currently only the "group" field (stored as the first entry in `tags[]`)
- * can be edited. Body:
- *   { group: "Bob Marley Tribute" }   // sets the group label
- *   { group: null }                    // or "" — clears it
+ * Editable fields:
+ *   { group: string | null }    — sets/clears the campaign-group label
+ *   { kinds: string[] }         — sets the categories this image is
+ *                                  available under (must include ≥1
+ *                                  valid kind). Lets one image appear
+ *                                  in both Covers and Shareables.
+ *
+ * Either field can be omitted; both can be sent in one request.
  */
 export async function PATCH(
   request: NextRequest,
@@ -25,27 +37,59 @@ export async function PATCH(
     const orgId = auth.orgId;
     const { id } = await params;
 
-    let body: { group?: unknown };
+    let body: { group?: unknown; kinds?: unknown };
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    const rawGroup = body.group;
-    let nextTags: string[];
-    if (rawGroup === null || rawGroup === "" || rawGroup === undefined) {
-      nextTags = [];
-    } else if (typeof rawGroup === "string") {
-      const trimmed = rawGroup.trim().slice(0, MAX_GROUP_LENGTH);
-      if (!trimmed) {
-        nextTags = [];
+    const update: Record<string, unknown> = {};
+
+    // ── Group label ─────────────────────────────────────────────────────
+    if ("group" in body) {
+      const rawGroup = body.group;
+      if (rawGroup === null || rawGroup === "" || rawGroup === undefined) {
+        update.tags = [];
+      } else if (typeof rawGroup === "string") {
+        const trimmed = rawGroup.trim().slice(0, MAX_GROUP_LENGTH);
+        update.tags = trimmed ? [trimmed] : [];
       } else {
-        nextTags = [trimmed];
+        return NextResponse.json(
+          { error: "group must be a string or null" },
+          { status: 400 }
+        );
       }
-    } else {
+    }
+
+    // ── Categories ──────────────────────────────────────────────────────
+    if ("kinds" in body) {
+      if (!Array.isArray(body.kinds) || body.kinds.length === 0) {
+        return NextResponse.json(
+          { error: "kinds must be a non-empty array" },
+          { status: 400 }
+        );
+      }
+      const seen = new Set<string>();
+      const cleaned: ValidKind[] = [];
+      for (const k of body.kinds) {
+        if (typeof k !== "string" || !VALID_KINDS.includes(k as ValidKind)) {
+          return NextResponse.json(
+            { error: `Invalid kind: ${String(k)}` },
+            { status: 400 }
+          );
+        }
+        if (!seen.has(k)) {
+          seen.add(k);
+          cleaned.push(k as ValidKind);
+        }
+      }
+      update.kinds = cleaned;
+    }
+
+    if (Object.keys(update).length === 0) {
       return NextResponse.json(
-        { error: "group must be a string or null" },
+        { error: "Nothing to update — provide group and/or kinds" },
         { status: 400 }
       );
     }
@@ -70,7 +114,7 @@ export async function PATCH(
 
     const { data: updated, error: updateError } = await db
       .from("tenant_media")
-      .update({ tags: nextTags })
+      .update(update)
       .eq("id", id)
       .select("*")
       .single();
@@ -81,7 +125,13 @@ export async function PATCH(
     }
 
     return NextResponse.json({
-      data: { ...updated, group: nextTags[0] ?? null },
+      data: {
+        ...updated,
+        group:
+          Array.isArray(updated.tags) && updated.tags.length
+            ? updated.tags[0]
+            : null,
+      },
     });
   } catch (err) {
     Sentry.captureException(err);

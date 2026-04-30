@@ -87,6 +87,7 @@ const KIND_COPY: Record<
 interface TenantMediaRow {
   id: string;
   url: string;
+  kind: TenantMediaKind;
   source: "upload" | "template" | "instagram";
   width: number | null;
   height: number | null;
@@ -94,6 +95,27 @@ interface TenantMediaRow {
   usage_count: number;
   group: string | null;
 }
+
+// Aspect badge per kind — shown on each tile so when an admin opens
+// "All assets" they see at a glance what each one is best suited for.
+const KIND_TILE_ASPECT: Record<TenantMediaKind, string> = {
+  quest_cover: "3:4",
+  quest_content: "9:16",
+  event_cover: "1:1",
+  reward_cover: "3:4",
+  generic: "—",
+};
+
+// Filter chip labels — "all" included for the cross-kind option that
+// lets a single image be reusable across cover and shareable slots.
+const KIND_FILTER_LABEL: Record<TenantMediaKind | "all", string> = {
+  all: "All assets",
+  quest_cover: "Covers",
+  quest_content: "Shareables",
+  event_cover: "Event covers",
+  reward_cover: "Reward covers",
+  generic: "Generic",
+};
 
 interface GroupSummary {
   name: string;
@@ -363,10 +385,20 @@ function LibraryGrid({
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  // Cross-kind picking: defaults to the kind this picker was opened for,
+  // but admin can flip to "All assets" to use any image (kind on a row is
+  // a best-fit hint, not a hard restriction).
+  const [kindFilter, setKindFilter] = useState<TenantMediaKind | "all">(kind);
+
+  // Re-anchor when the parent kind changes (picker reopened from a
+  // different surface).
+  useEffect(() => {
+    setKindFilter(kind);
+  }, [kind]);
 
   const load = useCallback(async () => {
     setError("");
-    const params = new URLSearchParams({ kind });
+    const params = new URLSearchParams({ kind: kindFilter });
     if (groupFilter) params.set("group", groupFilter);
     try {
       const res = await fetch(`/api/admin/media?${params.toString()}`, {
@@ -384,7 +416,7 @@ function LibraryGrid({
       setError("Network error");
       setRows([]);
     }
-  }, [kind, groupFilter]);
+  }, [kindFilter, groupFilter]);
 
   useEffect(() => {
     void load();
@@ -430,21 +462,53 @@ function LibraryGrid({
     );
   }
 
+  // Kind chip row — current kind first, then "All assets", then any
+  // others. The same row renders in both empty + populated states so
+  // cross-kind switching is always one click away.
+  const kindChipOrder: (TenantMediaKind | "all")[] = [
+    kind,
+    "all",
+    ...(["quest_cover", "quest_content", "event_cover"] as const).filter(
+      (k) => k !== kind
+    ),
+  ];
+
+  const KindChips = (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {kindChipOrder.map((k) => (
+        <CategoryChip
+          key={k}
+          active={kindFilter === k}
+          onClick={() => setKindFilter(k)}
+        >
+          {KIND_FILTER_LABEL[k]}
+        </CategoryChip>
+      ))}
+    </div>
+  );
+
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center text-center py-12 px-6">
-        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-          <ImageIcon size={20} className="text-primary" />
-        </div>
-        <h3 className="text-base font-semibold text-foreground">{emptyHeading}</h3>
-        <p className="text-sm text-muted-foreground mt-1.5 max-w-sm">
-          {emptyHint}
-        </p>
-        <div className="flex gap-2 mt-5">
-          <Button size="sm" onClick={onSwitchToUpload}>
-            <Upload size={14} className="mr-1.5" />
-            Upload image
-          </Button>
+      <div className="space-y-4">
+        {KindChips}
+        <div className="flex flex-col items-center justify-center text-center py-10 px-6">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+            <ImageIcon size={20} className="text-primary" />
+          </div>
+          <h3 className="text-base font-semibold text-foreground">
+            {kindFilter === kind ? emptyHeading : "Nothing here yet"}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-sm">
+            {kindFilter === kind
+              ? emptyHint
+              : "Switch back to the matching kind, or upload one."}
+          </p>
+          <div className="flex gap-2 mt-5">
+            <Button size="sm" onClick={onSwitchToUpload}>
+              <Upload size={14} className="mr-1.5" />
+              Upload one
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -452,13 +516,15 @@ function LibraryGrid({
 
   return (
     <div className="space-y-3">
+      {KindChips}
+
       {groups.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           <CategoryChip
             active={groupFilter === null}
             onClick={() => setGroupFilter(null)}
           >
-            All
+            All groups
           </CategoryChip>
           {groups.map((g) => (
             <CategoryChip
@@ -479,13 +545,32 @@ function LibraryGrid({
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {rows.map((r) => (
+        {rows.map((r) => {
+          const kindMismatch = r.kind !== kind;
+          return (
           <div key={r.id} className="space-y-1">
             <Tile
               url={r.url}
               selected={selected === r.url}
               onSelect={() => onSelect(r.url)}
               badge={
+                <span
+                  className={cn(
+                    "text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded",
+                    kindMismatch
+                      ? "bg-warning/85 text-black"
+                      : "bg-black/55 text-white/85"
+                  )}
+                  title={
+                    kindMismatch
+                      ? `${KIND_FILTER_LABEL[r.kind]} (${KIND_TILE_ASPECT[r.kind]}) — will be cropped to fit ${KIND_TILE_ASPECT[kind]}`
+                      : undefined
+                  }
+                >
+                  {KIND_TILE_ASPECT[r.kind]}
+                </span>
+              }
+              secondaryBadge={
                 r.usage_count > 0 ? (
                   <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/55 text-white">
                     Used {r.usage_count}×
@@ -518,7 +603,8 @@ function LibraryGrid({
               </p>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -719,6 +805,7 @@ function Tile({
   selected,
   onSelect,
   badge,
+  secondaryBadge,
   action,
 }: {
   url: string;
@@ -726,6 +813,8 @@ function Tile({
   selected: boolean;
   onSelect: () => void;
   badge?: React.ReactNode;
+  /** Optional second badge stacked under the primary one (top-left). */
+  secondaryBadge?: React.ReactNode;
   action?: React.ReactNode;
 }) {
   return (
@@ -748,8 +837,11 @@ function Tile({
           !selected && "group-hover:scale-[1.03]"
         )}
       />
-      {badge && (
-        <div className="absolute top-2 left-2">{badge}</div>
+      {(badge || secondaryBadge) && (
+        <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
+          {badge}
+          {secondaryBadge}
+        </div>
       )}
       {action && (
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">

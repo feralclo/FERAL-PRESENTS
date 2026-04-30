@@ -263,3 +263,97 @@ describe("POST /api/admin/media/complete", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// PATCH /api/admin/media/[id] — edit group/tag
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("PATCH /api/admin/media/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFromQuery.mockReset();
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    authFail();
+    const { PATCH } = await import("@/app/api/admin/media/[id]/route");
+    const req = new NextRequest("http://localhost/api/admin/media/abc", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ group: "Test" }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "abc" }) });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 403 when row belongs to another org", async () => {
+    authOK("feral");
+    mockFromQuery.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: "abc", org_id: "other-org" },
+            error: null,
+          }),
+        }),
+      }),
+    });
+    const { PATCH } = await import("@/app/api/admin/media/[id]/route");
+    const req = new NextRequest("http://localhost/api/admin/media/abc", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ group: "Hijack" }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "abc" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects non-string group payloads", async () => {
+    authOK("feral");
+    const { PATCH } = await import("@/app/api/admin/media/[id]/route");
+    const req = new NextRequest("http://localhost/api/admin/media/abc", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ group: 12345 }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "abc" }) });
+    expect(res.status).toBe(400);
+  });
+
+  it("clears tags when group is null", async () => {
+    authOK("feral");
+    let updateCalledWith: unknown = null;
+    mockFromQuery.mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi
+            .fn()
+            .mockResolvedValue({ data: { id: "abc", org_id: "feral" }, error: null }),
+        }),
+      }),
+      update: vi.fn().mockImplementation((payload: unknown) => {
+        updateCalledWith = payload;
+        return {
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { id: "abc", org_id: "feral", tags: [] },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }),
+    }));
+
+    const { PATCH } = await import("@/app/api/admin/media/[id]/route");
+    const req = new NextRequest("http://localhost/api/admin/media/abc", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ group: null }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "abc" }) });
+    expect(res.status).toBe(200);
+    expect(updateCalledWith).toEqual({ tags: [] });
+  });
+});

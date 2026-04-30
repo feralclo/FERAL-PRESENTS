@@ -33,6 +33,7 @@ import {
   TrendingUp,
   Megaphone,
   UsersRound,
+  Library,
 } from "lucide-react";
 
 /* ── Navigation — flat list (Shopify-style) ── */
@@ -85,6 +86,11 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/admin/merch-store/online/", label: "Merch Store" },
     ],
   },
+  // ── Cover library — shared creative surface for quests + events. Lives at
+  //    top-level (not nested) because it's used from both the rep programme
+  //    and the event editor; nesting under either would hide it from the
+  //    other workflow.
+  { href: "/admin/library/", label: "Library", icon: Library },
   // ── Rep programme — lifted out of Marketing / Storefront into its own
   //    section. The rep programme is its own product surface (quests, EP,
   //    brand identity), not a sub-bucket of either. Promoter profile moved

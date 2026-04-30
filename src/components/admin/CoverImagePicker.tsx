@@ -12,6 +12,7 @@ import {
   Library,
   Upload,
   Sparkles,
+  Tag,
   Trash2,
   Check,
   Loader2,
@@ -37,6 +38,12 @@ interface TenantMediaRow {
   height: number | null;
   created_at: string;
   usage_count: number;
+  group: string | null;
+}
+
+interface GroupSummary {
+  name: string;
+  count: number;
 }
 
 type Tab = "templates" | "library" | "upload";
@@ -356,13 +363,19 @@ function LibraryGrid({
   onSwitchToTemplates: (() => void) | null;
 }) {
   const [rows, setRows] = useState<TenantMediaRow[] | null>(null);
+  const [groups, setGroups] = useState<GroupSummary[]>([]);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError("");
+    const params = new URLSearchParams({ kind });
+    if (groupFilter) params.set("group", groupFilter);
     try {
-      const res = await fetch(`/api/admin/media?kind=${kind}`, { cache: "no-store" });
+      const res = await fetch(`/api/admin/media?${params.toString()}`, {
+        cache: "no-store",
+      });
       const json = await res.json();
       if (!res.ok) {
         setError(json.error || "Failed to load library");
@@ -370,11 +383,12 @@ function LibraryGrid({
         return;
       }
       setRows(json.data ?? []);
+      setGroups(json.groups ?? []);
     } catch {
       setError("Network error");
       setRows([]);
     }
-  }, [kind]);
+  }, [kind, groupFilter]);
 
   useEffect(() => {
     void load();
@@ -447,40 +461,75 @@ function LibraryGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-      {rows.map((r) => (
-        <Tile
-          key={r.id}
-          url={r.url}
-          selected={selected === r.url}
-          onSelect={() => onSelect(r.url)}
-          badge={
-            r.usage_count > 0 ? (
-              <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/55 text-white">
-                Used {r.usage_count}×
-              </span>
-            ) : null
-          }
-          action={
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleDelete(r.id, r.usage_count);
-              }}
-              disabled={deletingId === r.id}
-              className="p-1.5 rounded-md bg-black/55 text-white/80 hover:text-destructive hover:bg-black/70 transition-colors"
-              aria-label="Delete from library"
+    <div className="space-y-3">
+      {groups.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <CategoryChip
+            active={groupFilter === null}
+            onClick={() => setGroupFilter(null)}
+          >
+            All
+          </CategoryChip>
+          {groups.map((g) => (
+            <CategoryChip
+              key={g.name}
+              active={groupFilter === g.name}
+              onClick={() =>
+                setGroupFilter(groupFilter === g.name ? null : g.name)
+              }
             >
-              {deletingId === r.id ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <Trash2 size={12} />
-              )}
-            </button>
-          }
-        />
-      ))}
+              <Tag size={11} className="mr-1" />
+              {g.name}
+              <span className="ml-1.5 text-[10px] text-muted-foreground/70">
+                {g.count}
+              </span>
+            </CategoryChip>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        {rows.map((r) => (
+          <div key={r.id} className="space-y-1">
+            <Tile
+              url={r.url}
+              selected={selected === r.url}
+              onSelect={() => onSelect(r.url)}
+              badge={
+                r.usage_count > 0 ? (
+                  <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/55 text-white">
+                    Used {r.usage_count}×
+                  </span>
+                ) : null
+              }
+              action={
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleDelete(r.id, r.usage_count);
+                  }}
+                  disabled={deletingId === r.id}
+                  className="p-1.5 rounded-md bg-black/55 text-white/80 hover:text-destructive hover:bg-black/70 transition-colors"
+                  aria-label="Delete from library"
+                >
+                  {deletingId === r.id ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={12} />
+                  )}
+                </button>
+              }
+            />
+            {r.group && (
+              <p className="flex items-center gap-1 px-0.5 text-[10px] text-muted-foreground truncate">
+                <Tag size={9} className="shrink-0" />
+                <span className="truncate">{r.group}</span>
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -495,6 +544,7 @@ function UploadPane({
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState<{ phase: string; pct: number } | null>(null);
   const [error, setError] = useState("");
+  const [groupName, setGroupName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(
@@ -544,6 +594,7 @@ function UploadPane({
         }
 
         setProgress({ phase: "Saving…", pct: 80 });
+        const tags = groupName.trim() ? [groupName.trim().slice(0, 60)] : undefined;
         const completeRes = await fetch("/api/admin/media/complete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -552,6 +603,7 @@ function UploadPane({
             kind,
             width: dims?.width ?? null,
             height: dims?.height ?? null,
+            tags,
           }),
         });
         const completeJson = await completeRes.json();
@@ -569,18 +621,41 @@ function UploadPane({
         setProgress(null);
       }
     },
-    [kind, onUploaded]
+    [kind, groupName, onUploaded]
   );
 
   return (
-    <div
-      className={cn(
-        "rounded-xl border-2 border-dashed transition-colors p-12 text-center",
-        dragging
-          ? "border-primary/60 bg-primary/5"
-          : "border-border/60 hover:border-primary/30"
-      )}
-      onClick={() => !progress && fileRef.current?.click()}
+    <div className="space-y-3">
+      {/* Optional group input — admin can tag this batch with a campaign
+          name. Datalist suggests existing groups so the same name doesn't
+          get duplicated as "Bob Marley" and "bob marley". */}
+      <div className="space-y-1.5">
+        <label className="text-[12px] font-medium text-foreground">
+          Group{" "}
+          <span className="text-muted-foreground font-normal">(optional)</span>
+        </label>
+        <input
+          type="text"
+          value={groupName}
+          onChange={(e) => setGroupName(e.target.value)}
+          placeholder="e.g. Bob Marley Tribute"
+          maxLength={60}
+          disabled={!!progress}
+          className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
+        />
+        <p className="text-[11px] text-muted-foreground">
+          Groups campaign creative together — find it again under one chip in your library.
+        </p>
+      </div>
+
+      <div
+        className={cn(
+          "rounded-xl border-2 border-dashed transition-colors p-12 text-center",
+          dragging
+            ? "border-primary/60 bg-primary/5"
+            : "border-border/60 hover:border-primary/30"
+        )}
+        onClick={() => !progress && fileRef.current?.click()}
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);
@@ -639,6 +714,7 @@ function UploadPane({
           e.target.value = "";
         }}
       />
+      </div>
     </div>
   );
 }

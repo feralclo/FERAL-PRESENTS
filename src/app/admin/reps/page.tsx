@@ -20,7 +20,6 @@ import { DashboardTab } from "@/components/admin/reps/DashboardTab";
 import { TeamTab } from "@/components/admin/reps/TeamTab";
 import { RewardsTab } from "@/components/admin/reps/RewardsTab";
 import { QuestsTab } from "@/components/admin/reps/QuestsTab";
-import { LibraryTab } from "@/components/admin/reps/LibraryTab";
 import { SettingsTab } from "@/components/admin/reps/SettingsTab";
 import { PlatformXPTab } from "@/components/admin/reps/PlatformXPTab";
 import { ReportsTab } from "@/components/admin/reps/ReportsTab";
@@ -35,7 +34,6 @@ const TENANT_TABS = new Set([
   "rewards",
   "quests",
   "reports",
-  "library",
   "settings",
 ]);
 const PLATFORM_OWNER_EXTRA = new Set(["platform"]);
@@ -88,22 +86,44 @@ function RepsHubPageInner() {
         subtitle="Recruit, manage, and reward your brand ambassadors"
       />
 
-      {/* Quick link to event leaderboards */}
-      <Link
-        href="/admin/reps/event-boards"
-        className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-4 hover:border-primary/30 hover:bg-primary/5 transition-all group"
-      >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10 group-hover:bg-primary/15 transition-colors">
-          <Trophy size={18} className="text-primary/70" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">Event Boards</p>
-          <p className="text-xs text-muted-foreground">
-            Assign reps to events, manage leaderboards, and award position prizes
-          </p>
-        </div>
-        <ExternalLink size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
-      </Link>
+      {/* Quick links to adjacent surfaces — Event Boards and the Cover
+          Library both serve the rep workflow but live elsewhere in the
+          admin: boards under /admin/reps/event-boards (rep-specific), and
+          the library promoted to /admin/library because event covers
+          live there too. Surfacing them here keeps the workflow short
+          without duplicating the pages. */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/admin/reps/event-boards"
+          className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-4 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10 group-hover:bg-primary/15 transition-colors">
+            <Trophy size={18} className="text-primary/70" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">Event Boards</p>
+            <p className="text-xs text-muted-foreground">
+              Assign reps, manage leaderboards, award position prizes
+            </p>
+          </div>
+          <ExternalLink size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+        </Link>
+        <Link
+          href="/admin/library"
+          className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-4 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10 group-hover:bg-primary/15 transition-colors">
+            <Library size={18} className="text-primary/70" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">Cover Library</p>
+            <p className="text-xs text-muted-foreground">
+              Reusable creative for quests + events, organised by campaign
+            </p>
+          </div>
+          <ExternalLink size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+        </Link>
+      </div>
 
       {/* Internal Navigation — tabs scroll horizontally on narrow screens so
           all 7 stay accessible without wrapping. */}
@@ -129,10 +149,6 @@ function RepsHubPageInner() {
             <TabsTrigger value="reports">
               <Inbox size={14} className="mr-1.5" />
               Reports
-            </TabsTrigger>
-            <TabsTrigger value="library">
-              <Library size={14} className="mr-1.5" />
-              Library
             </TabsTrigger>
             <TabsTrigger value="settings">
               Settings
@@ -160,9 +176,6 @@ function RepsHubPageInner() {
         </TabsContent>
         <TabsContent value="reports">
           <ReportsTab />
-        </TabsContent>
-        <TabsContent value="library">
-          <LibraryTab />
         </TabsContent>
         <TabsContent value="settings">
           <SettingsTab />

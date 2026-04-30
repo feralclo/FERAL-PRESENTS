@@ -5,6 +5,90 @@ import * as Sentry from "@sentry/nextjs";
 
 const BUCKET = "tenant-media";
 
+const MAX_GROUP_LENGTH = 60;
+
+/**
+ * PATCH /api/admin/media/[id] — update a tenant_media row's metadata.
+ *
+ * Currently only the "group" field (stored as the first entry in `tags[]`)
+ * can be edited. Body:
+ *   { group: "Bob Marley Tribute" }   // sets the group label
+ *   { group: null }                    // or "" — clears it
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+    const orgId = auth.orgId;
+    const { id } = await params;
+
+    let body: { group?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const rawGroup = body.group;
+    let nextTags: string[];
+    if (rawGroup === null || rawGroup === "" || rawGroup === undefined) {
+      nextTags = [];
+    } else if (typeof rawGroup === "string") {
+      const trimmed = rawGroup.trim().slice(0, MAX_GROUP_LENGTH);
+      if (!trimmed) {
+        nextTags = [];
+      } else {
+        nextTags = [trimmed];
+      }
+    } else {
+      return NextResponse.json(
+        { error: "group must be a string or null" },
+        { status: 400 }
+      );
+    }
+
+    const db = await getSupabaseAdmin();
+    if (!db) {
+      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+    }
+
+    const { data: row, error: fetchError } = await db
+      .from("tenant_media")
+      .select("id, org_id")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !row) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (row.org_id !== orgId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { data: updated, error: updateError } = await db
+      .from("tenant_media")
+      .update({ tags: nextTags })
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (updateError || !updated) {
+      Sentry.captureException(updateError, { extra: { id, orgId } });
+      return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      data: { ...updated, group: nextTags[0] ?? null },
+    });
+  } catch (err) {
+    Sentry.captureException(err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
 /**
  * DELETE /api/admin/media/[id] — soft-delete a tenant_media row.
  *

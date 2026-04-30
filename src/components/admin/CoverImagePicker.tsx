@@ -88,6 +88,11 @@ interface TenantMediaRow {
   id: string;
   url: string;
   kind: TenantMediaKind;
+  /** All categories this image is tagged for — set in /admin/library via
+   *  the Categories popover. The picker treats kinds[] as the source of
+   *  truth for "does this image fit this slot": if the slot's kind is in
+   *  kinds[], no mismatch warning; otherwise the warning badge applies. */
+  kinds: TenantMediaKind[];
   source: "upload" | "template" | "instagram";
   width: number | null;
   height: number | null;
@@ -546,7 +551,13 @@ function LibraryGrid({
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {rows.map((r) => {
-          const kindMismatch = r.kind !== kind;
+          // Mismatch only applies when the row hasn't been explicitly
+          // tagged for this kind. If admin marked a cover as also being
+          // a shareable (kinds includes both), no warning shows for either
+          // surface — they sanctioned the crop.
+          const rowKinds = Array.isArray(r.kinds) && r.kinds.length ? r.kinds : [r.kind];
+          const kindMismatch = !rowKinds.includes(kind);
+          const displayKind = kindMismatch ? r.kind : kind;
           return (
           <div key={r.id} className="space-y-1">
             <Tile
@@ -567,7 +578,7 @@ function LibraryGrid({
                       : undefined
                   }
                 >
-                  {KIND_TILE_ASPECT[r.kind]}
+                  {KIND_TILE_ASPECT[displayKind]}
                 </span>
               }
               secondaryBadge={

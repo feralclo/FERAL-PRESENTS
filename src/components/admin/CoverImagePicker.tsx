@@ -11,7 +11,6 @@ import {
   Image as ImageIcon,
   Library,
   Upload,
-  Sparkles,
   Tag,
   Trash2,
   Check,
@@ -209,15 +208,6 @@ export function CoverImagePicker({
           {/* Tabs */}
           <div className="border-b border-border/60 px-5">
             <div className="flex gap-1">
-              {templatesEnabled && (
-                <TabBtn
-                  active={tab === "templates"}
-                  onClick={() => setTab("templates")}
-                  icon={<Sparkles size={14} />}
-                >
-                  Templates
-                </TabBtn>
-              )}
               <TabBtn active={tab === "library"} onClick={() => setTab("library")} icon={<Library size={14} />}>
                 Your library
               </TabBtn>

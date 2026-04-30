@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import { Library } from "lucide-react";
 import { ImageSlot } from "@/components/admin/canvas/ImageSlot";
+import { CoverImagePicker } from "@/components/admin/CoverImagePicker";
 import type { TabWithSettingsProps } from "@/components/admin/event-editor/types";
 
 /**
@@ -17,6 +20,8 @@ export function LookSection({ event, updateEvent }: TabWithSettingsProps) {
   // settings + updateSetting accepted on the prop type for parent
   // compatibility, but unused — minimal sliders were retired with the
   // theme picker.
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const coverValue = event.cover_image_url || event.cover_image || "";
   return (
     // Three slots, three columns, top-aligned. The aspect ratios are
     // intentionally different (1:1 / 16:9 / 4:5) — letting each tile
@@ -26,21 +31,45 @@ export function LookSection({ event, updateEvent }: TabWithSettingsProps) {
     // feel where the *shape variety* is part of the signal: this is
     // what each asset actually is.
     <div className="grid gap-4 sm:grid-cols-3 items-start">
-      <ImageSlot
-        label="Cover"
-        hint="Square artwork, no baked-in text. Cards, tiles, iOS feed."
-        shape="square"
-        surface="card-tile"
-        value={event.cover_image_url || event.cover_image || ""}
-        onChange={(v) => {
-          // Dual-write: legacy cover_image keeps live web event pages,
-          // emails, and wallet passes correct; cover_image_url feeds
-          // iOS / Android / web-v2. One upload, every surface stays in sync.
-          updateEvent("cover_image", v);
-          updateEvent("cover_image_url", v);
-        }}
-        uploadKey={event.id ? `event_${event.id}_cover` : undefined}
-      />
+      <div className="space-y-2">
+        <ImageSlot
+          label="Cover"
+          hint="Square artwork, no baked-in text. Cards, tiles, iOS feed."
+          shape="square"
+          surface="card-tile"
+          value={coverValue}
+          onChange={(v) => {
+            // Dual-write: legacy cover_image keeps live web event pages,
+            // emails, and wallet passes correct; cover_image_url feeds
+            // iOS / Android / web-v2. One upload, every surface stays in sync.
+            updateEvent("cover_image", v);
+            updateEvent("cover_image_url", v);
+          }}
+          mediaKind="event_cover"
+          uploadKey={event.id ? `event_${event.id}_cover` : undefined}
+        />
+        <button
+          type="button"
+          onClick={() => setCoverPickerOpen(true)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-card px-3 py-2 text-[12px] text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+        >
+          <Library size={13} />
+          Browse cover library
+        </button>
+        <CoverImagePicker
+          open={coverPickerOpen}
+          onOpenChange={setCoverPickerOpen}
+          value={coverValue}
+          onChange={(v) => {
+            updateEvent("cover_image", v);
+            updateEvent("cover_image_url", v);
+          }}
+          kind="event_cover"
+          templatesEnabled={false}
+          previewAspect="1/1"
+          previewTitle={event.name || "Your event"}
+        />
+      </div>
       <ImageSlot
         label="Banner"
         hint="16:9 wide. Hero background on the public event page."

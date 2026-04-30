@@ -52,6 +52,13 @@ export interface CoverImagePickerProps {
   /** Promoter accent (defaults to primary violet). Drives the live preview chips. */
   previewAccent?: string;
   kind?: TenantMediaKind;
+  /** When false, hides the Templates tab. Use for kinds whose aspect ratio
+   *  doesn't match the built-in 3:4 portrait templates (e.g. event_cover is
+   *  1:1). Defaults to true. */
+  templatesEnabled?: boolean;
+  /** Aspect ratio of the live preview frame. "3/4" (default) for quest cards,
+   *  "1/1" for event covers, "16/9" for banners. Tiles in the grid stay 3/4. */
+  previewAspect?: "3/4" | "1/1" | "16/9";
 }
 
 export function CoverImagePicker({
@@ -62,15 +69,17 @@ export function CoverImagePicker({
   previewTitle = "Your quest title",
   previewAccent = "#8B5CF6",
   kind = "quest_cover",
+  templatesEnabled = true,
+  previewAspect = "3/4",
 }: CoverImagePickerProps) {
-  // Initial tab — if the existing value is a template URL, open Templates;
-  // if it's a stored library URL, open Library; otherwise Upload (most likely
-  // first-time empty state).
+  // Initial tab — if templates are off, never open them. If existing value
+  // is a template URL, open Templates; if it's a stored library URL, open
+  // Library; otherwise Upload (most likely first-time empty state).
   const initialTab: Tab = useMemo(() => {
-    if (!value) return "templates";
-    if (findQuestCoverTemplateByUrl(value)) return "templates";
+    if (!value) return templatesEnabled ? "templates" : "library";
+    if (templatesEnabled && findQuestCoverTemplateByUrl(value)) return "templates";
     return "library";
-  }, [value]);
+  }, [value, templatesEnabled]);
 
   const [tab, setTab] = useState<Tab>(initialTab);
   const [selected, setSelected] = useState(value);
@@ -96,10 +105,26 @@ export function CoverImagePicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl p-0 gap-0 overflow-hidden">
+      <DialogContent
+        className={cn(
+          // Mobile: bottom-anchored sheet — full width, rounded top corners,
+          // slides up from the bottom (admin UX rule: sheets on <md, dialogs
+          // on lg+). Override Radix's centered transforms.
+          "p-0 gap-0 overflow-hidden",
+          "max-md:top-auto max-md:bottom-0 max-md:left-0 max-md:translate-x-0 max-md:translate-y-0",
+          "max-md:w-full max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-2xl max-md:max-h-[92dvh]",
+          // Desktop: centered modal at picker width.
+          "md:max-w-5xl"
+        )}
+      >
         <DialogTitle className="sr-only">Choose a cover image</DialogTitle>
 
-        <div className="flex h-[min(82vh,720px)] flex-col">
+        {/* Drag-handle pill — shown only on the mobile sheet form. */}
+        <div className="md:hidden flex justify-center pt-2 pb-1">
+          <div className="h-1 w-10 rounded-full bg-foreground/20" />
+        </div>
+
+        <div className="flex h-[min(82vh,720px)] max-md:h-[min(85dvh,calc(85dvh))] flex-col">
           {/* Header */}
           <div className="border-b border-border/60 px-5 py-4 flex items-center justify-between gap-3">
             <div>
@@ -123,9 +148,15 @@ export function CoverImagePicker({
           {/* Tabs */}
           <div className="border-b border-border/60 px-5">
             <div className="flex gap-1">
-              <TabBtn active={tab === "templates"} onClick={() => setTab("templates")} icon={<Sparkles size={14} />}>
-                Templates
-              </TabBtn>
+              {templatesEnabled && (
+                <TabBtn
+                  active={tab === "templates"}
+                  onClick={() => setTab("templates")}
+                  icon={<Sparkles size={14} />}
+                >
+                  Templates
+                </TabBtn>
+              )}
               <TabBtn active={tab === "library"} onClick={() => setTab("library")} icon={<Library size={14} />}>
                 Your library
               </TabBtn>
@@ -138,7 +169,7 @@ export function CoverImagePicker({
           {/* Body — split: grid (left) + preview rail (right) */}
           <div className="flex-1 flex overflow-hidden">
             <div className="flex-1 overflow-y-auto p-5">
-              {tab === "templates" && (
+              {tab === "templates" && templatesEnabled && (
                 <TemplateGrid selected={selected} onSelect={setSelected} />
               )}
               {tab === "library" && (
@@ -147,7 +178,9 @@ export function CoverImagePicker({
                   selected={selected}
                   onSelect={setSelected}
                   onSwitchToUpload={() => setTab("upload")}
-                  onSwitchToTemplates={() => setTab("templates")}
+                  onSwitchToTemplates={
+                    templatesEnabled ? () => setTab("templates") : null
+                  }
                 />
               )}
               {tab === "upload" && (
@@ -166,7 +199,12 @@ export function CoverImagePicker({
               <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-3">
                 Preview
               </p>
-              <PhonePreview cover={selected} title={previewTitle} accent={previewAccent} />
+              <PhonePreview
+                cover={selected}
+                title={previewTitle}
+                accent={previewAccent}
+                aspect={previewAspect}
+              />
               <p className="text-[11px] leading-relaxed text-muted-foreground mt-4">
                 iOS overlays the title and chips on top — pick something where they&rsquo;ll stay readable.
               </p>
@@ -314,7 +352,8 @@ function LibraryGrid({
   selected: string;
   onSelect: (url: string) => void;
   onSwitchToUpload: () => void;
-  onSwitchToTemplates: () => void;
+  /** Null when templates aren't enabled — empty state hides the affordance. */
+  onSwitchToTemplates: (() => void) | null;
 }) {
   const [rows, setRows] = useState<TenantMediaRow[] | null>(null);
   const [error, setError] = useState("");
@@ -389,16 +428,19 @@ function LibraryGrid({
         </div>
         <h3 className="text-base font-semibold text-foreground">Your library is empty</h3>
         <p className="text-sm text-muted-foreground mt-1.5 max-w-sm">
-          Every cover you upload is saved here for the next quest. Start with a template or upload your first image.
+          Every cover you upload is saved here for next time.
+          {onSwitchToTemplates ? " Start with a template or upload your first image." : " Upload your first image."}
         </p>
         <div className="flex gap-2 mt-5">
           <Button size="sm" onClick={onSwitchToUpload}>
             <Upload size={14} className="mr-1.5" />
             Upload image
           </Button>
-          <Button size="sm" variant="ghost" onClick={onSwitchToTemplates}>
-            Browse templates
-          </Button>
+          {onSwitchToTemplates && (
+            <Button size="sm" variant="ghost" onClick={onSwitchToTemplates}>
+              Browse templates
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -662,13 +704,19 @@ function PhonePreview({
   cover,
   title,
   accent,
+  aspect,
 }: {
   cover: string;
   title: string;
   accent: string;
+  aspect: "3/4" | "1/1" | "16/9";
 }) {
+  // The preview matches the surface this picker is targeting:
+  //   3/4 — quest card hero (iOS), 1/1 — event cover tile, 16/9 — banner.
+  const aspectClass =
+    aspect === "1/1" ? "aspect-square" : aspect === "16/9" ? "aspect-video" : "aspect-[3/4]";
   return (
-    <div className="mx-auto w-[200px] aspect-[3/4] rounded-2xl overflow-hidden border border-border/60 bg-card relative shadow-lg">
+    <div className={cn("mx-auto w-[200px] rounded-2xl overflow-hidden border border-border/60 bg-card relative shadow-lg", aspectClass)}>
       {cover ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={cover} alt="" className="w-full h-full object-cover" />

@@ -8,8 +8,15 @@ import {
   isTenantMediaKind,
   type TenantMediaKind,
 } from "@/lib/uploads/tenant-media-config";
+import { optimizeTenantMediaImage } from "@/lib/uploads/optimize-image";
 
 const BUCKET = "tenant-media";
+
+// Cache for one year — files are content-addressed (UUID in path), so the
+// URL never refers to different bytes. Saves repeated downloads on iOS.
+// Supabase storage accepts cacheControl as seconds (string) and sets the
+// `Cache-Control: max-age=<seconds>` header. 31536000s = 365 days.
+const ONE_YEAR_SECONDS = "31536000";
 
 const PREFIX_TO_KIND: Record<string, TenantMediaKind> = Object.fromEntries(
   Object.entries(TENANT_MEDIA_KINDS).map(([kind, cfg]) => [cfg.prefix, kind as TenantMediaKind])
@@ -113,12 +120,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "MIME type not allowed" }, { status: 415 });
     }
 
-    const publicUrl = db.storage.from(BUCKET).getPublicUrl(key).data.publicUrl;
+    // ── Server-side optimisation ──────────────────────────────────────────
+    // Download → resize to fit 1200×1600 → WebP @ q82 → strip EXIF →
+    // re-upload as a sibling .webp key → delete the original. This turns
+    // a 4MB phone photo into ~60KB, saving every iOS device every load.
+    let finalKey = key;
+    let finalSize = size;
+    let finalMime: string | null = mimeType || null;
+    let finalWidth = Number.isInteger(body.width) ? (body.width as number) : null;
+    let finalHeight = Number.isInteger(body.height) ? (body.height as number) : null;
 
-    // Pull width/height from the client if it measured them — saves us a
-    // server-side image-decode step. Defensive parse: ignore if not finite ints.
-    const width = Number.isInteger(body.width) ? (body.width as number) : null;
-    const height = Number.isInteger(body.height) ? (body.height as number) : null;
+    const { data: blob, error: downloadError } = await db.storage
+      .from(BUCKET)
+      .download(key);
+    if (downloadError || !blob) {
+      Sentry.captureException(downloadError ?? new Error("download failed"), {
+        extra: { key },
+      });
+      // Don't fail the whole request — the file is in storage and the URL
+      // works; just skip optimisation and serve the original.
+    } else {
+      const inputBuffer = Buffer.from(await blob.arrayBuffer());
+      const optimised = await optimizeTenantMediaImage(inputBuffer);
+      if (optimised) {
+        // Sibling key with .webp extension — same uuid so we can correlate.
+        const optimisedKey = key.replace(/\.[a-z0-9]+$/i, ".webp");
+        const { error: uploadError } = await db.storage
+          .from(BUCKET)
+          .upload(optimisedKey, optimised.buffer, {
+            contentType: "image/webp",
+            cacheControl: ONE_YEAR_SECONDS,
+            upsert: true,
+          });
+        if (!uploadError) {
+          // Drop the original — only the .webp survives. If the keys are
+          // identical (unlikely; would need extension == "webp"), skip.
+          if (optimisedKey !== key) {
+            await db.storage.from(BUCKET).remove([key]);
+          }
+          finalKey = optimisedKey;
+          finalSize = optimised.size_bytes;
+          finalMime = "image/webp";
+          finalWidth = optimised.width;
+          finalHeight = optimised.height;
+        } else {
+          Sentry.captureException(uploadError, {
+            extra: { key, optimisedKey },
+          });
+        }
+      }
+    }
+
+    const publicUrl = db.storage.from(BUCKET).getPublicUrl(finalKey).data.publicUrl;
+
     const tags =
       Array.isArray(body.tags) && body.tags.every((t) => typeof t === "string")
         ? (body.tags as string[]).slice(0, 16)
@@ -131,11 +185,11 @@ export async function POST(request: NextRequest) {
         kind: declaredKind,
         source: "upload",
         url: publicUrl,
-        storage_key: key,
-        width,
-        height,
-        file_size_bytes: size,
-        mime_type: mimeType || null,
+        storage_key: finalKey,
+        width: finalWidth,
+        height: finalHeight,
+        file_size_bytes: finalSize,
+        mime_type: finalMime,
         tags,
         created_by_user_id: auth.user.id,
       })

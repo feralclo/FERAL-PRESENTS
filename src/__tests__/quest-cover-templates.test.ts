@@ -1,6 +1,7 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { existsSync, readFileSync } from "fs";
-import { join } from "path";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   QUEST_COVER_TEMPLATES,
   QUEST_COVER_TEMPLATE_CATEGORIES,

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Loader2, Upload, Trash2, AlertTriangle } from "lucide-react";
 import { processImageFile } from "@/lib/image-utils";
 import { cn } from "@/lib/utils";
+import type { TenantMediaKind } from "@/lib/uploads/tenant-media-config";
 
 /**
  * One image slot in the Look section. Replaces the bare ImageUpload with a
@@ -31,8 +32,13 @@ interface ImageSlotProps {
   shape: ImageSlotShape;
   value: string;
   onChange: (v: string) => void;
-  /** Optional upload key for /api/upload. Without it, base64 stays inline. */
+  /** Optional upload key for legacy base64 /api/upload path. */
   uploadKey?: string;
+  /** When set, drag-drop / paste / pick goes through /api/admin/media —
+   *  saves a tenant_media row, runs server-side Sharp optimisation
+   *  (resize → WebP → strip EXIF), and the upload becomes available in
+   *  the library for reuse. Recommended for any kind that has a library. */
+  mediaKind?: TenantMediaKind;
   /** Tells the host where this image surfaces — render as a SVG silhouette. */
   surface: "card-tile" | "page-hero" | "story-share";
 }
@@ -59,6 +65,7 @@ export function ImageSlot({
   value,
   onChange,
   uploadKey,
+  mediaKind,
   surface,
 }: ImageSlotProps) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -107,47 +114,88 @@ export function ImageSlot({
       const aspectOk = await checkAspect(file);
       if (!aspectOk) setAspectWarning(true);
 
-      // Immediate preview while we compress + upload — keeps the canvas
-      // preview pane responsive instead of flashing the old image.
+      // Immediate preview while we upload — keeps the canvas preview pane
+      // responsive instead of flashing the old image.
       const blobUrl = URL.createObjectURL(file);
       setBlobPreview(blobUrl);
 
-      const compressed = await processImageFile(file);
-      if (!compressed) {
-        setProcessing(false);
-        URL.revokeObjectURL(blobUrl);
-        setBlobPreview(null);
-        return;
-      }
-
-      if (uploadKey) {
-        try {
-          const res = await fetch("/api/upload", {
+      try {
+        if (mediaKind) {
+          // ── Tenant-media path ─────────────────────────────────────────
+          // Direct-to-Storage signed URL → /complete runs Sharp (resize +
+          // WebP + strip EXIF) and writes a tenant_media row, so the file
+          // appears in the library for reuse on the next event/quest.
+          const signedRes = await fetch("/api/admin/media/signed-url", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageData: compressed, key: uploadKey }),
+            body: JSON.stringify({
+              kind: mediaKind,
+              content_type: file.type,
+              size_bytes: file.size,
+            }),
           });
-          const json = await res.json();
-          if (res.ok && json.url) {
-            onChange(json.url);
+          const signedJson = await signedRes.json();
+          if (!signedRes.ok || !signedJson.data) {
+            setUploadError(signedJson.error || "Upload failed");
           } else {
-            setUploadError(json.error || "Upload failed");
-            onChange(compressed);
+            const putRes = await fetch(signedJson.data.upload_url, {
+              method: "PUT",
+              headers: { "Content-Type": file.type },
+              body: file,
+            });
+            if (!putRes.ok) {
+              setUploadError("Upload to storage failed");
+            } else {
+              const completeRes = await fetch("/api/admin/media/complete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  key: signedJson.data.key,
+                  kind: mediaKind,
+                }),
+              });
+              const completeJson = await completeRes.json();
+              if (!completeRes.ok || !completeJson.data) {
+                setUploadError(completeJson.error || "Failed to finalise upload");
+              } else {
+                onChange(completeJson.data.url);
+              }
+            }
           }
-        } catch {
-          setUploadError("Network error during upload");
-          onChange(compressed);
+        } else {
+          // ── Legacy base64 path ────────────────────────────────────────
+          // Used by surfaces that don't have a tenant_media kind yet
+          // (banner, story-share, branding, popup). Compresses in-browser
+          // and POSTs base64 to /api/upload.
+          const compressed = await processImageFile(file);
+          if (compressed) {
+            if (uploadKey) {
+              const res = await fetch("/api/upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageData: compressed, key: uploadKey }),
+              });
+              const json = await res.json();
+              if (res.ok && json.url) {
+                onChange(json.url);
+              } else {
+                setUploadError(json.error || "Upload failed");
+                onChange(compressed);
+              }
+            } else {
+              onChange(compressed);
+            }
+          }
         }
-      } else {
-        onChange(compressed);
+      } catch {
+        setUploadError("Network error during upload");
       }
 
-      // Once the persisted value lands, drop the blob URL.
       URL.revokeObjectURL(blobUrl);
       setBlobPreview(null);
       setProcessing(false);
     },
-    [checkAspect, onChange, uploadKey]
+    [checkAspect, onChange, uploadKey, mediaKind]
   );
 
   // Paste-from-clipboard. Listening on the slot's div, not document, so

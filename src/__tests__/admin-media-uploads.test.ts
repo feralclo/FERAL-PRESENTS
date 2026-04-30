@@ -10,6 +10,8 @@ const mockCreateSignedUploadUrl = vi.fn();
 const mockGetPublicUrl = vi.fn();
 const mockList = vi.fn();
 const mockRemove = vi.fn();
+const mockDownload = vi.fn();
+const mockUpload = vi.fn();
 const mockFromQuery = vi.fn();
 const mockInsertSelectSingle = vi.fn();
 
@@ -20,6 +22,8 @@ const mockSupabase = {
       getPublicUrl: mockGetPublicUrl,
       list: mockList,
       remove: mockRemove,
+      download: mockDownload,
+      upload: mockUpload,
     })),
   },
   from: vi.fn(() => mockFromQuery()),
@@ -31,6 +35,12 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
+}));
+
+// Skip the Sharp optimisation pipeline in unit tests — covered separately.
+// Returning null exercises the graceful-fallback path: original file is kept.
+vi.mock("@/lib/uploads/optimize-image", () => ({
+  optimizeTenantMediaImage: vi.fn().mockResolvedValue(null),
 }));
 
 function authOK(orgId = "feral", userId = "user-1") {
@@ -155,8 +165,16 @@ describe("POST /api/admin/media/complete", () => {
     mockList.mockReset();
     mockRemove.mockReset();
     mockGetPublicUrl.mockReset();
+    mockDownload.mockReset();
+    mockUpload.mockReset();
     mockFromQuery.mockReset();
     mockInsertSelectSingle.mockReset();
+    // Default download = bytes available; optimize-image mock returns null
+    // (graceful fallback), so the original key/url is kept.
+    mockDownload.mockResolvedValue({
+      data: { arrayBuffer: async () => new ArrayBuffer(8) },
+      error: null,
+    });
   });
 
   it("returns 401 when not authenticated", async () => {

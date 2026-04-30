@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     // to splice.
     const { data: rows } = await db
       .from("tenant_media")
-      .select("id, tags")
+      .select("id, tags, kinds")
       .eq("org_id", orgId)
       .in("id", ids as string[])
       .is("deleted_at", null);
@@ -102,16 +102,34 @@ export async function POST(request: Request) {
     }
 
     let succeeded = 0;
-    for (const row of rows as Array<{ id: string; tags: string[] | null }>) {
+    for (const row of rows as Array<{
+      id: string;
+      tags: string[] | null;
+      kinds: string[] | null;
+    }>) {
       const rest = (row.tags ?? []).slice(1); // preserve everything past tags[0]
       const newTags = targetTag ? [targetTag, ...rest] : rest;
-      // Promote `kind` to `quest_asset` whenever a row joins a campaign
-      // — a single image flagged "Campaign asset" via the categories
-      // popover stays in `kinds[]`, but the row's primary kind needs to
-      // change too so it shows up in the quest_asset filter and the
-      // pool query.
-      const updates: { tags: string[]; kind?: string } = { tags: newTags };
-      if (targetTag) updates.kind = "quest_asset";
+      // When a row joins a campaign, both the primary `kind` AND the
+      // `kinds[]` array need to align. Filtering surfaces use the array
+      // (multi-kind support), so a row with kind='quest_asset' but
+      // kinds=['quest_cover'] would count toward the campaign's asset
+      // total but never appear in its grid — exactly the drift this
+      // route caused before the fix.
+      const updates: {
+        tags: string[];
+        kind?: string;
+        kinds?: string[];
+      } = { tags: newTags };
+      if (targetTag) {
+        updates.kind = "quest_asset";
+        const existing = row.kinds ?? [];
+        // Replace kinds with ['quest_asset'] — the row is now part of a
+        // campaign, that's its identity. If the host wants it to show
+        // under the "Quest covers" filter chip too, they upload again or
+        // duplicate; preserving the old kind silently leads to confusion.
+        updates.kinds = ["quest_asset"];
+        void existing;
+      }
 
       const { error: updErr } = await db
         .from("tenant_media")

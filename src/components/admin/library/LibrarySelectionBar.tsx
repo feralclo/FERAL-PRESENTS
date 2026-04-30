@@ -129,9 +129,11 @@ export function LibrarySelectionBar({
                 </AdminButton>
               </PopoverTrigger>
               <PopoverContent
+                side="top"
                 align="end"
-                sideOffset={8}
-                className="w-[280px] p-0 overflow-hidden"
+                sideOffset={12}
+                collisionPadding={16}
+                className="w-[320px] p-0 overflow-hidden"
                 data-admin
               >
                 <CampaignChooser
@@ -190,10 +192,13 @@ function CampaignChooser({
 }) {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState("");
+  const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (creating) inputRef.current?.focus();
+    else searchRef.current?.focus();
   }, [creating]);
 
   if (creating) {
@@ -243,22 +248,55 @@ function CampaignChooser({
     );
   }
 
+  // Sort campaigns by most-recently-touched first, then optionally
+  // narrow with the search input.
+  const sorted = [...campaigns].sort(
+    (a, b) =>
+      new Date(b.first_seen_at).getTime() -
+      new Date(a.first_seen_at).getTime()
+  );
+  const filtered = query.trim()
+    ? sorted.filter((c) =>
+        c.label.toLowerCase().includes(query.trim().toLowerCase())
+      )
+    : sorted;
+
   return (
     <>
+      <div className="px-3 pt-3 pb-2 border-b border-border/40">
+        <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.16em] text-foreground/60 mb-2">
+          Add to campaign
+        </p>
+        <input
+          ref={searchRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={
+            campaigns.length === 0
+              ? "No campaigns yet"
+              : "Search campaigns…"
+          }
+          disabled={campaigns.length === 0}
+          className="w-full h-9 rounded-md border border-border/60 bg-background px-2.5 text-sm placeholder:text-foreground/45 focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2 disabled:opacity-60"
+        />
+      </div>
       <div className="max-h-64 overflow-y-auto py-1">
-        {campaigns.length === 0 ? (
+        {filtered.length === 0 ? (
           <p className="px-3 py-3 text-xs text-foreground/55">
-            No campaigns yet.
+            {campaigns.length === 0
+              ? "Create your first campaign below."
+              : "No campaigns match."}
           </p>
         ) : (
           <ul>
-            {campaigns.map((c) => (
+            {filtered.map((c) => (
               <li key={c.tag}>
                 <button
                   type="button"
                   onClick={() => onPick(c.tag)}
                   disabled={busy}
-                  className="w-full text-left px-3 py-2 hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none transition-colors flex items-center justify-between gap-3"
+                  className="w-full text-left px-3 py-2.5 hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none transition-colors flex items-center justify-between gap-3"
                 >
                   <span className="text-sm font-medium text-foreground truncate">
                     {c.label}

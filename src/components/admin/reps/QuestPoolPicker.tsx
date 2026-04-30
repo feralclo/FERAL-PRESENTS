@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ExternalLink, Loader2, Plus } from "lucide-react";
+import {
+  Check,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  Plus,
+  X,
+} from "lucide-react";
 import { AdminButton } from "@/components/admin/ui";
 import { cn } from "@/lib/utils";
 import { prepareUploadFile } from "@/lib/uploads/prepare-upload";
@@ -26,6 +33,8 @@ interface QuestPoolPickerProps {
 interface UploadItem {
   id: string;
   file: File;
+  /** Browser object-URL — revoked when the item leaves the queue. */
+  previewUrl: string;
   kind: "image" | "video";
   status:
     | "queued"
@@ -35,6 +44,8 @@ interface UploadItem {
     | "done"
     | "failed";
   error?: string;
+  /** tenant_media.id once the upload lands — lets us DELETE on remove. */
+  mediaId?: string;
 }
 
 const VIDEO_MAX_BYTES = 200 * 1024 * 1024;
@@ -273,6 +284,7 @@ function PoolDropZone({
     const next: UploadItem[] = arr.map((f) => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       file: f,
+      previewUrl: URL.createObjectURL(f),
       kind: f.type.startsWith("video/") ? "video" : "image",
       status: "queued",
     }));
@@ -343,54 +355,80 @@ function PoolDropZone({
     [onRefresh, patchItem]
   );
 
+  const hasCampaigns = (campaigns?.length ?? 0) > 0;
+
   return (
     <div className="space-y-3">
       <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          void handleDrop(e.dataTransfer.files);
-        }}
-        onClick={() => fileRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            fileRef.current?.click();
-          }
-        }}
         className={cn(
-          "relative rounded-xl border-2 border-dashed transition-all duration-200",
-          "h-56 flex flex-col items-center justify-center gap-2 text-center px-6",
-          "cursor-pointer",
-          "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2",
-          dragging
-            ? "border-primary bg-primary/[0.07]"
-            : "border-primary/30 bg-primary/[0.02] hover:border-primary/55 hover:bg-primary/[0.05]"
+          "grid gap-3",
+          hasCampaigns ? "md:grid-cols-2" : "grid-cols-1"
         )}
       >
-        <UploadGlyph active={dragging} />
-        <p className="text-base font-medium text-foreground">
-          Drop images and videos
-        </p>
-        <p className="text-xs text-foreground/60 max-w-sm">
-          We&apos;ll save them to a new campaign{" "}
-          {questTitle.trim()
-            ? (
-                <>
-                  named <span className="text-foreground/85">“{questTitle.trim()}”</span>
-                </>
-              )
-            : "for this quest"}{" "}
-          and reps will see a rotating slice.
-        </p>
+        {/* Drop zone (left half on desktop) */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            void handleDrop(e.dataTransfer.files);
+          }}
+          onClick={() => fileRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              fileRef.current?.click();
+            }
+          }}
+          className={cn(
+            "relative rounded-xl border-2 border-dashed transition-all duration-200",
+            "min-h-56 flex flex-col items-center justify-center gap-2 text-center px-6 py-6",
+            "cursor-pointer",
+            "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2",
+            dragging
+              ? "border-primary bg-primary/[0.07]"
+              : "border-primary/30 bg-primary/[0.02] hover:border-primary/55 hover:bg-primary/[0.05]"
+          )}
+        >
+          <UploadGlyph active={dragging} />
+          <p className="text-base font-medium text-foreground">
+            Drop images and videos
+          </p>
+          <p className="text-xs text-foreground/60 max-w-xs leading-relaxed">
+            We&apos;ll save them to a new campaign{" "}
+            {questTitle.trim() ? (
+              <>
+                named{" "}
+                <span className="text-foreground/85">
+                  “{questTitle.trim()}”
+                </span>
+              </>
+            ) : (
+              "for this quest"
+            )}
+            .
+          </p>
+        </div>
+
+        {/* Existing-campaign picker (right half on desktop) — only
+            rendered when the tenant actually has campaigns to pick. */}
+        {hasCampaigns && (
+          <ExistingCampaignPanel
+            campaigns={campaigns ?? []}
+            onPick={(tag) => {
+              onPick(tag);
+              setPicking(false);
+            }}
+          />
+        )}
       </div>
+
       <input
         ref={fileRef}
         type="file"
@@ -405,10 +443,12 @@ function PoolDropZone({
         }}
       />
 
-      {/* Existing-campaign chooser */}
-      <div className="flex items-center justify-center gap-2 text-xs text-foreground/60">
-        <span>or</span>
-        {picking ? (
+      {/* Tiny fallback — when the tenant has zero campaigns, leave a
+          quiet "or" link in case they want to navigate to the library
+          to start one without uploading. */}
+      {!hasCampaigns && picking && (
+        <div className="flex items-center justify-center gap-2 text-xs text-foreground/60">
+          <span>or</span>
           <ExistingCampaignPicker
             campaigns={campaigns ?? []}
             onPick={(tag) => {
@@ -417,21 +457,189 @@ function PoolDropZone({
             }}
             onCancel={() => setPicking(false)}
           />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setPicking(true)}
-            className="text-primary hover:underline font-medium"
-          >
-            pick an existing campaign
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {items.length > 0 && (
-        <UploadProgressList items={items} inFlight={inFlight} />
+        <UploadPreviewStrip
+          items={items}
+          onRemove={(id) => removeItem(id, items, setItems)}
+        />
       )}
     </div>
+  );
+}
+
+/**
+ * Right-half panel surfacing existing campaigns with a quick search.
+ * Sits beside the drop zone in the empty-state grid so the choice is
+ * visually balanced, not buried below.
+ */
+function ExistingCampaignPanel({
+  campaigns,
+  onPick,
+}: {
+  campaigns: CampaignSummary[];
+  onPick: (tag: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const sorted = [...campaigns].sort(
+    (a, b) =>
+      new Date(b.first_seen_at).getTime() -
+      new Date(a.first_seen_at).getTime()
+  );
+  const filtered = query.trim()
+    ? sorted.filter((c) =>
+        c.label.toLowerCase().includes(query.trim().toLowerCase())
+      )
+    : sorted;
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-card flex flex-col min-h-56">
+      <div className="px-4 pt-4 pb-2">
+        <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.16em] text-foreground/60 mb-2">
+          Pick existing
+        </p>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={`Search ${campaigns.length} campaign${campaigns.length === 1 ? "" : "s"}…`}
+          className="w-full h-9 rounded-md border border-border/60 bg-background px-2.5 text-sm placeholder:text-foreground/45 focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
+        />
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 pb-2">
+        {filtered.length === 0 ? (
+          <p className="px-2 py-4 text-xs text-foreground/55 text-center">
+            No matches.
+          </p>
+        ) : (
+          <ul className="space-y-0.5">
+            {filtered.map((c) => (
+              <li key={c.tag}>
+                <button
+                  type="button"
+                  onClick={() => onPick(c.tag)}
+                  className="w-full text-left px-2.5 py-2 rounded-md hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none transition-colors flex items-center justify-between gap-3"
+                >
+                  <span className="text-sm font-medium text-foreground truncate">
+                    {c.label}
+                  </span>
+                  <span className="text-xs text-foreground/55 tabular-nums shrink-0">
+                    {c.asset_count}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Inline-renamable campaign label. Click the heading or the pencil
+ * icon, type a new name, hit enter — PATCHes via the existing rename
+ * route which atomically rewrites every linked quest's
+ * asset_campaign_tag too.
+ */
+function CampaignNameInline({
+  label,
+  tag,
+  onRenamed,
+}: {
+  label: string;
+  tag: string;
+  onRenamed: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(label);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(label);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [editing, label]);
+
+  const save = useCallback(async () => {
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === label) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(
+        `/api/admin/media/campaigns/${encodeURIComponent(tag)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label: trimmed }),
+        }
+      );
+      if (res.ok) {
+        onRenamed();
+        setEditing(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [draft, label, tag, onRenamed]);
+
+  if (editing) {
+    return (
+      <div className="mt-1 flex items-center gap-1.5">
+        <input
+          ref={inputRef}
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={80}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void save();
+            } else if (e.key === "Escape") {
+              setEditing(false);
+            }
+          }}
+          className="flex-1 h-8 rounded-md border border-border/60 bg-background px-2 text-base font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
+        />
+        <AdminButton
+          size="sm"
+          variant="primary"
+          loading={saving}
+          onClick={() => void save()}
+        >
+          Save
+        </AdminButton>
+        <AdminButton
+          size="sm"
+          variant="ghost"
+          onClick={() => setEditing(false)}
+        >
+          Cancel
+        </AdminButton>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="group/title mt-1 inline-flex items-center gap-1.5 max-w-full focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2 rounded-sm"
+      title="Click to rename"
+    >
+      <span className="text-base font-semibold text-foreground truncate">
+        {label}
+      </span>
+      <Pencil className="h-3 w-3 text-foreground/35 group-hover/title:text-foreground/70 transition-colors shrink-0" />
+    </button>
   );
 }
 
@@ -594,6 +802,7 @@ function PoolPreviewCard({
       const next: UploadItem[] = arr.map((f) => ({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         file: f,
+        previewUrl: URL.createObjectURL(f),
         kind: f.type.startsWith("video/") ? "video" : "image",
         status: "queued",
       }));
@@ -634,9 +843,11 @@ function PoolPreviewCard({
               <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.16em] text-foreground/55">
                 Pool
               </p>
-              <h3 className="mt-1 text-base font-semibold text-foreground truncate">
-                {campaign.label}
-              </h3>
+              <CampaignNameInline
+                label={campaign.label}
+                tag={campaign.tag}
+                onRenamed={onRefresh}
+              />
               <p className="mt-0.5 text-xs text-foreground/55 tabular-nums">
                 {campaign.asset_count}{" "}
                 {campaign.asset_count === 1 ? "asset" : "assets"}
@@ -776,29 +987,69 @@ function PoolPreviewCard({
       />
 
       {items.length > 0 && (
-        <UploadProgressList items={items} inFlight={inFlight} />
+        <UploadPreviewStrip
+          items={items}
+          onRemove={(id) => removeItem(id, items, setItems)}
+        />
       )}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// UploadProgressList — compact, inline, never modal
+// Remove handler — pre-upload removes from queue, post-upload calls
+// DELETE so the asset really leaves the campaign.
 // ─────────────────────────────────────────────────────────────────────
 
-function UploadProgressList({
+async function removeItem(
+  id: string,
+  items: UploadItem[],
+  setItems: React.Dispatch<React.SetStateAction<UploadItem[]>>
+) {
+  const item = items.find((i) => i.id === id);
+  if (!item) return;
+  // Always release the object-URL.
+  try {
+    URL.revokeObjectURL(item.previewUrl);
+  } catch {
+    /* tolerated */
+  }
+  // If the file is already on the server, delete it so the user's intent
+  // ("X this off the campaign") matches reality.
+  if (item.status === "done" && item.mediaId) {
+    try {
+      await fetch(`/api/admin/media/${item.mediaId}?force=true`, {
+        method: "DELETE",
+      });
+    } catch {
+      /* leave the row visible if the delete fails */
+    }
+  }
+  setItems((prev) => prev.filter((i) => i.id !== id));
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// UploadPreviewStrip — thumbnail row replacing the old text-only list
+// ─────────────────────────────────────────────────────────────────────
+
+function UploadPreviewStrip({
   items,
-  inFlight,
+  onRemove,
 }: {
   items: UploadItem[];
-  inFlight: boolean;
+  onRemove: (id: string) => void;
 }) {
+  const inFlight = items.some(
+    (i) => i.status !== "done" && i.status !== "failed"
+  );
   const done = items.filter((i) => i.status === "done").length;
   const failed = items.filter((i) => i.status === "failed").length;
 
+  if (items.length === 0) return null;
+
   return (
     <div className="rounded-lg border border-border/40 bg-card px-4 py-3">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mb-2.5">
         {inFlight && (
           <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
         )}
@@ -808,17 +1059,83 @@ function UploadProgressList({
             : `${done} added${failed > 0 ? `, ${failed} failed` : ""}`}
         </p>
       </div>
-      {failed > 0 && (
-        <ul className="mt-2 space-y-1">
-          {items
-            .filter((i) => i.status === "failed")
-            .map((i) => (
-              <li key={i.id} className="text-[11px] text-destructive truncate">
-                {i.file.name}: {i.error ?? "failed"}
-              </li>
-            ))}
-        </ul>
+      <div className="flex gap-2 overflow-x-auto pb-0.5">
+        {items.map((item) => (
+          <PreviewTile key={item.id} item={item} onRemove={() => onRemove(item.id)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PreviewTile({
+  item,
+  onRemove,
+}: {
+  item: UploadItem;
+  onRemove: () => void;
+}) {
+  const inFlight =
+    item.status === "preparing" ||
+    item.status === "uploading" ||
+    item.status === "processing-video" ||
+    item.status === "queued";
+  const done = item.status === "done";
+  const failed = item.status === "failed";
+
+  return (
+    <div className="group relative aspect-square w-20 sm:w-24 rounded-md overflow-hidden bg-foreground/[0.06] shrink-0 border border-border/40">
+      {item.kind === "image" ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.previewUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <video
+          src={item.previewUrl}
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        />
       )}
+
+      {/* Status overlay */}
+      {inFlight && (
+        <div className="absolute inset-0 bg-background/65 backdrop-blur-[1px] flex items-center justify-center">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        </div>
+      )}
+      {done && (
+        <div className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-success/95 flex items-center justify-center shadow-sm">
+          <Check className="h-3 w-3 text-white" strokeWidth={3} />
+        </div>
+      )}
+      {failed && (
+        <div
+          className="absolute inset-0 bg-destructive/15 flex items-center justify-center"
+          title={item.error ?? "failed"}
+        >
+          <X className="h-4 w-4 text-destructive" />
+        </div>
+      )}
+
+      {/* Hover X — remove from queue (or delete from server if done) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        className={cn(
+          "absolute top-1 right-1 h-5 w-5 rounded-full bg-background/85 text-foreground hover:bg-destructive hover:text-white flex items-center justify-center transition-colors",
+          inFlight ? "opacity-0 group-hover:opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}
+        aria-label="Remove"
+      >
+        <X className="h-3 w-3" strokeWidth={2.5} />
+      </button>
     </div>
   );
 }
@@ -872,8 +1189,11 @@ async function uploadImageToCampaign(
     const j = await completeRes.json().catch(() => ({}));
     throw new Error(j.error ?? "Failed to record upload");
   }
-
-  patchItem(item.id, { status: "done" });
+  const completeJson = await completeRes.json().catch(() => ({}));
+  patchItem(item.id, {
+    status: "done",
+    mediaId: completeJson?.data?.id,
+  });
 }
 
 async function uploadVideoToCampaign(
@@ -931,8 +1251,11 @@ async function uploadVideoToCampaign(
     const j = await completeRes.json().catch(() => ({}));
     throw new Error(j.error ?? "Failed to record video");
   }
-
-  patchItem(item.id, { status: "done" });
+  const completeJson = await completeRes.json().catch(() => ({}));
+  patchItem(item.id, {
+    status: "done",
+    mediaId: completeJson?.data?.id,
+  });
 }
 
 async function pollMuxReady(assetId: string): Promise<boolean> {

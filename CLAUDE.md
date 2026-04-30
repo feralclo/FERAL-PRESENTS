@@ -230,6 +230,7 @@ Project: `rqtfghzhkkdytkegcifm` (agency-feral, eu-west-1).
 
 **Tenant-scoped (have `org_id`):**
 - Commerce: `site_settings`, `events`, `ticket_types`, `products`, `orders` (order_number FERAL-XXXXX, payment_ref idempotency, `refunded_by`), `order_items`, `tickets` (ticket_code FERAL-XXXXXXXX), `customers`, `artists`, `event_artists`, `guest_list` (source/access_level/invite_token), `discounts`, `abandoned_carts`, `traffic_events`, `popup_events`, `payment_events`, `event_interest_signups`, `merch_collections`, `merch_collection_items`, `waitlist_signups`. Tenant mgmt: `org_users` (perm_*), `domains`.
+- Media library: `tenant_media` (kind=quest_cover|event_cover|reward_cover|generic, source=upload|template|instagram, soft-delete via `deleted_at`). Storage bucket `tenant-media` (public-read, key layout `{org_id}/{kind_prefix}/{uuid}.{ext}`). Powers the admin Cover Library + the inline `<CoverImagePicker />` modal in quest editor.
 - `events` image slots: `cover_image_url` / `poster_image_url` / `banner_image_url` (clean / story-share text-baked / 16:9). Legacy `cover_image` + `hero_image` retained for v1.
 
 **NOT org-scoped (rep- or platform-keyed):**
@@ -412,7 +413,7 @@ Investigate before resolving — never bulk-resolve. **Payment orphans CRITICAL*
 - **Daily ops**: `/` (dashboard + `OnboardingChecklist`), `/events/` + `/[slug]/` (Content/Design/Details/Tickets/Waitlist/SEO tabs), `/orders/`, `/customers/`, `/scanner/`, `/guest-list/` (4 tabs), `/abandoned-carts/`, `/import-tickets/` (CSV via `lib/import-csv.ts` + `lib/import-tickets.ts`; `payment_method:"imported"`, no email), `/discounts/`, `/popup/`, `/artists/`, `/merch/`, `/merch-store/`.
 - **Brand & content**: `/onboarding/` (3-step), `/settings/` (9 subs: branding, domains, general, plan, search-social, integrations, users, finance, scanner), `/ticketstore/` (theme builder).
 - **Marketing**: `/marketing/` (Klaviyo), `/communications/` (templates), `/campaigns/` + `/email/` (live: guest-list outreach), `/traffic/`.
-- **Rep program**: `/reps/` (6 tabs), `/promoter/` (public profile), `/ep/` (Float / Earned / Ledger / Payouts + Buy EP).
+- **Rep program**: `/reps/` (7 tabs incl. Library — cover image management), `/promoter/` (public profile), `/ep/` (Float / Earned / Ledger / Payouts + Buy EP).
 - **Money**: `/payments/` (Stripe Custom 5-state), `/finance/` → `/settings/finance/`, `/plans/`.
 - **Owner only**: `/connect/` (all Stripe accounts, fee defaults), `/command/` (UK command center: globe + map + live sessions), `/platform-settings/`, `/backend/` (8 subs: beta, plans, health, tenants, payment-health, platform-settings, connect, xp), `/beta/`.
 - **Auth**: `/login/`, `/signup/`, `/account/`, `/invite/[token]/`.

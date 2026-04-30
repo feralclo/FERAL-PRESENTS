@@ -1,0 +1,247 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest, NextResponse } from "next/server";
+
+const mockRequireAuth = vi.fn();
+vi.mock("@/lib/auth", () => ({
+  requireAuth: () => mockRequireAuth(),
+}));
+
+const mockCreateSignedUploadUrl = vi.fn();
+const mockGetPublicUrl = vi.fn();
+const mockList = vi.fn();
+const mockRemove = vi.fn();
+const mockFromQuery = vi.fn();
+const mockInsertSelectSingle = vi.fn();
+
+const mockSupabase = {
+  storage: {
+    from: vi.fn(() => ({
+      createSignedUploadUrl: mockCreateSignedUploadUrl,
+      getPublicUrl: mockGetPublicUrl,
+      list: mockList,
+      remove: mockRemove,
+    })),
+  },
+  from: vi.fn(() => mockFromQuery()),
+};
+
+vi.mock("@/lib/supabase/admin", () => ({
+  getSupabaseAdmin: vi.fn().mockResolvedValue(mockSupabase),
+}));
+
+vi.mock("@sentry/nextjs", () => ({
+  captureException: vi.fn(),
+}));
+
+function authOK(orgId = "feral", userId = "user-1") {
+  mockRequireAuth.mockResolvedValueOnce({
+    user: { id: userId, email: "a@x.com" },
+    orgId,
+    error: null,
+  });
+}
+
+function authFail(status = 401) {
+  mockRequireAuth.mockResolvedValueOnce({
+    user: null,
+    orgId: null,
+    error: NextResponse.json({ error: "unauthorized" }, { status }),
+  });
+}
+
+function buildPost(url: string, body: unknown): NextRequest {
+  return new NextRequest(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// /api/admin/media/signed-url
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("POST /api/admin/media/signed-url", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCreateSignedUploadUrl.mockReset();
+    mockGetPublicUrl.mockReset();
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    authFail();
+    const { POST } = await import("@/app/api/admin/media/signed-url/route");
+    const res = await POST(
+      buildPost("http://localhost/api/admin/media/signed-url", {
+        kind: "quest_cover",
+        content_type: "image/jpeg",
+        size_bytes: 1000,
+      })
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects invalid kind", async () => {
+    authOK();
+    const { POST } = await import("@/app/api/admin/media/signed-url/route");
+    const res = await POST(
+      buildPost("http://localhost/api/admin/media/signed-url", {
+        kind: "bogus",
+        content_type: "image/jpeg",
+        size_bytes: 1000,
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects disallowed mime type", async () => {
+    authOK();
+    const { POST } = await import("@/app/api/admin/media/signed-url/route");
+    const res = await POST(
+      buildPost("http://localhost/api/admin/media/signed-url", {
+        kind: "quest_cover",
+        content_type: "video/mp4",
+        size_bytes: 1000,
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 413 when file exceeds the cap", async () => {
+    authOK();
+    const { POST } = await import("@/app/api/admin/media/signed-url/route");
+    const res = await POST(
+      buildPost("http://localhost/api/admin/media/signed-url", {
+        kind: "quest_cover",
+        content_type: "image/jpeg",
+        size_bytes: 50 * 1024 * 1024,
+      })
+    );
+    expect(res.status).toBe(413);
+  });
+
+  it("returns a signed URL with org-scoped key on happy path", async () => {
+    authOK("acme");
+    mockCreateSignedUploadUrl.mockResolvedValueOnce({
+      data: { signedUrl: "https://test/sign", token: "tok" },
+      error: null,
+    });
+    mockGetPublicUrl.mockReturnValueOnce({
+      data: { publicUrl: "https://test/pub/acme/quest-covers/x.jpg" },
+    });
+
+    const { POST } = await import("@/app/api/admin/media/signed-url/route");
+    const res = await POST(
+      buildPost("http://localhost/api/admin/media/signed-url", {
+        kind: "quest_cover",
+        content_type: "image/jpeg",
+        size_bytes: 500_000,
+      })
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.upload_url).toBe("https://test/sign");
+    expect(json.data.key).toMatch(/^acme\/quest-covers\/[0-9a-f-]{36}\.jpg$/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// /api/admin/media/complete
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("POST /api/admin/media/complete", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockList.mockReset();
+    mockRemove.mockReset();
+    mockGetPublicUrl.mockReset();
+    mockFromQuery.mockReset();
+    mockInsertSelectSingle.mockReset();
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    authFail();
+    const { POST } = await import("@/app/api/admin/media/complete/route");
+    const res = await POST(
+      buildPost("http://localhost/api/admin/media/complete", { key: "feral/quest-covers/abc.jpg" })
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects keys that don't belong to the caller's org", async () => {
+    authOK("feral");
+    const { POST } = await import("@/app/api/admin/media/complete/route");
+    const res = await POST(
+      buildPost("http://localhost/api/admin/media/complete", {
+        key: "other-org/quest-covers/00000000-0000-0000-0000-000000000000.jpg",
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects malformed key", async () => {
+    authOK("feral");
+    const { POST } = await import("@/app/api/admin/media/complete/route");
+    const res = await POST(
+      buildPost("http://localhost/api/admin/media/complete", { key: "wat" })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("inserts a tenant_media row on happy path", async () => {
+    authOK("acme", "user-99");
+    mockList.mockResolvedValueOnce({
+      data: [
+        {
+          name: "00000000-0000-0000-0000-000000000000.jpg",
+          metadata: { size: 100_000, mimetype: "image/jpeg" },
+        },
+      ],
+      error: null,
+    });
+    mockGetPublicUrl.mockReturnValueOnce({
+      data: { publicUrl: "https://test/pub/acme/quest-covers/abc.jpg" },
+    });
+    const insertedRow = {
+      id: "row-1",
+      org_id: "acme",
+      kind: "quest_cover",
+      url: "https://test/pub/acme/quest-covers/abc.jpg",
+    };
+    mockFromQuery.mockReturnValueOnce({
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: insertedRow, error: null }),
+        }),
+      }),
+    });
+
+    const { POST } = await import("@/app/api/admin/media/complete/route");
+    const res = await POST(
+      buildPost("http://localhost/api/admin/media/complete", {
+        key: "acme/quest-covers/00000000-0000-0000-0000-000000000000.jpg",
+        kind: "quest_cover",
+        width: 600,
+        height: 800,
+      })
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.id).toBe("row-1");
+    expect(json.data.url).toContain("acme/quest-covers");
+  });
+
+  it("returns 404 when storage object isn't found", async () => {
+    authOK("feral");
+    mockList.mockResolvedValueOnce({ data: [], error: null });
+
+    const { POST } = await import("@/app/api/admin/media/complete/route");
+    const res = await POST(
+      buildPost("http://localhost/api/admin/media/complete", {
+        key: "feral/quest-covers/00000000-0000-0000-0000-000000000000.jpg",
+        kind: "quest_cover",
+      })
+    );
+    expect(res.status).toBe(404);
+  });
+});

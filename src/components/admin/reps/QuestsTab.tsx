@@ -57,6 +57,7 @@ import {
 import dynamic from "next/dynamic";
 import * as tus from "tus-js-client";
 import { ImageUpload } from "@/components/admin/ImageUpload";
+import { CoverImagePicker } from "@/components/admin/CoverImagePicker";
 import { isMuxPlaybackId } from "@/lib/mux";
 import { processImageFile } from "@/lib/image-utils";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -155,6 +156,7 @@ export function QuestsTab() {
   const [subtitle, setSubtitle] = useState("");
   const [proofType, setProofType] = useState<QuestProofType>("screenshot");
   const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [autoApprove, setAutoApprove] = useState(false);
 
   // Events list for event picker + date awareness + cover cascade.
@@ -1418,12 +1420,52 @@ export function QuestsTab() {
                       <div className="h-px flex-1 bg-border" />
                     </div>
                     <div className="space-y-2">
-                      <ImageUpload
-                        label="Cover image"
-                        value={coverImageUrl}
-                        onChange={setCoverImageUrl}
-                        uploadKey={editId ? `quest_${editId}_cover` : undefined}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setCoverPickerOpen(true)}
+                        className="group relative w-full aspect-[3/4] max-h-[260px] rounded-lg border-2 border-dashed border-border/60 hover:border-primary/40 bg-card overflow-hidden transition-colors"
+                      >
+                        {coverImageUrl ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={coverImageUrl}
+                              alt="Cover"
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors">
+                              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium text-white px-3 py-1.5 rounded-md bg-black/60 backdrop-blur-sm">
+                                Change cover
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCoverImageUrl("");
+                              }}
+                              className="absolute top-2 right-2 p-1.5 rounded-md bg-black/60 text-white/80 hover:text-destructive hover:bg-black/80 transition-colors"
+                              aria-label="Clear cover"
+                            >
+                              <X size={14} />
+                            </button>
+                          </>
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center">
+                            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                              <ImageLucide size={18} className="text-primary" />
+                            </div>
+                            <p className="text-sm font-medium text-foreground">
+                              Pick a cover
+                            </p>
+                            <p className="text-[11px] text-muted-foreground max-w-[200px] leading-relaxed">
+                              Templates, your library, or a fresh upload — saved for next time.
+                            </p>
+                          </div>
+                        )}
+                      </button>
+
                       <div className="rounded-md border border-border/60 bg-muted/20 p-3 text-[11px] leading-relaxed text-muted-foreground">
                         <p className="font-semibold text-foreground">
                           In-app hero only — not what reps download.
@@ -1445,6 +1487,14 @@ export function QuestsTab() {
                             : "Leave blank to show a gradient in your promoter's brand colour."}
                         </p>
                       </div>
+
+                      <CoverImagePicker
+                        open={coverPickerOpen}
+                        onOpenChange={setCoverPickerOpen}
+                        value={coverImageUrl}
+                        onChange={setCoverImageUrl}
+                        previewTitle={title || "Your quest title"}
+                      />
                     </div>
                   </div>
                 )}

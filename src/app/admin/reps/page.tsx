@@ -14,11 +14,13 @@ import {
   Cpu,
   LayoutDashboard,
   Inbox,
+  Library,
 } from "lucide-react";
 import { DashboardTab } from "@/components/admin/reps/DashboardTab";
 import { TeamTab } from "@/components/admin/reps/TeamTab";
 import { RewardsTab } from "@/components/admin/reps/RewardsTab";
 import { QuestsTab } from "@/components/admin/reps/QuestsTab";
+import { LibraryTab } from "@/components/admin/reps/LibraryTab";
 import { SettingsTab } from "@/components/admin/reps/SettingsTab";
 import { PlatformXPTab } from "@/components/admin/reps/PlatformXPTab";
 import { ReportsTab } from "@/components/admin/reps/ReportsTab";
@@ -33,6 +35,7 @@ const TENANT_TABS = new Set([
   "rewards",
   "quests",
   "reports",
+  "library",
   "settings",
 ]);
 const PLATFORM_OWNER_EXTRA = new Set(["platform"]);
@@ -127,6 +130,10 @@ function RepsHubPageInner() {
               <Inbox size={14} className="mr-1.5" />
               Reports
             </TabsTrigger>
+            <TabsTrigger value="library">
+              <Library size={14} className="mr-1.5" />
+              Library
+            </TabsTrigger>
             <TabsTrigger value="settings">
               Settings
             </TabsTrigger>
@@ -153,6 +160,9 @@ function RepsHubPageInner() {
         </TabsContent>
         <TabsContent value="reports">
           <ReportsTab />
+        </TabsContent>
+        <TabsContent value="library">
+          <LibraryTab />
         </TabsContent>
         <TabsContent value="settings">
           <SettingsTab />

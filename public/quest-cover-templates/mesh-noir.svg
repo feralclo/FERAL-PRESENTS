@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="g1" cx="25%" cy="15%" r="55%"><stop offset="0%" stop-color="#52525b"/><stop offset="100%" stop-color="#52525b" stop-opacity="0"/></radialGradient>
+    <radialGradient id="g2" cx="80%" cy="60%" r="55%"><stop offset="0%" stop-color="#27272a"/><stop offset="100%" stop-color="#27272a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="floor" x1="0" x2="0" y1="0.55" y2="1"><stop offset="0%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="0.55"/></linearGradient>
+    <filter id="n" x="0" y="0"><feTurbulence baseFrequency="0.9" numOctaves="2" seed="23"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.07 0"/></filter>
+  </defs>
+  <rect width="600" height="800" fill="#0a0a0a"/>
+  <rect width="600" height="800" fill="url(#g1)"/>
+  <rect width="600" height="800" fill="url(#g2)"/>
+  <rect width="600" height="800" fill="url(#floor)"/>
+  <rect width="600" height="800" filter="url(#n)"/>
+</svg>

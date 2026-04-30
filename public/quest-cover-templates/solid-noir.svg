@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="glow" cx="80%" cy="20%" r="60%"><stop offset="0%" stop-color="#a78bfa" stop-opacity="0.35"/><stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/></radialGradient>
+    <linearGradient id="floor" x1="0" x2="0" y1="0.4" y2="1"><stop offset="0%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="0.55"/></linearGradient>
+    <filter id="n" x="0" y="0"><feTurbulence baseFrequency="0.9" numOctaves="2" seed="67"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0"/></filter>
+  </defs>
+  <rect width="600" height="800" fill="#0a0a0a"/>
+  <rect width="600" height="800" fill="url(#glow)"/>
+  <rect width="600" height="800" filter="url(#n)"/>
+  <rect width="600" height="800" fill="url(#floor)"/>
+</svg>

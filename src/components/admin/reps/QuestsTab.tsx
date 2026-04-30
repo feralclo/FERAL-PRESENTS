@@ -1599,7 +1599,7 @@ export function QuestsTab() {
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1.5">
                         <Upload size={12} />
-                        {questType === "story_share" ? "Story asset" : "Shareable asset"}
+                        Shareable
                       </Label>
                       {videoUrl && isMuxPlaybackId(videoUrl) ? (
                         <div className="space-y-2">

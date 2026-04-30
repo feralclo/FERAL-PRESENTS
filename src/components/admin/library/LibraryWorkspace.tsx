@@ -50,7 +50,7 @@ const KIND_LABEL: Record<KindFilter, string> = {
   all: "All",
   quest_cover: "Quest covers",
   event_cover: "Event covers",
-  quest_content: "Story content",
+  quest_content: "Shareables",
 };
 
 const KIND_ASPECT: Record<TenantMediaKind, string> = {
@@ -1002,7 +1002,7 @@ function KindSegmented({
   const options: { kind: TenantMediaKind; label: string; aspect: string }[] = [
     { kind: "quest_cover", label: "Quest cover", aspect: "3:4" },
     { kind: "event_cover", label: "Event cover", aspect: "1:1" },
-    { kind: "quest_content", label: "Story content", aspect: "9:16" },
+    { kind: "quest_content", label: "Shareables", aspect: "9:16" },
   ];
   return (
     <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted/30 p-1">

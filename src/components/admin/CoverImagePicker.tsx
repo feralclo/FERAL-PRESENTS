@@ -15,6 +15,7 @@ import {
   Trash2,
   Check,
   Loader2,
+  ExternalLink,
   X,
 } from "lucide-react";
 import {
@@ -44,7 +45,7 @@ const KIND_COPY: Record<
     confirm: "Use this cover",
     emptyHeading: "No covers yet",
     emptyHint:
-      "Every cover you upload is saved here for the next quest. Start with a template or upload your first image.",
+      "Every cover you upload is saved here for the next quest. Upload your first image to start your library.",
     sr: "Choose a cover image",
   },
   event_cover: {
@@ -57,13 +58,13 @@ const KIND_COPY: Record<
     sr: "Choose an event cover",
   },
   quest_content: {
-    eyebrow: "Shareable asset",
-    title: "Pick a shareable asset",
-    confirm: "Use this asset",
-    emptyHeading: "No shareable assets yet",
+    eyebrow: "Shareable",
+    title: "Pick a shareable",
+    confirm: "Use this shareable",
+    emptyHeading: "No shareables yet",
     emptyHint:
-      "Upload a 9:16 image (the kind reps post to TikTok or Instagram) and it'll be saved here for reuse on every future quest.",
-    sr: "Choose a shareable asset",
+      "Upload a 9:16 image — the kind reps post to TikTok, Instagram, or a story — and it'll be saved here for reuse on every future quest.",
+    sr: "Choose a shareable",
   },
   reward_cover: {
     eyebrow: "Reward cover",
@@ -190,7 +191,7 @@ export function CoverImagePicker({
           </div>
 
           {/* Tabs */}
-          <div className="border-b border-border/60 px-5">
+          <div className="border-b border-border/60 px-5 flex items-center justify-between">
             <div className="flex gap-1">
               <TabBtn active={tab === "library"} onClick={() => setTab("library")} icon={<Library size={14} />}>
                 Your library
@@ -199,6 +200,16 @@ export function CoverImagePicker({
                 Upload new
               </TabBtn>
             </div>
+            <a
+              href="/admin/library"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 py-2"
+              title="Open the full library in a new tab"
+            >
+              Open full library
+              <ExternalLink size={11} />
+            </a>
           </div>
 
           {/* Body — split: grid (left) + preview rail (right) */}

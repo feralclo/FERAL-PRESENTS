@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Check,
   Image as ImageIcon,
+  Layers,
   Loader2,
   Plus,
   Search,
@@ -17,6 +18,11 @@ import { AdminEmptyState, AdminPageHeader } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   TENANT_MEDIA_KINDS,
   TENANT_MEDIA_RAW_INPUT_MAX,
   type TenantMediaKind,
@@ -28,6 +34,10 @@ interface MediaRow {
   id: string;
   url: string;
   kind: TenantMediaKind;
+  /** Categories this image is available under. Defaults to [kind] but
+   *  admins can multi-select (e.g. a cover that also works as a shareable
+   *  appears under both chips with one source row). */
+  kinds: TenantMediaKind[];
   source: "upload" | "template" | "instagram";
   width: number | null;
   height: number | null;
@@ -179,6 +189,47 @@ export function LibraryWorkspace({
     }
   }, [editingId, editingValue, load]);
 
+  // Toggle a category on a row. Lets the same image live under multiple
+  // chips (e.g. cover that's also a great shareable). PATCH-as-you-go
+  // with optimistic UI so the popover feels snappy.
+  const toggleKind = useCallback(
+    async (id: string, kind: TenantMediaKind, checked: boolean) => {
+      const current = rows?.find((r) => r.id === id);
+      if (!current) return;
+      const next = checked
+        ? Array.from(new Set([...current.kinds, kind]))
+        : current.kinds.filter((k) => k !== kind);
+      // Refuse to leave the row with zero categories — every image must
+      // belong to at least one for the filter chips to find it.
+      if (next.length === 0) return;
+      // Optimistic: update local state, roll back on failure.
+      setRows(
+        (prev) =>
+          prev?.map((r) => (r.id === id ? { ...r, kinds: next } : r)) ?? null
+      );
+      try {
+        const res = await fetch(`/api/admin/media/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kinds: next }),
+        });
+        if (!res.ok) throw new Error("PATCH failed");
+        // Refresh page in case the row should now / shouldn't appear under
+        // the active chip.
+        void load();
+      } catch {
+        // Roll back optimistic change.
+        setRows(
+          (prev) =>
+            prev?.map((r) =>
+              r.id === id ? { ...r, kinds: current.kinds } : r
+            ) ?? null
+        );
+      }
+    },
+    [rows, load]
+  );
+
   const visible = useMemo(() => {
     if (!rows) return null;
     if (!search.trim()) return rows;
@@ -315,6 +366,7 @@ export function LibraryWorkspace({
               onChangeEdit={setEditingValue}
               onSaveEdit={saveEditGroup}
               onCancelEdit={cancelEditGroup}
+              onToggleKind={toggleKind}
             />
           ))}
         </div>
@@ -391,6 +443,7 @@ function LibraryTile({
   onChangeEdit,
   onSaveEdit,
   onCancelEdit,
+  onToggleKind,
 }: {
   row: MediaRow;
   deleting: boolean;
@@ -402,7 +455,16 @@ function LibraryTile({
   onChangeEdit: (value: string) => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
+  onToggleKind: (id: string, kind: TenantMediaKind, checked: boolean) => void;
 }) {
+  // The image is multi-categorised when its kinds[] has more than one
+  // entry. We surface that on the tile via stacked aspect pills so the
+  // admin sees at a glance "this is BOTH a cover and a shareable".
+  const kindsList: TenantMediaKind[] =
+    row.kinds && row.kinds.length > 0 ? row.kinds : [row.kind];
+  const primaryKind = kindsList[0];
+  const additionalKinds = kindsList.slice(1);
+
   return (
     <div className="group space-y-1.5">
       <div className="relative aspect-[3/4] rounded-md overflow-hidden border border-border/60 bg-card">
@@ -413,10 +475,22 @@ function LibraryTile({
           className="absolute inset-0 w-full h-full object-cover"
           loading="lazy"
         />
-        {/* Aspect pill — top-left */}
-        <span className="absolute top-2 left-2 text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/55 text-white/85">
-          {KIND_ASPECT[row.kind]}
-        </span>
+        {/* Aspect pills — top-left. Primary first, then any additional
+            categories the image has been tagged for. */}
+        <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
+          <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/55 text-white/85">
+            {KIND_ASPECT[primaryKind]}
+          </span>
+          {additionalKinds.map((k) => (
+            <span
+              key={k}
+              className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/85 text-primary-foreground"
+              title={`Also tagged as ${(KIND_LABEL as Record<string, string>)[k] ?? k}`}
+            >
+              + {KIND_ASPECT[k]}
+            </span>
+          ))}
+        </div>
         {/* Usage pill — bottom-left */}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2.5">
           {row.usage_count > 0 ? (
@@ -434,6 +508,25 @@ function LibraryTile({
         </div>
         {/* Hover actions */}
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="p-1.5 rounded-md bg-black/55 text-white/80 hover:text-primary hover:bg-black/75 transition-colors"
+                aria-label="Categories"
+                title="Use this image for…"
+              >
+                <Layers size={12} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-[260px] p-3"
+              data-admin
+            >
+              <CategoriesEditor row={row} onToggle={onToggleKind} />
+            </PopoverContent>
+          </Popover>
           <button
             type="button"
             onClick={onStartEdit}
@@ -487,6 +580,83 @@ function LibraryTile({
           Add group
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * The category multi-select that pops out from a tile's Layers button.
+ * Lets one image live under multiple chips — admin uploads a 3:4 cover
+ * and ticks "Shareable" to also have it appear under the 9:16 chip.
+ *
+ * Auto-saves via PATCH on each toggle (handled by the parent — this
+ * component is purely presentational).
+ */
+function CategoriesEditor({
+  row,
+  onToggle,
+}: {
+  row: MediaRow;
+  onToggle: (id: string, kind: TenantMediaKind, checked: boolean) => void;
+}) {
+  const options: { kind: TenantMediaKind; label: string; aspect: string }[] = [
+    { kind: "quest_cover", label: "Quest cover", aspect: "3:4 portrait" },
+    { kind: "event_cover", label: "Event cover", aspect: "1:1 square" },
+    { kind: "quest_content", label: "Shareable", aspect: "9:16 vertical" },
+  ];
+  const kindsList = row.kinds && row.kinds.length ? row.kinds : [row.kind];
+  const isLastChecked = kindsList.length === 1;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+        Use this image for…
+      </p>
+      <ul className="space-y-1">
+        {options.map((opt) => {
+          const checked = kindsList.includes(opt.kind);
+          const wouldBeLast = checked && isLastChecked;
+          return (
+            <li key={opt.kind}>
+              <label
+                className={cn(
+                  "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-pointer",
+                  checked
+                    ? "bg-primary/[0.06] hover:bg-primary/[0.10]"
+                    : "hover:bg-foreground/[0.04]",
+                  wouldBeLast && "cursor-not-allowed opacity-80"
+                )}
+                title={
+                  wouldBeLast
+                    ? "Every image must belong to at least one category"
+                    : undefined
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={wouldBeLast}
+                  onChange={(e) =>
+                    !wouldBeLast && onToggle(row.id, opt.kind, e.target.checked)
+                  }
+                  className="h-3.5 w-3.5 accent-primary"
+                />
+                <span className="flex-1">
+                  <span className="text-[12px] font-medium text-foreground">
+                    {opt.label}
+                  </span>
+                  <span className="block text-[10px] font-mono text-muted-foreground/70">
+                    {opt.aspect}
+                  </span>
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-[10px] text-muted-foreground/70 leading-relaxed pt-1">
+        Tag for every category this image works as. The same upload can show under multiple chips.
+      </p>
     </div>
   );
 }

@@ -37,10 +37,16 @@ interface ImageSlotProps {
   surface: "card-tile" | "page-hero" | "story-share";
 }
 
-const SHAPE_RATIO: Record<ImageSlotShape, { w: number; h: number; label: string }> = {
-  square: { w: 1, h: 1, label: "1:1" },
-  landscape: { w: 16, h: 9, label: "16:9" },
-  portrait: { w: 4, h: 5, label: "4:5" },
+const SHAPE_RATIO: Record<
+  ImageSlotShape,
+  { w: number; h: number; label: string; suggested: string }
+> = {
+  // `suggested` shown in the empty state so hosts know what size to pick
+  // BEFORE they upload — saves the re-upload loop when they pick something
+  // tiny or way off-ratio.
+  square: { w: 1, h: 1, label: "1:1", suggested: "2400 × 2400px" },
+  landscape: { w: 16, h: 9, label: "16:9", suggested: "2880 × 1620px" },
+  portrait: { w: 4, h: 5, label: "4:5", suggested: "1600 × 2000px" },
 };
 
 /** Tolerance for "is this aspect ratio close enough" — 12%. */
@@ -228,11 +234,14 @@ export function ImageSlot({
             )}
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center">
             <SurfaceSilhouette surface={surface} />
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Upload size={13} />
               Drop, paste, or click
+            </div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60">
+              {ratio.label} · {ratio.suggested}
             </div>
           </div>
         )}
@@ -295,30 +304,32 @@ export function ImageSlot({
  * the legacy editor's worst paper cut.
  */
 function SurfaceSilhouette({ surface }: { surface: ImageSlotProps["surface"] }) {
+  // Sized big enough to read on a 375px phone — the 60×36 originals were
+  // too easy to miss in the noise of the empty-state copy.
   if (surface === "card-tile") {
     return (
-      <svg width="60" height="36" viewBox="0 0 60 36" className="text-muted-foreground/40">
-        <rect x="2" y="2" width="56" height="20" rx="2" fill="currentColor" opacity="0.18" />
-        <rect x="2" y="26" width="40" height="2" rx="1" fill="currentColor" opacity="0.4" />
-        <rect x="2" y="31" width="28" height="2" rx="1" fill="currentColor" opacity="0.25" />
+      <svg width="88" height="52" viewBox="0 0 88 52" className="text-muted-foreground/55">
+        <rect x="3" y="3" width="82" height="32" rx="3" fill="currentColor" opacity="0.25" />
+        <rect x="3" y="40" width="58" height="3" rx="1.5" fill="currentColor" opacity="0.45" />
+        <rect x="3" y="47" width="40" height="3" rx="1.5" fill="currentColor" opacity="0.3" />
       </svg>
     );
   }
   if (surface === "page-hero") {
     return (
-      <svg width="60" height="36" viewBox="0 0 60 36" className="text-muted-foreground/40">
-        <rect x="2" y="2" width="56" height="14" rx="2" fill="currentColor" opacity="0.18" />
-        <rect x="2" y="20" width="36" height="2" rx="1" fill="currentColor" opacity="0.4" />
-        <rect x="2" y="25" width="48" height="2" rx="1" fill="currentColor" opacity="0.25" />
-        <rect x="2" y="30" width="20" height="3" rx="1" fill="currentColor" opacity="0.5" />
+      <svg width="88" height="52" viewBox="0 0 88 52" className="text-muted-foreground/55">
+        <rect x="3" y="3" width="82" height="22" rx="3" fill="currentColor" opacity="0.25" />
+        <rect x="3" y="29" width="52" height="3" rx="1.5" fill="currentColor" opacity="0.45" />
+        <rect x="3" y="36" width="68" height="3" rx="1.5" fill="currentColor" opacity="0.3" />
+        <rect x="3" y="43" width="28" height="4" rx="1.5" fill="currentColor" opacity="0.55" />
       </svg>
     );
   }
   return (
     // story-share — full-bleed phone shape
-    <svg width="36" height="56" viewBox="0 0 36 56" className="text-muted-foreground/40">
-      <rect x="2" y="2" width="32" height="52" rx="4" fill="currentColor" opacity="0.18" />
-      <rect x="14" y="4" width="8" height="2" rx="1" fill="currentColor" opacity="0.5" />
+    <svg width="52" height="80" viewBox="0 0 52 80" className="text-muted-foreground/55">
+      <rect x="3" y="3" width="46" height="74" rx="6" fill="currentColor" opacity="0.25" />
+      <rect x="20" y="6" width="12" height="2.5" rx="1.25" fill="currentColor" opacity="0.55" />
     </svg>
   );
 }

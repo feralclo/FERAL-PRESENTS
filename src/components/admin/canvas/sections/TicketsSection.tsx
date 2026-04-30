@@ -32,7 +32,7 @@ export function TicketsSection(props: TicketsTabProps) {
 
   return (
     <div className="space-y-5">
-      {props.event.id && (
+      {props.event.id ? (
         <SalesTimelineCard
           buckets={salesData?.buckets || []}
           ticketTypes={(salesData?.ticketTypes || []).map((t) => ({
@@ -43,6 +43,17 @@ export function TicketsSection(props: TicketsTabProps) {
           eventDateStart={props.event.date_start}
           loading={!salesData}
         />
+      ) : (
+        <div className="rounded-lg border border-dashed border-border/40 bg-card/30 px-4 py-5">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">
+            Sales timeline
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Save the event once and your sales chart will appear here —
+            cumulative tickets, daily velocity, and a projection to your
+            event date.
+          </p>
+        </div>
       )}
 
       <ReleaseStrategyPanel

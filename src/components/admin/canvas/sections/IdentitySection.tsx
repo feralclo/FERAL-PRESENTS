@@ -1,19 +1,61 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { Check, Copy, Lock, Unlock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PlaceAutocomplete } from "@/components/admin/PlaceAutocomplete";
 import { useOrgTimezone } from "@/hooks/useOrgTimezone";
+import { slugify } from "@/lib/signup";
+import { cn } from "@/lib/utils";
 import type { TabProps } from "@/components/admin/event-editor/types";
 
 /**
  * Identity — the answers to "what / when / where", in the order a host
  * actually thinks. First section the canvas opens. Replaces DetailsTab.
+ *
+ * Slug behaviour: auto-tracks the event name unless the host explicitly
+ * unlocks the field. Once unlocked, the host owns it — typing is direct,
+ * the lock toggle is an opt-in. Most hosts never need to touch it.
  */
 export function IdentitySection({ event, updateEvent }: TabProps) {
   const { timezone } = useOrgTimezone();
+
+  // Slug is locked-to-name until the host clicks the unlock toggle. When
+  // locked, every name change rewrites the slug. The unlock affordance is
+  // there so power users can hand-tune (e.g. share-friendly URL), but the
+  // 90% case never has to think about it.
+  const [slugLocked, setSlugLocked] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const lastNameRef = useRef(event.name);
+
+  // Re-derive slug when name changes AND the field is locked. We only fire
+  // the update when the derived slug actually differs to avoid an infinite
+  // setState loop.
+  useEffect(() => {
+    if (!slugLocked) return;
+    if (event.name === lastNameRef.current && event.slug) return;
+    lastNameRef.current = event.name;
+    const next = slugify(event.name || "");
+    if (next && next !== event.slug) {
+      updateEvent("slug", next);
+    }
+  }, [event.name, event.slug, slugLocked, updateEvent]);
+
+  const handleCopyUrl = async () => {
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/event/${event.slug || ""}/`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard blocked — silent */
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -27,15 +69,61 @@ export function IdentitySection({ event, updateEvent }: TabProps) {
           />
         </div>
         <div className="space-y-2">
-          <Label>URL slug</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label>URL slug</Label>
+            <button
+              type="button"
+              onClick={() => setSlugLocked((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] transition-colors",
+                "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-1",
+                slugLocked
+                  ? "text-muted-foreground/70 hover:text-foreground"
+                  : "text-primary hover:text-primary/80"
+              )}
+              aria-label={
+                slugLocked
+                  ? "Unlock slug to edit by hand"
+                  : "Lock slug back to event name"
+              }
+              title={
+                slugLocked
+                  ? "Auto-tracking the event name. Click to edit by hand."
+                  : "Editing by hand. Click to re-link to the event name."
+              }
+            >
+              {slugLocked ? <Lock size={10} /> : <Unlock size={10} />}
+              {slugLocked ? "auto" : "custom"}
+            </button>
+          </div>
           <Input
             value={event.slug}
             onChange={(e) => updateEvent("slug", e.target.value)}
             placeholder="summer-solstice-june-2026"
+            readOnly={slugLocked}
+            className={cn(slugLocked && "cursor-not-allowed text-muted-foreground")}
           />
-          <p className="text-[10px] text-muted-foreground/70">
-            /event/{event.slug || "your-event"}/
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-[10px] text-muted-foreground/70">
+              /event/{event.slug || "your-event"}/
+            </p>
+            <button
+              type="button"
+              onClick={handleCopyUrl}
+              disabled={!event.slug}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] transition-colors",
+                "focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-1",
+                copied
+                  ? "text-success"
+                  : "text-muted-foreground/70 hover:text-foreground disabled:opacity-40"
+              )}
+              aria-label="Copy event URL"
+            >
+              {copied ? <Check size={10} /> : <Copy size={10} />}
+              {copied ? "copied" : "copy"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -71,6 +159,9 @@ export function IdentitySection({ event, updateEvent }: TabProps) {
             timezone={timezone}
             showTimezone
           />
+          <p className="text-[10px] text-muted-foreground/70">
+            Leave blank for a single-day event.
+          </p>
         </div>
       </div>
 
@@ -116,6 +207,9 @@ export function IdentitySection({ event, updateEvent }: TabProps) {
             mode="venue"
             placeholder="e.g. Invisible Wind Factory"
           />
+          <p className="text-[10px] text-muted-foreground/70">
+            Pick from suggestions to auto-fill address, city, and country.
+          </p>
         </div>
         <div className="space-y-2">
           <Label>Venue address</Label>

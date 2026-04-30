@@ -2,7 +2,11 @@
 
 import { Check, AlertTriangle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ReadinessReport, ReadinessRule } from "@/lib/event-readiness";
+import type {
+  ReadinessReport,
+  ReadinessRule,
+  ReadinessSeverity,
+} from "@/lib/event-readiness";
 import type { CanvasAnchor } from "./useCanvasSync";
 
 /**
@@ -91,15 +95,65 @@ export function ReadinessCard({ report, onJumpToSection }: ReadinessCardProps) {
         </div>
       </div>
 
-      <ul className="space-y-1 border-t border-border/40 px-2 py-2">
-        {report.rules.map((rule) => (
-          <RuleRow
-            key={rule.id}
-            rule={rule}
-            onClick={() => onJumpToSection(rule.anchor)}
-          />
-        ))}
-      </ul>
+      <RuleGroups report={report} onJumpToSection={onJumpToSection} />
+    </div>
+  );
+}
+
+const GROUP_LABEL: Record<ReadinessSeverity, string> = {
+  required: "Required to publish",
+  recommended: "Recommended",
+  nice_to_have: "Nice to have",
+};
+
+/**
+ * Group rules by severity so a host scanning the rail can tell at a
+ * glance which items are publish-blocking vs nudge-only. Empty groups
+ * render nothing — every event has at least one Required rule, so the
+ * top group is always visible, but Recommended/Nice-to-have collapse
+ * when irrelevant.
+ */
+function RuleGroups({
+  report,
+  onJumpToSection,
+}: {
+  report: ReadinessReport;
+  onJumpToSection: (anchor: CanvasAnchor) => void;
+}) {
+  const grouped: Record<ReadinessSeverity, ReadinessRule[]> = {
+    required: [],
+    recommended: [],
+    nice_to_have: [],
+  };
+  for (const rule of report.rules) grouped[rule.severity].push(rule);
+
+  const order: ReadinessSeverity[] = ["required", "recommended", "nice_to_have"];
+
+  return (
+    <div className="border-t border-border/40">
+      {order.map((sev) => {
+        const rules = grouped[sev];
+        if (rules.length === 0) return null;
+        return (
+          <div
+            key={sev}
+            className="border-b border-border/30 px-2 py-2 last:border-b-0"
+          >
+            <div className="px-2 pb-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">
+              {GROUP_LABEL[sev]}
+            </div>
+            <ul className="space-y-1">
+              {rules.map((rule) => (
+                <RuleRow
+                  key={rule.id}
+                  rule={rule}
+                  onClick={() => onJumpToSection(rule.anchor)}
+                />
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }

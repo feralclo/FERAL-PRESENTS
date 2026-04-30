@@ -65,7 +65,6 @@ export function LookSection({ event, updateEvent }: TabWithSettingsProps) {
             updateEvent("cover_image_url", v);
           }}
           kind="event_cover"
-          templatesEnabled={false}
           previewAspect="1/1"
           previewTitle={event.name || "Your event"}
         />

@@ -18,12 +18,6 @@ import {
   X,
 } from "lucide-react";
 import {
-  QUEST_COVER_TEMPLATES,
-  QUEST_COVER_TEMPLATE_CATEGORIES,
-  findQuestCoverTemplateByUrl,
-  type QuestCoverTemplateCategory,
-} from "@/lib/quest-cover-templates";
-import {
   TENANT_MEDIA_KINDS,
   type TenantMediaKind,
 } from "@/lib/uploads/tenant-media-config";
@@ -105,7 +99,7 @@ interface GroupSummary {
   count: number;
 }
 
-type Tab = "templates" | "library" | "upload";
+type Tab = "library" | "upload";
 
 export interface CoverImagePickerProps {
   open: boolean;
@@ -118,10 +112,6 @@ export interface CoverImagePickerProps {
   /** Promoter accent (defaults to primary violet). Drives the live preview chips. */
   previewAccent?: string;
   kind?: TenantMediaKind;
-  /** When false, hides the Templates tab. Use for kinds whose aspect ratio
-   *  doesn't match the built-in 3:4 portrait templates (e.g. event_cover is
-   *  1:1). Defaults to true. */
-  templatesEnabled?: boolean;
   /** Aspect ratio of the live preview frame. "3/4" (default) for quest cards,
    *  "1/1" for event covers, "9/16" for story content, "16/9" for banners.
    *  Tiles in the grid stay 3/4. */
@@ -136,17 +126,11 @@ export function CoverImagePicker({
   previewTitle = "Your quest title",
   previewAccent = "#8B5CF6",
   kind = "quest_cover",
-  templatesEnabled = true,
   previewAspect = "3/4",
 }: CoverImagePickerProps) {
-  // Initial tab — if templates are off, never open them. If existing value
-  // is a template URL, open Templates; if it's a stored library URL, open
-  // Library; otherwise Upload (most likely first-time empty state).
-  const initialTab: Tab = useMemo(() => {
-    if (!value) return templatesEnabled ? "templates" : "library";
-    if (templatesEnabled && findQuestCoverTemplateByUrl(value)) return "templates";
-    return "library";
-  }, [value, templatesEnabled]);
+  // Templates were retired in favour of admins reusing their own brand
+  // creative. Two tabs only: library + upload.
+  const initialTab: Tab = useMemo(() => "library", []);
 
   const [tab, setTab] = useState<Tab>(initialTab);
   const [selected, setSelected] = useState(value);
@@ -220,9 +204,6 @@ export function CoverImagePicker({
           {/* Body — split: grid (left) + preview rail (right) */}
           <div className="flex-1 flex overflow-hidden">
             <div className="flex-1 overflow-y-auto p-5">
-              {tab === "templates" && templatesEnabled && (
-                <TemplateGrid selected={selected} onSelect={setSelected} />
-              )}
               {tab === "library" && (
                 <LibraryGrid
                   kind={kind}
@@ -231,9 +212,6 @@ export function CoverImagePicker({
                   selected={selected}
                   onSelect={setSelected}
                   onSwitchToUpload={() => setTab("upload")}
-                  onSwitchToTemplates={
-                    templatesEnabled ? () => setTab("templates") : null
-                  }
                 />
               )}
               {tab === "upload" && (
@@ -329,46 +307,6 @@ function TabBtn({
   );
 }
 
-function TemplateGrid({
-  selected,
-  onSelect,
-}: {
-  selected: string;
-  onSelect: (url: string) => void;
-}) {
-  const [category, setCategory] = useState<QuestCoverTemplateCategory | "All">("All");
-  const filtered =
-    category === "All"
-      ? QUEST_COVER_TEMPLATES
-      : QUEST_COVER_TEMPLATES.filter((t) => t.category === category);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-1.5">
-        <CategoryChip active={category === "All"} onClick={() => setCategory("All")}>
-          All
-        </CategoryChip>
-        {QUEST_COVER_TEMPLATE_CATEGORIES.map((c) => (
-          <CategoryChip key={c} active={category === c} onClick={() => setCategory(c)}>
-            {c}
-          </CategoryChip>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {filtered.map((t) => (
-          <Tile
-            key={t.id}
-            url={t.url}
-            label={t.name}
-            selected={selected === t.url}
-            onSelect={() => onSelect(t.url)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function CategoryChip({
   active,
   onClick,
@@ -401,7 +339,6 @@ function LibraryGrid({
   selected,
   onSelect,
   onSwitchToUpload,
-  onSwitchToTemplates,
 }: {
   kind: TenantMediaKind;
   emptyHeading: string;
@@ -409,8 +346,6 @@ function LibraryGrid({
   selected: string;
   onSelect: (url: string) => void;
   onSwitchToUpload: () => void;
-  /** Null when templates aren't enabled — empty state hides the affordance. */
-  onSwitchToTemplates: (() => void) | null;
 }) {
   const [rows, setRows] = useState<TenantMediaRow[] | null>(null);
   const [groups, setGroups] = useState<GroupSummary[]>([]);
@@ -499,11 +434,6 @@ function LibraryGrid({
             <Upload size={14} className="mr-1.5" />
             Upload image
           </Button>
-          {onSwitchToTemplates && (
-            <Button size="sm" variant="ghost" onClick={onSwitchToTemplates}>
-              Browse templates
-            </Button>
-          )}
         </div>
       </div>
     );

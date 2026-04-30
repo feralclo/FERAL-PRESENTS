@@ -1697,7 +1697,6 @@ export function QuestsTab() {
                         value={videoUrl && !isMuxPlaybackId(videoUrl) ? videoUrl : ""}
                         onChange={(v) => setVideoUrl(v)}
                         kind="quest_content"
-                        templatesEnabled={false}
                         previewAspect="9/16"
                         previewTitle={title || "Your story share"}
                       />

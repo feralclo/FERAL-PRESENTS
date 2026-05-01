@@ -1,17 +1,21 @@
 "use client";
 
+import { useState } from "react";
+import { Image as ImageLucide } from "lucide-react";
 import type { QuestFormState } from "./types";
+import { QuestChip } from "./QuestChip";
 import { RewardSection } from "./sections/RewardSection";
+import { CoverSection, coverChipSummary } from "./sections/CoverSection";
 
 /**
  * Single-screen form body. The plan's "one calm vertical surface" —
  * editorial title input → reward block → row of optional `+ Add ...`
  * chips → primary actions row. Tabs are dead.
  *
- * Phase 1.3 lays out the structure: title input, reward slot
- * (RewardSection — populated in Phase 2.1), chip slot (Phase 2 wires
- * the chips), action row (Phase 3 attaches the publish gate). Each
- * future phase fills one slice without rearranging the shell.
+ * Each chip wraps a Section component. The chip handles open/close +
+ * filled/empty visual states; the section owns the content that
+ * appears when the chip is expanded. New sections land as Phase 2
+ * progresses; the slot is built so adding one is a small focused diff.
  */
 export interface QuestFormProps {
   state: QuestFormState;
@@ -19,7 +23,32 @@ export interface QuestFormProps {
   onClose: () => void;
 }
 
+interface ChipsOpenState {
+  cover: boolean;
+  shareable: boolean;
+  walkthrough: boolean;
+  platform: boolean;
+  event: boolean;
+  proof: boolean;
+  rules: boolean;
+}
+
+const INITIAL_CHIPS_OPEN: ChipsOpenState = {
+  cover: false,
+  shareable: false,
+  walkthrough: false,
+  platform: false,
+  event: false,
+  proof: false,
+  rules: false,
+};
+
 export function QuestForm({ state, onChange, onClose }: QuestFormProps) {
+  const [chipsOpen, setChipsOpen] = useState<ChipsOpenState>(INITIAL_CHIPS_OPEN);
+
+  const toggleChip = (key: keyof ChipsOpenState) =>
+    setChipsOpen((s) => ({ ...s, [key]: !s[key] }));
+
   return (
     <form
       className="flex h-full flex-col"
@@ -60,9 +89,22 @@ export function QuestForm({ state, onChange, onClose }: QuestFormProps) {
 
         <RewardSection state={state} onChange={onChange} />
 
-        {/* Optional chips land in Phase 2 — one per section.
-            The slot exists now so the layout reserves room. */}
-        <div className="space-y-2" data-quest-editor-chips />
+        <div className="space-y-2">
+          <QuestChip
+            label="Cover image"
+            icon={<ImageLucide size={14} strokeWidth={1.75} />}
+            filled={!!state.cover_image_url}
+            summary={coverChipSummary(state.cover_image_url)}
+            open={chipsOpen.cover}
+            onToggle={() => toggleChip("cover")}
+            onClear={() => onChange({ cover_image_url: null })}
+          >
+            <CoverSection state={state} onChange={onChange} />
+          </QuestChip>
+
+          {/* Additional chips land in Phase 2.3+: Shareable, Walkthrough,
+              Platform (post_on_social only), Event, Proof, Rules. */}
+        </div>
       </div>
 
       <footer className="mt-auto flex items-center justify-between gap-3 pt-8">

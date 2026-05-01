@@ -167,9 +167,10 @@ Each section is a small focused component. Build in priority order — top of th
 **Acceptance:** prefilled by quest type via `getPlatformXPConfig()`; tenant can override; saves correctly.
 **Outcome (2026-05-01):** RewardSection ships a two-input row (Zap + XP / Coins + EP); EP is labelled "optional" since most quests run XP-only. QuestEditor now fetches `/api/platform/xp-config` on open, caches in local state with `DEFAULT_PLATFORM_XP_CONFIG` fallback, and prefills `xp_reward` on kind pick via `questTypeFor()` + `platformConfig.xp_per_quest_type[questType]`. Sub-toggle prefill (story → feed → make-your-own) deferred to Phase 2.5 where the toggle lives. Saves wire in Phase 4.
 
-### 2.2 CoverSection ⬜
+### 2.2 CoverSection ✅
 **Goal:** the in-app card hero. Reuses `<CoverImagePicker kind="quest_cover">`.
 **Acceptance:** filled state shows a 3:4 thumbnail; chip header reads "Cover · cover.webp"; X clears.
+**Outcome (2026-05-01):** CoverSection mounts `<CoverImagePicker kind="quest_cover">` so it shares one library + upload pipeline with the start-moment template, the library page, and the event editor. Empty state = a "Pick a cover" button + hint copy explaining the gradient fallback. Filled state = a 3:4 thumbnail + Replace / Remove. Helper `coverChipSummary()` returns "set" for UUID-named files (the Sharp pipeline output) and the basename when readable. Wired into QuestForm via the canonical QuestChip — closed-empty → dashed "+ Cover image", closed-filled → solid chip with summary + X. The X clears via `onChange({ cover_image_url: null })`.
 
 ### 2.3 ShareableSection ⬜
 **Goal:** what reps post. Single-asset OR pool. Reuses the existing `QuestPoolPicker` (which we just rebuilt — it can drop in unchanged).

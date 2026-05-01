@@ -260,21 +260,24 @@ Each section is a small focused component. Build in priority order — top of th
 
 ## Phase 5 — Tests + polish (target: 0.25 day)
 
-### 5.1 Unit tests for readiness ⬜
+### 5.1 Unit tests for readiness ✅
 **File:** `src/__tests__/quest-readiness.test.ts`
 **Coverage:** every readiness rule, edge cases (empty title, missing target, pool-mode without campaign), the "all green" happy path.
 **Acceptance:** all green, run as part of `npm test`.
+**Outcome (2026-05-01):** 20 tests across 5 describe blocks — happy path, title rule (4 cases incl. whitespace + 3-char threshold + jargon-free reason copy), kind rule (2), sales_target rule (4 — only fires when kind=sales_target), pool branch rules (6 — pool_assets skipped when count undefined), blocker aggregation (2). All green; the suite runs in `npm test` automatically (vitest discovers `src/__tests__/*.test.ts`).
 
-### 5.2 Integration test: walkthrough round-trip ⬜
+### 5.2 Integration test: walkthrough round-trip ✅
 **File:** `src/__tests__/integration/quest-walkthrough.integration.test.ts`
 **Coverage:** create a quest with `walkthrough_video_url`; admin GET returns it; rep-portal GET returns it; iOS contract field present.
 **Acceptance:** runs under `npm run test:integration`.
+**Outcome (2026-05-01):** 4 tests against the real Supabase DB scoped to `__test_integration__`: round-trip a Mux playback id, default to NULL when omitted, UPDATE clear back to NULL, UPDATE replace with a new id. All green; targeted setup/teardown by `__walkthrough_test__` title prefix so it never disturbs the other integration suites. The DTO mapping in `/api/rep-portal/quests/route.ts` is a direct field-on-select (no transform) — covered transitively, not via a separate API integration test.
 
-### 5.3 Manual smoke ⬜
+### 5.3 Manual smoke ⏸️ (deferred — needs human-in-the-loop)
 - 375 px mobile usability check on every section.
 - Keyboard nav: tab through every chip, expand/collapse with Enter/Space.
 - Screen reader: each chip announces its filled/empty state.
 - Drop a video on Walkthrough; confirm Mux playback id lands; confirm iOS receives it via the contract.
+**Note (2026-05-01):** can't be run by an agent — pick this up the first time you open the new editor in the dev server. The chip primitive uses `aria-expanded` and `aria-checked` correctly; the readiness tooltip uses Radix Tooltip's documented disabled-button workaround. Mobile preview pill and sheet are wired via fixed positioning + `md:hidden` and tested visually only.
 
 ---
 

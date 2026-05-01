@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   Calendar,
+  Camera,
   Image as ImageLucide,
   Share2,
   Smartphone,
@@ -28,6 +29,7 @@ import {
   eventChipSummary,
   type EventOption,
 } from "./sections/EventSection";
+import { ProofSection, proofChipSummary } from "./sections/ProofSection";
 
 /**
  * Single-screen form body. The plan's "one calm vertical surface" —
@@ -207,7 +209,23 @@ export function QuestForm({ state, onChange, onClose, events }: QuestFormProps) 
             <EventSection state={state} onChange={onChange} events={events} />
           </QuestChip>
 
-          {/* Additional chips land in Phase 2.7+: Proof, Rules. */}
+          <QuestChip
+            label="Proof"
+            icon={<Camera size={14} strokeWidth={1.75} />}
+            filled
+            summary={proofChipSummary(state.proof_type)}
+            open={chipsOpen.proof}
+            onToggle={() => toggleChip("proof")}
+            onClear={
+              state.proof_type === "screenshot"
+                ? undefined
+                : () => onChange({ proof_type: "screenshot" })
+            }
+          >
+            <ProofSection state={state} onChange={onChange} />
+          </QuestChip>
+
+          {/* Additional chips land in Phase 2.8: Rules. */}
         </div>
       </div>
 

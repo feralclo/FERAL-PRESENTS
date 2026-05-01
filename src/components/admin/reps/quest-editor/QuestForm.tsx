@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageLucide } from "lucide-react";
+import { Image as ImageLucide, Share2 } from "lucide-react";
 import type { QuestFormState } from "./types";
 import { QuestChip } from "./QuestChip";
 import { RewardSection } from "./sections/RewardSection";
 import { CoverSection, coverChipSummary } from "./sections/CoverSection";
+import {
+  ShareableSection,
+  shareableChipSummary,
+  isShareableFilled,
+} from "./sections/ShareableSection";
 
 /**
  * Single-screen form body. The plan's "one calm vertical surface" —
@@ -102,7 +107,33 @@ export function QuestForm({ state, onChange, onClose }: QuestFormProps) {
             <CoverSection state={state} onChange={onChange} />
           </QuestChip>
 
-          {/* Additional chips land in Phase 2.3+: Shareable, Walkthrough,
+          <QuestChip
+            label="Shareable"
+            icon={<Share2 size={14} strokeWidth={1.75} />}
+            filled={isShareableFilled(
+              state.asset_mode,
+              state.asset_url,
+              state.asset_campaign_tag
+            )}
+            summary={shareableChipSummary(
+              state.asset_mode,
+              state.asset_url,
+              state.asset_campaign_tag
+            )}
+            open={chipsOpen.shareable}
+            onToggle={() => toggleChip("shareable")}
+            onClear={() =>
+              onChange({
+                asset_mode: "single",
+                asset_url: null,
+                asset_campaign_tag: null,
+              })
+            }
+          >
+            <ShareableSection state={state} onChange={onChange} />
+          </QuestChip>
+
+          {/* Additional chips land in Phase 2.4+: Walkthrough,
               Platform (post_on_social only), Event, Proof, Rules. */}
         </div>
       </div>

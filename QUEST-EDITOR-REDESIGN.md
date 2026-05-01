@@ -172,9 +172,10 @@ Each section is a small focused component. Build in priority order — top of th
 **Acceptance:** filled state shows a 3:4 thumbnail; chip header reads "Cover · cover.webp"; X clears.
 **Outcome (2026-05-01):** CoverSection mounts `<CoverImagePicker kind="quest_cover">` so it shares one library + upload pipeline with the start-moment template, the library page, and the event editor. Empty state = a "Pick a cover" button + hint copy explaining the gradient fallback. Filled state = a 3:4 thumbnail + Replace / Remove. Helper `coverChipSummary()` returns "set" for UUID-named files (the Sharp pipeline output) and the basename when readable. Wired into QuestForm via the canonical QuestChip — closed-empty → dashed "+ Cover image", closed-filled → solid chip with summary + X. The X clears via `onChange({ cover_image_url: null })`.
 
-### 2.3 ShareableSection ⬜
+### 2.3 ShareableSection ✅
 **Goal:** what reps post. Single-asset OR pool. Reuses the existing `QuestPoolPicker` (which we just rebuilt — it can drop in unchanged).
 **Acceptance:** segmented "Single asset / From a campaign" toggle inside the section. Single asset path uses the existing inline upload zone with the polished primary-tinted recipe. Pool path uses `QuestPoolPicker`.
+**Outcome (2026-05-01):** ShareableSection mounts `QuestPoolPicker` (which owns the segmented toggle, drop-zone, and rich preview card) and threads `state.asset_mode` / `state.asset_campaign_tag`. Single-asset path uses `<CoverImagePicker kind="quest_content" previewAspect="9/16">` (library + upload, image-focused) so most quests ship without leaving the editor. Mux video upload deferred — most shareables are static images, and the Mux flow can land as a Phase 5 polish without changing the section's contract. Switch to mirror the cover image as the shareable when both are set in single mode (saves uploading twice). Mode-change resets the inactive-mode field so stale state never leaks. Helpers `shareableChipSummary()` and `isShareableFilled()` keep the chip header honest. Wired into QuestForm with a Share2 icon. **2.9 ships for free** — QuestPoolPicker is mounted directly; the PoolSection.tsx stub stays in the directory map but isn't mounted.
 
 ### 2.4 WalkthroughSection (new field) ⬜
 **Goal:** optional screen recording showing reps how to do the quest.
@@ -207,9 +208,10 @@ Each section is a small focused component. Build in priority order — top of th
 **Contents:** max_completions (number input, default 1), expires_at (date-time, optional), auto_approve (Switch).
 **Acceptance:** chip closed shows "Rules · 1 completion" or "Rules · 1 completion · expires Sat 5 May" or "Rules · auto-approve". Empty state header is the default chip.
 
-### 2.9 PoolSection ⬜ (relocate, no rebuild)
+### 2.9 PoolSection ✅ (shipped via 2.3)
 **Goal:** drop in the existing `QuestPoolPicker` we just rebuilt under `ShareableSection`'s "From a campaign" branch — no new code, just the right wiring.
 **Acceptance:** parity with current pool-quest behaviour (auto-create campaign, inline thumbnails, swap, rename).
+**Outcome (2026-05-01):** ShareableSection mounts `QuestPoolPicker` directly — no wrapper needed. The `sections/PoolSection.tsx` stub is left as a placeholder so the directory map matches the plan, but it's never mounted. Phase 4 cutover can delete the stub if it stays unused.
 
 ---
 

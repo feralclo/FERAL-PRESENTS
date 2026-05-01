@@ -207,10 +207,11 @@ Each section is a small focused component. Build in priority order — top of th
 **Acceptance:** chip closed shows "Proof · screenshot" by default (since it's prefilled); changing it updates the chip header.
 **Outcome (2026-05-01):** ProofSection ships a 2-column grid of icon + label + hint cards (Camera / LinkIcon / Instagram / Hash / Type). `proof_type === "none"` deliberately omitted — iOS has no submission UI for it and the admin POST blocks it server-side. Selected card gets `border-primary` + a tinted icon badge. The chip is always `filled` since proof_type always has a value; `onClear` is hidden when at default ("screenshot") and resets when non-default. `proofChipSummary()` returns the human label so the closed-chip header reads "Proof · screenshot" (or whichever).
 
-### 2.8 RulesSection ⬜
+### 2.8 RulesSection ✅
 **Goal:** the dry power-user controls in one place.
 **Contents:** max_completions (number input, default 1), expires_at (date-time, optional), auto_approve (Switch).
 **Acceptance:** chip closed shows "Rules · 1 completion" or "Rules · 1 completion · expires Sat 5 May" or "Rules · auto-approve". Empty state header is the default chip.
+**Outcome (2026-05-01):** RulesSection ships the three controls. `max_completions` = number input + "Leave blank for unlimited" hint (null/0 → "unlimited" in summary; 2+ → "N completions"). `expires_at` = `<input type="datetime-local">` with TZ-correct round-trip helpers `toLocalInputValue()` / `fromLocalInputValue()` so the host's local time goes in and ISO-UTC comes out. `auto_approve` = Switch with ShieldCheck icon + plain-English hint about low-risk story shares. Helpers `rulesChipSummary()` and `isRulesFilled()` keep the chip state honest — at all-defaults the chip is closed-empty ("+ Rules"); any deviation flips it to closed-filled with a comma-joined summary. onClear resets all three.
 
 ### 2.9 PoolSection ✅ (shipped via 2.3)
 **Goal:** drop in the existing `QuestPoolPicker` we just rebuilt under `ShareableSection`'s "From a campaign" branch — no new code, just the right wiring.

@@ -6,6 +6,7 @@ import {
   Camera,
   Image as ImageLucide,
   Share2,
+  ShieldCheck,
   Smartphone,
   Video,
 } from "lucide-react";
@@ -30,6 +31,11 @@ import {
   type EventOption,
 } from "./sections/EventSection";
 import { ProofSection, proofChipSummary } from "./sections/ProofSection";
+import {
+  RulesSection,
+  rulesChipSummary,
+  isRulesFilled,
+} from "./sections/RulesSection";
 
 /**
  * Single-screen form body. The plan's "one calm vertical surface" —
@@ -225,7 +231,31 @@ export function QuestForm({ state, onChange, onClose, events }: QuestFormProps) 
             <ProofSection state={state} onChange={onChange} />
           </QuestChip>
 
-          {/* Additional chips land in Phase 2.8: Rules. */}
+          <QuestChip
+            label="Rules"
+            icon={<ShieldCheck size={14} strokeWidth={1.75} />}
+            filled={isRulesFilled(
+              state.max_completions,
+              state.expires_at,
+              state.auto_approve
+            )}
+            summary={rulesChipSummary(
+              state.max_completions,
+              state.expires_at,
+              state.auto_approve
+            )}
+            open={chipsOpen.rules}
+            onToggle={() => toggleChip("rules")}
+            onClear={() =>
+              onChange({
+                max_completions: 1,
+                expires_at: null,
+                auto_approve: false,
+              })
+            }
+          >
+            <RulesSection state={state} onChange={onChange} />
+          </QuestChip>
         </div>
       </div>
 

@@ -95,8 +95,9 @@ ALTER TABLE rep_quests
 
 ## Phase 1 — Foundations (target: 0.5 day)
 
-### 1.1 New file structure ⬜
+### 1.1 New file structure ✅
 **Goal:** the new editor lives as a distinct directory so the migration is incremental and rollback-able.
+**Outcome (2026-05-01):** scaffolded 15 files at `src/components/admin/reps/quest-editor/` — 5 root + 9 sections + a shared `types.ts` (mirrors the `event-editor/types.ts` pattern). All compile, all unmounted; existing `QuestsTab.tsx` editor untouched until Phase 4 cutover. `types.ts` defines `QuestKind` (the 3-tile UI enum), `SocialSubType`, `QuestFormState`, `EMPTY_QUEST_FORM_STATE`, `SectionProps`, plus `questKindFor()` / `questTypeFor()` / `socialSubTypeFor()` for the 5↔3 quest_type round-trip. `QuestEditor.tsx` wires three children (picker / form / preview) and threads a single flat state via `onChange(patch)`. Section files are stubs returning `null`; phases 1.2–2.x fill them in. tsc clean, 796/796 tests.
 **Files (new):**
 - `src/components/admin/reps/quest-editor/QuestEditor.tsx` — the orchestrator (replaces the inline editor in `QuestsTab.tsx`).
 - `src/components/admin/reps/quest-editor/QuestTypeStep.tsx` — the 3-tile visual picker.

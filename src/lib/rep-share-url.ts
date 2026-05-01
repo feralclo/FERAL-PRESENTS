@@ -1,23 +1,31 @@
 /**
  * Resolve the canonical base URL for a rep share link.
  *
- * Reps share quest URLs with friends. The recipient lands on an event
- * page where ?ref={code} silently auto-applies their discount. Which
- * domain serves that page matters — both for the discount logic (event
- * routing is per-tenant via middleware) and for the emotional read
- * ("this is from MY promoter", not from generic entry.events).
+ * Reps share quest URLs with friends. The recipient lands on the
+ * destination page where ?ref={code} silently auto-applies their
+ * discount. Which domain serves that page matters — both for the
+ * discount logic (routing is per-tenant via middleware) and for the
+ * emotional read ("this is from MY promoter").
  *
- * Resolution rules:
- *   1. If the event's org has a primary custom/sub-domain in the
- *      domains table, use https://{hostname}.
+ * Resolution rules — base URL:
+ *   1. If the org has a primary custom/sub-domain in the `domains`
+ *      table, use `https://{hostname}`.
  *   2. Otherwise fall back to NEXT_PUBLIC_SITE_URL (entry.events in
- *      production), which serves the platform-default tenant.
+ *      production).
+ *
+ * Resolution rules — destination path (cascade — invariant: if a
+ * `code` is provided, a non-null URL is ALWAYS returned):
+ *   1. Event slug present → `/event/{slug}?ref={code}` (the canonical
+ *      "share this event" surface).
+ *   2. No event slug → `/?ref={code}` (tenant root). The discount still
+ *      applies wherever the recipient lands; pool / promoter-only
+ *      quests get a working share without falling into iOS's
+ *      "spinning up your link…" empty state.
+ *   3. No `code` → null. A share without a discount has no meaning.
  *
  * Batched lookup: callers that build many URLs in one request (the
  * quest list endpoint) should fetch all primary domains for the unique
  * org_ids in one query and pass them in via the `domainsByOrgId` map.
- * The single-URL helper exists for endpoints that only need one (the
- * accept response).
  */
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -52,9 +60,22 @@ export async function fetchPrimaryDomains(
 }
 
 /**
- * Build a quest share URL for a single (orgId, eventSlug, code) triple.
- * Returns null if eventSlug or code is missing — share URLs are useless
- * without both, so iOS treats null as "no share available".
+ * Build a quest share URL with a cascade so quests that aren't
+ * event-anchored (pool quests bound only to a promoter, platform-level
+ * quests, etc.) still produce a working link.
+ *
+ * Returns null only when `code` is null — a share without a discount
+ * is a dead share, and iOS's "no share available" empty state is the
+ * right surface for that single case.
+ *
+ * Otherwise:
+ *   - With an event slug → /event/{slug}?ref={code}
+ *   - Without an event slug → /?ref={code} (tenant root)
+ *
+ * The tenant-root fallback is meaningful: ?ref= is read globally by
+ * the buyer-side stack, so the discount still applies wherever the
+ * recipient navigates to (campaign pages, the next event, the merch
+ * store, anything).
  */
 export function buildQuestShareUrl(params: {
   orgId: string | null;
@@ -63,11 +84,16 @@ export function buildQuestShareUrl(params: {
   domainsByOrgId?: Map<string, string>;
 }): string | null {
   const { orgId, eventSlug, code, domainsByOrgId } = params;
-  if (!eventSlug || !code) return null;
+  if (!code) return null;
 
   const hostname = orgId ? domainsByOrgId?.get(orgId) : undefined;
   const base = hostname ? `https://${hostname}` : DEFAULT_BASE;
-  return `${base}/event/${eventSlug}?ref=${encodeURIComponent(code)}`;
+  if (eventSlug) {
+    return `${base}/event/${eventSlug}?ref=${encodeURIComponent(code)}`;
+  }
+  // No event — tenant root. Same shape as buildRepShareUrl. Discount
+  // still applies platform-wide via the ?ref= cookie set by middleware.
+  return `${base}/?ref=${encodeURIComponent(code)}`;
 }
 
 /**
@@ -80,11 +106,8 @@ export async function buildQuestShareUrlOne(params: {
   code: string | null;
 }): Promise<string | null> {
   const { orgId, eventSlug, code } = params;
-  if (!eventSlug || !code) return null;
-  if (!orgId) {
-    return `${DEFAULT_BASE}/event/${eventSlug}?ref=${encodeURIComponent(code)}`;
-  }
-  const domains = await fetchPrimaryDomains([orgId]);
+  if (!code) return null;
+  const domains = orgId ? await fetchPrimaryDomains([orgId]) : new Map();
   return buildQuestShareUrl({ orgId, eventSlug, code, domainsByOrgId: domains });
 }
 

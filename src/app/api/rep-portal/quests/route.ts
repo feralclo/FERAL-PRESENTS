@@ -133,13 +133,14 @@ export async function GET(request: NextRequest) {
       .from(TABLES.REP_QUESTS)
       .select(
         `
-          id, title, subtitle, description, instructions, quest_type,
+          id, org_id, title, subtitle, description, instructions, quest_type,
           platform, proof_type, xp_reward, points_reward, currency_reward,
           ep_reward, sales_target, max_completions, starts_at, expires_at,
           cover_image_url, image_url, banner_image_url, video_url,
           accent_hex, accent_hex_secondary, status, promoter_id, event_id,
           auto_approve, asset_mode, asset_campaign_tag,
-          event:events(id, name, slug, date_start, cover_image_url, cover_image, org_id)
+          event:events(id, name, slug, date_start, cover_image_url, cover_image, org_id),
+          promoter:promoters(org_id)
         `
       )
       .eq("status", statusFilter)
@@ -250,6 +251,7 @@ export async function GET(request: NextRequest) {
     // 6. Assemble the iOS-shaped response
     type RawQuest = {
       id: string;
+      org_id: string | null;
       title: string;
       subtitle: string | null;
       description: string | null;
@@ -296,18 +298,27 @@ export async function GET(request: NextRequest) {
             org_id: string;
           }>
         | null;
+      promoter:
+        | { org_id: string | null }
+        | Array<{ org_id: string | null }>
+        | null;
     };
 
-    // Batch-fetch primary domains for every unique event-org so each
-    // quest's share_url uses the tenant's branded host instead of
-    // entry.events. One query, regardless of how many quests come back.
+    // Batch-fetch primary domains for every unique org we'll build a
+    // share_url for. We collect from quest.org_id, the event join, AND
+    // the promoter join so pool / event-less quests still get their
+    // tenant's branded host instead of falling back to entry.events.
     const rawQuests = quests as unknown as RawQuest[];
-    const eventOrgIds: string[] = [];
+    const allOrgIds: string[] = [];
     for (const q of rawQuests) {
+      const fromQuest = (q.org_id ?? "").trim();
+      if (fromQuest) allOrgIds.push(fromQuest);
       const ev = Array.isArray(q.event) ? q.event[0] ?? null : q.event;
-      if (ev?.org_id) eventOrgIds.push(ev.org_id);
+      if (ev?.org_id) allOrgIds.push(ev.org_id);
+      const pr = Array.isArray(q.promoter) ? q.promoter[0] ?? null : q.promoter;
+      if (pr?.org_id) allOrgIds.push(pr.org_id);
     }
-    const domainsByOrgId = await fetchPrimaryDomains(eventOrgIds);
+    const domainsByOrgId = await fetchPrimaryDomains(allOrgIds);
 
     // Batch-fetch pool summaries for every pool quest. One query covers
     // every (org, tag) pair: filter by org_id IN (...) + tags overlap on
@@ -473,7 +484,16 @@ export async function GET(request: NextRequest) {
         // the tenant has no primary domain registered.
         discount_code: questDiscountCode(q.promoter_id),
         share_url: buildQuestShareUrl({
-          orgId: eventRow?.org_id ?? null,
+          // Cascade quest.org_id → event.org_id → promoter.org_id so
+          // pool / event-less quests still resolve to the right
+          // tenant domain (and downstream, the right branded share).
+          orgId:
+            (q.org_id ?? "").trim() ||
+            eventRow?.org_id ||
+            (Array.isArray(q.promoter)
+              ? q.promoter[0]?.org_id ?? null
+              : q.promoter?.org_id ?? null) ||
+            null,
           eventSlug: eventRow?.slug ?? null,
           code: questDiscountCode(q.promoter_id),
           domainsByOrgId,

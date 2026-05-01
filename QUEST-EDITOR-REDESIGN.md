@@ -281,11 +281,12 @@ Each section is a small focused component. Build in priority order — top of th
 
 ---
 
-## Phase 6 — Docs + ship ⬜
+## Phase 6 — Docs + ship ✅
 - `CLAUDE.md` Quests + Rewards section updated to mention `walkthrough_video_url`.
 - `LIBRARY-CAMPAIGNS-PLAN.md` cross-referenced if pool integration changed.
 - Final tsc + test pass.
 - Single push when every phase is ✅.
+**Outcome (2026-05-01):** CLAUDE.md's `rep_quests` v2 line gained the `walkthrough_video_url` mention with iOS surfacing context, plus a new "Editor surface (redesigned 2026-05-01)" paragraph that maps the new `<QuestEditor>` component, the 3-tile picker / chip pattern, the readiness-gated Publish, and the share URL "You're live" sheet. LIBRARY-CAMPAIGNS-PLAN.md gained a 2026-05-01 decision-log entry pointing at the editor migration + the readiness rules. Final tsc clean; full unit suite 816/816, integration 23/23. Push deferred per user direction (will go up when explicitly approved).
 
 ---
 

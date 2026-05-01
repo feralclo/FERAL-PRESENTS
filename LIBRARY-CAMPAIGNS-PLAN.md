@@ -561,6 +561,7 @@ Append entries as `YYYY-MM-DD — decision — rationale`.
 - *2026-04-30 — no per-quest asset pinning — original plan considered an override list of `asset_pinned_ids` so a quest could exclude specific assets. Cut for simplicity per Harry's "keep it super simple" steer. Tenants who need finer slicing create more campaigns; the tag granularity is theirs to choose.*
 - *2026-04-30 — pull-to-refresh re-runs the same SQL, no pagination — the rotation algorithm naturally produces a different 10 as downloads happen and uploads land. Adding cursor pagination would let reps page deeper into their used pile, which is the opposite of what we want.*
 - *2026-04-30 — XP/EP per quest, not per asset — Harry confirmed quest-level rewards. Per-asset variance was raised but rejected; would complicate the EP ledger and let reps farm "high-value" assets, which doesn't match the "post anything from this campaign" intent.*
+- *2026-05-01 — pool single/single-asset mode toggle migrated into the redesigned quest editor — `ShareableSection` (in `src/components/admin/reps/quest-editor/sections/`) now mounts `QuestPoolPicker` directly. The legacy 5-tab QuestsTab editor was deleted in `QUEST-EDITOR-REDESIGN.md` Phase 4. Pool readiness gating shifted to `assessQuest()` in `src/lib/quest-readiness.ts` — `pool_campaign` (required when asset_mode=pool) + `pool_assets` (required when caller passes a count; skipped otherwise so the orchestrator can defer the asset-count fetch).*
 
 ---
 

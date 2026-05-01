@@ -134,8 +134,9 @@ ALTER TABLE rep_quests
 - `QuestPreview.tsx` — right column: phone-frame mirror of the rep card from `iOS QuestCardView`, faithfully inlined like `BrandPreview` does for the event page. Updates as form state changes.
 **Acceptance:** form fields drive the preview live (with a debounce for text inputs). Preview matches the iOS card visually (gradient + cover + title overlay + XP/EP chips). On mobile, preview collapses to a "Preview" floating pill that opens a sheet.
 
-### 1.4 The Chip pattern ⬜
+### 1.4 The Chip pattern ✅
 **Goal:** one canonical component for "+ Add X" affordances and their expanded forms.
+**Outcome (2026-05-01):** `QuestChip.tsx` now ships the three visual states cleanly. Closed-empty: dashed border + `+ {label}` affordance, primary tint on hover. Closed-filled: solid card chip with the icon, label, dot, summary, X clear button, and chevron-down. Open: collapses into the heavier `<AdminPanel>` (rounded-xl, border-border/60, bg-card, deeper shadow) with a chevron-up + label header and a "Clear" text button when the section has data. Same close behaviour everywhere — `onClear` nulls the data; the section's onChange handlers in Phase 2 will reset their owned fields. Each state is a small named sub-component (`ClosedEmptyChip` / `ClosedFilledChip` / `OpenChip`) so the visual contract is easy to read at a glance.
 **File:** `QuestChip.tsx`
 **Props:**
 ```ts

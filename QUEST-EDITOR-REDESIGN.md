@@ -115,8 +115,9 @@ ALTER TABLE rep_quests
 - `src/components/admin/reps/quest-editor/sections/PoolSection.tsx` (already built; just relocated)
 **Acceptance:** the directory exists, all files compile, `QuestsTab.tsx` still works (uses the OLD editor for now). Both can coexist behind a feature flag during the cutover.
 
-### 1.2 Visual quest-type picker ⬜
+### 1.2 Visual quest-type picker ✅
 **Goal:** replace the existing button-list type step with three big visual cards.
+**Outcome (2026-05-01):** `QuestTypeStep.tsx` now renders three 176px-tall (h-44) cards with a primary-tinted icon badge, sentence-case title, supporting copy, and a Space Mono eyebrow hint. Static borders + soft shadow per admin design language; hover lifts via `border-primary/40` + `bg-primary/[0.03]` + `shadow`. Icons: `Smartphone` / `TrendingUp` / `Sparkles`. The picker's `onPick(kind)` patches `state.kind`; the orchestrator transitions to the form+preview shell. Sub-toggle for `post_on_social` lands in Phase 1.3 (defaulting to `"story"` via `EMPTY_QUEST_FORM_STATE`).
 **Cards (each ~280×180px on desktop, full-width stacked on mobile):**
 | Card | Maps to | Hero illustration |
 |---|---|---|

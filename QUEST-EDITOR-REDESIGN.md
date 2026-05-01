@@ -83,12 +83,13 @@ ALTER TABLE rep_quests
 **iOS UX recommendation** (suggested, not binding): "Watch how" button inside `QuestDetailSheet` that opens the existing Mux player surface (already used for shareables). Hidden when the field is null.
 **Acceptance:** doc updated, iOS team has a one-paragraph spec they can build against without asking questions.
 
-### 0.3 Type plumbing ⬜
+### 0.3 Type plumbing ✅
 **Files:**
 - `src/types/reps.ts` — add `walkthrough_video_url?: string | null` to `RepQuest`.
 - Existing rep-portal serializers (`/api/rep-portal/quests`, `/api/rep-portal/dashboard`) — pass the field through.
 - Admin POST/PUT (`/api/reps/quests` + `/[id]`) — accept the field.
 **Acceptance:** `npx tsc --noEmit -p tsconfig.build.json` clean. Field round-trips DB ↔ admin ↔ rep-portal without manual mapping.
+**Outcome (2026-05-01):** field added to `RepQuest`. Admin POST destructures + writes; admin PATCH allowedFields includes it. `/api/rep-portal/quests` selects + types + emits the field. Dashboard GET only counts quests (no DTO surface) so no change there. `npx tsc --noEmit -p tsconfig.build.json` clean. `npm test` 796/796.
 
 ---
 

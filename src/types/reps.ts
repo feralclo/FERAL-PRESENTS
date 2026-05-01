@@ -198,6 +198,10 @@ export interface RepQuest {
   cover_image_url?: string | null;
   banner_image_url?: string | null;
   video_url?: string | null;
+  // Optional Mux playback id for a tenant-uploaded screen recording showing
+  // reps how to do the quest. Independent of asset_mode. iOS surfaces it as
+  // a "Watch how" affordance on QuestDetailSheet (ios-quest-pool-contract.md §9).
+  walkthrough_video_url?: string | null;
   // v2 aliases — same numbers as points_reward / currency_reward but
   // named consistently with the iOS schema. Backend writes both.
   xp_reward?: number | null;

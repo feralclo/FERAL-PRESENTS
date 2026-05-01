@@ -82,6 +82,7 @@ export async function PUT(
       "cover_image_url",
       "banner_image_url",
       "video_url",
+      "walkthrough_video_url",
       "points_reward",
       "xp_reward",
       "event_id",

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireRepAuth } from "@/lib/auth";
 import { getRotatedAssetsForRep } from "@/lib/library/asset-rotation";
+import { resolveQuestOrgId } from "@/lib/library/quest-org";
 import type { QuestAssetsResponse } from "@/types/library-campaigns";
 import * as Sentry from "@sentry/nextjs";
 
@@ -55,7 +56,7 @@ export async function GET(
     const { data: quest } = await db
       .from("rep_quests")
       .select(
-        "id, asset_mode, asset_campaign_tag, promoter_id, status, event:events(org_id)"
+        "id, org_id, asset_mode, asset_campaign_tag, promoter_id, status, event:events(org_id), promoter:promoters(org_id)"
       )
       .eq("id", questId)
       .maybeSingle();
@@ -96,27 +97,18 @@ export async function GET(
       }
     }
 
-    // 3. Resolve the org_id for the campaign query. Prefer the joined
-    //    event row; fall back to a direct lookup if the quest is
-    //    event-less (platform quests can be).
-    type EventRow =
-      | { org_id: string | null }
-      | Array<{ org_id: string | null }>
-      | null;
-    const eventField = (quest as { event?: EventRow }).event;
-    const eventRow = Array.isArray(eventField)
-      ? eventField[0] ?? null
-      : eventField;
-    let orgId = eventRow?.org_id ?? null;
+    // 3. Resolve the org_id for the campaign query. Cascade in order
+    //    of authority: the quest's own org_id (always populated for
+    //    new rows), then the linked event, then the linked promoter.
+    //    Legacy rows where every signal is null fall through to a
+    //    quest_not_anchored error — but the cascade handles every
+    //    quest created via the admin since the campaign feature
+    //    shipped, including platform-level pool quests.
+    const orgId = resolveQuestOrgId(quest);
     if (!orgId) {
-      // Fall back: rep_quests has no org_id column today; we'd need to
-      // resolve via promoter or accept that platform quests with no
-      // event can't have a campaign. For now, refuse — this is a state
-      // that shouldn't exist in practice (every campaign quest is event-
-      // anchored).
       return NextResponse.json(
         {
-          error: "Quest is not anchored to an event",
+          error: "Quest is not anchored to an event or promoter",
           code: "quest_not_anchored",
         },
         { status: 400 }
@@ -166,3 +158,4 @@ function unslugify(tag: string): string {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
+

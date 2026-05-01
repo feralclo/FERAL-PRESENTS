@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireRepAuth } from "@/lib/auth";
 import { recordAssetDownload } from "@/lib/library/asset-rotation";
 import { getMuxDownloadUrl, isMuxPlaybackId } from "@/lib/mux";
+import { resolveQuestOrgId } from "@/lib/library/quest-org";
 import type { QuestAssetDownloadResponse } from "@/types/library-campaigns";
 import * as Sentry from "@sentry/nextjs";
 
@@ -56,7 +57,7 @@ export async function POST(
     const { data: quest } = await db
       .from("rep_quests")
       .select(
-        "id, asset_mode, asset_campaign_tag, promoter_id, event:events(org_id)"
+        "id, org_id, asset_mode, asset_campaign_tag, promoter_id, event:events(org_id), promoter:promoters(org_id)"
       )
       .eq("id", questId)
       .maybeSingle();
@@ -96,19 +97,11 @@ export async function POST(
       }
     }
 
-    type EventRow =
-      | { org_id: string | null }
-      | Array<{ org_id: string | null }>
-      | null;
-    const eventField = (quest as { event?: EventRow }).event;
-    const eventRow = Array.isArray(eventField)
-      ? eventField[0] ?? null
-      : eventField;
-    const orgId = eventRow?.org_id;
+    const orgId = resolveQuestOrgId(quest);
     if (!orgId) {
       return NextResponse.json(
         {
-          error: "Quest is not anchored to an event",
+          error: "Quest is not anchored to an event or promoter",
           code: "quest_not_anchored",
         },
         { status: 400 }

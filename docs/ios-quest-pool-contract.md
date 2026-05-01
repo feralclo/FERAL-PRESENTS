@@ -1,6 +1,6 @@
 # iOS Quest Pool Contract
 
-> **Status:** v1.0 — drafted 2026-04-30, locked. Implement against this; ping the backend if anything is unclear rather than guessing.
+> **Status:** v1.1 — drafted 2026-04-30, **`walkthrough_video_url` added 2026-05-01** (Section 9). Implement against this; ping the backend if anything is unclear rather than guessing.
 > **Sibling docs:** `ENTRY-IOS-BACKEND-SPEC.md` (the master rep platform spec) — this doc is a focused supplement covering one feature.
 > **Owner:** backend (FERAL-PRESENTS repo) writes the data, defines the shapes, ships the routes. iOS owns the UI build.
 
@@ -27,7 +27,7 @@ Every quest now carries an `asset_mode` field on `RepQuestDTO`:
 
 ### 2.1 Updated `RepQuestDTO` shape
 
-These two fields are added — every other field is unchanged:
+These fields are added — every other field is unchanged:
 
 ```jsonc
 {
@@ -42,11 +42,14 @@ These two fields are added — every other field is unchanged:
       "https://example.com/.../tile2.webp",
       "https://example.com/.../tile3.webp"
     ]
-  }
+  },
+  "walkthrough_video_url": "abc123muxPlaybackId"
 }
 ```
 
 `asset_pool` is **null** when `asset_mode === "single"`. `sample_thumbs` always has up to 3 entries — use them on the quest card as a 3-up thumbnail strip if you want; the actual list comes from the GET below.
+
+`walkthrough_video_url` is **null** unless the tenant uploaded a screen recording showing reps how to do the quest. It's independent of `asset_mode` — both single and pool quests can have one. See Section 9.
 
 ### 2.2 Endpoints that ship these fields
 
@@ -358,10 +361,40 @@ When backend ships, you flip the debug flag and swap mocks for real fetches. Sho
 
 ---
 
-## 9 · Change policy
+## 9 · Walkthrough video (independent of pool mode)
+
+Tenants can optionally upload a short screen recording showing reps how to do a quest — typically a 15–60 second walkthrough of "open TikTok, paste this sound, post to story." Lives on every quest, single-asset and pool alike.
+
+### 9.1 Field
+
+Added to `RepQuestDTO`:
+
+| Field | Type | Notes |
+|---|---|---|
+| `walkthrough_video_url` | string \| null | Mux playback id (same convention as `video_url`). Null when the tenant didn't upload one. |
+
+You construct the streaming URL the same way you do for `video_url` — `https://stream.mux.com/{playbackId}.m3u8` for HLS, `https://stream.mux.com/{playbackId}/high.mp4` for MP4. The existing Mux player surface in the app already handles this shape.
+
+### 9.2 UX recommendation (non-binding)
+
+A small **Watch how** button on the `QuestDetailSheet` near the title — opens the existing Mux video player you use for shareable preview, plays inline or full-screen, dismisses back to the sheet. Hide the button entirely when `walkthrough_video_url === null`.
+
+Tone: this is the tenant being helpful, not a tutorial system. Keep the affordance light — secondary button or tertiary chip, not a hero block. Reps who already know how to post don't need to see it; reps who are confused will appreciate it.
+
+### 9.3 What you can build right now
+
+1. Decode `walkthrough_video_url` on `RepQuestDTO` (`String?`).
+2. Add the **Watch how** affordance to `QuestDetailSheet`, gated on the field being non-nil.
+3. Reuse your existing Mux player route — no new networking surface, no new endpoints.
+
+No backend wait. Backend ships the field as part of the quest editor redesign rollout (~1 week).
+
+---
+
+## 10 · Change policy
 
 Any change to this contract requires:
-1. A note in the Decision log of `LIBRARY-CAMPAIGNS-PLAN.md`.
+1. A note in the Decision log of `LIBRARY-CAMPAIGNS-PLAN.md` (pool-related changes) or `QUEST-EDITOR-REDESIGN.md` (other quest fields).
 2. A heads-up to the iOS team before the change lands.
 3. A bump of this doc's `Status:` line.
 

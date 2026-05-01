@@ -71,8 +71,9 @@ ALTER TABLE rep_quests
 **Acceptance:** migration applies cleanly via Supabase MCP `apply_migration`. `INSERT … (walkthrough_video_url) VALUES ('mux_playback_id')` succeeds. Existing rows get `NULL`.
 **Outcome (2026-05-01):** applied via Supabase MCP. Column verified `text NULL` with comment. File committed at `supabase/migrations/20260501_rep_quests_walkthrough_video_url.sql`.
 
-### 0.2 iOS contract bump ⬜
+### 0.2 iOS contract bump ✅
 **File:** `docs/ios-quest-pool-contract.md` — add a new "Walkthrough video" section. The field is independent of pool mode; it's just one more optional URL on every quest.
+**Outcome (2026-05-01):** doc bumped to v1.1. Section 9 added with field definition, suggested "Watch how" CTA on `QuestDetailSheet`, and note that the existing Mux player handles playback. DTO sample in Section 2.1 updated.
 **DTO addition** (on `RepQuestDTO`):
 ```jsonc
 {
@@ -327,6 +328,7 @@ Append entries as `YYYY-MM-DD — decision — rationale`.
 - *2026-05-01 — status dropdown deleted, replaced by Save (draft) + Publish (gated) — mirrors the event editor's gate. Fewer concepts to learn, readiness rules surface what's missing without the host having to know what "active" vs "paused" means until they actually need to pause one.*
 - *2026-05-01 — walkthrough video stored as Mux playback id (string), not a separate table — same shape as `video_url`, reuses the existing pipeline, no schema sprawl.*
 - *2026-05-01 — phone-frame preview is hand-composed, not a mounted iOS component — matches `BrandPreview` and the canvas editor's `CanvasPreview`. No analytics, no real Mux player mounting in admin (uses static thumbnail with play glyph).*
+- *2026-05-01 — `walkthrough_video_url` lives on `ios-quest-pool-contract.md` (not a new doc) — the field rides the same iOS surface (`QuestDetailSheet`) and adding a second contract doc for one optional field would split context. Renamed nothing; just added Section 9 + bumped to v1.1.*
 
 ---
 

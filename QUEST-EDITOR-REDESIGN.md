@@ -162,9 +162,10 @@ interface QuestChipProps {
 
 Each section is a small focused component. Build in priority order — top of the list ships first so the editor is usable end-to-end early.
 
-### 2.1 RewardSection ⬜
+### 2.1 RewardSection ✅
 **Goal:** XP + EP. Visible by default (not chipped) because every quest needs a reward. Compact two-input row.
 **Acceptance:** prefilled by quest type via `getPlatformXPConfig()`; tenant can override; saves correctly.
+**Outcome (2026-05-01):** RewardSection ships a two-input row (Zap + XP / Coins + EP); EP is labelled "optional" since most quests run XP-only. QuestEditor now fetches `/api/platform/xp-config` on open, caches in local state with `DEFAULT_PLATFORM_XP_CONFIG` fallback, and prefills `xp_reward` on kind pick via `questTypeFor()` + `platformConfig.xp_per_quest_type[questType]`. Sub-toggle prefill (story → feed → make-your-own) deferred to Phase 2.5 where the toggle lives. Saves wire in Phase 4.
 
 ### 2.2 CoverSection ⬜
 **Goal:** the in-app card hero. Reuses `<CoverImagePicker kind="quest_cover">`.

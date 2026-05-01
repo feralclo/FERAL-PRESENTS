@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Eye, X } from "lucide-react";
-import type { RepQuest } from "@/types/reps";
+import type { PlatformXPConfig, RepQuest } from "@/types/reps";
+import { DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
 import {
   EMPTY_QUEST_FORM_STATE,
+  questTypeFor,
   type QuestFormState,
 } from "./types";
 import { QuestTypeStep } from "./QuestTypeStep";
@@ -46,6 +48,28 @@ export function QuestEditor({
 
   const [state, setState] = useState<QuestFormState>(EMPTY_QUEST_FORM_STATE);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [platformConfig, setPlatformConfig] = useState<PlatformXPConfig>(
+    DEFAULT_PLATFORM_XP_CONFIG
+  );
+
+  // Fetch the platform XP config so reward inputs can prefill on the
+  // matching quest_type. Falls back to DEFAULT_PLATFORM_XP_CONFIG so
+  // the editor still works offline / on first paint.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch("/api/platform/xp-config")
+      .then((r) => r.json())
+      .then((json) => {
+        if (!cancelled && json?.data) setPlatformConfig(json.data);
+      })
+      .catch(() => {
+        // Default config is fine; editor stays usable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   // Close the mobile preview sheet whenever the kind picker is showing
   // — there's nothing to preview yet.
@@ -58,13 +82,21 @@ export function QuestEditor({
   const onChange = (patch: Partial<QuestFormState>) =>
     setState((s) => ({ ...s, ...patch }));
 
+  // Pick a kind, prefill XP from the platform default for the resulting
+  // quest_type. The host can override in the input. Mirrors the legacy
+  // editor's "type changed → reset XP" behaviour.
+  const onPickKind = (kind: NonNullable<QuestFormState["kind"]>) => {
+    const questType = questTypeFor(kind, EMPTY_QUEST_FORM_STATE.socialSubType);
+    const xp =
+      platformConfig.xp_per_quest_type[questType] ??
+      platformConfig.xp_per_quest_type.custom;
+    onChange({ kind, xp_reward: xp });
+  };
+
   if (!state.kind) {
     return (
       <div className="px-6 py-8">
-        <QuestTypeStep
-          onPick={(kind) => onChange({ kind })}
-          onClose={onClose}
-        />
+        <QuestTypeStep onPick={onPickKind} onClose={onClose} />
       </div>
     );
   }

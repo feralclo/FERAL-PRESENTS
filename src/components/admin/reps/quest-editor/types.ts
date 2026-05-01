@@ -185,3 +185,101 @@ export interface SectionProps {
   state: QuestFormState;
   onChange: (patch: Partial<QuestFormState>) => void;
 }
+
+/**
+ * Hydrate a `QuestFormState` from an existing `RepQuest` row — the
+ * inverse of `mapStateToPayload`. Used when opening the editor in
+ * edit mode so all chips populate with the row's current values.
+ */
+import type { RepQuest } from "@/types/reps";
+
+export function questToFormState(quest: RepQuest): QuestFormState {
+  const kind = questKindFor(quest.quest_type);
+  const subType = socialSubTypeFor(quest.quest_type);
+  const xp = quest.xp_reward ?? quest.points_reward ?? 0;
+  const ep = quest.ep_reward ?? quest.currency_reward ?? 0;
+  return {
+    title: quest.title ?? "",
+    kind,
+    socialSubType: subType,
+    xp_reward: xp,
+    ep_reward: ep,
+    cover_image_url: quest.cover_image_url ?? null,
+    asset_mode:
+      (quest.asset_mode as "single" | "pool" | null | undefined) ?? "single",
+    // `video_url` doubles as the single-asset shareable URL (image http URL
+    // or Mux playback id). The form's `asset_url` mirrors that — see the
+    // legacy editor's "iOS distinguishes by isMuxPlaybackId" comment.
+    asset_url: quest.video_url ?? null,
+    asset_campaign_tag: quest.asset_campaign_tag ?? null,
+    walkthrough_video_url: quest.walkthrough_video_url ?? null,
+    platform: quest.platform ?? "any",
+    reference_url: quest.reference_url ?? null,
+    uses_sound: quest.uses_sound ?? false,
+    event_id: quest.event_id ?? null,
+    proof_type: quest.proof_type ?? "screenshot",
+    max_completions: quest.max_completions ?? null,
+    expires_at: quest.expires_at ?? null,
+    auto_approve: quest.auto_approve ?? false,
+    sales_target: quest.sales_target ?? null,
+    subtitle: quest.subtitle ?? null,
+    description: quest.description ?? null,
+    status: quest.status ?? "draft",
+  };
+}
+
+/**
+ * Map the editor's `QuestFormState` to the API payload accepted by
+ * `POST /api/reps/quests` and `PUT /api/reps/quests/[id]`.
+ *
+ * Notes:
+ * - `quest_type` is derived from `kind` + `socialSubType` via `questTypeFor`.
+ * - `video_url` carries the single-asset shareable (image http URL or
+ *   Mux playback id) — same column the legacy editor wrote to.
+ * - `asset_campaign_tag` is only written in pool mode; cleared otherwise.
+ * - `sales_target` is only written for sales_target quests.
+ * - `points_reward` + `xp_reward` mirror; `currency_reward` + `ep_reward`
+ *   mirror — backend accepts either name pair, but old reads still
+ *   populate the legacy column.
+ * - `description` and `image_url` are intentionally null — both are
+ *   dead on iOS (description never rendered; image_url merged with
+ *   cover server-side). Banner is event-only and never written here.
+ */
+export function mapStateToPayload(
+  state: QuestFormState,
+  status: "draft" | "active"
+): Record<string, unknown> {
+  if (!state.kind) {
+    throw new Error("Cannot serialize a quest with no kind selected");
+  }
+  const questType = questTypeFor(state.kind, state.socialSubType);
+  return {
+    title: state.title.trim(),
+    subtitle: state.subtitle?.trim() || null,
+    description: null,
+    quest_type: questType,
+    platform: state.platform,
+    proof_type: state.proof_type,
+    image_url: null,
+    cover_image_url: state.cover_image_url ?? null,
+    banner_image_url: null,
+    video_url: state.asset_url ?? null,
+    walkthrough_video_url: state.walkthrough_video_url ?? null,
+    points_reward: state.xp_reward,
+    xp_reward: state.xp_reward,
+    currency_reward: state.ep_reward,
+    ep_reward: state.ep_reward,
+    auto_approve: state.auto_approve,
+    max_completions: state.max_completions,
+    expires_at: state.expires_at,
+    reference_url: state.reference_url,
+    uses_sound: state.uses_sound,
+    sales_target:
+      state.kind === "sales_target" ? state.sales_target : null,
+    event_id: state.event_id,
+    asset_mode: state.asset_mode,
+    asset_campaign_tag:
+      state.asset_mode === "pool" ? state.asset_campaign_tag : null,
+    status,
+  };
+}

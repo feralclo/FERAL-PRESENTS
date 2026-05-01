@@ -62,6 +62,14 @@ export interface QuestFormProps {
   events: EventOption[];
   /** Readiness report — gates the Publish button + drives the blocker tooltip. */
   readiness: QuestReadinessReport;
+  /** Whether a save is in flight. Disables both action buttons. */
+  saving: boolean;
+  /** Last save error, surfaced under the action row. Empty when none. */
+  saveError: string;
+  /** Save as draft. Closes the editor on success. */
+  onSave: () => void;
+  /** Publish (active). Shows the "You're live" sheet on success. */
+  onPublish: () => void;
 }
 
 interface ChipsOpenState {
@@ -90,6 +98,10 @@ export function QuestForm({
   onClose,
   events,
   readiness,
+  saving,
+  saveError,
+  onSave,
+  onPublish,
 }: QuestFormProps) {
   const [chipsOpen, setChipsOpen] = useState<ChipsOpenState>(INITIAL_CHIPS_OPEN);
 
@@ -274,29 +286,39 @@ export function QuestForm({
         </div>
       </div>
 
-      <footer className="mt-auto flex items-center justify-between gap-3 pt-8">
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          Cancel
-        </button>
-        <div className="flex items-center gap-2">
+      <footer className="mt-auto space-y-2 pt-8">
+        <div className="flex items-center justify-between gap-3">
           <button
             type="button"
-            disabled
-            className="
-              rounded-md border border-border/60 px-4 py-2 text-sm font-medium
-              text-muted-foreground
-              disabled:cursor-not-allowed disabled:opacity-50
-            "
-            title="Save as draft — POST wiring lands in Phase 4"
+            onClick={onClose}
+            className="text-sm text-muted-foreground hover:text-foreground"
+            disabled={saving}
           >
-            Save
+            Cancel
           </button>
-          <PublishButton readiness={readiness} />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className="
+                rounded-md border border-border/60 px-4 py-2 text-sm font-medium
+                shadow-sm transition-colors hover:border-border
+                disabled:cursor-not-allowed disabled:opacity-50
+              "
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <PublishButton
+              readiness={readiness}
+              saving={saving}
+              onPublish={onPublish}
+            />
+          </div>
         </div>
+        {saveError ? (
+          <p className="text-right text-xs text-destructive">{saveError}</p>
+        ) : null}
       </footer>
     </form>
   );
@@ -305,26 +327,36 @@ export function QuestForm({
 /**
  * Publish button gated by the readiness report. When blocked, the
  * tooltip on hover lists the failing rules as a numbered checklist
- * so the host knows exactly what to fix. Click handler is a no-op
- * for now — Phase 4 attaches the API call.
+ * so the host knows exactly what to fix.
  */
-function PublishButton({ readiness }: { readiness: QuestReadinessReport }) {
-  const blocked = !readiness.canPublish;
+function PublishButton({
+  readiness,
+  saving,
+  onPublish,
+}: {
+  readiness: QuestReadinessReport;
+  saving: boolean;
+  onPublish: () => void;
+}) {
+  const blocked = !readiness.canPublish || saving;
   const button = (
     <button
       type="button"
       disabled={blocked}
+      onClick={onPublish}
       className="
         rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground
         shadow-sm transition-colors hover:bg-primary/90
         disabled:cursor-not-allowed disabled:opacity-50
       "
     >
-      Publish
+      {saving ? "Publishing…" : "Publish"}
     </button>
   );
 
-  if (!blocked) {
+  // No tooltip when readiness passes — only blocked-by-readiness needs
+  // the explainer. Saving disables the button without an explanation.
+  if (readiness.canPublish) {
     return button;
   }
 

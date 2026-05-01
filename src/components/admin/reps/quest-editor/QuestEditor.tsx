@@ -4,9 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Eye, X } from "lucide-react";
 import type { PlatformXPConfig, RepQuest } from "@/types/reps";
 import { DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { assessQuest } from "@/lib/quest-readiness";
 import {
   EMPTY_QUEST_FORM_STATE,
+  mapStateToPayload,
+  questToFormState,
   questTypeFor,
   type QuestFormState,
 } from "./types";
@@ -22,17 +29,23 @@ import type { EventOption } from "./sections/EventSection";
  * - Picker step (`QuestTypeStep`) when no kind is set
  * - Two-column shell (form left, sticky phone-frame preview right) on
  *   md+ breakpoints
- * - Single-column with a floating "Preview" pill on mobile — tapping
- *   the pill opens a full-screen sheet showing the live phone-frame
+ * - Single-column with a floating "Preview" pill on mobile
+ * - "You're live" success sheet when a quest publishes
  *
- * Phase 1.3 ships the layout. Save / publish wiring lands in Phase 3
- * (readiness gate) + Phase 4 (cutover when QuestsTab.tsx mounts this).
+ * Wraps itself in a Dialog so callers (e.g. `QuestsTab.tsx`) just
+ * mount it with `open` / `onClose` — no Dialog wiring required.
+ *
+ * Save semantics: Save = `status: "draft"`, Publish = `status: "active"`.
+ * The publish path additionally surfaces the QuestLiveSheet on success.
  */
 export interface QuestEditorProps {
   open: boolean;
+  /** Quest id when editing; null when creating. */
   editId: string | null;
+  /** Pre-loaded quest row when editing — hydrates the form state. */
   initialQuest?: RepQuest | null;
   onClose: () => void;
+  /** Fired after every successful save so the parent list refreshes. */
   onSaved: (quest: RepQuest) => void;
 }
 
@@ -43,25 +56,34 @@ export function QuestEditor({
   onClose,
   onSaved,
 }: QuestEditorProps) {
-  // Suppress unused-prop warnings until later phases wire them. The
-  // contract is locked so QuestsTab.tsx (Phase 4) can mount this safely.
-  void editId;
-  void initialQuest;
-  void onSaved;
-
   const [state, setState] = useState<QuestFormState>(EMPTY_QUEST_FORM_STATE);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [platformConfig, setPlatformConfig] = useState<PlatformXPConfig>(
     DEFAULT_PLATFORM_XP_CONFIG
   );
   const [events, setEvents] = useState<EventOption[]>([]);
-  // Set by Phase 4's publish handler when an active quest comes back from
-  // the API; renders the success sheet in place of the form until dismissed.
   const [publishedQuest, setPublishedQuest] = useState<RepQuest | null>(null);
-  void setPublishedQuest;
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
-  // Fetch the platform XP config so reward inputs can prefill on the
-  // matching quest_type. Falls back to DEFAULT_PLATFORM_XP_CONFIG so
+  // Hydrate form state from initialQuest when editing; reset to empty
+  // when the dialog closes so the next "+ New quest" starts fresh.
+  useEffect(() => {
+    if (!open) {
+      setState(EMPTY_QUEST_FORM_STATE);
+      setPublishedQuest(null);
+      setSaveError("");
+      setMobilePreviewOpen(false);
+      return;
+    }
+    if (initialQuest) {
+      setState(questToFormState(initialQuest));
+    } else {
+      setState(EMPTY_QUEST_FORM_STATE);
+    }
+  }, [open, initialQuest]);
+
+  // Fetch the platform XP config + events. Falls back to the defaults so
   // the editor still works offline / on first paint.
   useEffect(() => {
     if (!open) return;
@@ -71,9 +93,7 @@ export function QuestEditor({
       .then((json) => {
         if (!cancelled && json?.data) setPlatformConfig(json.data);
       })
-      .catch(() => {
-        // Default config is fine; editor stays usable.
-      });
+      .catch(() => {});
     fetch("/api/events")
       .then((r) => r.json())
       .then((json) => {
@@ -87,25 +107,17 @@ export function QuestEditor({
         );
         setEvents(mapped);
       })
-      .catch(() => {
-        // Empty list is fine; the section renders the search-only state.
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [open]);
 
-  // Close the mobile preview sheet whenever the kind picker is showing
-  // — there's nothing to preview yet.
+  // Close the mobile preview sheet when the picker is showing.
   useEffect(() => {
     if (!state.kind && mobilePreviewOpen) setMobilePreviewOpen(false);
   }, [state.kind, mobilePreviewOpen]);
 
-  // Pool asset count check is deferred until the orchestrator wires it
-  // (Phase 4 cutover). Until then `assessQuest` skips the pool_assets
-  // rule so existing pool quests aren't gated on a fetch we haven't
-  // wired. Other rules (title, kind, sales target, campaign tag) run
-  // against the in-memory form state every render.
   const readiness = useMemo(
     () =>
       assessQuest({
@@ -124,12 +136,9 @@ export function QuestEditor({
     ]
   );
 
-  if (!open) return null;
-
   // Intercept socialSubType changes so the XP reward re-prefills to the
-  // platform default for the new resulting quest_type. Mirrors the legacy
-  // editor's "type changed → reset XP" behaviour. The host can still
-  // override in the reward input afterwards.
+  // platform default for the new resulting quest_type. Mirrors the
+  // legacy editor's "type changed → reset XP" behaviour.
   const onChange = (patch: Partial<QuestFormState>) => {
     setState((s) => {
       let nextPatch = patch;
@@ -148,8 +157,6 @@ export function QuestEditor({
     });
   };
 
-  // Pick a kind, prefill XP from the platform default for the resulting
-  // quest_type. The host can override in the input.
   const onPickKind = (kind: NonNullable<QuestFormState["kind"]>) => {
     const questType = questTypeFor(kind, EMPTY_QUEST_FORM_STATE.socialSubType);
     const xp =
@@ -158,80 +165,132 @@ export function QuestEditor({
     onChange({ kind, xp_reward: xp });
   };
 
-  if (publishedQuest) {
-    return (
-      <QuestLiveSheet
-        quest={publishedQuest}
-        onDismiss={() => {
-          setPublishedQuest(null);
-          onClose();
-        }}
-      />
-    );
-  }
+  // Save (status="draft") closes the dialog. Publish (status="active")
+  // shows the QuestLiveSheet first; the host dismisses to close.
+  const submit = async (status: "draft" | "active") => {
+    if (saving) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      const payload = mapStateToPayload(state, status);
+      const url = editId
+        ? `/api/reps/quests/${editId}`
+        : "/api/reps/quests";
+      const method = editId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.error ?? "Save failed");
+      }
+      const quest = json.data as RepQuest;
+      onSaved(quest);
+      if (status === "active") {
+        setPublishedQuest(quest);
+      } else {
+        onClose();
+      }
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  if (!state.kind) {
-    return (
-      <div className="px-6 py-8">
-        <QuestTypeStep onPick={onPickKind} onClose={onClose} />
-      </div>
-    );
-  }
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
+      <DialogContent className="max-h-[92vh] max-w-5xl overflow-hidden p-0">
+        {/* DialogTitle satisfies Radix's accessibility requirement. We
+            visually hide it because the form / picker / sheet each show
+            their own headline. */}
+        <DialogTitle className="sr-only">Quest editor</DialogTitle>
+        <div className="max-h-[92vh] overflow-y-auto">
+          {publishedQuest ? (
+            <QuestLiveSheet
+              quest={publishedQuest}
+              onDismiss={() => {
+                setPublishedQuest(null);
+                onClose();
+              }}
+            />
+          ) : !state.kind ? (
+            <div className="px-6 py-8">
+              <QuestTypeStep onPick={onPickKind} onClose={onClose} />
+            </div>
+          ) : (
+            <div className="grid gap-8 px-6 py-8 md:grid-cols-[minmax(0,1fr)_320px]">
+              <QuestForm
+                state={state}
+                onChange={onChange}
+                onClose={onClose}
+                events={events}
+                readiness={readiness}
+                saving={saving}
+                saveError={saveError}
+                onSave={() => submit("draft")}
+                onPublish={() => submit("active")}
+              />
+              <QuestPreview state={state} />
 
-    return (
-    <div className="grid gap-8 px-6 py-8 md:grid-cols-[minmax(0,1fr)_320px]">
-      <QuestForm
-        state={state}
-        onChange={onChange}
-        onClose={onClose}
-        events={events}
-        readiness={readiness}
-      />
-      <QuestPreview state={state} />
-
-      {/* Mobile: floating "Preview" pill */}
-      <button
-        type="button"
-        onClick={() => setMobilePreviewOpen(true)}
-        className="
-          fixed bottom-6 right-6 z-40 inline-flex items-center gap-2
-          rounded-full bg-primary px-4 py-2.5 text-sm font-semibold
-          text-primary-foreground shadow-lg
-          md:hidden
-        "
-        aria-label="Open preview"
-      >
-        <Eye size={14} strokeWidth={2} />
-        Preview
-      </button>
-
-      {/* Mobile: preview sheet */}
-      {mobilePreviewOpen ? (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
-          <button
-            type="button"
-            aria-label="Close preview"
-            onClick={() => setMobilePreviewOpen(false)}
-            className="absolute inset-0 bg-black/60"
-          />
-          <div className="absolute inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-3xl border-t border-border bg-card p-4 pb-8 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Preview
-              </p>
+              {/* Mobile: floating "Preview" pill */}
               <button
                 type="button"
-                onClick={() => setMobilePreviewOpen(false)}
-                className="text-muted-foreground hover:text-foreground"
-                aria-label="Close preview"
+                onClick={() => setMobilePreviewOpen(true)}
+                className="
+                  fixed bottom-6 right-6 z-40 inline-flex items-center gap-2
+                  rounded-full bg-primary px-4 py-2.5 text-sm font-semibold
+                  text-primary-foreground shadow-lg
+                  md:hidden
+                "
+                aria-label="Open preview"
               >
-                <X size={16} />
+                <Eye size={14} strokeWidth={2} />
+                Preview
               </button>
+
+              {/* Mobile: preview sheet */}
+              {mobilePreviewOpen ? (
+                <div
+                  className="fixed inset-0 z-50 md:hidden"
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  <button
+                    type="button"
+                    aria-label="Close preview"
+                    onClick={() => setMobilePreviewOpen(false)}
+                    className="absolute inset-0 bg-black/60"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-3xl border-t border-border bg-card p-4 pb-8 shadow-xl">
+                    <div className="mb-4 flex items-center justify-between">
+                      <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Preview
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setMobilePreviewOpen(false)}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label="Close preview"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <QuestPreviewSurface state={state} />
+                  </div>
+                </div>
+              ) : null}
             </div>
-            <QuestPreviewSurface state={state} />
-          </div>
+          )}
         </div>
-      ) : null}
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

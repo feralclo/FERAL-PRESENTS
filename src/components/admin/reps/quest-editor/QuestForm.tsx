@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageLucide, Share2 } from "lucide-react";
+import { Image as ImageLucide, Share2, Video } from "lucide-react";
 import type { QuestFormState } from "./types";
 import { QuestChip } from "./QuestChip";
 import { RewardSection } from "./sections/RewardSection";
@@ -11,6 +11,7 @@ import {
   shareableChipSummary,
   isShareableFilled,
 } from "./sections/ShareableSection";
+import { WalkthroughSection } from "./sections/WalkthroughSection";
 
 /**
  * Single-screen form body. The plan's "one calm vertical surface" —
@@ -133,8 +134,20 @@ export function QuestForm({ state, onChange, onClose }: QuestFormProps) {
             <ShareableSection state={state} onChange={onChange} />
           </QuestChip>
 
-          {/* Additional chips land in Phase 2.4+: Walkthrough,
-              Platform (post_on_social only), Event, Proof, Rules. */}
+          <QuestChip
+            label="Walkthrough"
+            icon={<Video size={14} strokeWidth={1.75} />}
+            filled={!!state.walkthrough_video_url}
+            summary={state.walkthrough_video_url ? "video set" : undefined}
+            open={chipsOpen.walkthrough}
+            onToggle={() => toggleChip("walkthrough")}
+            onClear={() => onChange({ walkthrough_video_url: null })}
+          >
+            <WalkthroughSection state={state} onChange={onChange} />
+          </QuestChip>
+
+          {/* Additional chips land in Phase 2.5+: Platform
+              (post_on_social only), Event, Proof, Rules. */}
         </div>
       </div>
 

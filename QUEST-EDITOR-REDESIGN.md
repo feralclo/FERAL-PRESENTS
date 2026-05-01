@@ -177,12 +177,13 @@ Each section is a small focused component. Build in priority order — top of th
 **Acceptance:** segmented "Single asset / From a campaign" toggle inside the section. Single asset path uses the existing inline upload zone with the polished primary-tinted recipe. Pool path uses `QuestPoolPicker`.
 **Outcome (2026-05-01):** ShareableSection mounts `QuestPoolPicker` (which owns the segmented toggle, drop-zone, and rich preview card) and threads `state.asset_mode` / `state.asset_campaign_tag`. Single-asset path uses `<CoverImagePicker kind="quest_content" previewAspect="9/16">` (library + upload, image-focused) so most quests ship without leaving the editor. Mux video upload deferred — most shareables are static images, and the Mux flow can land as a Phase 5 polish without changing the section's contract. Switch to mirror the cover image as the shareable when both are set in single mode (saves uploading twice). Mode-change resets the inactive-mode field so stale state never leaks. Helpers `shareableChipSummary()` and `isShareableFilled()` keep the chip header honest. Wired into QuestForm with a Share2 icon. **2.9 ships for free** — QuestPoolPicker is mounted directly; the PoolSection.tsx stub stays in the directory map but isn't mounted.
 
-### 2.4 WalkthroughSection (new field) ⬜
+### 2.4 WalkthroughSection (new field) ✅
 **Goal:** optional screen recording showing reps how to do the quest.
 **Files:** new section component; reuses the existing Mux upload pipeline (`/api/upload-video` + `/api/mux/upload` + `/api/mux/status`).
 **UX:** drop-zone styled the same as the shareable upload (canonical recipe); tile preview when filled with a small play glyph; X clears.
 **Server contract:** writes `walkthrough_video_url` as a Mux playback id when ready.
 **Acceptance:** drop a 30-second screen recording → progresses through preparing/uploading/processing-video → lands as a playback id on the row. Filled state shows a 16:9 thumbnail with a play glyph. iOS team can fetch and play it once Phase 0.3 is in.
+**Outcome (2026-05-01):** WalkthroughSection ships the full Mux pipeline — `/api/upload-video` (signed PUT URL) → XHR PUT with progress → `/api/mux/upload` (Mux ingestion) → poll `/api/mux/status` until `ready` → playback id lands on `walkthrough_video_url`. 50MB cap, 3-minute processing budget. Empty: dashed drop-zone + "Choose file" button + size/format hint. Active: progress bar (uploading) or animated spinner ("Preparing…" / "Processing video…"). Filled: 16:9 thumbnail (Mux `image.mux.com/.../thumbnail.jpg`) with a circular play glyph + Replace / Remove buttons. Failure path surfaces a friendly error string. Wired into QuestForm via the canonical QuestChip with a Video icon.
 
 ### 2.5 PlatformSection ⬜
 **Goal:** combines the existing Platform tab fields. Renders only when quest_type is post-on-social variant.

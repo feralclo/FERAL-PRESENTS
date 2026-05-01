@@ -244,15 +244,17 @@ Each section is a small focused component. Build in priority order — top of th
 
 ## Phase 4 — Cutover (target: 0.5 day)
 
-### 4.1 Replace the editor in QuestsTab.tsx ⬜
+### 4.1 Replace the editor in QuestsTab.tsx ✅
 **Goal:** swap the existing 1,200-line inline editor for a single `<QuestEditor />` mount. Delete the old code.
 **Files modified:**
 - `src/components/admin/reps/QuestsTab.tsx` — delete the form (lines ~1270–2100), replace with `<QuestEditor open={...} editId={...} onClose={...} onSaved={...} />`.
 - Keep the list-view code untouched — that's not in this rebuild.
 **Acceptance:** existing list, filters, table behaviour unchanged. Click + New quest or row-edit → new editor opens. Old editor code is deleted, not commented out.
+**Outcome (2026-05-01):** QuestsTab shrunk **2,044 → 877 lines** (-57%). Removed: ~30 form-state hooks, the dialog form (lines 1267–2026), `handleSave`, the `handleMediaUpload` Mux/Sharp upload, `deriveProofType` / `handleQuestTypeChange` / `handlePlatformChange`, the platformConfig + promoter-accent fetches, ~25 unused imports, and the dead `QUEST_AUTO_INSTRUCTIONS` / `QUEST_FORM_TABS` / `PROOF_TYPE_OPTIONS` constants. New: `<QuestEditor open editId initialQuest onClose onSaved>` mount + simplified `openCreate` / `openEdit` / `openClone` (the clone path passes a hand-built `RepQuest` as `initialQuest` with `editId=null`, plus event_id/max_completions/expires_at reset). The QuestEditor self-fetches xp config + events. List view, filters, submissions tab, image lightbox, handleReview, handleDelete all untouched.
 
-### 4.2 Migration tracker entry ⬜
+### 4.2 Migration tracker entry ✅
 **File:** `docs/admin-ux-design.md` — add `src/components/admin/reps/QuestsTab.tsx` to the wrapper-migration tracker as ✅ with a one-line outcome note.
+**Outcome (2026-05-01):** added under the Wrapper-component-vs-shadcn migration tracker, dated 2026-05-01, calling out the 2,044 → 877-line shrink and the 5-tab inline form → single `<QuestEditor>` mount.
 
 ---
 

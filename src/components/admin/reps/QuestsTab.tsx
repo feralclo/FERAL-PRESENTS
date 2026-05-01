@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableHeader,
@@ -16,14 +12,6 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import {
   Plus,
   Loader2,
@@ -39,10 +27,7 @@ import {
   Camera,
   Link as LinkIcon,
   Image as ImageLucide,
-  Upload,
-  Video,
   AlertCircle,
-  ArrowLeft,
   Sparkles,
   Target,
   ZoomIn,
@@ -54,30 +39,17 @@ import {
   ChevronRight,
   Archive,
 } from "lucide-react";
-import dynamic from "next/dynamic";
-import * as tus from "tus-js-client";
-import { ImageUpload } from "@/components/admin/ImageUpload";
-import { CoverImagePicker } from "@/components/admin/CoverImagePicker";
-import { QuestPoolPicker } from "@/components/admin/reps/QuestPoolPicker";
-import { isMuxPlaybackId } from "@/lib/mux";
-import { prepareUploadFile } from "@/lib/uploads/prepare-upload";
-import { getSupabaseClient } from "@/lib/supabase/client";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { Textarea } from "@/components/ui/textarea";
 import { useOrgId } from "@/components/OrgProvider";
-
-const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), { ssr: false });
 
 import type {
   RepQuest,
   QuestType,
   QuestStatus,
-  QuestProofType,
   RepQuestSubmission,
-  PlatformXPConfig,
 } from "@/types/reps";
-import { DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
 import { partitionQuestsByEventDate } from "@/lib/rep-quest-grouping";
-import { QuestCardPreview } from "./QuestCardPreview";
+import { QuestEditor } from "./quest-editor/QuestEditor";
 
 const QUEST_TYPE_LABELS: Record<QuestType, string> = {
   social_post: "Social Post",
@@ -87,39 +59,12 @@ const QUEST_TYPE_LABELS: Record<QuestType, string> = {
   sales_milestone: "Sales Challenge",
 };
 
-const QUEST_AUTO_INSTRUCTIONS: Record<QuestType, string> = {
-  social_post: "1. Watch the reference post\n2. Create your own version\n3. Post it and submit the link as proof",
-  story_share: "1. Download the image or video below\n2. Share it to your Instagram/TikTok story\n3. Add your personal discount code & link to the story",
-  content_creation: "1. Create original content about the event\n2. Post it on TikTok or Instagram\n3. Submit the link as proof",
-  custom: "",
-  sales_milestone: "",
-};
-
-const QUEST_FORM_TABS: Record<QuestType, string[]> = {
-  social_post: ["Details", "Platform", "Content", "Publish"],
-  story_share: ["Details", "Content", "Publish"],
-  content_creation: ["Details", "Platform", "Content", "Publish"],
-  custom: ["Details", "Setup", "Publish"],
-  sales_milestone: ["Details", "Target", "Publish"],
-};
-
 const QUEST_STATUS_VARIANT: Record<QuestStatus, "success" | "warning" | "secondary" | "outline"> = {
   active: "success",
   paused: "warning",
   archived: "secondary",
   draft: "outline",
 };
-
-// proof_type="none" is intentionally absent — iOS currently has no CTA for
-// no-proof quests (the submission UI is EmptyView + canSubmit=false), so
-// letting tenants pick it would create quests reps can't complete.
-const PROOF_TYPE_OPTIONS: ReadonlyArray<{ value: QuestProofType; label: string; hint: string }> = [
-  { value: "screenshot", label: "Screenshot", hint: "Rep uploads an image as proof" },
-  { value: "url", label: "URL / link", hint: "Rep pastes a link to their post" },
-  { value: "instagram_link", label: "Instagram link", hint: "Rep pastes their Instagram post link" },
-  { value: "tiktok_link", label: "TikTok link", hint: "Rep pastes their TikTok post link" },
-  { value: "text", label: "Text note", hint: "Rep writes a short free-text submission" },
-];
 
 export function QuestsTab() {
   const orgId = useOrgId();
@@ -129,42 +74,20 @@ export function QuestsTab() {
   const [eventFilter, setEventFilter] = useState<"all" | "global" | string>("all");
 
   // Create/Edit
-  const [showDialog, setShowDialog] = useState(false);
-  const [dialogStep, setDialogStep] = useState<"type" | "form">("type");
-  const [formTab, setFormTab] = useState(0);
+  // Editor mount state — the Phase-4 redesign self-contains its dialog,
+  // form, and save/publish flow. This tab only opens it (with optional
+  // editing/cloning context) and refreshes the list on save.
+  const [editorOpen, setEditorOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [title, setTitle] = useState("");
-  const [questType, setQuestType] = useState<QuestType>("social_post");
-  const [platform, setPlatform] = useState<"tiktok" | "instagram" | "any">("any");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [pointsReward, setPointsReward] = useState("");
-  const [maxCompletions, setMaxCompletions] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
-  const [instructions, setInstructions] = useState("");
-  const [instructionsAutoGenerated, setInstructionsAutoGenerated] = useState(false);
-  const [notifyReps, setNotifyReps] = useState(true);
-  const [referenceUrl, setReferenceUrl] = useState("");
-  const [usesSound, setUsesSound] = useState(false);
-  const [currencyReward, setCurrencyReward] = useState("");
-  const [salesTarget, setSalesTarget] = useState("");
-  const [eventId, setEventId] = useState("");
+  const [editingQuest, setEditingQuest] = useState<RepQuest | null>(null);
   // v2 fields that iOS actively renders.
   // Cut per iOS-session review: description (never rendered), image_url (merged
   // with cover_image_url server-side), banner_image_url (events-only, dead on
   // quests), accent_hex + accent_hex_secondary (iOS now derives gradient stops
   // from the promoter's accent — one brand colour cascades everywhere).
-  const [subtitle, setSubtitle] = useState("");
-  const [proofType, setProofType] = useState<QuestProofType>("screenshot");
-  const [coverImageUrl, setCoverImageUrl] = useState("");
-  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
-  const [contentPickerOpen, setContentPickerOpen] = useState(false);
-  const [autoApprove, setAutoApprove] = useState(false);
   // Pool-quest mode: when 'pool', the quest pulls shareables from a
   // campaign instead of using a single uploaded shareable. Reps see a
   // rotating slice (see LIBRARY-CAMPAIGNS-PLAN.md).
-  const [assetMode, setAssetMode] = useState<"single" | "pool">("single");
-  const [assetCampaignTag, setAssetCampaignTag] = useState<string>("");
 
   // Events list for event picker + date awareness + cover cascade.
   // v2 has three image slots per event — we ONLY want cover_image_url here
@@ -184,22 +107,6 @@ export function QuestsTab() {
 
   // Past-events section is collapsed by default (the whole point of this view)
   const [showPast, setShowPast] = useState(false);
-
-  // Shareable media upload state (image OR video — see handleMediaUpload).
-  // Names kept on `video*` for diff readability; both pipelines feed it.
-  const [videoUploading, setVideoUploading] = useState(false);
-  const [videoProgress, setVideoProgress] = useState(0);
-  const [videoStatus, setVideoStatus] = useState("");
-  const [videoError, setVideoError] = useState("");
-  const [dragActive, setDragActive] = useState(false);
-  const videoInputRef = useRef<HTMLInputElement>(null);
-
-  // Platform XP config
-  const [platformConfig, setPlatformConfig] = useState<PlatformXPConfig>(DEFAULT_PLATFORM_XP_CONFIG);
-
-  // Promoter accent — feeds the live iOS quest-card preview. Null until loaded;
-  // preview falls through to the iOS platform-default violet in that case.
-  const [promoterAccentHex, setPromoterAccentHex] = useState<number | null>(null);
 
   // Submissions review — global view
   const [view, setView] = useState<"quests" | "submissions">("quests");
@@ -226,12 +133,9 @@ export function QuestsTab() {
 
   useEffect(() => { loadQuests(); }, [loadQuests]);
 
-  // Fetch platform XP config + events + promoter on mount
+  // Events list — drives the filter pills and event-grouping on the quest
+  // list. The editor fetches its own copy when it opens.
   useEffect(() => {
-    fetch("/api/platform/xp-config")
-      .then((r) => r.json())
-      .then((json) => { if (json.data) setPlatformConfig(json.data); })
-      .catch(() => {});
     fetch("/api/events")
       .then((r) => r.json())
       .then((json) => {
@@ -255,16 +159,6 @@ export function QuestsTab() {
           );
       })
       .catch(() => {});
-    // Promoter accent for the live preview — iOS cascades gradient stops off
-    // this one value. Soft fail: preview falls back to platform violet.
-    fetch("/api/admin/promoter")
-      .then((r) => r.json())
-      .then((json) => {
-        if (typeof json.data?.accent_hex === "number") {
-          setPromoterAccentHex(json.data.accent_hex);
-        }
-      })
-      .catch(() => {});
   }, []);
 
   const loadAllSubmissions = useCallback(async () => {
@@ -283,127 +177,41 @@ export function QuestsTab() {
   }, [view, loadAllSubmissions]);
 
   const openCreate = () => {
-    setEditId(null); setTitle(""); setInstructions("");
-    setInstructionsAutoGenerated(false);
-    setQuestType("social_post"); setPlatform("any"); setVideoUrl("");
-    setPointsReward(String(platformConfig.xp_per_quest_type.social_post));
-    setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
-    setReferenceUrl(""); setUsesSound(false); setCurrencyReward("0");
-    setSalesTarget("");
-    // Pre-select event when filtered to a specific event
-    setEventId(eventFilter !== "all" && eventFilter !== "global" ? eventFilter : "");
-    // v2 defaults. proof_type="screenshot" matches iOS default for social/story
-    // quests; cover_image_url blank → iOS shows the promoter-accent gradient.
-    setSubtitle("");
-    setProofType("screenshot");
-    setCoverImageUrl("");
-    setAutoApprove(false);
-    setAssetMode("single");
-    setAssetCampaignTag("");
-    setVideoError("");
-    setDialogStep("type");
-    setFormTab(0);
-    setShowDialog(true);
+    setEditId(null);
+    // Pre-anchor the new quest to the currently filtered event so the
+    // "first quest for this event" path lands without a manual pick.
+    const anchor =
+      eventFilter !== "all" && eventFilter !== "global"
+        ? events.find((e) => e.id === eventFilter)
+        : null;
+    setEditingQuest(
+      anchor
+        ? ({
+            id: "",
+            org_id: orgId ?? "",
+            title: "",
+            quest_type: "story_share",
+            platform: "any",
+            points_reward: 0,
+            currency_reward: 0,
+            total_completed: 0,
+            status: "draft",
+            notify_reps: true,
+            uses_sound: false,
+            event_id: anchor.id,
+            asset_mode: "single",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          } as unknown as RepQuest)
+        : null
+    );
+    setEditorOpen(true);
   };
 
   const openEdit = (q: RepQuest) => {
-    setEditId(q.id); setTitle(q.title);
-    setInstructions(q.instructions || ""); setInstructionsAutoGenerated(false);
-    setQuestType(q.quest_type);
-    setPlatform(q.platform || "any");
-    setVideoUrl(q.video_url || "");
-    setPointsReward(String(q.xp_reward ?? q.points_reward));
-    setMaxCompletions(q.max_completions != null ? String(q.max_completions) : "");
-    setExpiresAt(q.expires_at ? q.expires_at.slice(0, 16) : ""); setNotifyReps(q.notify_reps);
-    setReferenceUrl(q.reference_url || ""); setUsesSound(q.uses_sound ?? false);
-    setCurrencyReward(String(q.ep_reward ?? q.currency_reward ?? 0));
-    setSalesTarget(q.sales_target != null ? String(q.sales_target) : "");
-    setEventId(q.event_id || "");
-    setSubtitle(q.subtitle || "");
-    // Existing "none" proof_type is a dead-end on iOS — coerce to screenshot on edit
-    // so resave with the new form doesn't re-lock the quest in the broken state.
-    setProofType(
-      q.proof_type === "none" || !q.proof_type
-        ? "screenshot"
-        : (q.proof_type as QuestProofType)
-    );
-    // v2 cascade: cover_image_url is the only quest image iOS reads; image_url
-    // lingers only on legacy rows. Populate from whichever the row has.
-    setCoverImageUrl(q.cover_image_url || q.image_url || "");
-    setAutoApprove(q.auto_approve ?? false);
-    setAssetMode(q.asset_mode === "pool" ? "pool" : "single");
-    setAssetCampaignTag(q.asset_campaign_tag ?? "");
-    setVideoError("");
-    setDialogStep("form");
-    setFormTab(0);
-    setShowDialog(true);
-  };
-
-  const handleSave = async () => {
-    if (!title.trim()) return;
-    setSaving(true);
-    const xp = (platformConfig.xp_per_quest_type as Record<string, number>)[questType] ?? (Number(pointsReward) || 0);
-    const ep = Number(currencyReward) || 0;
-    const body = {
-      title: title.trim(),
-      subtitle: subtitle.trim() || null,
-      // `description` column is dead on iOS — don't write to it from new rows.
-      description: null,
-      instructions: instructions.trim() || null,
-      quest_type: questType,
-      platform,
-      // v2: proof_type drives the rep submission UI on iOS
-      proof_type: proofType,
-      // Dead on iOS: image_url (merged with cover server-side) + banner_image_url
-      // (events-only). Write null so legacy rows get cleared.
-      image_url: null,
-      // Cover cascade: quest upload → event.cover_image_url (v2 clean-in-app
-       // slot) → event.cover_image (legacy, pre-v2 events) → null (iOS falls
-       // through to the promoter-accent gradient). We deliberately do NOT pull
-       // event.banner_image_url (16:9, wrong aspect) or event.poster_image_url
-       // (text baked in, would collide with the iOS title overlay).
-      cover_image_url:
-        coverImageUrl.trim() ||
-        (eventId
-          ? (() => {
-              const ev = events.find((e) => e.id === eventId);
-              return ev?.cover_image_url ?? ev?.cover_image ?? null;
-            })()
-          : null),
-      banner_image_url: null,
-      video_url: videoUrl.trim() || null,
-      // Write both v1 (points/currency) and v2 (xp/ep) names — backend
-      // accepts either but old reads still populate the legacy columns.
-      points_reward: xp,
-      xp_reward: xp,
-      currency_reward: ep,
-      ep_reward: ep,
-      // Cut per iOS-session review: quest-level accents no longer configurable.
-      // iOS derives the gradient stops from promoter.accent_hex.
-      accent_hex: null,
-      accent_hex_secondary: null,
-      // v2: skip manual review on submission
-      auto_approve: autoApprove,
-      max_completions: maxCompletions ? Number(maxCompletions) : null,
-      expires_at: expiresAt || null,
-      notify_reps: notifyReps,
-      reference_url: referenceUrl.trim() || null,
-      uses_sound: usesSound,
-      sales_target: questType === "sales_milestone" && salesTarget ? Number(salesTarget) : null,
-      event_id: eventId || null,
-      // Pool-quest mode: shareables come from a campaign instead of one
-      // uploaded asset (LIBRARY-CAMPAIGNS-PLAN.md).
-      asset_mode: assetMode,
-      asset_campaign_tag:
-        assetMode === "pool" && assetCampaignTag ? assetCampaignTag : null,
-    };
-    try {
-      const url = editId ? `/api/reps/quests/${editId}` : "/api/reps/quests";
-      const method = editId ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (res.ok) { setShowDialog(false); loadQuests(); }
-    } catch { /* network */ }
-    setSaving(false);
+    setEditId(q.id);
+    setEditingQuest(q);
+    setEditorOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -414,37 +222,19 @@ export function QuestsTab() {
   // Clears event_id (user picks a new event) and strips the completions cap so
   // the clone can accept fresh submissions. Leaves editId null so save creates
   // a new record rather than overwriting the original.
+  // Duplicate a quest — opens the editor with the source row's fields,
+  // editId cleared so save creates a new record. event_id + completions
+  // cap are reset so the clone is on its own footing.
   const openClone = (q: RepQuest) => {
     setEditId(null);
-    setTitle(q.title ? `${q.title} (copy)` : "");
-    setInstructions(q.instructions || "");
-    setInstructionsAutoGenerated(false);
-    setQuestType(q.quest_type);
-    setPlatform(q.platform || "any");
-    setVideoUrl(q.video_url || "");
-    setPointsReward(String(q.xp_reward ?? q.points_reward));
-    setMaxCompletions(""); // fresh completions cap
-    setExpiresAt(""); // fresh expiry
-    setNotifyReps(true);
-    setReferenceUrl(q.reference_url || "");
-    setUsesSound(q.uses_sound ?? false);
-    setCurrencyReward(String(q.ep_reward ?? q.currency_reward ?? 0));
-    setSalesTarget(q.sales_target != null ? String(q.sales_target) : "");
-    setEventId(""); // user picks a new event
-    setSubtitle(q.subtitle || "");
-    setProofType(
-      q.proof_type === "none" || !q.proof_type
-        ? "screenshot"
-        : (q.proof_type as QuestProofType)
-    );
-    setCoverImageUrl(q.cover_image_url || q.image_url || "");
-    setAutoApprove(q.auto_approve ?? false);
-    setAssetMode(q.asset_mode === "pool" ? "pool" : "single");
-    setAssetCampaignTag(q.asset_campaign_tag ?? "");
-    setVideoError("");
-    setDialogStep("form"); // skip type picker — we know the type
-    setFormTab(0);
-    setShowDialog(true);
+    setEditingQuest({
+      ...q,
+      title: q.title ? `${q.title} (copy)` : "",
+      max_completions: null,
+      expires_at: null,
+      event_id: null,
+    });
+    setEditorOpen(true);
   };
 
   const handleReview = async (submissionId: string, newStatus: "approved" | "rejected", reason?: string) => {
@@ -465,211 +255,6 @@ export function QuestsTab() {
     } catch { /* network */ }
     setReviewingId(null);
   };
-
-  // Auto-generate instructions + auto-fill XP when quest type changes
-  // Proof type should follow from quest type + platform because the choice is
-  // mechanical, not editorial:
-  //   • Stories are ephemeral + often private → must be screenshot.
-  //   • TikTok posts are public + stable URLs → tiktok_link is the lightest path.
-  //   • Instagram posts / reels → instagram_link.
-  //   • No platform set → screenshot is the safe universal fallback.
-  //   • Sales milestones — no rep submission at all (auto-attributed).
-  //   • Custom — we don't know the shape, tenant picks.
-  function deriveProofType(
-    type: QuestType,
-    plat: "tiktok" | "instagram" | "any"
-  ): QuestProofType {
-    if (type === "story_share") return "screenshot";
-    if (type === "social_post" || type === "content_creation") {
-      if (plat === "tiktok") return "tiktok_link";
-      if (plat === "instagram") return "instagram_link";
-      return "screenshot";
-    }
-    return "screenshot"; // custom / sales_milestone — sensible default
-  }
-
-  const handleQuestTypeChange = (newType: QuestType) => {
-    const prevType = questType;
-    setQuestType(newType);
-    // Auto-fill XP from platform config (XP is platform-controlled, not tenant-editable)
-    const xpForType = (platformConfig.xp_per_quest_type as Record<string, number>)[newType];
-    if (xpForType !== undefined) setPointsReward(String(xpForType));
-    // Auto-fill instructions if empty or were auto-generated
-    const autoText = QUEST_AUTO_INSTRUCTIONS[newType];
-    if (autoText && (!instructions.trim() || instructionsAutoGenerated)) {
-      setInstructions(autoText);
-      setInstructionsAutoGenerated(true);
-    }
-    // Auto-select the right proof type for the new quest type. Tenant can
-    // still override in the dropdown; story_share locks the dropdown entirely.
-    setProofType(deriveProofType(newType, platform));
-    // Clear story_share-specific fields when switching away
-    if (prevType === "story_share" && newType !== "story_share") {
-      setUsesSound(false);
-    }
-  };
-
-  const handlePlatformChange = (newPlatform: "tiktok" | "instagram" | "any") => {
-    setPlatform(newPlatform);
-    // Re-derive proof type — mechanical, not editorial.
-    setProofType(deriveProofType(questType, newPlatform));
-  };
-
-  // Unified shareable-media upload — image OR video, both end up in the
-  // SAME column (video_url). iOS distinguishes by checking whether the
-  // value starts with http: full URL ⇒ image, bare token ⇒ Mux playback ID
-  // (see isMuxPlaybackId in lib/mux). cover_image_url is intentionally
-  // untouched here — that's the in-app hero, a separate concept owned by
-  // the Details tab.
-  const handleMediaUpload = useCallback(async (file: File) => {
-    setVideoError("");
-
-    if (file.type.startsWith("image/")) {
-      // ── Image branch ────────────────────────────────────────────────
-      // Routed through the tenant-media pipeline — accepts up to 25MB,
-      // runs Sharp server-side (resize 1200×1600 + WebP + strip EXIF),
-      // and saves a tenant_media row of kind='quest_content' so the
-      // upload appears in the cover library for reuse on the next quest.
-      setVideoUploading(true);
-      setVideoProgress(0);
-      setVideoStatus("Preparing image...");
-      try {
-        // Client-side downscale for huge originals — pass-through under 5MB.
-        const upload = await prepareUploadFile(file);
-
-        setVideoStatus("Uploading image...");
-        setVideoProgress(20);
-        const signedRes = await fetch("/api/admin/media/signed-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            kind: "quest_content",
-            content_type: upload.type,
-            size_bytes: upload.size,
-          }),
-        });
-        const signedJson = await signedRes.json();
-        if (!signedRes.ok || !signedJson.data) {
-          throw new Error(signedJson.error || "Upload failed");
-        }
-
-        setVideoProgress(50);
-        const putRes = await fetch(signedJson.data.upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": upload.type },
-          body: upload,
-        });
-        if (!putRes.ok) throw new Error("Upload to storage failed");
-
-        setVideoStatus("Saving...");
-        setVideoProgress(80);
-        const completeRes = await fetch("/api/admin/media/complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            key: signedJson.data.key,
-            kind: "quest_content",
-          }),
-        });
-        const completeJson = await completeRes.json();
-        if (!completeRes.ok || !completeJson.data) {
-          throw new Error(completeJson.error || "Save failed");
-        }
-
-        setVideoUrl(completeJson.data.url);
-        setVideoStatus("");
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Unknown error";
-        setVideoError(`Upload failed — ${msg}`);
-        setVideoStatus("");
-      }
-      setVideoUploading(false);
-      setVideoProgress(0);
-      return;
-    }
-
-    if (!file.type.startsWith("video/")) {
-      setVideoError(
-        "Unsupported file. Upload an image (JPG, PNG, WebP) or video (MP4, MOV, WebM)."
-      );
-      return;
-    }
-
-    // ── Video branch ──────────────────────────────────────────────────
-    const MAX_FILE_SIZE = 200 * 1024 * 1024;
-    if (file.size > MAX_FILE_SIZE) {
-      setVideoError(`Video is ${Math.round(file.size / 1024 / 1024)}MB — max is 200MB.`);
-      return;
-    }
-    setVideoUploading(true);
-    setVideoProgress(0);
-    setVideoStatus("Preparing upload...");
-    try {
-      const supabase = getSupabaseClient();
-      if (!supabase) throw new Error("Supabase not configured");
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Not authenticated");
-
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
-      const storagePath = `${orgId}/quests/${Date.now()}_${safeName}`;
-      const tusEndpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
-
-      setVideoStatus("Uploading...");
-      await new Promise<void>((resolve, reject) => {
-        const upload = new tus.Upload(file, {
-          endpoint: tusEndpoint,
-          retryDelays: [0, 3000, 5000, 10000, 20000],
-          headers: { authorization: `Bearer ${session.access_token}`, apikey: SUPABASE_ANON_KEY, "x-upsert": "true" },
-          uploadDataDuringCreation: true,
-          removeFingerprintOnSuccess: true,
-          chunkSize: 6 * 1024 * 1024,
-          metadata: { bucketName: "artist-media", objectName: storagePath, contentType: file.type, cacheControl: "3600" },
-          onError: (error) => reject(new Error(error.message || "Upload failed")),
-          onProgress: (bytesUploaded, bytesTotal) => {
-            setVideoProgress(Math.round((bytesUploaded / bytesTotal) * 70));
-            setVideoStatus(`Uploading... ${(bytesUploaded / 1024 / 1024).toFixed(0)}/${(bytesTotal / 1024 / 1024).toFixed(0)} MB`);
-          },
-          onSuccess: () => resolve(),
-          onShouldRetry: (err) => {
-            const status = err.originalResponse?.getStatus();
-            return status !== 403 && status !== 401;
-          },
-        });
-        upload.findPreviousUploads().then((prev) => { if (prev.length) upload.resumeFromPreviousUpload(prev[0]); upload.start(); });
-      });
-
-      setVideoProgress(70);
-      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/artist-media/${storagePath}`;
-      setVideoStatus("Processing video...");
-      const muxRes = await fetch("/api/mux/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ videoUrl: publicUrl }) });
-      const muxData = await muxRes.json();
-      if (!muxRes.ok) throw new Error(muxData.error || "Failed to start processing");
-
-      // Poll until ready (60 × 3s = up to 3 minutes for Mux to encode)
-      for (let i = 0; i < 60; i++) {
-        await new Promise((r) => setTimeout(r, 3000));
-        const res = await fetch(`/api/mux/status?assetId=${muxData.assetId}`);
-        const data = await res.json();
-        if (data.status === "ready" && data.playbackId) {
-          // Both branches write to video_url — replacing it is enough.
-          setVideoUrl(data.playbackId);
-          setVideoProgress(100);
-          setVideoStatus("");
-          setVideoUploading(false);
-          return;
-        }
-        if (data.status === "errored") throw new Error("Video processing failed — try a different file");
-        setVideoStatus("Processing video...");
-      }
-      throw new Error("Processing timed out");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Unknown error";
-      setVideoError(`Upload failed — ${msg}`);
-      setVideoStatus("");
-    }
-    setVideoUploading(false);
-    setVideoProgress(0);
-  }, [orgId, editId]);
 
   // Apply both status and event filters
   const statusFiltered = filter === "all" ? quests : quests.filter((q) => q.status === filter);
@@ -1263,767 +848,15 @@ export function QuestsTab() {
         </>
       )}
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent
-          className={
-            dialogStep === "type"
-              ? "max-w-xl"
-              : "max-w-4xl max-h-[90vh] flex flex-col sm:p-6"
-          }
-        >
-          <DialogHeader>
-            <DialogTitle>{editId ? "Edit Quest" : dialogStep === "type" ? "New Quest" : "Create Quest"}</DialogTitle>
-            <DialogDescription>
-              {editId ? "Update this quest." : dialogStep === "type" ? "What should your reps do?" : `Set up your ${QUEST_TYPE_LABELS[questType].toLowerCase()} quest.`}
-            </DialogDescription>
-          </DialogHeader>
 
-          {dialogStep === "type" ? (
-            /* ── Type Selection ── */
-            <div className="space-y-3 py-2">
-              <div className="grid grid-cols-2 gap-3">
-                {([
-                  { type: "social_post" as QuestType, icon: Video, label: "Social Post", desc: "Reps recreate a reference TikTok or Instagram Reel" },
-                  { type: "story_share" as QuestType, icon: Camera, label: "Story Share", desc: "Upload content for reps to share on their stories" },
-                ] as const).map(({ type, icon: Icon, label, desc }) => (
-                  <button key={type}
-                    onClick={() => { handleQuestTypeChange(type); setDialogStep("form"); }}
-                    className="group flex flex-col items-start gap-3 rounded-xl border-2 border-border p-5 text-left transition-all hover:border-primary/50 hover:bg-primary/[0.03] active:scale-[0.98]">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20 transition-colors group-hover:bg-primary/15">
-                      <Icon size={18} className="text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{label}</p>
-                      <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => { handleQuestTypeChange("sales_milestone"); setDialogStep("form"); }}
-                className="w-full flex items-center gap-4 rounded-xl border-2 border-border p-4 text-left transition-all hover:border-primary/50 hover:bg-primary/[0.03] active:scale-[0.98]">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/20">
-                  <Target size={18} className="text-emerald-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Sales Challenge</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">Set a sales target — progress tracks automatically as reps sell tickets</p>
-                </div>
-              </button>
-              <div className="grid grid-cols-2 gap-3">
-                {([
-                  { type: "content_creation" as QuestType, icon: Sparkles, label: "Content Creation", desc: "Reps create original content" },
-                  { type: "custom" as QuestType, icon: Swords, label: "Custom", desc: "Define your own quest" },
-                ] as const).map(({ type, icon: Icon, label, desc }) => (
-                  <button key={type}
-                    onClick={() => { handleQuestTypeChange(type); setDialogStep("form"); }}
-                    className="flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-all hover:border-primary/40 hover:bg-primary/[0.02] active:scale-[0.98]">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
-                      <Icon size={14} className="text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-foreground">{label}</p>
-                      <p className="text-[11px] text-muted-foreground">{desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            /* ── Quest Form ──
-                 Two-column layout: form on the left, live iOS-card preview on
-                 the right (sticky at desktop). Preview collapses below the
-                 form on mobile so the tenant still sees what they're creating. */
-            <>
-            <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-              <div className="flex min-h-0 flex-1 flex-col gap-3">
-              {/* Navigation bar */}
-              <div className="space-y-3">
-                {!editId ? (
-                  <button onClick={() => setDialogStep("type")}
-                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    <ArrowLeft size={12} />
-                    <span>Change type</span>
-                    <Badge variant="secondary" className="text-[10px]">{QUEST_TYPE_LABELS[questType]}</Badge>
-                  </button>
-                ) : (
-                  <Badge variant="secondary" className="text-[10px]">{QUEST_TYPE_LABELS[questType]}</Badge>
-                )}
-                <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
-                  {QUEST_FORM_TABS[questType].map((tab, i) => (
-                    <button key={tab} onClick={() => setFormTab(i)}
-                      className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                        i === formTab
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}>
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tab content */}
-              <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-                {(() => {
-                  const currentTabLabel = QUEST_FORM_TABS[questType][formTab];
-                  return (<>
-
-                {/* ── Tab: Details (all types) ── */}
-                {currentTabLabel === "Details" && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Title *</Label>
-                      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share Our Event on Stories" autoFocus />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>
-                        Subtitle{" "}
-                        <span className="text-[10px] text-muted-foreground font-normal">
-                          (optional — shown under the title on iOS)
-                        </span>
-                      </Label>
-                      <Input
-                        value={subtitle}
-                        onChange={(e) => setSubtitle(e.target.value)}
-                        placeholder="e.g. 30-second win — takes 2 minutes"
-                        maxLength={100}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Event</Label>
-                      {(() => {
-                        // Only upcoming or undated events — you can't run a
-                        // NEW quest against an event that already happened.
-                        // If editing an existing quest whose event is now
-                        // past, include that specific event so the selector
-                        // doesn't appear empty / drop the linkage silently.
-                        const nowMs = Date.now();
-                        const upcoming = events
-                          .filter(
-                            (ev) =>
-                              !ev.date_start ||
-                              new Date(ev.date_start).getTime() >= nowMs ||
-                              ev.id === eventId // preserve edit-link to a past event
-                          )
-                          .sort((a, b) => {
-                            const aT = a.date_start ? new Date(a.date_start).getTime() : Number.POSITIVE_INFINITY;
-                            const bT = b.date_start ? new Date(b.date_start).getTime() : Number.POSITIVE_INFINITY;
-                            return aT - bT;
-                          });
-                        const fmt = (ev: { name: string; date_start: string | null }) => {
-                          if (!ev.date_start) return ev.name;
-                          const d = new Date(ev.date_start);
-                          const sameYear = d.getFullYear() === new Date().getFullYear();
-                          const isPast = d.getTime() < nowMs;
-                          return `${ev.name}  ·  ${d.toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                            ...(sameYear ? {} : { year: "2-digit" }),
-                          })}${isPast ? " (past)" : ""}`;
-                        };
-                        return (
-                          <select
-                            value={eventId}
-                            onChange={(e) => setEventId(e.target.value)}
-                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                          >
-                            <option value="">Always-on — every active rep sees it</option>
-                            {upcoming.map((ev) => (
-                              <option key={ev.id} value={ev.id}>{fmt(ev)}</option>
-                            ))}
-                          </select>
-                        );
-                      })()}
-                      <p className="text-[11px] text-muted-foreground">
-                        {eventId
-                          ? "Only reps assigned to this event will see the quest. Cover image inherits from the event if you don't upload one."
-                          : "Every active rep will see this quest — platform-wide."}
-                      </p>
-                    </div>
-
-                    {/* ── Cover image — the in-app card hero, separate from
-                          anything reps download. Image-only. Always shown,
-                          for every quest type. The shareable asset reps save
-                          to their camera roll lives on the Content tab. ── */}
-                    <div className="flex items-center gap-3 pt-2">
-                      <div className="h-px flex-1 bg-border" />
-                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">
-                        Cover
-                      </span>
-                      <div className="h-px flex-1 bg-border" />
-                    </div>
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        onClick={() => setCoverPickerOpen(true)}
-                        className="group relative w-full aspect-[3/4] max-h-[260px] rounded-lg border-2 border-dashed border-border/60 hover:border-primary/40 bg-card overflow-hidden transition-colors"
-                      >
-                        {coverImageUrl ? (
-                          <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={coverImageUrl}
-                              alt="Cover"
-                              className="absolute inset-0 w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors">
-                              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium text-white px-3 py-1.5 rounded-md bg-black/60 backdrop-blur-sm">
-                                Change cover
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCoverImageUrl("");
-                              }}
-                              className="absolute top-2 right-2 p-1.5 rounded-md bg-black/60 text-white/80 hover:text-destructive hover:bg-black/80 transition-colors"
-                              aria-label="Clear cover"
-                            >
-                              <X size={14} />
-                            </button>
-                          </>
-                        ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center">
-                            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                              <ImageLucide size={18} className="text-primary" />
-                            </div>
-                            <p className="text-sm font-medium text-foreground">
-                              Pick a cover
-                            </p>
-                            <p className="text-[11px] text-muted-foreground max-w-[200px] leading-relaxed">
-                              Templates, your library, or a fresh upload — saved for next time.
-                            </p>
-                          </div>
-                        )}
-                      </button>
-
-                      <div className="rounded-md border border-border/60 bg-muted/20 p-3 text-[11px] leading-relaxed text-muted-foreground">
-                        <p className="font-semibold text-foreground">
-                          In-app hero only — not what reps download.
-                        </p>
-                        <p className="mt-1">
-                          This shows as the card hero in the rep app. iOS
-                          overlays your quest title + XP/EP chips on top, so
-                          keep it portrait and clean — no text baked in.
-                        </p>
-                        <p className="mt-1.5">
-                          The shareable asset reps save to their camera roll
-                          (image or video) goes on the
-                          <span className="mx-1 font-mono">Content</span>
-                          tab — it&apos;s a separate concept.
-                        </p>
-                        <p className="mt-1.5">
-                          {eventId
-                            ? "Leave blank and the linked event's cover will be used automatically."
-                            : "Leave blank to show a gradient in your promoter's brand colour."}
-                        </p>
-                      </div>
-
-                      <CoverImagePicker
-                        open={coverPickerOpen}
-                        onOpenChange={setCoverPickerOpen}
-                        value={coverImageUrl}
-                        onChange={setCoverImageUrl}
-                        previewTitle={title || "Your quest title"}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Tab: Platform (social_post / content_creation) ── */}
-                {currentTabLabel === "Platform" && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      {([
-                        { value: "tiktok" as const, label: "TikTok" },
-                        { value: "instagram" as const, label: "Instagram" },
-                        { value: "any" as const, label: "Either" },
-                      ]).map(({ value, label }) => (
-                        <button key={value}
-                          type="button"
-                          onClick={() => handlePlatformChange(value)}
-                          className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
-                            platform === value
-                              ? "border-primary bg-primary/5 text-primary shadow-sm"
-                              : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                          }`}>
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1.5">
-                        <ExternalLink size={12} />
-                        Reference Post Link
-                      </Label>
-                      <Input
-                        value={referenceUrl}
-                        onChange={(e) => setReferenceUrl(e.target.value)}
-                        placeholder={
-                          platform === "tiktok" ? "https://www.tiktok.com/@user/video/..."
-                            : platform === "instagram" ? "https://www.instagram.com/reel/..."
-                            : "Paste a TikTok or Instagram link"
-                        }
-                      />
-                      <p className="text-[10px] text-muted-foreground">
-                        {questType === "social_post"
-                          ? "Link to the post reps should recreate — shown as a CTA in the quest"
-                          : "Optional reference for reps to use as inspiration"}
-                      </p>
-                    </div>
-                    {platform === "tiktok" && (
-                      <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                        <div className="flex items-center gap-2">
-                          <Music size={14} className="text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium text-foreground">Uses a Specific Sound</p>
-                            <p className="text-[11px] text-muted-foreground">The reference post has a sound reps should use</p>
-                          </div>
-                        </div>
-                        <Switch checked={usesSound} onCheckedChange={setUsesSound} />
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      <Label>How to Complete</Label>
-                      <Textarea
-                        value={instructions}
-                        onChange={(e) => { setInstructions(e.target.value); setInstructionsAutoGenerated(false); }}
-                        placeholder="Step-by-step instructions shown to reps"
-                        rows={3}
-                      />
-                      {instructionsAutoGenerated && (
-                        <p className="text-[10px] text-muted-foreground">Auto-generated — edit freely</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Tab: Content (story_share + social_post + content_creation) ──
-                      One unified shareable-media slot. Both image and video
-                      end up in the SAME column (video_url). iOS detects
-                      which it is by checking isMuxPlaybackId — bare token =
-                      Mux video, full http URL = image. cover_image_url is
-                      separate (Details tab, in-app hero only). */}
-                {currentTabLabel === "Content" && (
-                  <div className="space-y-4">
-                    {/* Pool / single shareable mode toggle. Pool = pulls
-                        from a campaign; reps see a rotating slice. See
-                        LIBRARY-CAMPAIGNS-PLAN.md. */}
-                    <QuestPoolPicker
-                      mode={assetMode}
-                      campaignTag={assetCampaignTag}
-                      onModeChange={setAssetMode}
-                      onCampaignChange={setAssetCampaignTag}
-                      questTitle={title}
-                    />
-
-                    {assetMode === "pool" ? (
-                      <p className="text-xs text-muted-foreground">
-                        Each rep sees up to 10 shareables from this
-                        campaign, sorted to feel fresh. New uploads
-                        appear at the top.
-                      </p>
-                    ) : questType === "story_share" ? (
-                      <p className="text-xs text-muted-foreground">
-                        Upload the <span className="font-medium text-foreground">asset reps share</span> — image or short video. Reps download it and post it to their TikTok or Instagram story with their personal discount link.
-                      </p>
-                    ) : questType === "social_post" ? (
-                      <p className="text-xs text-muted-foreground">
-                        Upload <span className="font-medium text-foreground">the post you want reps to recreate</span> — image or short video. Reps make their own version and post it. Optional if the reference link on Platform is enough.
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        For content-creation quests, the rep <span className="font-medium text-foreground">makes their own</span> — focus on the instructions in <span className="font-mono">How to Complete</span> on the Platform tab. This upload is an <span className="font-medium text-foreground">optional reference</span> for inspiration.
-                      </p>
-                    )}
-
-                    {/* Quick toggle — most quests want the cover image to also
-                        be the shareable. One click instead of "upload twice
-                        or pick from library again". Disabled when no cover
-                        is set yet (we have nothing to copy). When toggled
-                        on, the same URL is shared between the in-app cover
-                        and the rep's downloadable asset. Toggling off only
-                        clears the shareable if it still matches the cover.
-                        Hidden in pool mode — pool quests never use a single
-                        shareable. */}
-                    {assetMode === "single" && coverImageUrl && (
-                      <div className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
-                        <div className="flex items-start gap-2.5 min-w-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={coverImageUrl}
-                            alt=""
-                            className="h-9 w-9 rounded-md object-cover shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-xs font-medium text-foreground">
-                              Use cover image as the shareable too
-                            </p>
-                            <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">
-                              Same image, both surfaces. Saves uploading twice when one image works for both.
-                            </p>
-                          </div>
-                        </div>
-                        <Switch
-                          checked={
-                            !!videoUrl &&
-                            !isMuxPlaybackId(videoUrl) &&
-                            videoUrl === coverImageUrl
-                          }
-                          onCheckedChange={(on) => {
-                            if (on) {
-                              setVideoUrl(coverImageUrl);
-                            } else if (videoUrl === coverImageUrl) {
-                              setVideoUrl("");
-                            }
-                          }}
-                        />
-                      </div>
-                    )}
-                    {assetMode === "single" && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1.5">
-                        <Upload size={12} />
-                        Shareable
-                      </Label>
-                      {videoUrl && isMuxPlaybackId(videoUrl) ? (
-                        <div className="space-y-2">
-                          <div className="rounded-lg overflow-hidden border border-border">
-                            <MuxPlayer playbackId={videoUrl} streamType="on-demand" autoPlay={false} muted className="w-full aspect-video" />
-                          </div>
-                          <Button variant="outline" size="sm" onClick={() => setVideoUrl("")}>
-                            <X size={12} /> Remove video
-                          </Button>
-                        </div>
-                      ) : videoUrl ? (
-                        <div className="space-y-2">
-                          <div className="rounded-lg overflow-hidden border border-border bg-[#0e0e0e] p-2">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={videoUrl}
-                              alt="Shareable asset"
-                              className="max-w-full max-h-[260px] object-contain mx-auto block"
-                            />
-                          </div>
-                          <Button variant="outline" size="sm" onClick={() => setVideoUrl("")}>
-                            <X size={12} /> Remove image
-                          </Button>
-                        </div>
-                      ) : videoUploading ? (
-                        <div className="rounded-lg border border-border p-4 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Loader2 size={14} className="animate-spin text-primary" />
-                            <span className="text-sm text-muted-foreground">{videoStatus}</span>
-                          </div>
-                          {videoProgress > 0 && (
-                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${videoProgress}%` }} />
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <label
-                          className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed h-44 cursor-pointer transition-all duration-200 ${
-                            dragActive
-                              ? "border-primary bg-primary/[0.07]"
-                              : "border-primary/30 bg-primary/[0.02] hover:border-primary/55 hover:bg-primary/[0.05]"
-                          }`}
-                          onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
-                          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
-                          onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(false); }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setDragActive(false);
-                            const file = e.dataTransfer.files?.[0];
-                            if (file) handleMediaUpload(file);
-                          }}
-                        >
-                          <div className={`h-12 w-12 rounded-full flex items-center justify-center transition-transform duration-200 ${
-                            dragActive ? "bg-primary/15 scale-110" : "bg-primary/10"
-                          }`}>
-                            <Upload size={22} className="text-primary" />
-                          </div>
-                          <span className="text-base font-medium text-foreground">
-                            {dragActive ? "Drop to upload" : "Click or drop an image or video"}
-                          </span>
-                          <span className="text-xs text-foreground/55">We&apos;ll resize and compress for you.</span>
-                          <input
-                            ref={videoInputRef}
-                            type="file"
-                            accept="image/*,video/*"
-                            className="hidden"
-                            onChange={(e) => { const file = e.target.files?.[0]; if (file) handleMediaUpload(file); e.target.value = ""; }}
-                          />
-                        </label>
-                      )}
-                      {/* Library reuse — only useful when there's no asset
-                          uploaded yet AND no upload in flight. The library
-                          stores images (kind=quest_content); video is Mux-only
-                          and not in the library. */}
-                      {!videoUrl && !videoUploading && (
-                        <button
-                          type="button"
-                          onClick={() => setContentPickerOpen(true)}
-                          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border/50 bg-card px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/[0.03] hover:text-primary focus-visible:outline-2 focus-visible:outline-primary/60 focus-visible:outline-offset-2"
-                        >
-                          <ImageLucide size={14} />
-                          Or pick from your library
-                        </button>
-                      )}
-                      {videoError && (
-                        <div className="flex items-start gap-1.5 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">
-                          <AlertCircle size={12} className="text-destructive mt-0.5 shrink-0" />
-                          <p className="text-xs text-destructive">{videoError}</p>
-                        </div>
-                      )}
-                      <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-                        Images get saved to your library for reuse on the next quest. Videos are streamed and given to reps as a downloadable 1080p MP4. Picking a new file replaces the previous one. Leave blank if there's no downloadable asset for this quest.
-                      </p>
-                      <CoverImagePicker
-                        open={contentPickerOpen}
-                        onOpenChange={setContentPickerOpen}
-                        value={videoUrl && !isMuxPlaybackId(videoUrl) ? videoUrl : ""}
-                        onChange={(v) => setVideoUrl(v)}
-                        kind="quest_content"
-                        previewAspect="9/16"
-                        previewTitle={title || "Your story share"}
-                      />
-                    </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ── Tab: Setup (custom) ── */}
-                {currentTabLabel === "Setup" && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Platform</Label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {([
-                          { value: "tiktok" as const, label: "TikTok" },
-                          { value: "instagram" as const, label: "Instagram" },
-                          { value: "any" as const, label: "Either" },
-                        ]).map(({ value, label }) => (
-                          <button key={value}
-                            type="button"
-                            onClick={() => handlePlatformChange(value)}
-                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
-                              platform === value
-                                ? "border-primary bg-primary/5 text-primary shadow-sm"
-                                : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                            }`}>
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>How to Complete</Label>
-                      <Textarea
-                        value={instructions}
-                        onChange={(e) => { setInstructions(e.target.value); setInstructionsAutoGenerated(false); }}
-                        placeholder="Write your own instructions for reps"
-                        rows={4}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Tab: Target (sales_milestone) ── */}
-                {currentTabLabel === "Target" && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Sales Target *</Label>
-                      <Input
-                        type="number"
-                        value={salesTarget}
-                        onChange={(e) => setSalesTarget(e.target.value)}
-                        placeholder="e.g. 5"
-                        min="1"
-                      />
-                      <p className="text-[10px] text-muted-foreground">Number of sales a rep needs to achieve. Progress tracks automatically.</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Tab: Publish (all types) ── */}
-                {currentTabLabel === "Publish" && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-px flex-1 bg-border" />
-                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Rewards</span>
-                      <div className="h-px flex-1 bg-border" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>XP Reward <span className="text-[10px] text-muted-foreground font-normal">(set by type)</span></Label>
-                        <Input
-                          type="number"
-                          value={String(platformConfig.xp_per_quest_type[questType] ?? platformConfig.xp_per_quest_type.custom)}
-                          readOnly
-                          className="bg-muted/30 cursor-not-allowed"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>
-                          EP Reward{" "}
-                          <span className="text-[10px] text-muted-foreground font-normal">
-                            (1 EP = £0.01)
-                          </span>
-                        </Label>
-                        <Input type="number" value={currencyReward} onChange={(e) => setCurrencyReward(e.target.value)} min="0" />
-                        <p className="text-[10px] text-muted-foreground">
-                          Paid from your EP float when the submission is approved.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* ── Proof type: shapes the rep submission UI on iOS ── */}
-                    {/* Sales-milestone quests auto-attribute via discount code —
-                        no rep submission. Story_share is locked to screenshot
-                        because stories expire + private accounts can't share
-                        public links. Everything else is auto-derived from
-                        type + platform but stays overridable. */}
-                    {questType !== "sales_milestone" && (
-                      <>
-                        <div className="flex items-center gap-3">
-                          <div className="h-px flex-1 bg-border" />
-                          <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">
-                            Proof
-                          </span>
-                          <div className="h-px flex-1 bg-border" />
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label>How reps submit proof</Label>
-                            {questType === "story_share" && (
-                              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                                locked
-                              </span>
-                            )}
-                          </div>
-                          <select
-                            value={proofType}
-                            onChange={(e) => setProofType(e.target.value as QuestProofType)}
-                            disabled={questType === "story_share"}
-                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {PROOF_TYPE_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="text-[10px] text-muted-foreground">
-                            {questType === "story_share"
-                              ? "Stories expire after 24h and private accounts can't share public links, so reps upload a screenshot. Non-overridable."
-                              : PROOF_TYPE_OPTIONS.find((o) => o.value === proofType)?.hint}
-                          </p>
-                        </div>
-                      </>
-                    )}
-
-                    <div className="flex items-center gap-3">
-                      <div className="h-px flex-1 bg-border" />
-                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Settings</span>
-                      <div className="h-px flex-1 bg-border" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Max Completions per Rep</Label>
-                        <Input type="number" value={maxCompletions} onChange={(e) => setMaxCompletions(e.target.value)} placeholder="Unlimited" min="1" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Expires At</Label>
-                        <Input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Notify Reps</p>
-                        <p className="text-[11px] text-muted-foreground">Send a push when this quest goes live</p>
-                      </div>
-                      <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Auto-approve submissions</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Skip manual review — submissions award XP &amp; EP the moment they&apos;re submitted.
-                          Good for sales milestones or when you verify externally.
-                        </p>
-                      </div>
-                      <Switch checked={autoApprove} onCheckedChange={setAutoApprove} />
-                    </div>
-                  </div>
-                )}
-                  </>);
-                })()}
-              </div>
-              </div>
-
-              {/* ── Live preview column ── */}
-              <div className="shrink-0 lg:w-[280px] xl:w-[300px]">
-                <div className="lg:sticky lg:top-0">
-                  <QuestCardPreview
-                    title={title}
-                    subtitle={subtitle}
-                    coverImageUrl={
-                      // Preview cascade mirrors the save cascade: quest upload
-                      // → event.cover_image_url (v2) → legacy → promoter accent.
-                      coverImageUrl ||
-                      (eventId
-                        ? (() => {
-                            const ev = events.find((e) => e.id === eventId);
-                            return ev?.cover_image_url ?? ev?.cover_image ?? "";
-                          })()
-                        : "")
-                    }
-                    promoterAccentHex={promoterAccentHex}
-                    questType={questType}
-                    xp={
-                      (platformConfig.xp_per_quest_type as Record<string, number>)[questType] ??
-                      Number(pointsReward) ??
-                      0
-                    }
-                    ep={Number(currencyReward) || 0}
-                    proofType={proofType}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Footer spans full dialog width, outside the 2-col layout */}
-            <DialogFooter>
-              {formTab > 0 && (
-                <Button variant="ghost" onClick={() => setFormTab(formTab - 1)} className="mr-auto">
-                  <ArrowLeft size={14} /> Back
-                </Button>
-              )}
-              {dialogStep === "form" &&
-                (formTab < QUEST_FORM_TABS[questType].length - 1 ? (
-                  <Button onClick={() => setFormTab(formTab + 1)} disabled={formTab === 0 && !title.trim()}>
-                    Next
-                  </Button>
-                ) : (
-                  <>
-                    <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
-                    <Button onClick={handleSave} disabled={saving || !title.trim()}>
-                      {saving && <Loader2 size={14} className="animate-spin" />}
-                      {saving ? "Saving..." : editId ? "Save Changes" : "Create Quest"}
-                    </Button>
-                  </>
-                ))}
-            </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Redesigned create/edit editor — self-contained dialog. */}
+      <QuestEditor
+        open={editorOpen}
+        editId={editId}
+        initialQuest={editingQuest}
+        onClose={() => setEditorOpen(false)}
+        onSaved={() => loadQuests()}
+      />
 
       {/* ── Image Lightbox ── */}
       {lightboxUrl && (

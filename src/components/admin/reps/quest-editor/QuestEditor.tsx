@@ -12,6 +12,7 @@ import {
 import { QuestTypeStep } from "./QuestTypeStep";
 import { QuestForm } from "./QuestForm";
 import { QuestPreview, QuestPreviewSurface } from "./QuestPreview";
+import type { EventOption } from "./sections/EventSection";
 
 /**
  * Orchestrator for the redesigned quest editor.
@@ -51,6 +52,7 @@ export function QuestEditor({
   const [platformConfig, setPlatformConfig] = useState<PlatformXPConfig>(
     DEFAULT_PLATFORM_XP_CONFIG
   );
+  const [events, setEvents] = useState<EventOption[]>([]);
 
   // Fetch the platform XP config so reward inputs can prefill on the
   // matching quest_type. Falls back to DEFAULT_PLATFORM_XP_CONFIG so
@@ -65,6 +67,22 @@ export function QuestEditor({
       })
       .catch(() => {
         // Default config is fine; editor stays usable.
+      });
+    fetch("/api/events")
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled || !Array.isArray(json?.data)) return;
+        const mapped: EventOption[] = json.data.map(
+          (e: { id: string; name: string; date_start?: string | null }) => ({
+            id: e.id,
+            name: e.name,
+            date_start: e.date_start ?? null,
+          })
+        );
+        setEvents(mapped);
+      })
+      .catch(() => {
+        // Empty list is fine; the section renders the search-only state.
       });
     return () => {
       cancelled = true;
@@ -121,7 +139,7 @@ export function QuestEditor({
 
   return (
     <div className="grid gap-8 px-6 py-8 md:grid-cols-[minmax(0,1fr)_320px]">
-      <QuestForm state={state} onChange={onChange} onClose={onClose} />
+      <QuestForm state={state} onChange={onChange} onClose={onClose} events={events} />
       <QuestPreview state={state} />
 
       {/* Mobile: floating "Preview" pill */}

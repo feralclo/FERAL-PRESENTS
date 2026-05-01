@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageLucide, Share2, Smartphone, Video } from "lucide-react";
+import {
+  Calendar,
+  Image as ImageLucide,
+  Share2,
+  Smartphone,
+  Video,
+} from "lucide-react";
 import type { QuestFormState } from "./types";
 import { QuestChip } from "./QuestChip";
 import { RewardSection } from "./sections/RewardSection";
@@ -17,6 +23,11 @@ import {
   platformChipSummary,
   isPlatformFilled,
 } from "./sections/PlatformSection";
+import {
+  EventSection,
+  eventChipSummary,
+  type EventOption,
+} from "./sections/EventSection";
 
 /**
  * Single-screen form body. The plan's "one calm vertical surface" —
@@ -32,6 +43,8 @@ export interface QuestFormProps {
   state: QuestFormState;
   onChange: (patch: Partial<QuestFormState>) => void;
   onClose: () => void;
+  /** Events the host can anchor a quest to. Fetched in `QuestEditor` and threaded through. */
+  events: EventOption[];
 }
 
 interface ChipsOpenState {
@@ -54,7 +67,7 @@ const INITIAL_CHIPS_OPEN: ChipsOpenState = {
   rules: false,
 };
 
-export function QuestForm({ state, onChange, onClose }: QuestFormProps) {
+export function QuestForm({ state, onChange, onClose, events }: QuestFormProps) {
   const [chipsOpen, setChipsOpen] = useState<ChipsOpenState>(INITIAL_CHIPS_OPEN);
 
   const toggleChip = (key: keyof ChipsOpenState) =>
@@ -182,7 +195,19 @@ export function QuestForm({ state, onChange, onClose }: QuestFormProps) {
             </QuestChip>
           ) : null}
 
-          {/* Additional chips land in Phase 2.6+: Event, Proof, Rules. */}
+          <QuestChip
+            label="Event"
+            icon={<Calendar size={14} strokeWidth={1.75} />}
+            filled={!!state.event_id}
+            summary={eventChipSummary(state.event_id, events)}
+            open={chipsOpen.event}
+            onToggle={() => toggleChip("event")}
+            onClear={() => onChange({ event_id: null })}
+          >
+            <EventSection state={state} onChange={onChange} events={events} />
+          </QuestChip>
+
+          {/* Additional chips land in Phase 2.7+: Proof, Rules. */}
         </div>
       </div>
 

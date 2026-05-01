@@ -195,10 +195,11 @@ Each section is a small focused component. Build in priority order — top of th
 **Acceptance:** when collapsed, header summarises ("Story · Instagram · with reference link"). Inline.
 **Outcome (2026-05-01):** PlatformSection ships the four-piece bundle. Sub-toggle (Story / Feed / Make-your-own) — picking one patches `socialSubType`; the orchestrator's `onChange` interceptor recomputes XP off the resulting quest_type so reward stays in sync. Platform picker (TikTok / Instagram / Either) → `state.platform`. Reference link input. "Use a specific sound" Switch — TikTok-only (hides on Instagram / Either). Helpers `platformChipSummary()` ("Story · Instagram · with reference · with sound") and `isPlatformFilled()` (any field off-default). Wired conditionally into QuestForm — chip only renders when `state.kind === "post_on_social"`. onClear resets all four fields to defaults.
 
-### 2.6 EventSection ⬜
+### 2.6 EventSection ✅
 **Goal:** anchor the quest to an event so share_url uses the event slug.
 **Contents:** event picker (existing `events` array); shows next 3 upcoming + search.
 **Acceptance:** when filled, header reads "Event · Only Numbers London"; X detaches.
+**Outcome (2026-05-01):** EventSection renders an "anchored" panel (primary-tinted) when set with name + soonest-first formatted date + Detach. When unset: 3 quick-pick cards for the soonest-first events + a search input that filters into a scrollable result list. Picking an event patches `event_id` and clears the search box. Helpers `EventOption` (id/name/date_start) and `eventChipSummary()` (name lookup for closed-chip header). QuestEditor fetches `/api/events` on open and threads the typed list through to QuestForm + EventSection — one fetch, one source of truth. Future-events float to the top; past events sink. `EventSectionProps extends SectionProps` so the events list stays scoped to this section's API surface.
 
 ### 2.7 ProofSection ⬜
 **Goal:** how reps submit proof. Default: screenshot.

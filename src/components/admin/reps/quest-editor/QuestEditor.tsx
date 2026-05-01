@@ -79,12 +79,30 @@ export function QuestEditor({
 
   if (!open) return null;
 
-  const onChange = (patch: Partial<QuestFormState>) =>
-    setState((s) => ({ ...s, ...patch }));
+  // Intercept socialSubType changes so the XP reward re-prefills to the
+  // platform default for the new resulting quest_type. Mirrors the legacy
+  // editor's "type changed → reset XP" behaviour. The host can still
+  // override in the reward input afterwards.
+  const onChange = (patch: Partial<QuestFormState>) => {
+    setState((s) => {
+      let nextPatch = patch;
+      if (
+        "socialSubType" in patch &&
+        patch.socialSubType &&
+        s.kind === "post_on_social"
+      ) {
+        const questType = questTypeFor("post_on_social", patch.socialSubType);
+        const xp =
+          platformConfig.xp_per_quest_type[questType] ??
+          platformConfig.xp_per_quest_type.custom;
+        nextPatch = { ...patch, xp_reward: xp };
+      }
+      return { ...s, ...nextPatch };
+    });
+  };
 
   // Pick a kind, prefill XP from the platform default for the resulting
-  // quest_type. The host can override in the input. Mirrors the legacy
-  // editor's "type changed → reset XP" behaviour.
+  // quest_type. The host can override in the input.
   const onPickKind = (kind: NonNullable<QuestFormState["kind"]>) => {
     const questType = questTypeFor(kind, EMPTY_QUEST_FORM_STATE.socialSubType);
     const xp =

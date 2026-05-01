@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageLucide, Share2, Video } from "lucide-react";
+import { Image as ImageLucide, Share2, Smartphone, Video } from "lucide-react";
 import type { QuestFormState } from "./types";
 import { QuestChip } from "./QuestChip";
 import { RewardSection } from "./sections/RewardSection";
@@ -12,6 +12,11 @@ import {
   isShareableFilled,
 } from "./sections/ShareableSection";
 import { WalkthroughSection } from "./sections/WalkthroughSection";
+import {
+  PlatformSection,
+  platformChipSummary,
+  isPlatformFilled,
+} from "./sections/PlatformSection";
 
 /**
  * Single-screen form body. The plan's "one calm vertical surface" —
@@ -146,8 +151,38 @@ export function QuestForm({ state, onChange, onClose }: QuestFormProps) {
             <WalkthroughSection state={state} onChange={onChange} />
           </QuestChip>
 
-          {/* Additional chips land in Phase 2.5+: Platform
-              (post_on_social only), Event, Proof, Rules. */}
+          {state.kind === "post_on_social" ? (
+            <QuestChip
+              label="Platform"
+              icon={<Smartphone size={14} strokeWidth={1.75} />}
+              filled={isPlatformFilled(
+                state.socialSubType,
+                state.platform,
+                state.reference_url,
+                state.uses_sound
+              )}
+              summary={platformChipSummary(
+                state.socialSubType,
+                state.platform,
+                state.reference_url,
+                state.uses_sound
+              )}
+              open={chipsOpen.platform}
+              onToggle={() => toggleChip("platform")}
+              onClear={() =>
+                onChange({
+                  socialSubType: "story",
+                  platform: "any",
+                  reference_url: null,
+                  uses_sound: false,
+                })
+              }
+            >
+              <PlatformSection state={state} onChange={onChange} />
+            </QuestChip>
+          ) : null}
+
+          {/* Additional chips land in Phase 2.6+: Event, Proof, Rules. */}
         </div>
       </div>
 

@@ -185,7 +185,7 @@ Each section is a small focused component. Build in priority order — top of th
 **Acceptance:** drop a 30-second screen recording → progresses through preparing/uploading/processing-video → lands as a playback id on the row. Filled state shows a 16:9 thumbnail with a play glyph. iOS team can fetch and play it once Phase 0.3 is in.
 **Outcome (2026-05-01):** WalkthroughSection ships the full Mux pipeline — `/api/upload-video` (signed PUT URL) → XHR PUT with progress → `/api/mux/upload` (Mux ingestion) → poll `/api/mux/status` until `ready` → playback id lands on `walkthrough_video_url`. 50MB cap, 3-minute processing budget. Empty: dashed drop-zone + "Choose file" button + size/format hint. Active: progress bar (uploading) or animated spinner ("Preparing…" / "Processing video…"). Filled: 16:9 thumbnail (Mux `image.mux.com/.../thumbnail.jpg`) with a circular play glyph + Replace / Remove buttons. Failure path surfaces a friendly error string. Wired into QuestForm via the canonical QuestChip with a Video icon.
 
-### 2.5 PlatformSection ⬜
+### 2.5 PlatformSection ✅
 **Goal:** combines the existing Platform tab fields. Renders only when quest_type is post-on-social variant.
 **Contents:**
 - Sub-type segmented toggle: Story / Feed / Make-your-own
@@ -193,6 +193,7 @@ Each section is a small focused component. Build in priority order — top of th
 - Reference Post Link (text input)
 - Uses Specific Sound (Switch, only when TikTok)
 **Acceptance:** when collapsed, header summarises ("Story · Instagram · with reference link"). Inline.
+**Outcome (2026-05-01):** PlatformSection ships the four-piece bundle. Sub-toggle (Story / Feed / Make-your-own) — picking one patches `socialSubType`; the orchestrator's `onChange` interceptor recomputes XP off the resulting quest_type so reward stays in sync. Platform picker (TikTok / Instagram / Either) → `state.platform`. Reference link input. "Use a specific sound" Switch — TikTok-only (hides on Instagram / Either). Helpers `platformChipSummary()` ("Story · Instagram · with reference · with sound") and `isPlatformFilled()` (any field off-default). Wired conditionally into QuestForm — chip only renders when `state.kind === "post_on_social"`. onClear resets all four fields to defaults.
 
 ### 2.6 EventSection ⬜
 **Goal:** anchor the quest to an event so share_url uses the event slug.

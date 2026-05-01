@@ -60,15 +60,16 @@ These are settled — don't relitigate without putting an entry in the Decision 
 
 ## Phase 0 — Schema + iOS contract (target: 0.5 day)
 
-### 0.1 Migration: add `walkthrough_video_url` to rep_quests ⬜
+### 0.1 Migration: add `walkthrough_video_url` to rep_quests ✅
 **Goal:** new optional column for the example screen recording. Stores a Mux playback id (same convention as `video_url`) so the existing pipeline works unchanged.
-**File:** `supabase/migrations/<date>_rep_quests_walkthrough_video_url.sql`
+**File:** `supabase/migrations/20260501_rep_quests_walkthrough_video_url.sql`
 **SQL:**
 ```sql
 ALTER TABLE rep_quests
   ADD COLUMN IF NOT EXISTS walkthrough_video_url TEXT NULL;
 ```
 **Acceptance:** migration applies cleanly via Supabase MCP `apply_migration`. `INSERT … (walkthrough_video_url) VALUES ('mux_playback_id')` succeeds. Existing rows get `NULL`.
+**Outcome (2026-05-01):** applied via Supabase MCP. Column verified `text NULL` with comment. File committed at `supabase/migrations/20260501_rep_quests_walkthrough_video_url.sql`.
 
 ### 0.2 iOS contract bump ⬜
 **File:** `docs/ios-quest-pool-contract.md` — add a new "Walkthrough video" section. The field is independent of pool mode; it's just one more optional URL on every quest.

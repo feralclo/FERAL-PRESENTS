@@ -126,8 +126,9 @@ ALTER TABLE rep_quests
 | **Something else** | custom | Sparkle / catch-all |
 **Acceptance:** click a card → form renders pre-filled with the matching `quest_type`; for "Post on social" a small segmented sub-toggle inside the form picks story / feed / make-your-own (defaulting to story).
 
-### 1.3 Single-screen form layout + preview pane ⬜
+### 1.3 Single-screen form layout + preview pane ✅
 **Goal:** two-column shell on desktop (form left, preview right); single column with sticky preview pill on mobile.
+**Outcome (2026-05-01):** desktop = `md:grid-cols-[minmax(0,1fr)_320px]` two-column shell with the phone-frame preview sticky on the right; mobile = single column with a fixed-position primary "Preview" pill bottom-right that opens a custom backdrop+sheet rendering the same `QuestPreviewSurface`. Phone frame mirrors `BrandPreview.tsx` exactly: outer black bezel `rounded-[40px]`, dynamic-island status bar, hand-drawn `SignalIcon` / `WifiIcon` / `BatteryIcon` SVGs. The QuestForm is now a real form layout — eyebrow + title input (autofocused) + reward slot (mounted `<RewardSection />`, currently null) + chip slot reserved for Phase 2 + footer with Cancel / Save (disabled) / Publish (disabled). `QuestPreview` exports both the desktop wrapper and a bare `QuestPreviewSurface` so the mobile sheet renders identically without CSS overrides.
 **Files:**
 - `QuestForm.tsx` — left column: title input, reward block, then a `<QuestChipsRow />` of optional chips, then primary actions row at bottom (Save draft / Publish).
 - `QuestPreview.tsx` — right column: phone-frame mirror of the rep card from `iOS QuestCardView`, faithfully inlined like `BrandPreview` does for the event page. Updates as form state changes.

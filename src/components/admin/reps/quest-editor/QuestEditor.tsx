@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Eye, X } from "lucide-react";
 import type { RepQuest } from "@/types/reps";
 import {
   EMPTY_QUEST_FORM_STATE,
@@ -8,26 +9,25 @@ import {
 } from "./types";
 import { QuestTypeStep } from "./QuestTypeStep";
 import { QuestForm } from "./QuestForm";
-import { QuestPreview } from "./QuestPreview";
+import { QuestPreview, QuestPreviewSurface } from "./QuestPreview";
 
 /**
  * Orchestrator for the redesigned quest editor.
  *
- * Phase 1.1 scaffold — wires three children (type picker / form / preview)
- * but the real form body, picker UI, and publish-gate readiness rules
- * land in later phases (1.2 / 1.3 / 3). Doesn't fetch data yet — that's
- * Phase 4 cutover wiring.
+ * - Picker step (`QuestTypeStep`) when no kind is set
+ * - Two-column shell (form left, sticky phone-frame preview right) on
+ *   md+ breakpoints
+ * - Single-column with a floating "Preview" pill on mobile — tapping
+ *   the pill opens a full-screen sheet showing the live phone-frame
+ *
+ * Phase 1.3 ships the layout. Save / publish wiring lands in Phase 3
+ * (readiness gate) + Phase 4 (cutover when QuestsTab.tsx mounts this).
  */
 export interface QuestEditorProps {
-  /** Whether the editor dialog is open. */
   open: boolean;
-  /** Quest id when editing; null when creating. */
   editId: string | null;
-  /** Optional pre-loaded quest row when editing. */
   initialQuest?: RepQuest | null;
-  /** Close without saving. */
   onClose: () => void;
-  /** Saved (draft) or published — parent refreshes the list. */
   onSaved: (quest: RepQuest) => void;
 }
 
@@ -38,36 +38,85 @@ export function QuestEditor({
   onClose,
   onSaved,
 }: QuestEditorProps) {
-  // Suppress unused-prop warnings until later phases wire them. The shape
-  // is intentionally fixed now so QuestsTab.tsx (Phase 4) can mount this
-  // against the contract that's locked in the plan.
+  // Suppress unused-prop warnings until later phases wire them. The
+  // contract is locked so QuestsTab.tsx (Phase 4) can mount this safely.
   void editId;
   void initialQuest;
   void onSaved;
 
   const [state, setState] = useState<QuestFormState>(EMPTY_QUEST_FORM_STATE);
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+
+  // Close the mobile preview sheet whenever the kind picker is showing
+  // — there's nothing to preview yet.
+  useEffect(() => {
+    if (!state.kind && mobilePreviewOpen) setMobilePreviewOpen(false);
+  }, [state.kind, mobilePreviewOpen]);
 
   if (!open) return null;
 
   const onChange = (patch: Partial<QuestFormState>) =>
     setState((s) => ({ ...s, ...patch }));
 
-  // The 3-tile picker is the entry point. Once a kind is chosen, render the
-  // form + preview pane. Phase 1.2 builds the real picker visuals; Phase 1.3
-  // builds the form/preview shell.
   if (!state.kind) {
     return (
-      <QuestTypeStep
-        onPick={(kind) => onChange({ kind })}
-        onClose={onClose}
-      />
+      <div className="px-6 py-8">
+        <QuestTypeStep
+          onPick={(kind) => onChange({ kind })}
+          onClose={onClose}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid gap-8 px-6 py-8 md:grid-cols-[minmax(0,1fr)_320px]">
       <QuestForm state={state} onChange={onChange} onClose={onClose} />
       <QuestPreview state={state} />
+
+      {/* Mobile: floating "Preview" pill */}
+      <button
+        type="button"
+        onClick={() => setMobilePreviewOpen(true)}
+        className="
+          fixed bottom-6 right-6 z-40 inline-flex items-center gap-2
+          rounded-full bg-primary px-4 py-2.5 text-sm font-semibold
+          text-primary-foreground shadow-lg
+          md:hidden
+        "
+        aria-label="Open preview"
+      >
+        <Eye size={14} strokeWidth={2} />
+        Preview
+      </button>
+
+      {/* Mobile: preview sheet */}
+      {mobilePreviewOpen ? (
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            aria-label="Close preview"
+            onClick={() => setMobilePreviewOpen(false)}
+            className="absolute inset-0 bg-black/60"
+          />
+          <div className="absolute inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-3xl border-t border-border bg-card p-4 pb-8 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Preview
+              </p>
+              <button
+                type="button"
+                onClick={() => setMobilePreviewOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Close preview"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <QuestPreviewSurface state={state} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

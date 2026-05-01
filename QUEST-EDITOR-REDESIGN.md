@@ -222,7 +222,7 @@ Each section is a small focused component. Build in priority order — top of th
 
 ## Phase 3 — Publish + readiness (target: 0.5 day)
 
-### 3.1 Publish gate ⬜
+### 3.1 Publish gate ✅
 **Goal:** status is implicit. Save = draft. Publish = active. Same shape as the event editor's publish gate.
 **Files:**
 - `src/lib/quest-readiness.ts` (new) — pure-function readiness checker; same shape as `event-readiness.ts`.
@@ -233,10 +233,12 @@ Each section is a small focused component. Build in priority order — top of th
 - if quest_type=sales_milestone → sales_target ≥ 1
 - if asset_mode=pool → asset_campaign_tag set + at least 1 asset in pool
 **Acceptance:** Publish disabled with tooltip listing missing rules. Hover the tooltip → numbered list.
+**Outcome (2026-05-01):** `src/lib/quest-readiness.ts` ships as a pure function `assessQuest(input)` returning `{ canPublish, rules, blockers }`. Rules: title (≥3 chars, required), kind chosen (required), sales_target ≥ 1 (required when kind=sales_target), pool campaign tag set (required when asset_mode=pool), pool asset count ≥ 1 (required when count is known — orchestrator skips when undefined). QuestEditor computes the report via `useMemo` and threads it to QuestForm. The Publish button uses Radix `Tooltip` (with the documented disabled-button span workaround) so hover surfaces a numbered list of blockers' reasons. Save click handler still no-op (Phase 4 wires the API).
 
-### 3.2 "You're live" success sheet ⬜
+### 3.2 "You're live" success sheet ✅
 **Goal:** when a quest publishes, show a small celebratory sheet with the quest's share URL preview + a "View on iOS preview" link.
 **Acceptance:** matches the event editor's "You're live" sheet pattern.
+**Outcome (2026-05-01):** `QuestLiveSheet.tsx` renders a green-confirmation card matching the event editor's `LiveSheet`. Pulls `quest.share_url` (cascade-resolved server-side) with a slug fallback. Copy-to-clipboard with a "Copied" pulse, "Open link" external CTA, "View on iOS" deeplink stub, and a Done dismiss. QuestEditor stores the published quest in `publishedQuest` state — when set, the sheet renders in place of the form until dismissed (which calls `onClose`). The trigger flips on successful publish; Phase 4 wires the actual `setPublishedQuest()` call after the API responds.
 
 ---
 

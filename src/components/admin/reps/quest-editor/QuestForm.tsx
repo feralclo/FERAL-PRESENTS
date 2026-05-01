@@ -36,6 +36,13 @@ import {
   rulesChipSummary,
   isRulesFilled,
 } from "./sections/RulesSection";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { QuestReadinessReport } from "@/lib/quest-readiness";
 
 /**
  * Single-screen form body. The plan's "one calm vertical surface" —
@@ -53,6 +60,8 @@ export interface QuestFormProps {
   onClose: () => void;
   /** Events the host can anchor a quest to. Fetched in `QuestEditor` and threaded through. */
   events: EventOption[];
+  /** Readiness report — gates the Publish button + drives the blocker tooltip. */
+  readiness: QuestReadinessReport;
 }
 
 interface ChipsOpenState {
@@ -75,7 +84,13 @@ const INITIAL_CHIPS_OPEN: ChipsOpenState = {
   rules: false,
 };
 
-export function QuestForm({ state, onChange, onClose, events }: QuestFormProps) {
+export function QuestForm({
+  state,
+  onChange,
+  onClose,
+  events,
+  readiness,
+}: QuestFormProps) {
   const [chipsOpen, setChipsOpen] = useState<ChipsOpenState>(INITIAL_CHIPS_OPEN);
 
   const toggleChip = (key: keyof ChipsOpenState) =>
@@ -276,25 +291,68 @@ export function QuestForm({ state, onChange, onClose, events }: QuestFormProps) 
               text-muted-foreground
               disabled:cursor-not-allowed disabled:opacity-50
             "
-            title="Save as draft — wiring lands in Phase 4"
+            title="Save as draft — POST wiring lands in Phase 4"
           >
             Save
           </button>
-          <button
-            type="button"
-            disabled
-            className="
-              rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground
-              shadow-sm transition-colors hover:bg-primary/90
-              disabled:cursor-not-allowed disabled:opacity-50
-            "
-            title="Publish — readiness gate wires in Phase 3"
-          >
-            Publish
-          </button>
+          <PublishButton readiness={readiness} />
         </div>
       </footer>
     </form>
+  );
+}
+
+/**
+ * Publish button gated by the readiness report. When blocked, the
+ * tooltip on hover lists the failing rules as a numbered checklist
+ * so the host knows exactly what to fix. Click handler is a no-op
+ * for now — Phase 4 attaches the API call.
+ */
+function PublishButton({ readiness }: { readiness: QuestReadinessReport }) {
+  const blocked = !readiness.canPublish;
+  const button = (
+    <button
+      type="button"
+      disabled={blocked}
+      className="
+        rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground
+        shadow-sm transition-colors hover:bg-primary/90
+        disabled:cursor-not-allowed disabled:opacity-50
+      "
+    >
+      Publish
+    </button>
+  );
+
+  if (!blocked) {
+    return button;
+  }
+
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        {/* `asChild` would forward the trigger ref onto a disabled button —
+            disabled buttons don't fire mouse events on most browsers, so we
+            wrap in a span (Radix's documented workaround). */}
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex">
+            {button}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          align="end"
+          className="max-w-[260px] space-y-1 text-left text-xs"
+        >
+          <p className="font-medium">Before you can publish</p>
+          <ol className="list-inside list-decimal space-y-0.5 font-normal text-muted-foreground">
+            {readiness.blockers.map((rule) => (
+              <li key={rule.id}>{rule.reason ?? rule.label}</li>
+            ))}
+          </ol>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 

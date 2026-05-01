@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, X } from "lucide-react";
 import type { PlatformXPConfig, RepQuest } from "@/types/reps";
 import { DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
+import { assessQuest } from "@/lib/quest-readiness";
 import {
   EMPTY_QUEST_FORM_STATE,
   questTypeFor,
@@ -12,6 +13,7 @@ import {
 import { QuestTypeStep } from "./QuestTypeStep";
 import { QuestForm } from "./QuestForm";
 import { QuestPreview, QuestPreviewSurface } from "./QuestPreview";
+import { QuestLiveSheet } from "./QuestLiveSheet";
 import type { EventOption } from "./sections/EventSection";
 
 /**
@@ -53,6 +55,10 @@ export function QuestEditor({
     DEFAULT_PLATFORM_XP_CONFIG
   );
   const [events, setEvents] = useState<EventOption[]>([]);
+  // Set by Phase 4's publish handler when an active quest comes back from
+  // the API; renders the success sheet in place of the form until dismissed.
+  const [publishedQuest, setPublishedQuest] = useState<RepQuest | null>(null);
+  void setPublishedQuest;
 
   // Fetch the platform XP config so reward inputs can prefill on the
   // matching quest_type. Falls back to DEFAULT_PLATFORM_XP_CONFIG so
@@ -95,6 +101,29 @@ export function QuestEditor({
     if (!state.kind && mobilePreviewOpen) setMobilePreviewOpen(false);
   }, [state.kind, mobilePreviewOpen]);
 
+  // Pool asset count check is deferred until the orchestrator wires it
+  // (Phase 4 cutover). Until then `assessQuest` skips the pool_assets
+  // rule so existing pool quests aren't gated on a fetch we haven't
+  // wired. Other rules (title, kind, sales target, campaign tag) run
+  // against the in-memory form state every render.
+  const readiness = useMemo(
+    () =>
+      assessQuest({
+        title: state.title,
+        kind: state.kind,
+        asset_mode: state.asset_mode,
+        asset_campaign_tag: state.asset_campaign_tag,
+        sales_target: state.sales_target,
+      }),
+    [
+      state.title,
+      state.kind,
+      state.asset_mode,
+      state.asset_campaign_tag,
+      state.sales_target,
+    ]
+  );
+
   if (!open) return null;
 
   // Intercept socialSubType changes so the XP reward re-prefills to the
@@ -129,6 +158,18 @@ export function QuestEditor({
     onChange({ kind, xp_reward: xp });
   };
 
+  if (publishedQuest) {
+    return (
+      <QuestLiveSheet
+        quest={publishedQuest}
+        onDismiss={() => {
+          setPublishedQuest(null);
+          onClose();
+        }}
+      />
+    );
+  }
+
   if (!state.kind) {
     return (
       <div className="px-6 py-8">
@@ -137,9 +178,15 @@ export function QuestEditor({
     );
   }
 
-  return (
+    return (
     <div className="grid gap-8 px-6 py-8 md:grid-cols-[minmax(0,1fr)_320px]">
-      <QuestForm state={state} onChange={onChange} onClose={onClose} events={events} />
+      <QuestForm
+        state={state}
+        onChange={onChange}
+        onClose={onClose}
+        events={events}
+        readiness={readiness}
+      />
       <QuestPreview state={state} />
 
       {/* Mobile: floating "Preview" pill */}

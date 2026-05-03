@@ -163,9 +163,10 @@ export function QuestEditor({
       platformConfig.xp_per_quest_type[questType] ??
       platformConfig.xp_per_quest_type.custom;
     // Sales-target quests need a target to publish — seed a sensible
-    // default (25 tickets) so the host sees the input prefilled rather
-    // than empty. The host overrides freely.
-    const sales_target = kind === "sales_target" ? 25 : null;
+    // default (5 tickets) so the host sees the input prefilled rather
+    // than empty. Low-side default per Harry: most reps don't hit 25;
+    // start small, let serious targets be opt-in.
+    const sales_target = kind === "sales_target" ? 5 : null;
     onChange({ kind, xp_reward: xp, sales_target });
   };
 

@@ -3,7 +3,10 @@
 import { Target } from "lucide-react";
 import type { SectionProps } from "../types";
 
-const PRESETS: ReadonlyArray<number> = [10, 25, 50, 100];
+// Realistic ladder — most reps shipping a first quest will hit 3, the
+// next tier challenges them, the top end is for serious reps. 100+ is
+// rare enough that it lives in the custom number input, not a preset.
+const PRESETS: ReadonlyArray<number> = [3, 10, 25, 50];
 
 /**
  * Sales target input — only mounted when `kind === "sales_target"`.

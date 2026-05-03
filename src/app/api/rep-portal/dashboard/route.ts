@@ -166,14 +166,17 @@ export async function GET(request: NextRequest) {
       eventsResult,
       recentSalesResult,
       approvedQuestCountResult,
+      submissionsTodayResult,
     ] = await Promise.all([
       getPlatformXPConfig(),
 
-      // XP earned today — for the `xp.today` field
+      // XP earned today — for the `xp.today` field. Column is `points`,
+      // NOT `points_delta` (a long-standing typo silently returned 0 for
+      // everyone — surfaced while wiring streak.today_locked, fixed here).
       want("xp")
         ? db
             .from(TABLES.REP_POINTS_LOG)
-            .select("points_delta", { count: "exact" })
+            .select("points", { count: "exact" })
             .eq("rep_id", repId)
             .gte("created_at", startOfTodayIso())
         : Promise.resolve({ data: null, count: null }),
@@ -235,6 +238,18 @@ export async function GET(request: NextRequest) {
             .select("id", { count: "exact", head: true })
             .eq("rep_id", repId)
             .eq("status", "approved")
+        : Promise.resolve({ count: 0 }),
+
+      // Any submission today — used to compute streak.today_locked.
+      // Counts every status (pending / approved / rejected / requires_revision):
+      // intent + work counts, not just outcome. A rep submitting at 23:55
+      // shouldn't lose their streak waiting for admin approval.
+      want("rep")
+        ? db
+            .from(TABLES.REP_QUEST_SUBMISSIONS)
+            .select("id", { count: "exact", head: true })
+            .eq("rep_id", repId)
+            .gte("created_at", startOfTodayIso())
         : Promise.resolve({ count: 0 }),
     ]);
 
@@ -420,6 +435,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // today_locked: did the rep do anything today that should count for
+    // their streak? "Anything" = a quest submission (regardless of approval
+    // status) or any XP delta. The submission-side answer covers reps who
+    // submit at 23:55 and would otherwise lose their streak while admin
+    // approval is pending; the XP-side answer covers sales-attribution
+    // reps who never submit a quest. iOS used to derive this from
+    // `xp.today > 0` alone — that broke for the late-night submission case.
+    const submissionsToday = submissionsTodayResult.count ?? 0;
+    const xpToday = Array.isArray(repPointsLogTodayResult.data)
+      ? (repPointsLogTodayResult.data as Array<{ points: number }>).reduce(
+          (sum, row) => sum + (row.points ?? 0),
+          0
+        )
+      : 0;
+    const todayLocked = submissionsToday > 0 || xpToday > 0;
+
     const repBlock = want("rep")
       ? {
           id: rep.id,
@@ -440,20 +471,25 @@ export async function GET(request: NextRequest) {
           total_revenue_pence: Math.round(Number(rep.total_revenue ?? 0) * 100),
           onboarding_completed: rep.onboarding_completed ?? false,
           status: isPending ? "pending" : "active",
+          // Flat keys retained for backward compat with iOS clients shipped
+          // before the nested `streak` block landed (2026-05-03). Drop once
+          // the App Store version requirement bumps past that date.
           streak_current: streakCurrent,
           streak_best: streakBest,
+          // New nested shape — iOS reads these going forward. `today_locked`
+          // tells iOS whether to render the "you locked today in" affordance
+          // without re-deriving it from xp.today > 0 (which lied for reps
+          // whose 23:55 submissions hadn't been approved yet).
+          streak: {
+            current: streakCurrent,
+            best: streakBest,
+            today_locked: todayLocked,
+          },
           follower_count: rep.follower_count ?? 0,
           following_count: rep.following_count ?? 0,
           total_approved_quest_count: approvedQuestCountResult.count ?? 0,
         }
       : null;
-
-    const xpToday = Array.isArray(repPointsLogTodayResult.data)
-      ? (repPointsLogTodayResult.data as Array<{ points_delta: number }>).reduce(
-          (sum, row) => sum + (row.points_delta ?? 0),
-          0
-        )
-      : 0;
 
     // progress.nextLevelXp is null when the rep is at max level (no next tier)
     const atMaxLevel = progress.nextLevelXp === null;

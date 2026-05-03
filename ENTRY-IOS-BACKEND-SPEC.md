@@ -449,6 +449,10 @@ Weekly cron computes each rep's rolling-30-day rank per promoter and writes. `de
 
 ### 5.14 `rep_streaks` (NEW) — daily activity streak
 
+> **Note (2026-05-03):** The dashboard rep block now ships streak data in two shapes:
+> - Legacy flat keys (`streak_current`, `streak_best`) — retained for backward compat with iOS clients shipped before today; safe to drop after the App Store version requirement bumps past 2026-05-03.
+> - New nested `streak: { current, best, today_locked }`. iOS reads from this going forward. `today_locked` is `true` when the rep has any quest submission today (regardless of approval status — pending counts) OR any XP delta logged today (sales attribution). Replaces the old client-side `xp.today > 0` heuristic, which lied for reps whose 23:55 quest submissions hadn't been approved before the UTC day rollover. The public `/api/rep-portal/reps/[id]` endpoint returns `streak_current` only (no `today_locked` — that's a self-only concept).
+
 Persona doc references `currentStreak`/`bestStreak`. Needs a daily activity marker.
 
 ```sql
@@ -556,6 +560,11 @@ Every endpoint below. `Auth` column: `public` | `rep` (via `requireRepAuth`) | `
     "total_revenue_pence": 84000,
     "streak_current": 3,
     "streak_best": 14,
+    "streak": {
+      "current": 3,
+      "best": 14,
+      "today_locked": true
+    },
     "onboarding_completed": true,
     "marketing_opt_in": true,
     "push_enabled": true,

@@ -107,12 +107,13 @@ export async function GET(request: NextRequest) {
 
     const candidateIds = candidates.map((c) => c.id);
 
-    // 2. Reps who already earned XP today — drop them.
+    // 2. Reps who already earned XP today — drop them. Column is `points`,
+    // NOT `points_delta` (silently dropped to zero on the old name).
     const { data: earnedToday } = await db
       .from(TABLES.REP_POINTS_LOG)
       .select("rep_id")
       .gte("created_at", startOfDayIso)
-      .gt("points_delta", 0)
+      .gt("points", 0)
       .in("rep_id", candidateIds);
     const earnedSet = new Set(
       (earnedToday ?? []).map((r) => (r as { rep_id: string }).rep_id),

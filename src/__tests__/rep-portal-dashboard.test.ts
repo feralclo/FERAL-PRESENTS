@@ -244,7 +244,7 @@ describe("GET /api/rep-portal/dashboard", () => {
         { id: "rep-1", total_revenue: 840 },
       ],
       recentSales: [],
-      pointsToday: [{ points_delta: 200 }],
+      pointsToday: [{ points: 200 }],
     });
 
     const { GET } = await import("@/app/api/rep-portal/dashboard/route");

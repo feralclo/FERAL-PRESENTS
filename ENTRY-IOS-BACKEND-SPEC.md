@@ -1421,9 +1421,10 @@ Assumes no parallel web-v2 work. Assumes product decisions (§3) are locked befo
 
 ## 14. Changelog
 
-- **2026-05-03 — Avatar wiring sweep.** Two additive DTO fields to populate iOS avatar surfaces that were defaulting to nil/initials:
+- **2026-05-03 — Avatar wiring sweep.** Three additive DTO fields to populate iOS avatar surfaces that were defaulting to nil/initials:
   - `GET /api/rep-portal/stories/feed` — each story-rail entry now ships a top-level `photo_url` (mirrored from `author.photo_url`) so iOS's StoryEntryDTO populates without a nested-path read. Falls back to null when the author has no photo.
   - `GET /api/rep-portal/notifications` — each row now ships `actor_photo_url` for peer-action notification types (`rep_follow` reads `metadata.follower_rep_id`; `peer_milestone` reads `metadata.actor_rep_id`). Resolves to null for system notifications without an actor — iOS falls back to the kind glyph.
+  - `GET /api/rep-portal/me/followers`, `/me/following`, `/reps/search` — each rep list row now ships `banner_url` so iOS can render its banner-backed card design. Same column the public profile already returns; null falls back to the violet accent gradient on iOS.
 
 - **2026-04-22 v2.0 — SHIPPED.** All 5 phases complete across ~36 feature commits and 27 migrations. Session totals: 465 unit tests + 6 EP integration tests (all green). Real-DB reconciliation proves zero `ep_rep_balance_drift` after every state change in the money-path tests.
 

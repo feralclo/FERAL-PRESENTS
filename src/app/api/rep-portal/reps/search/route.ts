@@ -52,6 +52,7 @@ interface RepRow {
   first_name: string;
   last_name: string;
   photo_url: string | null;
+  banner_url: string | null;
   level: number;
   points_balance: number;
   follower_count: number;
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
     let query = db
       .from("reps")
       .select(
-        "id, display_name, first_name, last_name, photo_url, level, points_balance, follower_count, following_count",
+        "id, display_name, first_name, last_name, photo_url, banner_url, level, points_balance, follower_count, following_count",
         { count: "exact" }
       )
       .eq("status", "active");
@@ -177,6 +178,7 @@ export async function GET(request: NextRequest) {
       first_name: r.first_name,
       last_name: r.last_name,
       photo_url: r.photo_url,
+      banner_url: r.banner_url,
       level: r.level,
       xp_total: r.points_balance,
       follower_count: r.follower_count,

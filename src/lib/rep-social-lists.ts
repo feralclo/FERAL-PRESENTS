@@ -19,6 +19,9 @@ export interface RepListRow {
   first_name: string | null;
   last_name: string | null;
   photo_url: string | null;
+  /** Wide banner backing the row's card design on iOS. Null = render
+   *  the violet accent gradient fallback (graceful — already shipped). */
+  banner_url: string | null;
   level: number;
   follower_count: number;
   following_count: number;
@@ -84,7 +87,7 @@ export async function hydrateRepRows(
     db
       .from("reps")
       .select(
-        "id, display_name, first_name, last_name, photo_url, level, follower_count, following_count, created_at, status"
+        "id, display_name, first_name, last_name, photo_url, banner_url, level, follower_count, following_count, created_at, status"
       )
       .in("id", repIds),
     viewerId
@@ -115,6 +118,7 @@ export async function hydrateRepRows(
     first_name: string | null;
     last_name: string | null;
     photo_url: string | null;
+    banner_url: string | null;
     level: number | null;
     follower_count: number | null;
     following_count: number | null;
@@ -130,6 +134,7 @@ export async function hydrateRepRows(
       first_name: row.first_name,
       last_name: row.last_name,
       photo_url: row.photo_url,
+      banner_url: row.banner_url,
       level: row.level ?? 1,
       follower_count: row.follower_count ?? 0,
       following_count: row.following_count ?? 0,

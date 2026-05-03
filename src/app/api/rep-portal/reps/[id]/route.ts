@@ -46,13 +46,14 @@ export async function GET(
     const db = await getSupabaseAdmin();
     if (!db) return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
 
-    // Pull the rep + teams + recent completions + follow edges in parallel
+    // Pull the rep + teams + recent completions + follow edges + streak in parallel
     const [
       repResult,
       membershipsResult,
       recentSubmissionsResult,
       outgoingFollowResult,
       incomingFollowResult,
+      streakResult,
     ] = await Promise.all([
       db
         .from(TABLES.REPS)
@@ -91,6 +92,13 @@ export async function GET(
         .select("follower_id")
         .eq("follower_id", id)
         .eq("followee_id", auth.rep.id)
+        .maybeSingle(),
+      // Current streak — surfaces a streak chip on the iOS profile screen.
+      // No today_locked here (self-only concept); just the int.
+      db
+        .from("rep_streaks")
+        .select("current_streak")
+        .eq("rep_id", id)
         .maybeSingle(),
     ]);
 
@@ -200,6 +208,8 @@ export async function GET(
     const isFollowing = !!outgoingFollowResult.data;
     const isFollowedBy = !!incomingFollowResult.data;
     const isSelf = id === auth.rep.id;
+    const streakCurrent =
+      (streakResult.data as { current_streak?: number } | null)?.current_streak ?? 0;
 
     return NextResponse.json({
       data: {
@@ -217,6 +227,7 @@ export async function GET(
         tier: getTierName(rep.level ?? 1, tiers).toLowerCase(),
         follower_count: rep.follower_count ?? 0,
         following_count: rep.following_count ?? 0,
+        streak_current: streakCurrent,
         teams,
         recent_quest_completions: recentQuestCompletions,
         is_following: isFollowing,

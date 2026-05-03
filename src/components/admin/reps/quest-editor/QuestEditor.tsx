@@ -162,7 +162,11 @@ export function QuestEditor({
     const xp =
       platformConfig.xp_per_quest_type[questType] ??
       platformConfig.xp_per_quest_type.custom;
-    onChange({ kind, xp_reward: xp });
+    // Sales-target quests need a target to publish — seed a sensible
+    // default (25 tickets) so the host sees the input prefilled rather
+    // than empty. The host overrides freely.
+    const sales_target = kind === "sales_target" ? 25 : null;
+    onChange({ kind, xp_reward: xp, sales_target });
   };
 
   // Save (status="draft") closes the dialog. Publish (status="active")

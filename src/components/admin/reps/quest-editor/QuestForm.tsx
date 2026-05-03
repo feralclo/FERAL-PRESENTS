@@ -13,6 +13,7 @@ import {
 import type { QuestFormState } from "./types";
 import { QuestChip } from "./QuestChip";
 import { RewardSection } from "./sections/RewardSection";
+import { SalesTargetSection } from "./sections/SalesTargetSection";
 import { CoverSection, coverChipSummary } from "./sections/CoverSection";
 import {
   ShareableSection,
@@ -145,6 +146,10 @@ export function QuestForm({
             autoFocus
           />
         </Field>
+
+        {state.kind === "sales_target" ? (
+          <SalesTargetSection state={state} onChange={onChange} />
+        ) : null}
 
         <RewardSection state={state} onChange={onChange} />
 

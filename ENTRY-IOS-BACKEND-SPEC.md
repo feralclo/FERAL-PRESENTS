@@ -889,9 +889,10 @@ Screenshot upload goes through the signed-URL flow first (see §8).
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
+| GET | `/api/rep-portal/reps/search?q=&limit=&offset=` | rep | Platform-wide rep search by `display_name` / `first_name` / `last_name`. Excludes self + bidirectional `rep_blocks`. Rate-limited 50/min/IP. Returns the same lightweight shape as the public profile (id, names, photo_url, level, xp_total, follower/following counts) plus `i_follow_them` + `is_following_me` so iOS rows render the right CTA without a second roundtrip. |
 | POST | `/api/rep-portal/reps/[rep_id]/follow` | rep | Follow another rep. |
 | DELETE | `/api/rep-portal/reps/[rep_id]/follow` | rep | Unfollow. |
-| GET | `/api/rep-portal/reps/[rep_id]` | rep | Public rep profile (lightweight). |
+| GET | `/api/rep-portal/reps/[rep_id]` | rep | Public rep profile (lightweight). Includes `streak_current` (int, default 0). |
 | GET | `/api/rep-portal/me/following/reps` | rep | Reps I follow. |
 | GET | `/api/rep-portal/me/followers/reps` | rep | Reps following me. |
 | GET | `/api/rep-portal/me/friends` | rep | Mutual follows (computed). |

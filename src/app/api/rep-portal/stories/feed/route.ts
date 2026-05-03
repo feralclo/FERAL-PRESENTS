@@ -162,9 +162,13 @@ export async function GET(_request: NextRequest) {
       ((authorsData ?? []) as AuthorRow[]).map((a) => [a.id, a])
     );
 
-    // 6. Build author-grouped output
+    // 6. Build author-grouped output. `photo_url` is mirrored from
+    // `author.photo_url` at the top level so iOS's StoryEntryDTO can read
+    // it directly without a nested-path lookup. Falls back to null when
+    // the author has no profile photo set — iOS renders the initials chip.
     type Group = {
       author: ReturnType<typeof toStoryAuthor>;
+      photo_url: string | null;
       stories: ReturnType<typeof toStoryDTO>[];
       has_unviewed: boolean;
       newest_at: string;
@@ -180,6 +184,7 @@ export async function GET(_request: NextRequest) {
         groups.get(row.author_rep_id) ??
         {
           author: toStoryAuthor(author),
+          photo_url: author.photo_url ?? null,
           stories: [],
           has_unviewed: false,
           newest_at: row.created_at,

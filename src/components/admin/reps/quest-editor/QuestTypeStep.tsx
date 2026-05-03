@@ -10,9 +10,10 @@ import type { QuestKind } from "./types";
  * content_creation under a single "Post on social" card and lets the
  * sub-toggle inside the form pick which.
  *
- * Design language: borders + soft shadows, no glass, hover lifts via
- * `border-primary/30` + `bg-primary/[0.03]`. Match the quality bar set
- * by `BrandPreview.tsx`. Sentence case throughout.
+ * Each card carries a row of concrete example chips at the bottom so a
+ * first-time host can pattern-match without reading the description —
+ * "oh, that's where 'first to 25 tickets' goes." Borders + soft shadows,
+ * no glass, sentence-case throughout.
  */
 export interface QuestTypeStepProps {
   onPick: (kind: QuestKind) => void;
@@ -24,7 +25,8 @@ interface QuestTypeOption {
   icon: LucideIcon;
   title: string;
   description: string;
-  hint: string;
+  /** Three concrete examples shown as chips at the bottom of the card. */
+  examples: ReadonlyArray<string>;
 }
 
 const OPTIONS: ReadonlyArray<QuestTypeOption> = [
@@ -32,22 +34,22 @@ const OPTIONS: ReadonlyArray<QuestTypeOption> = [
     kind: "post_on_social",
     icon: Smartphone,
     title: "Post on social",
-    description: "Reps share something to TikTok or Instagram — a story, a feed post, or original content.",
-    hint: "Most quests live here.",
+    description: "Reps share to TikTok or Instagram and tag your event.",
+    examples: ["Story share", "TikTok post", "Recreate this reel"],
   },
   {
     kind: "sales_target",
     icon: TrendingUp,
     title: "Hit a sales target",
-    description: "Reps race to sell a number of tickets. Best for promoter showdowns and event-week pushes.",
-    hint: "Pick this for sales pushes.",
+    description: "Reps race to sell a number of tickets. First to the line wins.",
+    examples: ["First to 25", "Sell 50 tonight", "Top of the leaderboard"],
   },
   {
     kind: "something_else",
     icon: Sparkles,
     title: "Something else",
-    description: "Define a custom task in your own words — flyering, photo-of-the-night, anything.",
-    hint: "When the others don't fit.",
+    description: "Anything that doesn't fit the other two — describe it in your own words.",
+    examples: ["Group chat shoutout", "Photo of the night", "Flyer the queue"],
   },
 ];
 
@@ -101,7 +103,7 @@ function QuestTypeCard({ option, onPick }: QuestTypeCardProps) {
       type="button"
       onClick={onPick}
       className="
-        group relative flex h-44 flex-col items-start justify-between gap-3
+        group relative flex h-full flex-col items-start gap-4
         rounded-lg border border-border/40 bg-card p-5 text-left
         shadow-sm transition-all
         hover:border-primary/40 hover:bg-primary/[0.03] hover:shadow
@@ -112,26 +114,39 @@ function QuestTypeCard({ option, onPick }: QuestTypeCardProps) {
       <span
         aria-hidden="true"
         className="
-          inline-flex h-9 w-9 items-center justify-center rounded-md
+          inline-flex h-11 w-11 items-center justify-center rounded-lg
           bg-primary/10 text-primary
           transition-colors group-hover:bg-primary/15
         "
       >
-        <Icon size={20} strokeWidth={1.75} />
+        <Icon size={22} strokeWidth={1.75} />
       </span>
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <h3 className="text-base font-semibold tracking-tight">
           {option.title}
         </h3>
-        <p className="text-xs leading-snug text-muted-foreground">
+        <p className="text-xs leading-relaxed text-muted-foreground">
           {option.description}
         </p>
       </div>
 
-      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-        {option.hint}
-      </span>
+      <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
+        {option.examples.map((example) => (
+          <span
+            key={example}
+            className="
+              rounded-full border border-border/40 bg-foreground/[0.03]
+              px-2 py-0.5 font-mono text-[10px] font-medium tracking-tight
+              text-muted-foreground
+              transition-colors
+              group-hover:border-primary/20 group-hover:text-foreground/80
+            "
+          >
+            {example}
+          </span>
+        ))}
+      </div>
     </button>
   );
 }

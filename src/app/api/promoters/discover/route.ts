@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { absolutizePromoterUrls } from "@/lib/absolute-url";
 import * as Sentry from "@sentry/nextjs";
 
 // Public endpoint — rate-limit to keep casual scrapers off.
@@ -74,7 +75,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const promoters = data ?? [];
+    const promoters = (data ?? []).map((p) =>
+      absolutizePromoterUrls(p as { avatar_url?: string | null; cover_image_url?: string | null }, request)
+    );
     const total = count ?? promoters.length;
 
     return NextResponse.json({

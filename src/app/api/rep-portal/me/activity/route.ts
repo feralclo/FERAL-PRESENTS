@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
+import { absolutizeUrl } from "@/lib/absolute-url";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -79,7 +80,10 @@ const EMPTY_PROMOTER_FIELDS = {
   promoter_avatar_bg_hex: null,
 } as const;
 
-function promoterFieldsFor(promoter: PromoterLite | null): {
+function promoterFieldsFor(
+  promoter: PromoterLite | null,
+  request: NextRequest
+): {
   promoter_id: string | null;
   promoter_handle: string | null;
   promoter_name: string | null;
@@ -92,7 +96,7 @@ function promoterFieldsFor(promoter: PromoterLite | null): {
     promoter_id: promoter.id,
     promoter_handle: promoter.handle,
     promoter_name: promoter.display_name,
-    promoter_avatar_url: promoter.avatar_url,
+    promoter_avatar_url: absolutizeUrl(promoter.avatar_url, request),
     promoter_avatar_initials: promoter.avatar_initials,
     promoter_avatar_bg_hex: promoter.avatar_bg_hex,
   };
@@ -309,7 +313,7 @@ export async function GET(request: NextRequest) {
         ep_delta: ep,
         created_at: r.created_at,
         deep_link: deepLink,
-        ...promoterFieldsFor(promoter),
+        ...promoterFieldsFor(promoter, request),
       };
     });
 
@@ -327,7 +331,7 @@ export async function GET(request: NextRequest) {
         ep_delta: 0,
         created_at: s.reviewed_at ?? s.created_at,
         deep_link: `${QUEST_DEEP_LINK_PREFIX}/${s.quest_id}`,
-        ...promoterFieldsFor(questPromoterById.get(s.quest_id) ?? null),
+        ...promoterFieldsFor(questPromoterById.get(s.quest_id) ?? null, request),
       };
     });
 

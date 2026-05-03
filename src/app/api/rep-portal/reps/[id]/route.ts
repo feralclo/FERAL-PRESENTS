@@ -5,6 +5,7 @@ import { TABLES } from "@/lib/constants";
 import { getPlatformXPConfig } from "@/lib/rep-points";
 import { getTierName, DEFAULT_TIERS } from "@/lib/xp-levels";
 import type { TierDefinition } from "@/lib/xp-levels";
+import { absolutizeUrl } from "@/lib/absolute-url";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -31,7 +32,7 @@ import * as Sentry from "@sentry/nextjs";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -157,10 +158,10 @@ export async function GET(
         display_name: p.display_name,
         tagline: p.tagline,
         accent_hex: p.accent_hex,
-        avatar_url: p.avatar_url,
+        avatar_url: absolutizeUrl(p.avatar_url, request),
         avatar_initials: p.avatar_initials,
         avatar_bg_hex: p.avatar_bg_hex,
-        cover_image_url: p.cover_image_url,
+        cover_image_url: absolutizeUrl(p.cover_image_url, request),
         follower_count: p.follower_count,
         team_size: p.team_size,
       }));

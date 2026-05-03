@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { absolutizeUrl } from "@/lib/absolute-url";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -120,10 +121,10 @@ export async function GET(
         bio: promoter.bio,
         location: promoter.location,
         accent_hex: promoter.accent_hex,
-        avatar_url: promoter.avatar_url,
+        avatar_url: absolutizeUrl(promoter.avatar_url, request),
         avatar_initials: promoter.avatar_initials,
         avatar_bg_hex: promoter.avatar_bg_hex,
-        cover_image_url: promoter.cover_image_url,
+        cover_image_url: absolutizeUrl(promoter.cover_image_url, request),
         website: promoter.website,
         instagram: promoter.instagram,
         tiktok: promoter.tiktok,

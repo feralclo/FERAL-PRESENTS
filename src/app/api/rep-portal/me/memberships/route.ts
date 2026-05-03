@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireRepAuth } from "@/lib/auth";
+import { absolutizePromoterUrls } from "@/lib/absolute-url";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -19,7 +20,7 @@ import * as Sentry from "@sentry/nextjs";
  *     }
  *   }
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const auth = await requireRepAuth({ allowPending: true });
     if (auth.error) return auth.error;
@@ -74,18 +75,25 @@ export async function GET() {
       promoter: Promoter | Promoter[] | null;
     };
 
-    const rows = ((data ?? []) as unknown as Row[]).map((r) => ({
-      id: r.id,
-      status: r.status,
-      discount_code: r.discount_code,
-      discount_percent: r.discount_percent,
-      pitch: r.pitch,
-      requested_at: r.requested_at,
-      approved_at: r.approved_at,
-      left_at: r.left_at,
-      rejected_reason: r.rejected_reason,
-      promoter: Array.isArray(r.promoter) ? r.promoter[0] ?? null : r.promoter,
-    }));
+    const rows = ((data ?? []) as unknown as Row[]).map((r) => {
+      const rawPromoter = Array.isArray(r.promoter)
+        ? r.promoter[0] ?? null
+        : r.promoter;
+      return {
+        id: r.id,
+        status: r.status,
+        discount_code: r.discount_code,
+        discount_percent: r.discount_percent,
+        pitch: r.pitch,
+        requested_at: r.requested_at,
+        approved_at: r.approved_at,
+        left_at: r.left_at,
+        rejected_reason: r.rejected_reason,
+        promoter: rawPromoter
+          ? absolutizePromoterUrls(rawPromoter, request)
+          : null,
+      };
+    });
 
     const grouped = {
       approved: rows.filter((r) => r.status === "approved"),

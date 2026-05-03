@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireRepAuth } from "@/lib/auth";
+import { absolutizeUrl } from "@/lib/absolute-url";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -94,10 +95,10 @@ export async function GET(request: NextRequest) {
           display_name: p.display_name,
           tagline: p.tagline,
           accent_hex: p.accent_hex,
-          avatar_url: p.avatar_url,
+          avatar_url: absolutizeUrl(p.avatar_url, request),
           avatar_initials: p.avatar_initials,
           avatar_bg_hex: p.avatar_bg_hex,
-          cover_image_url: p.cover_image_url,
+          cover_image_url: absolutizeUrl(p.cover_image_url, request),
           follower_count: p.follower_count,
           team_size: p.team_size,
           is_following: true,

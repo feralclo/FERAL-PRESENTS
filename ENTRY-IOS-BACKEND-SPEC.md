@@ -1421,6 +1421,8 @@ Assumes no parallel web-v2 work. Assumes product decisions (§3) are locked befo
 
 ## 14. Changelog
 
+- **2026-05-03 — `/me/activity` promoter context + kind classification fix.** Each activity row now carries six promoter fields (`promoter_id`, `promoter_handle`, `promoter_name`, `promoter_avatar_url`, `promoter_avatar_initials`, `promoter_avatar_bg_hex`) populated from the joined promoter on quest-linked rows; null on manual/sale/refund/etc rows. Lets iOS render the promoter logo on quest activity rows ("POST IN A GROUP CHAT — FERAL PRESENTS"). Same fix surfaced an older bug: the route's `kind` switch was matching aspirational source_types (`quest_approved`, `manual_grant`, `level_up`) that never appear in `rep_points_log` (the CHECK constraint allows only `sale | quest | manual | reward_spend | revocation | refund`). Every row was falling to `kind: "other"` with a generic title. Fixed alongside — quest rows now correctly classify as `quest_approved`, manual as `manual_grant`, etc.
+
 - **2026-05-03 — Avatar wiring sweep.** Three additive DTO fields to populate iOS avatar surfaces that were defaulting to nil/initials:
   - `GET /api/rep-portal/stories/feed` — each story-rail entry now ships a top-level `photo_url` (mirrored from `author.photo_url`) so iOS's StoryEntryDTO populates without a nested-path read. Falls back to null when the author has no photo.
   - `GET /api/rep-portal/notifications` — each row now ships `actor_photo_url` for peer-action notification types (`rep_follow` reads `metadata.follower_rep_id`; `peer_milestone` reads `metadata.actor_rep_id`). Resolves to null for system notifications without an actor — iOS falls back to the kind glyph.

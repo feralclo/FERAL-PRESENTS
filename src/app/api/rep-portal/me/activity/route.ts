@@ -49,6 +49,53 @@ interface ActivityRow {
   ep_delta: number;
   created_at: string;
   deep_link: string | null;
+  // Promoter context for quest-linked rows — lets iOS render the
+  // promoter's logo on the activity row instead of squashing identity
+  // into the subtitle string. Null on rows that don't tie to a quest
+  // (manual_grant, level_up, generic "other").
+  promoter_id: string | null;
+  promoter_handle: string | null;
+  promoter_name: string | null;
+  promoter_avatar_url: string | null;
+  promoter_avatar_initials: string | null;
+  promoter_avatar_bg_hex: number | null;
+}
+
+interface PromoterLite {
+  id: string;
+  handle: string;
+  display_name: string;
+  avatar_url: string | null;
+  avatar_initials: string | null;
+  avatar_bg_hex: number | null;
+}
+
+const EMPTY_PROMOTER_FIELDS = {
+  promoter_id: null,
+  promoter_handle: null,
+  promoter_name: null,
+  promoter_avatar_url: null,
+  promoter_avatar_initials: null,
+  promoter_avatar_bg_hex: null,
+} as const;
+
+function promoterFieldsFor(promoter: PromoterLite | null): {
+  promoter_id: string | null;
+  promoter_handle: string | null;
+  promoter_name: string | null;
+  promoter_avatar_url: string | null;
+  promoter_avatar_initials: string | null;
+  promoter_avatar_bg_hex: number | null;
+} {
+  if (!promoter) return { ...EMPTY_PROMOTER_FIELDS };
+  return {
+    promoter_id: promoter.id,
+    promoter_handle: promoter.handle,
+    promoter_name: promoter.display_name,
+    promoter_avatar_url: promoter.avatar_url,
+    promoter_avatar_initials: promoter.avatar_initials,
+    promoter_avatar_bg_hex: promoter.avatar_bg_hex,
+  };
 }
 
 interface PointsLogRow {
@@ -130,16 +177,11 @@ export async function GET(request: NextRequest) {
     const questIds = new Set<string>();
     const rewardIds = new Set<string>();
     for (const r of pointsRows) {
-      if (
-        (r.source_type === "quest_approved" ||
-          r.source_type === "quest_submission") &&
-        r.source_id
-      ) {
+      if (r.source_type === "quest" && r.source_id) {
         questIds.add(r.source_id);
       }
       if (
-        (r.source_type === "reward_claim" ||
-          r.source_type === "reward_refund") &&
+        (r.source_type === "reward_spend" || r.source_type === "refund") &&
         r.source_id
       ) {
         rewardIds.add(r.source_id);
@@ -153,9 +195,17 @@ export async function GET(request: NextRequest) {
       questIds.size > 0
         ? db
             .from(TABLES.REP_QUESTS)
-            .select("id, title")
+            .select(
+              "id, title, promoter:promoters(id, handle, display_name, avatar_url, avatar_initials, avatar_bg_hex)",
+            )
             .in("id", Array.from(questIds))
-        : Promise.resolve({ data: [] as Array<{ id: string; title: string }> }),
+        : Promise.resolve({
+            data: [] as Array<{
+              id: string;
+              title: string;
+              promoter: PromoterLite | PromoterLite[] | null;
+            }>,
+          }),
       rewardIds.size > 0
         ? db
             .from(TABLES.REP_REWARDS)
@@ -165,11 +215,19 @@ export async function GET(request: NextRequest) {
     ]);
 
     const questTitleById = new Map<string, string>();
+    const questPromoterById = new Map<string, PromoterLite | null>();
     for (const q of (questsRes.data ?? []) as Array<{
       id: string;
       title: string;
+      promoter: PromoterLite | PromoterLite[] | null;
     }>) {
       questTitleById.set(q.id, q.title);
+      // Supabase returns nested rows as either an object or single-element
+      // array depending on the join cardinality the planner picks.
+      const promoter = Array.isArray(q.promoter)
+        ? q.promoter[0] ?? null
+        : q.promoter ?? null;
+      questPromoterById.set(q.id, promoter);
     }
     const rewardTitleById = new Map<string, string>();
     for (const r of (rewardsRes.data ?? []) as Array<{
@@ -189,17 +247,25 @@ export async function GET(request: NextRequest) {
       let kind: string;
       let title: string;
       let deepLink: string | null = null;
+      // Quest-linked rows attach the promoter context; everything else
+      // (manual grants, level ups, ad-hoc) leaves the promoter fields null.
+      let promoter: PromoterLite | null = null;
 
+      // Canonical source_types per the rep_points_log CHECK constraint:
+      // sale | quest | manual | reward_spend | revocation | refund.
+      // Earlier branches matched aspirational extended names that never
+      // appeared in production data — every row fell to `other` and lost
+      // its title resolution + promoter context. Fixed.
       switch (sourceType) {
-        case "quest_approved":
-        case "quest_submission":
+        case "quest":
           kind = "quest_approved";
           title = r.source_id
             ? questTitleById.get(r.source_id) ?? "Quest approved"
             : "Quest approved";
           deepLink = r.source_id ? `${QUEST_DEEP_LINK_PREFIX}/${r.source_id}` : null;
+          if (r.source_id) promoter = questPromoterById.get(r.source_id) ?? null;
           break;
-        case "reward_claim":
+        case "reward_spend":
           kind = "reward_claim";
           title = r.source_id
             ? rewardTitleById.get(r.source_id) ?? "Reward claimed"
@@ -208,23 +274,26 @@ export async function GET(request: NextRequest) {
             ? `${REWARD_DEEP_LINK_PREFIX}/${r.source_id}`
             : null;
           break;
-        case "reward_refund":
+        case "refund":
           kind = "reward_refund";
           title = r.source_id
             ? `Refund: ${rewardTitleById.get(r.source_id) ?? "Reward"}`
-            : "Reward refunded";
+            : "Refund";
           deepLink = r.source_id
             ? `${REWARD_DEEP_LINK_PREFIX}/${r.source_id}`
             : null;
           break;
-        case "manual_grant":
         case "manual":
           kind = "manual_grant";
           title = r.description || "Bonus from your team";
           break;
-        case "level_up":
-          kind = "level_up";
-          title = r.description || "Levelled up";
+        case "sale":
+          kind = "sale";
+          title = r.description || "Ticket sale credited";
+          break;
+        case "revocation":
+          kind = "revocation";
+          title = r.description || "Points adjustment";
           break;
         default:
           kind = "other";
@@ -240,6 +309,7 @@ export async function GET(request: NextRequest) {
         ep_delta: ep,
         created_at: r.created_at,
         deep_link: deepLink,
+        ...promoterFieldsFor(promoter),
       };
     });
 
@@ -257,6 +327,7 @@ export async function GET(request: NextRequest) {
         ep_delta: 0,
         created_at: s.reviewed_at ?? s.created_at,
         deep_link: `${QUEST_DEEP_LINK_PREFIX}/${s.quest_id}`,
+        ...promoterFieldsFor(questPromoterById.get(s.quest_id) ?? null),
       };
     });
 

@@ -3,7 +3,7 @@ import {
   smartMix,
   deriveAffinity,
   POPULARITY_FLOOR,
-  IMPRESSION_DROP_THRESHOLD,
+  IMPRESSION_HALF_LIFE_DAYS,
   COLD_START_THRESHOLD,
   type PoolTrack,
   type RepImpression,
@@ -56,8 +56,13 @@ function pool(
   };
 }
 
-function imp(track_id: string, count: number): RepImpression {
-  return { track_id, count, last_shown_at: NOW.toISOString() };
+function imp(
+  track_id: string,
+  count: number,
+  daysAgo = 0
+): RepImpression {
+  const lastShown = new Date(NOW.getTime() - daysAgo * 86_400_000).toISOString();
+  return { track_id, count, last_shown_at: lastShown };
 }
 
 // ─── Filtering ─────────────────────────────────────────────────────────────
@@ -76,20 +81,23 @@ describe("smartMix — filtering", () => {
     expect(result.map((r) => r.track.id)).toEqual(["ok"]);
   });
 
-  it(`drops tracks shown ≥${IMPRESSION_DROP_THRESHOLD} times to this rep`, () => {
+  it("keeps heavily-impressed tracks in the pool but ranks them low", () => {
+    // Soft cap means a track shown many times still appears — just at the
+    // bottom — so the rep can re-discover it later.
     const result = smartMix(
-      [pool("a", "p1"), pool("b", "p1")],
+      [pool("a", "p1"), pool("b", "p1", { artistId: "x" })],
       {},
-      [imp("a", IMPRESSION_DROP_THRESHOLD)],
+      [imp("a", 50)], // way above the old hard-drop threshold
       { now: NOW }
     );
-    expect(result.map((r) => r.track.id)).toEqual(["b"]);
+    expect(result.map((r) => r.track.id)).toContain("a");
+    expect(result.map((r) => r.track.id)).toContain("b");
+    expect(result[0].track.id).toBe("b"); // unimpressed track ranks first
   });
 
-  it("keeps tracks shown 1–4 times but ranks them lower", () => {
+  it("ranks lightly-impressed tracks lower than unseen", () => {
     const result = smartMix(
       [
-        // both tracks identical except impression count
         pool("seen", "p1", { popularity: 50, position: 50 }),
         pool("unseen", "p1", { popularity: 50, position: 50, artistId: "x" }),
       ],
@@ -99,6 +107,27 @@ describe("smartMix — filtering", () => {
     );
     expect(result[0].track.id).toBe("unseen");
     expect(result.map((r) => r.track.id)).toContain("seen");
+  });
+
+  it(`time-decays impressions — ${IMPRESSION_HALF_LIFE_DAYS}d-old impression counts ~half as much`, () => {
+    // Two tracks, one with fresh 5 impressions, one with the same count
+    // from a half-life-day ago. The aged one should rank higher because
+    // its effective count is ~2.5 vs 5.
+    const result = smartMix(
+      [
+        pool("fresh-imp", "p1", { artistId: "fa" }),
+        pool("aged-imp", "p1", { artistId: "ag" }),
+      ],
+      {},
+      [
+        imp("fresh-imp", 5, 0), // shown 5 times today
+        imp("aged-imp", 5, IMPRESSION_HALF_LIFE_DAYS), // shown 5 times a week ago
+      ],
+      { now: NOW }
+    );
+    const freshIdx = result.findIndex((r) => r.track.id === "fresh-imp");
+    const agedIdx = result.findIndex((r) => r.track.id === "aged-imp");
+    expect(agedIdx).toBeLessThan(freshIdx);
   });
 });
 

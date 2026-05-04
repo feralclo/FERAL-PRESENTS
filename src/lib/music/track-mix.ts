@@ -43,10 +43,17 @@ const POSITION_BANDS: { maxPos: number; bonus: number }[] = [
   { maxPos: 29, bonus: 0.1 },
   { maxPos: Infinity, bonus: 0 },
 ];
-/** Per-impression decay. Index = count, value = multiplier. count≥5 → drop. */
-const IMPRESSION_DECAY: number[] = [1.0, 0.7, 0.5, 0.3, 0.15];
-/** Hard impression cap — once shown this many times without a pick, drop. */
-export const IMPRESSION_DROP_THRESHOLD = 5;
+/** Half-life for time-decay on per-rep impressions. An impression from
+ *  N days ago effectively counts as 2^(-N/HALF_LIFE) — after ~7 days,
+ *  one-time impressions are nearly forgotten and a "skipped" track can
+ *  re-enter the rep's rotation organically. */
+export const IMPRESSION_HALF_LIFE_DAYS = 7;
+/** Floor on the impression multiplier — heavily-shown tracks are heavily
+ *  deprioritized but NEVER filtered out entirely. A rep might not be in
+ *  the mood for a track today but want to see it next week; permanent
+ *  hiding is the wrong default. Combined with affinity / cross-playlist
+ *  boost / recency, an under-loved banger can still surface. */
+const IMPRESSION_MULTIPLIER_FLOOR = 0.2;
 
 // ─── Inputs / outputs ──────────────────────────────────────────────────────
 
@@ -104,9 +111,45 @@ function positionBonus(position: number): number {
   return 0;
 }
 
-function impressionMultiplier(count: number): number {
-  if (count >= IMPRESSION_DROP_THRESHOLD) return 0;
-  return IMPRESSION_DECAY[count] ?? 0;
+/**
+ * Time-decayed effective impression count. A raw count of 5 from yesterday
+ * is much "heavier" than the same 5 from a month ago.
+ */
+function effectiveImpressionCount(
+  rawCount: number,
+  lastShownAt: string | undefined,
+  now: Date
+): number {
+  if (rawCount <= 0) return 0;
+  if (!lastShownAt) return rawCount;
+  const lastShown = new Date(lastShownAt);
+  if (Number.isNaN(lastShown.getTime())) return rawCount;
+  const daysAgo = Math.max(
+    0,
+    (now.getTime() - lastShown.getTime()) / 86_400_000
+  );
+  const decayFactor = Math.pow(0.5, daysAgo / IMPRESSION_HALF_LIFE_DAYS);
+  return rawCount * decayFactor;
+}
+
+/**
+ * Smooth multiplier that approaches the floor as effective impressions grow.
+ *   count = 0 → 1.0   (no damping)
+ *   count = 1 → 0.7
+ *   count = 2 → 0.49
+ *   count = 5 → 0.27
+ *   count >> → 0.2    (floor; never lower)
+ *
+ * Asymptotic decay is intentional. A track shown 50 times still gets the
+ * floor — never zero — so the rep can re-discover it after their taste
+ * shifts or after the time decay heals the historical count.
+ */
+function impressionMultiplier(effectiveCount: number): number {
+  if (effectiveCount <= 0) return 1.0;
+  return (
+    IMPRESSION_MULTIPLIER_FLOOR +
+    (1 - IMPRESSION_MULTIPLIER_FLOOR) * Math.exp(-effectiveCount * 0.5)
+  );
 }
 
 /**
@@ -115,12 +158,15 @@ function impressionMultiplier(count: number): number {
  */
 function scoreEntry(
   entry: PoolTrack,
-  impressionCount: number,
+  impression: { count: number; last_shown_at?: string } | undefined,
   now: Date
 ): { score: number; is_fresh: boolean } | null {
   if (entry.popularity < POPULARITY_FLOOR) return null;
-  const impMult = impressionMultiplier(impressionCount);
-  if (impMult === 0) return null;
+
+  const effectiveImpressions = impression
+    ? effectiveImpressionCount(impression.count, impression.last_shown_at, now)
+    : 0;
+  const impMult = impressionMultiplier(effectiveImpressions);
 
   const addedAt = new Date(entry.added_at_spotify);
   const ageDays = dayDiff(now, addedAt);
@@ -350,19 +396,16 @@ export function smartMix(
   const limit = Math.max(1, Math.min(50, options.limit ?? 20));
   const now = options.now ?? new Date();
 
-  const impressionByTrack = new Map<string, number>();
+  const impressionByTrack = new Map<string, RepImpression>();
   for (const imp of impressions) {
-    impressionByTrack.set(imp.track_id, imp.count);
+    impressionByTrack.set(imp.track_id, imp);
   }
 
-  // 1. Score each entry, drop sub-floor + over-impressed.
+  // 1. Score each entry, drop sub-floor.
   const scored: ScoredEntry[] = [];
   for (const entry of pool) {
-    const result = scoreEntry(
-      entry,
-      impressionByTrack.get(entry.track_id) ?? 0,
-      now
-    );
+    const impression = impressionByTrack.get(entry.track_id);
+    const result = scoreEntry(entry, impression, now);
     if (!result) continue;
     scored.push({
       ...entry,

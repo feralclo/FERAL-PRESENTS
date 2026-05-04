@@ -93,6 +93,10 @@ export interface SpotifyTrack {
   // and iOS just ignores unknown fields. Used by the trending-pool
   // smart-mix as the popularity-floor signal.
   popularity?: number;
+  // ISO album release date. Precision varies — "2026-02-20" / "2024-03"
+  // / "2019". Used by the suggestions endpoint to set is_new_release
+  // (≤30d). Optional — iOS ignores unknown fields.
+  release_date?: string;
 }
 
 // ─── Config ────────────────────────────────────────────────────────────────
@@ -177,6 +181,8 @@ interface RawSpotifyTrack {
   album?: {
     name?: string;
     images?: { url?: string; width?: number; height?: number }[];
+    release_date?: string;
+    release_date_precision?: "year" | "month" | "day";
   };
   preview_url?: string | null;
   duration_ms?: number;
@@ -213,6 +219,8 @@ function mapTrack(raw: RawSpotifyTrack): SpotifyTrack {
     isrc: isrcRaw || null,
   };
   if (typeof raw.popularity === "number") out.popularity = raw.popularity;
+  const rd = raw.album?.release_date;
+  if (typeof rd === "string" && rd.length >= 4) out.release_date = rd;
   return out;
 }
 

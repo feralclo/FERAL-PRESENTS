@@ -1,19 +1,27 @@
 /**
- * Suggestions orchestrator — assembles the four sections shown in the
- * iOS Spotify track picker:
+ * Suggestions orchestrator — assembles the sections shown in the iOS
+ * Spotify track picker.
  *
- *   1. recent   — this rep's own story track picks (last 30d)
- *   2. friends  — mutual-follow reps' picks (last 14d)
- *   3. team     — same-promoter teammates' picks (last 30d)
- *   4. trending — smart-mixed pool with affinity weighting
+ * Order in the response:
+ *   1. trending  (For You — affinity-weighted mix from all playlists)
+ *   2. genre × N (Hard Techno / Schranz / Hard Dance — browse-by-mood)
+ *   3. recent    (this rep's own picks, last 30d)
+ *   4. friends   (mutual-follow reps' picks, last 14d)
+ *   5. team      (same-promoter reps' picks, last 30d)
  *
- * Sections are deduped left-to-right (a track in `recent` won't reappear
- * in `friends`, etc). Empty sections are omitted from the response so
- * iOS can lay out only what's present.
+ * Empty sections are omitted so iOS lays out only what's present.
  *
- * Impressions are logged for the trending section only — that's the one
- * we're pushing. Friends/team are social signal that should keep showing
- * even if the rep skips.
+ * Dedup priority (most-personal wins):
+ *   recent > friends > team > For You / genre sections
+ *
+ * For You and genre sections may share tracks — different framing
+ * ("recommended for you" vs "browsing Hard Techno"), so duplication is
+ * intentional. They DO dedup against the social sections above so a
+ * track you just played in your own story doesn't reappear as a
+ * suggestion.
+ *
+ * Impressions are logged for For You + genre tracks. Friends/team are
+ * social signal, not us pushing — no impression count needed.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -24,19 +32,25 @@ import {
   type PoolTrack,
   type RepImpression,
 } from "@/lib/music/track-mix";
+import { genreSectionPlaylists } from "@/lib/music/trending-playlists";
 
-export type SectionKind = "recent" | "friends" | "team" | "trending";
+export type SectionKind = "recent" | "friends" | "team" | "trending" | "genre";
 
 export interface SuggestionTrack extends SpotifyTrack {
-  /** Set on trending-section tracks added in the last 7 days. */
+  /** Curator added this track to the playlist within the last 7 days. */
   is_fresh?: boolean;
+  /** Track's album was actually released within the last 30 days. The
+   *  "real new" signal — separate from is_fresh which is "freshly curated". */
+  is_new_release?: boolean;
 }
 
 export interface SuggestionSection {
-  id: SectionKind;
+  id: string;
   kind: SectionKind;
   title: string;
   subtitle?: string;
+  /** Subgenres covered by this genre section. Empty for non-genre sections. */
+  subgenres?: string[];
   tracks: SuggestionTrack[];
 }
 
@@ -54,7 +68,10 @@ const RECENT_LIMIT = 12;
 const FRIENDS_LIMIT = 12;
 const TEAM_LIMIT = 12;
 const TRENDING_LIMIT = 20;
+const GENRE_SECTION_LIMIT = 15;
 const AFFINITY_PICK_HISTORY = 30;
+/** Tracks released within this many days get is_new_release: true. */
+const NEW_RELEASE_WINDOW_DAYS = 30;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -85,8 +102,6 @@ function storyToTrack(row: StoryRow): SpotifyTrack {
           .map((a) => ({ id: a.id as string, name: a.name as string }))
       : [
           {
-            // Synthetic id for stories whose snapshot predates the artists[]
-            // column. Never written back to Spotify; just satisfies the DTO.
             id: `legacy:${row.spotify_track_id}`,
             name: row.spotify_track_artist,
           },
@@ -122,7 +137,26 @@ function dedupeStoriesByTrack(rows: StoryRow[]): StoryRow[] {
   );
 }
 
-// ─── Section builders ─────────────────────────────────────────────────────
+/** Compute is_new_release from a track's release_date. Spotify's
+ *  release_date_precision can be "day" / "month" / "year" — we
+ *  conservatively treat anything below day-level precision as not-new
+ *  (a 2024-12 release shouldn't claim "new" in March 2026 just because
+ *  it parses to Dec 1, 2024). */
+function isNewRelease(releaseDate: string | undefined, now: Date): boolean {
+  if (!releaseDate) return false;
+  // Only YYYY-MM-DD format is precise enough for the new-release signal.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(releaseDate)) return false;
+  const released = new Date(releaseDate + "T00:00:00Z");
+  if (Number.isNaN(released.getTime())) return false;
+  const ageMs = now.getTime() - released.getTime();
+  const ageDays = ageMs / 86_400_000;
+  return ageDays >= 0 && ageDays <= NEW_RELEASE_WINDOW_DAYS;
+}
+
+// ─── DB loaders ───────────────────────────────────────────────────────────
+
+const STORY_SELECT =
+  "spotify_track_id, spotify_track_title, spotify_track_artist, spotify_album_name, spotify_album_image_url, spotify_preview_url, spotify_external_url, spotify_duration_ms, spotify_artists, author_rep_id, created_at";
 
 async function loadRecent(
   db: SupabaseClient,
@@ -130,9 +164,7 @@ async function loadRecent(
 ): Promise<StoryRow[]> {
   const { data, error } = await db
     .from("rep_stories")
-    .select(
-      "spotify_track_id, spotify_track_title, spotify_track_artist, spotify_album_name, spotify_album_image_url, spotify_preview_url, spotify_external_url, spotify_duration_ms, spotify_artists, author_rep_id, created_at"
-    )
+    .select(STORY_SELECT)
     .eq("author_rep_id", repId)
     .gte("created_at", isoDaysAgo(RECENT_WINDOW_DAYS))
     .is("deleted_at", null)
@@ -147,7 +179,6 @@ async function loadFriends(
   repId: string,
   blockedSet: Set<string>
 ): Promise<StoryRow[]> {
-  // Mutual follow: rep follows X AND X follows rep.
   const { data: follows } = await db
     .from("rep_follows")
     .select("followee_id")
@@ -167,9 +198,7 @@ async function loadFriends(
 
   const { data, error } = await db
     .from("rep_stories")
-    .select(
-      "spotify_track_id, spotify_track_title, spotify_track_artist, spotify_album_name, spotify_album_image_url, spotify_preview_url, spotify_external_url, spotify_duration_ms, spotify_artists, author_rep_id, created_at"
-    )
+    .select(STORY_SELECT)
     .in("author_rep_id", friendIds)
     .gte("created_at", isoDaysAgo(FRIENDS_WINDOW_DAYS))
     .is("deleted_at", null)
@@ -184,7 +213,6 @@ async function loadTeam(
   repId: string,
   blockedSet: Set<string>
 ): Promise<StoryRow[]> {
-  // Promoters this rep is on.
   const { data: myMemberships } = await db
     .from("rep_promoter_memberships")
     .select("promoter_id")
@@ -195,7 +223,6 @@ async function loadTeam(
   );
   if (promoterIds.length === 0) return [];
 
-  // Other reps on the same promoters.
   const { data: teammates } = await db
     .from("rep_promoter_memberships")
     .select("rep_id")
@@ -213,9 +240,7 @@ async function loadTeam(
 
   const { data, error } = await db
     .from("rep_stories")
-    .select(
-      "spotify_track_id, spotify_track_title, spotify_track_artist, spotify_album_name, spotify_album_image_url, spotify_preview_url, spotify_external_url, spotify_duration_ms, spotify_artists, author_rep_id, created_at"
-    )
+    .select(STORY_SELECT)
     .in("author_rep_id", teammateIds)
     .gte("created_at", isoDaysAgo(TEAM_WINDOW_DAYS))
     .is("deleted_at", null)
@@ -229,8 +254,6 @@ async function loadBlockedReps(
   db: SupabaseClient,
   repId: string
 ): Promise<Set<string>> {
-  // Hide content in BOTH directions: reps this rep blocked, and reps who
-  // blocked this rep. Same pattern as the rest of the platform.
   const { data: outgoing } = await db
     .from("rep_blocks")
     .select("blocked_rep_id")
@@ -273,10 +296,6 @@ async function logImpressions(
   trackIds: string[]
 ): Promise<void> {
   if (trackIds.length === 0) return;
-  // Bulk insert with ON CONFLICT to increment count + bump last_shown_at.
-  // Supabase JS doesn't expose ON CONFLICT DO UPDATE directly via the
-  // builder, so we use upsert + rely on the PK conflict path. To get
-  // count++, we read existing counts in a single query and write back.
   const { data: existing } = await db
     .from("rep_track_impressions")
     .select("track_id, count")
@@ -295,8 +314,37 @@ async function logImpressions(
   }));
   await db.from("rep_track_impressions").upsert(rows, {
     onConflict: "rep_id,track_id",
-    // first_shown_at preserved on existing rows because we don't touch it.
   });
+}
+
+// ─── Section builders ─────────────────────────────────────────────────────
+
+interface RankedPicks {
+  trackIds: string[];
+  tracks: SuggestionTrack[];
+}
+
+/** Run smartMix over a pool subset and convert to SuggestionTracks with
+ *  is_fresh + is_new_release flags. */
+function buildRankedSection(
+  pool: PoolTrack[],
+  affinity: Record<string, number>,
+  syntheticImpressions: RepImpression[],
+  limit: number,
+  now: Date
+): RankedPicks {
+  if (pool.length === 0) return { trackIds: [], tracks: [] };
+  const ranked = smartMix(pool, affinity, syntheticImpressions, {
+    limit,
+    now,
+  });
+  const tracks: SuggestionTrack[] = ranked.map((r) => {
+    const t: SuggestionTrack = { ...r.track };
+    if (r.is_fresh) t.is_fresh = true;
+    if (isNewRelease(r.track.release_date, now)) t.is_new_release = true;
+    return t;
+  });
+  return { trackIds: ranked.map((r) => r.track.id), tracks };
 }
 
 // ─── Main entry point ─────────────────────────────────────────────────────
@@ -304,14 +352,15 @@ async function logImpressions(
 export async function buildSuggestions(
   db: SupabaseClient,
   repId: string,
-  options: { trendingLimit?: number } = {}
+  options: { trendingLimit?: number; now?: Date } = {}
 ): Promise<SuggestionsResponse> {
   const trendingLimit = Math.max(
     1,
     Math.min(50, options.trendingLimit ?? TRENDING_LIMIT)
   );
+  const now = options.now ?? new Date();
 
-  // Fetch in parallel — none of these depend on each other.
+  // Fetch in parallel.
   const [recent, blockedSet, pool, impressions] = await Promise.all([
     loadRecent(db, repId),
     loadBlockedReps(db, repId),
@@ -323,13 +372,92 @@ export async function buildSuggestions(
     loadTeam(db, repId, blockedSet),
   ]);
 
-  const sections: SuggestionSection[] = [];
-  const usedTrackIds = new Set<string>();
-
-  // 1. Recent — rep's own picks.
+  // Resolve social sections first so we know which tracks to dedup out
+  // of For You + genre sections (most-personal wins).
   const recentDeduped = dedupeStoriesByTrack(recent).slice(0, RECENT_LIMIT);
+  const recentIds = new Set(recentDeduped.map((r) => r.spotify_track_id));
+
+  const friendsFiltered = dedupeStoriesByTrack(friends)
+    .filter((r) => !recentIds.has(r.spotify_track_id))
+    .slice(0, FRIENDS_LIMIT);
+  const socialIdsAfterFriends = new Set(recentIds);
+  for (const r of friendsFiltered) {
+    socialIdsAfterFriends.add(r.spotify_track_id);
+  }
+
+  const teamFiltered = dedupeStoriesByTrack(team)
+    .filter((r) => !socialIdsAfterFriends.has(r.spotify_track_id))
+    .slice(0, TEAM_LIMIT);
+  const socialIds = new Set(socialIdsAfterFriends);
+  for (const r of teamFiltered) socialIds.add(r.spotify_track_id);
+
+  // Pre-impressed list for For You + genre sections: pool tracks that are
+  // already in social sections get count=99 to drop them from smartMix.
+  const baseSyntheticImpressions: RepImpression[] = [
+    ...impressions,
+    ...Array.from(socialIds).map((track_id) => ({
+      track_id,
+      count: 99,
+      last_shown_at: now.toISOString(),
+    })),
+  ];
+
+  const sections: SuggestionSection[] = [];
+  const trackIdsLogged = new Set<string>();
+
+  // 1. For You — affinity-weighted mix across all playlists in the pool.
+  if (pool.length > 0) {
+    const allRecentPicks = recent
+      .slice(0, AFFINITY_PICK_HISTORY)
+      .map((r) => r.spotify_track_id);
+    const affinity = deriveAffinity(allRecentPicks, pool);
+    const picks = buildRankedSection(
+      pool,
+      affinity,
+      baseSyntheticImpressions,
+      trendingLimit,
+      now
+    );
+    if (picks.tracks.length > 0) {
+      sections.push({
+        id: "trending",
+        kind: "trending",
+        title: "For you",
+        subtitle: "Fresh in the scene",
+        tracks: picks.tracks,
+      });
+      for (const id of picks.trackIds) trackIdsLogged.add(id);
+    }
+  }
+
+  // 2. Genre sections — one per playlist with section_label, in display_order.
+  //    Each section uses ONLY that playlist's tracks (no cross-playlist mix)
+  //    and no affinity weighting (these are browse-by-mood, not personalized).
+  for (const cfg of genreSectionPlaylists()) {
+    const subset = pool.filter((p) => p.playlist_id === cfg.id);
+    if (subset.length === 0) continue;
+    const picks = buildRankedSection(
+      subset,
+      {}, // no affinity — pure quality ranking within this genre
+      baseSyntheticImpressions,
+      GENRE_SECTION_LIMIT,
+      now
+    );
+    if (picks.tracks.length === 0) continue;
+    sections.push({
+      id: `genre-${cfg.genre_label}`,
+      kind: "genre",
+      title: cfg.section_label ?? cfg.genre_label,
+      subtitle:
+        cfg.subgenres.length > 0 ? cfg.subgenres.join(" · ") : undefined,
+      subgenres: cfg.subgenres.length > 0 ? cfg.subgenres : undefined,
+      tracks: picks.tracks,
+    });
+    for (const id of picks.trackIds) trackIdsLogged.add(id);
+  }
+
+  // 3. Recent — rep's own past Story picks.
   if (recentDeduped.length > 0) {
-    for (const r of recentDeduped) usedTrackIds.add(r.spotify_track_id);
     sections.push({
       id: "recent",
       kind: "recent",
@@ -338,12 +466,8 @@ export async function buildSuggestions(
     });
   }
 
-  // 2. Friends — mutual follows' picks, deduped against recent.
-  const friendsFiltered = dedupeStoriesByTrack(friends)
-    .filter((r) => !usedTrackIds.has(r.spotify_track_id))
-    .slice(0, FRIENDS_LIMIT);
+  // 4. Friends.
   if (friendsFiltered.length > 0) {
-    for (const r of friendsFiltered) usedTrackIds.add(r.spotify_track_id);
     sections.push({
       id: "friends",
       kind: "friends",
@@ -353,12 +477,8 @@ export async function buildSuggestions(
     });
   }
 
-  // 3. Team — same-promoter teammates' picks, deduped.
-  const teamFiltered = dedupeStoriesByTrack(team)
-    .filter((r) => !usedTrackIds.has(r.spotify_track_id))
-    .slice(0, TEAM_LIMIT);
+  // 5. Team.
   if (teamFiltered.length > 0) {
-    for (const r of teamFiltered) usedTrackIds.add(r.spotify_track_id);
     sections.push({
       id: "team",
       kind: "team",
@@ -368,53 +488,17 @@ export async function buildSuggestions(
     });
   }
 
-  // 4. Trending — smart-mix from pool, deduped against everything above.
-  if (pool.length > 0) {
-    // Affinity uses the rep's last 30 picks. Pull a wider window than
-    // RECENT_WINDOW_DAYS would give if RECENT_LIMIT capped it.
-    const allRecentPicks = recent
-      .slice(0, AFFINITY_PICK_HISTORY)
-      .map((r) => r.spotify_track_id);
-    const affinity = deriveAffinity(allRecentPicks, pool);
-
-    // Hide pool tracks already used in higher sections by passing them as
-    // pre-impressed (count = drop threshold so they're filtered).
-    const syntheticImpressions: RepImpression[] = [
-      ...impressions,
-      ...Array.from(usedTrackIds).map((track_id) => ({
-        track_id,
-        count: 99,
-        last_shown_at: new Date().toISOString(),
-      })),
-    ];
-
-    const ranked = smartMix(pool, affinity, syntheticImpressions, {
-      limit: trendingLimit,
+  // Log impressions for For You + genre tracks (deduped — a track shown in
+  // both For You and Hard Techno counts as one impression for this visit).
+  // Fire-and-forget; slow writes shouldn't block the response.
+  if (trackIdsLogged.size > 0) {
+    void logImpressions(db, repId, Array.from(trackIdsLogged)).catch(() => {
+      // Best-effort. Sentry already wraps the route handler.
     });
-
-    if (ranked.length > 0) {
-      const trendingTracks = ranked.map((r) => ({
-        ...r.track,
-        is_fresh: r.is_fresh || undefined,
-      }));
-      sections.push({
-        id: "trending",
-        kind: "trending",
-        title: "For you",
-        subtitle: "Fresh in the scene",
-        tracks: trendingTracks,
-      });
-
-      // Log impressions only for trending — see file header for rationale.
-      // Fire-and-forget; we don't want a slow write to block the response.
-      void logImpressions(db, repId, ranked.map((r) => r.track.id)).catch(() => {
-        // Best-effort. Sentry already wraps the route handler.
-      });
-    }
   }
 
   return {
     sections,
-    generated_at: new Date().toISOString(),
+    generated_at: now.toISOString(),
   };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pickBestAlbumImage } from "@/lib/spotify/client";
+import { pickBestAlbumImage } from "@/lib/spotify/album-image";
 
 describe("pickBestAlbumImage", () => {
   it("returns null for missing / empty images", () => {

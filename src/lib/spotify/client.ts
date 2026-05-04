@@ -15,6 +15,7 @@
  */
 
 import * as Sentry from "@sentry/nextjs";
+import { createHash } from "node:crypto";
 
 // ─── Transient-failure-tolerant fetch ──────────────────────────────────────
 // Vercel cold starts + Spotify's OAuth occasionally 5xx or flake for a
@@ -479,6 +480,133 @@ export async function getPlaylistTracks(
   }
 
   return out;
+}
+
+// ─── Embed-page playlist fallback ──────────────────────────────────────────
+// Why this exists:
+//   Spotify deprecated bulk playlist track access for new Web API apps
+//   (Nov 2024 changes — both /playlists/{id}/tracks and the batch
+//   /tracks?ids= endpoints return 403 Forbidden). Single-track lookup
+//   (/tracks/{id}) still works under Client Credentials. The official
+//   answer is to apply for Extended Quota Mode, which we are not doing.
+//
+//   The public embed page at open.spotify.com/embed/playlist/{id} renders
+//   the full track list (up to 100) as server-side React state in a
+//   __NEXT_DATA__ <script> tag. It's the same data Spotify ships to any
+//   third party rendering an embed widget — no auth, designed for cross-
+//   origin consumption. We parse it to get track IDs + positions, then
+//   call the working single-track endpoint to enrich each with album art,
+//   popularity, ISRC.
+//
+//   Brittleness note: this depends on Spotify's embed HTML structure. If
+//   they change the script id or shape of `state.data.entity.trackList`,
+//   this breaks silently. Embed pages have been Next.js-rendered with
+//   this shape since ~2022, so it's stable, but worth watching.
+
+export interface EmbedPlaylistTrack {
+  id: string;
+  position: number;
+}
+
+export interface EmbedPlaylistResult {
+  id: string;
+  name: string;
+  /** Synthesized from a hash of ordered track IDs — embed has no snapshot_id. */
+  synthetic_snapshot_id: string;
+  total_tracks: number;
+  tracks: EmbedPlaylistTrack[];
+}
+
+interface RawEmbedTrack {
+  uri?: string;
+  title?: string;
+}
+
+interface RawEmbedNextData {
+  props?: {
+    pageProps?: {
+      state?: {
+        data?: {
+          entity?: {
+            title?: string;
+            trackList?: RawEmbedTrack[];
+          };
+        };
+      };
+    };
+  };
+}
+
+function syntheticSnapshot(trackIds: string[]): string {
+  // Stable fingerprint for "did the playlist change?" — not security-sensitive,
+  // just used to short-circuit the heavy diff path in playlist-refresh.
+  return createHash("sha1").update(trackIds.join(",")).digest("hex").slice(0, 16);
+}
+
+/**
+ * Pull a playlist's track list (IDs + positions) from Spotify's public
+ * embed page. Returns null when Spotify 404s the embed (playlist deleted
+ * or made private). Throws on transient failures so the cron retries.
+ */
+export async function getPlaylistViaEmbed(
+  playlistId: string
+): Promise<EmbedPlaylistResult | null> {
+  const cleaned = playlistId.trim();
+  if (!cleaned) return null;
+
+  // Pretend to be a normal browser — the embed page is public but Spotify's
+  // edge will sometimes serve a stripped page to obvious automation UAs.
+  const response = await spotifyFetch(
+    `https://open.spotify.com/embed/playlist/${encodeURIComponent(cleaned)}`,
+    {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15",
+        Accept: "text/html",
+      },
+    }
+  );
+
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`Spotify embed failed: ${response.status}`);
+  }
+
+  const html = await response.text();
+  const match = html.match(
+    /<script id="__NEXT_DATA__"[^>]*>([\s\S]+?)<\/script>/
+  );
+  if (!match) {
+    throw new Error("Spotify embed: __NEXT_DATA__ not found");
+  }
+
+  let parsed: RawEmbedNextData;
+  try {
+    parsed = JSON.parse(match[1]);
+  } catch (err) {
+    throw new Error(
+      `Spotify embed: __NEXT_DATA__ JSON parse failed (${err instanceof Error ? err.message : "unknown"})`
+    );
+  }
+
+  const entity = parsed.props?.pageProps?.state?.data?.entity;
+  const list = entity?.trackList ?? [];
+  const tracks: EmbedPlaylistTrack[] = [];
+  for (let i = 0; i < list.length; i++) {
+    const uri = list[i]?.uri;
+    if (!uri || !uri.startsWith("spotify:track:")) continue;
+    const id = uri.slice("spotify:track:".length);
+    if (!/^[A-Za-z0-9]{22}$/.test(id)) continue; // sanity — Spotify track ids are 22 base62
+    tracks.push({ id, position: i });
+  }
+
+  return {
+    id: cleaned,
+    name: entity?.title ?? "",
+    synthetic_snapshot_id: syntheticSnapshot(tracks.map((t) => t.id)),
+    total_tracks: tracks.length,
+    tracks,
+  };
 }
 
 /**

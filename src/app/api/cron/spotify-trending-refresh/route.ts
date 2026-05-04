@@ -4,7 +4,10 @@ import { refreshAllPlaylists } from "@/lib/music/playlist-refresh";
 import * as Sentry from "@sentry/nextjs";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// First-seed (cold pool) needs to enrich ~400 tracks via single getTrack
+// calls (Spotify blocks the batch endpoint). Subsequent runs are mostly
+// no-ops because of the synthetic_snapshot_id skip-when-unchanged path.
+export const maxDuration = 300;
 
 /**
  * GET /api/cron/spotify-trending-refresh

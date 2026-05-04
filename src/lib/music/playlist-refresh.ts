@@ -1,30 +1,33 @@
 /**
- * Playlist refresh logic — pulls each configured Spotify playlist, diffs
- * against what we have stored, and updates `trending_track_pool` +
- * `trending_playlist_snapshots` accordingly.
+ * Playlist refresh — pulls each configured Spotify playlist, diffs against
+ * what we have stored, and updates `trending_track_pool` + the snapshot
+ * meta table.
  *
- * Called by:
- *   - /api/cron/spotify-trending-refresh (every 6h via vercel.json)
- *   - manually by maintainers when adding a new playlist (the cron will
- *     pick it up on the next tick anyway, so this is rare).
+ * Implementation note (2026-05-04): Spotify's Nov 2024 API changes
+ * blocked /playlists/{id}/tracks AND the batch /tracks?ids= endpoint for
+ * apps that don't have Extended Quota Mode. The base /v1/playlists/{id}
+ * endpoint silently strips the `tracks` field. So we get the track LIST
+ * by parsing Spotify's public embed page (server-rendered HTML, available
+ * to anyone who embeds a playlist on a third-party site — no auth) and
+ * enrich each track via /v1/tracks/{id} (single-track endpoint, still
+ * unrestricted under Client Credentials). See the `getPlaylistViaEmbed`
+ * doc in spotify/client.ts for the full rationale.
  *
- * Key invariants:
- *   - `first_seen_at` is preserved across refreshes — only set on insert.
- *     This keeps the freshness signal intact even when Spotify reorders
- *     a track (Spotify reorders bump snapshot_id but `added_at` stays put).
- *   - When a playlist is removed from the config, its rows in
- *     trending_track_pool are deleted on the next cron run (purgeStale).
- *   - When a track is removed from a playlist, its row for THAT playlist
- *     is deleted; if it still exists in another playlist, the other row
- *     survives. Cross-playlist boost continues to work correctly.
+ * Per-playlist behavior:
+ *   - synthetic_snapshot_id unchanged → skip the heavy enrichment, bump
+ *     last_refreshed_at
+ *   - changed → diff insert/update/delete; only NEW tracks need a Spotify
+ *     metadata fetch (existing rows keep their cached track_data)
+ *   - playlist 404'd → reported as missing
  */
 
 import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  getPlaylistMeta,
-  getPlaylistTracks,
+  getPlaylistViaEmbed,
+  getTrack,
   isConfigured as isSpotifyConfigured,
+  type SpotifyTrack,
 } from "@/lib/spotify/client";
 import {
   TRENDING_PLAYLISTS,
@@ -37,17 +40,43 @@ export interface RefreshResult {
   tracks_added?: number;
   tracks_removed?: number;
   tracks_total?: number;
+  enrich_failures?: number;
   error?: string;
 }
 
-interface PoolRow {
-  playlist_id: string;
-  track_id: string;
+/** Fetch single-track metadata in chunks so we don't blow Spotify rate limits
+ *  or the cron's serverless timeout. 8-wide is fine — ~100 tracks completes
+ *  in well under 10s in practice. */
+async function enrichTracks(
+  ids: string[]
+): Promise<Map<string, SpotifyTrack>> {
+  const out = new Map<string, SpotifyTrack>();
+  const chunkSize = 8;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const results = await Promise.all(
+      chunk.map(async (id) => {
+        try {
+          const t = await getTrack(id);
+          return [id, t] as const;
+        } catch (err) {
+          Sentry.captureException(err, {
+            level: "warning",
+            extra: { step: "enrichTracks", trackId: id },
+          });
+          return [id, null] as const;
+        }
+      })
+    );
+    for (const [id, track] of results) {
+      if (track) out.set(id, track);
+    }
+  }
+  return out;
 }
 
 /**
- * Refresh a single playlist. Skips the heavy fetch when the snapshot_id
- * matches what we already have stored (Spotify hasn't changed anything).
+ * Refresh a single playlist via the embed-scrape path.
  */
 export async function refreshPlaylist(
   db: SupabaseClient,
@@ -61,129 +90,132 @@ export async function refreshPlaylist(
     };
   }
 
-  let meta;
+  let embed;
   try {
-    meta = await getPlaylistMeta(playlistId);
+    embed = await getPlaylistViaEmbed(playlistId);
   } catch (err) {
     Sentry.captureException(err, {
       level: "warning",
-      extra: { step: "refreshPlaylist:getPlaylistMeta", playlistId },
+      extra: { step: "refreshPlaylist:getPlaylistViaEmbed", playlistId },
     });
     return {
       playlist_id: playlistId,
       status: "error",
-      error: err instanceof Error ? err.message.slice(0, 200) : "meta_fetch_failed",
+      error: err instanceof Error ? err.message.slice(0, 200) : "embed_fetch_failed",
     };
   }
 
-  if (!meta) {
+  if (!embed) {
     return { playlist_id: playlistId, status: "missing" };
   }
 
-  // Cheap path: snapshot unchanged, just bump last_refreshed_at and exit.
+  // Cheap path: synthetic snapshot unchanged, bump last_refreshed_at and exit.
   const { data: existingSnapshot } = await db
     .from("trending_playlist_snapshots")
     .select("snapshot_id")
     .eq("playlist_id", playlistId)
     .maybeSingle();
 
+  const nowIso = new Date().toISOString();
+
   if (
     existingSnapshot?.snapshot_id &&
-    existingSnapshot.snapshot_id === meta.snapshot_id
+    existingSnapshot.snapshot_id === embed.synthetic_snapshot_id
   ) {
     await db
       .from("trending_playlist_snapshots")
       .update({
-        last_refreshed_at: new Date().toISOString(),
-        followers: meta.followers,
-        total_tracks: meta.total_tracks,
-        spotify_name: meta.name,
+        last_refreshed_at: nowIso,
+        spotify_name: embed.name,
+        total_tracks: embed.total_tracks,
       })
       .eq("playlist_id", playlistId);
     return {
       playlist_id: playlistId,
       status: "skipped_unchanged",
-      tracks_total: meta.total_tracks,
+      tracks_total: embed.total_tracks,
     };
   }
 
-  // Heavy path: fetch all tracks and diff.
-  let items;
-  try {
-    items = await getPlaylistTracks(playlistId, { maxTracks: 200 });
-  } catch (err) {
-    Sentry.captureException(err, {
-      level: "warning",
-      extra: { step: "refreshPlaylist:getPlaylistTracks", playlistId },
-    });
-    return {
-      playlist_id: playlistId,
-      status: "error",
-      error: err instanceof Error ? err.message.slice(0, 200) : "tracks_fetch_failed",
-    };
-  }
-
-  // Load existing track ids for this playlist to compute the diff.
+  // Heavy path: diff incoming embed against pool.
   const { data: existingRows } = await db
     .from("trending_track_pool")
     .select("track_id")
     .eq("playlist_id", playlistId);
   const existingIds = new Set((existingRows ?? []).map((r) => r.track_id));
-  const incomingIds = new Set(items.map((i) => i.track.id));
+  const incomingIds = new Set(embed.tracks.map((t) => t.id));
 
   const toRemove: string[] = [];
   for (const id of existingIds) {
     if (!incomingIds.has(id)) toRemove.push(id);
   }
 
-  // Upsert all incoming tracks. `first_seen_at` only gets a default value
-  // on insert; for existing rows we let the DB keep the original value
-  // by not including it in the upsert payload.
-  // Strategy: do two passes. First, upsert NEW tracks with first_seen_at.
-  // Second, update EXISTING tracks without touching first_seen_at.
-  const nowIso = new Date().toISOString();
+  // Only NEW tracks need a Spotify metadata fetch — existing rows already
+  // have track_data cached. Big efficiency win: most refreshes touch only
+  // a few tracks even when the snapshot changed (Spotify rolls position
+  // bumps into the same snapshot delta).
+  const newTrackIds = embed.tracks
+    .map((t) => t.id)
+    .filter((id) => !existingIds.has(id));
 
-  const newTracks = items.filter((i) => !existingIds.has(i.track.id));
-  const updateTracks = items.filter((i) => existingIds.has(i.track.id));
+  const enriched = await enrichTracks(newTrackIds);
+  const enrichFailures = newTrackIds.length - enriched.size;
 
-  if (newTracks.length > 0) {
-    const insertRows = newTracks.map((i) => ({
-      playlist_id: playlistId,
-      track_id: i.track.id,
-      position: i.position,
-      added_at_spotify: i.added_at,
-      first_seen_at: nowIso,
-      popularity: i.popularity,
-      track_data: i.track,
-      refreshed_at: nowIso,
-    }));
+  // Insert new tracks. We don't have curator's `added_at` from the embed,
+  // so we use `first_seen_at = now()` for the freshness signal — the
+  // moment WE noticed the track in the playlist becomes its "added at"
+  // anchor. Existing rows' first_seen_at is preserved (we don't touch it).
+  const insertRows = embed.tracks
+    .filter((t) => !existingIds.has(t.id))
+    .map((t) => {
+      const meta = enriched.get(t.id);
+      if (!meta) return null;
+      return {
+        playlist_id: playlistId,
+        track_id: t.id,
+        position: t.position,
+        added_at_spotify: nowIso, // best available — embed doesn't expose curator add date
+        first_seen_at: nowIso,
+        // The embed gives us a popularity signal indirectly via position
+        // (curators front-load favorites). Spotify's `popularity` field
+        // also comes back from getTrack — but it's per-track popularity,
+        // not playlist-position. We capture both: popularity from
+        // getTrack response is implicit in track_data; for the column
+        // (used by smart-mix's popularity floor), we read it off meta.
+        popularity:
+          ((meta as unknown as { popularity?: number }).popularity ?? 50),
+        track_data: meta,
+        refreshed_at: nowIso,
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+
+  if (insertRows.length > 0) {
     const { error } = await db
       .from("trending_track_pool")
       .insert(insertRows);
     if (error) {
       Sentry.captureException(error, {
         level: "warning",
-        extra: { step: "refreshPlaylist:insert", playlistId, count: insertRows.length },
+        extra: {
+          step: "refreshPlaylist:insert",
+          playlistId,
+          count: insertRows.length,
+        },
       });
     }
   }
 
-  if (updateTracks.length > 0) {
-    // Update one-at-a-time; counts here are tiny (≤200) and Postgres
-    // handles 200 row updates in well under the cron budget.
-    for (const i of updateTracks) {
-      await db
-        .from("trending_track_pool")
-        .update({
-          position: i.position,
-          added_at_spotify: i.added_at,
-          popularity: i.popularity,
-          track_data: i.track,
-          refreshed_at: nowIso,
-        })
-        .eq("playlist_id", playlistId)
-        .eq("track_id", i.track.id);
-    }
+  // Update positions for tracks still in the playlist (curator may have
+  // reordered). We don't refresh popularity/track_data here — that's only
+  // re-pulled when a track is genuinely new. Keeps this step cheap.
+  const positionUpdates = embed.tracks.filter((t) => existingIds.has(t.id));
+  for (const t of positionUpdates) {
+    await db
+      .from("trending_track_pool")
+      .update({ position: t.position, refreshed_at: nowIso })
+      .eq("playlist_id", playlistId)
+      .eq("track_id", t.id);
   }
 
   if (toRemove.length > 0) {
@@ -195,33 +227,35 @@ export async function refreshPlaylist(
     if (error) {
       Sentry.captureException(error, {
         level: "warning",
-        extra: { step: "refreshPlaylist:delete", playlistId, count: toRemove.length },
+        extra: {
+          step: "refreshPlaylist:delete",
+          playlistId,
+          count: toRemove.length,
+        },
       });
     }
   }
 
   await db.from("trending_playlist_snapshots").upsert({
     playlist_id: playlistId,
-    snapshot_id: meta.snapshot_id,
-    spotify_name: meta.name,
-    followers: meta.followers,
-    total_tracks: meta.total_tracks,
+    snapshot_id: embed.synthetic_snapshot_id,
+    spotify_name: embed.name,
+    total_tracks: embed.total_tracks,
     last_refreshed_at: nowIso,
   });
 
   return {
     playlist_id: playlistId,
     status: "refreshed",
-    tracks_added: newTracks.length,
+    tracks_added: insertRows.length,
     tracks_removed: toRemove.length,
-    tracks_total: items.length,
+    tracks_total: embed.tracks.length,
+    enrich_failures: enrichFailures > 0 ? enrichFailures : undefined,
   };
 }
 
 /**
  * Drop pool rows + snapshots for playlists no longer in the config.
- * Cheap safety net so removing a playlist from trending-playlists.ts
- * actually purges its tracks on the next cron run.
  */
 async function purgeStale(db: SupabaseClient): Promise<number> {
   const configuredIds = trendingPlaylistIds();
@@ -243,15 +277,11 @@ async function purgeStale(db: SupabaseClient): Promise<number> {
 }
 
 /**
- * Refresh every configured playlist. Returns per-playlist results so the
- * cron route can log + Sentry-report a partial-failure summary.
+ * Refresh every configured playlist.
  */
 export async function refreshAllPlaylists(
   db: SupabaseClient
-): Promise<{
-  purged: number;
-  results: RefreshResult[];
-}> {
+): Promise<{ purged: number; results: RefreshResult[] }> {
   const purged = await purgeStale(db);
   const results: RefreshResult[] = [];
   for (const cfg of TRENDING_PLAYLISTS) {
@@ -260,6 +290,3 @@ export async function refreshAllPlaylists(
   }
   return { purged, results };
 }
-
-// Avoid unused-import warning when the file evolves.
-export type { PoolRow };

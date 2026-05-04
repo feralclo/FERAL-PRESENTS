@@ -186,8 +186,8 @@ MCP: **Supabase** (schema, queries, migrations) + **Vercel** (deployments, logs)
 - Platform owner (`requirePlatformOwner()`): `/api/platform/*` (~20 routes)
 - Public: see CSP-cleared list above + `getOrgIdFromRequest(req)`
 
-### Vercel Cron (13 in `vercel.json`)
-Hot list: `*/5` announcement-emails, `*/10` abandoned-carts, `*/30` stripe-health, `0 *` stories-expire + event-reminders, `0 */6` payment-digest + exchange-rates, `0 19` streak-at-risk, `5 0` rep-streak-reset, `0 2 * * 1` rep-rank-snapshots (weekly), `0 3 1 * *` ep-payouts (monthly tenant EP → cash). Full schedule: `docs/CLAUDE-api-routes.md`.
+### Vercel Cron (14 in `vercel.json`)
+Hot list: `*/5` announcement-emails, `*/10` abandoned-carts, `*/30` stripe-health, `0 *` stories-expire + event-reminders, `0 */6` payment-digest + exchange-rates + spotify-trending-refresh, `0 19` streak-at-risk, `5 0` rep-streak-reset, `0 2 * * 1` rep-rank-snapshots (weekly), `0 3 1 * *` ep-payouts (monthly tenant EP → cash). Full schedule: `docs/CLAUDE-api-routes.md`.
 
 ---
 

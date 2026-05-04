@@ -27,7 +27,7 @@ Events, Artists, Merch, Customers, Discounts (`validate|auto|seed`), Settings, B
 - `me` (GET/PUT/PATCH/**DELETE**), `me/{memberships|balances|following/promoters|friends|push-preferences|activity}`
 - `dashboard`, `quests` + `quests/[id]/{accept,submissions,assets,assets/[mediaId]/download}`, `rewards` + `rewards/[id]/claim`, `reward-claims`, `notifications`
 - `promoters/[handle]/{follow|join-request}`, `devices` (POST) + `devices/[token]` (DELETE), `uploads/{signed-url|complete}`
-- `feed`, `peer-activity`, `stories/*`, `spotify/*`, `market/*`, `blocks`, `reports`, `reps/[id]/*`, `reps/search?q=&limit=&offset=`
+- `feed`, `peer-activity`, `stories/*`, `spotify/*` (incl. `suggestions` — recent/friends/team/trending sections), `market/*`, `blocks`, `reports`, `reps/[id]/*`, `reps/search?q=&limit=&offset=`
 - Legacy: signup, signup-google, login, logout, magic-login, invite/[token], verify-email, manifest, push-subscribe, push-vapid-key, upload (base64), discount, leaderboard, sales, points, profile/[id], join-event, download-media, pwa-icon
 
 **Public promoter discovery** (`/api/promoters/*`, auth-aware): `discover?q=&limit=&offset=` (rate-limited), `[handle]` (profile + featured_events + is_following/is_on_team).
@@ -42,13 +42,13 @@ Events, Artists, Merch, Customers, Discounts (`validate|auto|seed`), Settings, B
 - Admin dashboards: `admin/{live-sessions,checkout-health,orders-stats,uk-events}`
 - Integrations: `mux/*`, `email/*`, `wallet/status`, `upload`, `upload-video`, scanner (4), merch-store (5)
 
-## Vercel Cron (13 in `vercel.json`, all under `/api/cron/`)
+## Vercel Cron (14 in `vercel.json`, all under `/api/cron/`)
 
 - `*/5 * * * *` `announcement-emails` (steps 2–4 dispatch)
 - `*/10 * * * *` `abandoned-carts` (recovery)
 - `*/15 * * * *` `guest-list-reminders` (RSVP); `domain-verify-poll`
 - `*/30 * * * *` `stripe-health`
 - `0 * * * *` `stories-expire`; `event-reminders` (24h + 2h before rep-enabled events; deduped via `rep_event_reminders`)
-- `0 */6 * * *` `payment-digest`, `exchange-rates`
+- `0 */6 * * *` `payment-digest`, `exchange-rates`, `spotify-trending-refresh` (re-pulls curated playlists, snapshot_id-aware skip)
 - `0 19 * * *` `streak-at-risk` (UTC; reps with active streak + 0 XP today)
 - `5 0 * * *` `rep-streak-reset`; `0 2 * * 1` `rep-rank-snapshots` (weekly); `0 3 1 * *` `ep-payouts` (monthly tenant EP → cash)

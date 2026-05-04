@@ -333,6 +333,154 @@ export async function getTrack(id: string): Promise<SpotifyTrack | null> {
   return track;
 }
 
+// ─── Playlist endpoints ────────────────────────────────────────────────────
+// Used by the trending-track refresh cron. No in-process cache here — the
+// caller (cron) controls cadence and persists results to the DB pool.
+
+export interface SpotifyPlaylistMeta {
+  id: string;
+  name: string;
+  snapshot_id: string;
+  followers: number;
+  total_tracks: number;
+}
+
+export interface SpotifyPlaylistTrack {
+  track: SpotifyTrack;
+  added_at: string; // ISO timestamp
+  position: number; // 0-indexed within the playlist
+  popularity: number; // 0..100 from Spotify
+}
+
+interface RawPlaylistTrackItem {
+  added_at?: string;
+  track?: (RawSpotifyTrack & { popularity?: number; is_local?: boolean }) | null;
+}
+
+interface RawPlaylistEnvelope {
+  id: string;
+  name?: string;
+  snapshot_id?: string;
+  followers?: { total?: number };
+  tracks?: {
+    total?: number;
+    items?: RawPlaylistTrackItem[];
+    next?: string | null;
+  };
+}
+
+/**
+ * Fetch playlist metadata + the first page of tracks. Use snapshot_id to
+ * decide whether a refresh is even needed (Spotify changes it whenever the
+ * curator adds/removes/reorders).
+ *
+ * Returns null when Spotify 404s (playlist deleted or made private).
+ * Throws on 5xx so the cron retries on next run.
+ */
+export async function getPlaylistMeta(
+  playlistId: string
+): Promise<SpotifyPlaylistMeta | null> {
+  const cleaned = playlistId.trim();
+  if (!cleaned) return null;
+
+  const token = await getAppToken();
+  // `fields` keeps the response small — we only need meta on this call.
+  const url = `https://api.spotify.com/v1/playlists/${encodeURIComponent(
+    cleaned
+  )}?market=GB&fields=id,name,snapshot_id,followers(total),tracks(total)`;
+  const response = await spotifyFetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (response.status === 404 || response.status === 400) return null;
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(
+      `Spotify playlist meta failed: ${response.status} ${body.slice(0, 200)}`
+    );
+  }
+
+  const raw = (await response.json()) as RawPlaylistEnvelope;
+  return {
+    id: raw.id,
+    name: raw.name ?? "",
+    snapshot_id: raw.snapshot_id ?? "",
+    followers: raw.followers?.total ?? 0,
+    total_tracks: raw.tracks?.total ?? 0,
+  };
+}
+
+/**
+ * Fetch all tracks in a playlist, paginating through Spotify's 100-per-page
+ * limit. Filters out local tracks (no Spotify id) and null entries (deleted
+ * tracks linger as empty items). Each item carries position + added_at +
+ * popularity so the smart-mix algorithm can rank them.
+ *
+ * Hard-capped at 500 tracks to keep cron runtime predictable. Editorial
+ * playlists average 50–100 tracks; pulling 500 covers every realistic case.
+ */
+export async function getPlaylistTracks(
+  playlistId: string,
+  options: { maxTracks?: number } = {}
+): Promise<SpotifyPlaylistTrack[]> {
+  const cleaned = playlistId.trim();
+  if (!cleaned) return [];
+
+  const maxTracks = Math.max(1, Math.min(500, options.maxTracks ?? 200));
+  const pageSize = 100;
+  const token = await getAppToken();
+
+  const out: SpotifyPlaylistTrack[] = [];
+  let offset = 0;
+
+  while (out.length < maxTracks) {
+    const url = new URL(
+      `https://api.spotify.com/v1/playlists/${encodeURIComponent(cleaned)}/tracks`
+    );
+    url.searchParams.set("market", "GB");
+    url.searchParams.set("limit", String(pageSize));
+    url.searchParams.set("offset", String(offset));
+    // Trim the response to only the fields we care about.
+    url.searchParams.set(
+      "fields",
+      "items(added_at,track(id,name,artists(id,name),album(name,images),preview_url,duration_ms,external_urls,external_ids,popularity,is_local)),next"
+    );
+
+    const response = await spotifyFetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.status === 404) break; // playlist disappeared mid-paginate
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(
+        `Spotify playlist tracks failed: ${response.status} ${body.slice(0, 200)}`
+      );
+    }
+
+    const json = (await response.json()) as {
+      items?: RawPlaylistTrackItem[];
+      next?: string | null;
+    };
+    const items = json.items ?? [];
+    for (const item of items) {
+      const raw = item.track;
+      if (!raw || !raw.id || raw.is_local) continue;
+      out.push({
+        track: mapTrack(raw),
+        added_at: item.added_at ?? new Date().toISOString(),
+        position: offset + items.indexOf(item),
+        popularity: typeof raw.popularity === "number" ? raw.popularity : 0,
+      });
+      if (out.length >= maxTracks) break;
+    }
+    if (!json.next || items.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return out;
+}
+
 /**
  * Validate a track_id against Spotify as a fail-open guard when a rep
  * posts a story. Returns:

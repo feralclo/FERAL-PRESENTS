@@ -26,6 +26,8 @@ Project: `rqtfghzhkkdytkegcifm` (agency-feral, eu-west-1).
 
 **Spotify per-rep OAuth**: `spotify_user_tokens` (PK `rep_id`, AES-256-GCM-encrypted `access_token`/`refresh_token`).
 
+**Track suggestions** (powers `/api/rep-portal/spotify/suggestions` trending section): `trending_playlist_snapshots` (PK `playlist_id`, Spotify `snapshot_id` + last_refreshed_at — cron compares to skip unchanged playlists), `trending_track_pool` (PK `(playlist_id, track_id)`, persisted track snapshots with `first_seen_at` preserved across refreshes for freshness signal), `rep_track_impressions` (PK `(rep_id, track_id)`, count + last_shown_at — drives per-rep impression decay in smart-mix).
+
 **EP**: `platform_ep_config` (singleton), `ep_ledger` (APPEND-ONLY), `ep_tenant_purchases`, `ep_tenant_payouts`.
 
 **Market**: `platform_market_{products,product_variants,claims,vendors}`.

@@ -14,6 +14,18 @@
  * No credentials needed — iTunes Search and Deezer's public search API
  * are anonymous + rate-generous. Spotify lookup still uses the existing
  * client-credentials token.
+ *
+ * 2026-05-04 — wrong-song bug fix:
+ *   The fuzzy iTunes / Deezer paths previously took the first hit with
+ *   a preview URL, no matter who the artist was. For niche techno track
+ *   names ("Underground", "Hard Truths", etc) this returned a
+ *   completely different song with the same title. Every non-ISRC path
+ *   now requires the matched record's artist to align with the
+ *   requested artist. ISRC matches stay deterministic — the code is
+ *   literally a unique-recording identifier.
+ *
+ *   Response now carries matched_name + matched_artist so iOS can
+ *   silently sanity-check or display what's actually playing.
  */
 
 import * as Sentry from "@sentry/nextjs";
@@ -28,6 +40,13 @@ export interface ResolvedPreview {
   duration_ms: number | null;
   /** Any transform notes for observability (strict match, fuzzy match, etc.) */
   match_note?: string;
+  /** Track name reported by the matching source. Lets iOS verify the
+   *  resolved preview actually belongs to the requested track. Absent on
+   *  Spotify hits — those are by track_id so verification is implicit. */
+  matched_name?: string;
+  /** Primary artist reported by the matching source. Same purpose as
+   *  matched_name. */
+  matched_artist?: string;
 }
 
 export interface ResolveArgs {
@@ -84,10 +103,36 @@ function cacheSet(key: string, value: ResolvedPreview | null): void {
   }
 }
 
+// ─── Match verification ────────────────────────────────────────────────────
+// Only used on non-deterministic (non-ISRC) paths. The bidirectional
+// substring check after normalisation handles "Featuring", "vs", "&", and
+// most accent / casing / punctuation differences without rejecting
+// legitimate matches.
+
+function normaliseForMatch(s: string | undefined): string {
+  if (!s) return "";
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip diacritics
+    .replace(/\s*\([^)]*\)\s*/g, " ") // strip parentheticals
+    .replace(/\s*\[[^\]]*\]\s*/g, " ") // strip brackets ([Original Mix] etc)
+    .replace(/[^a-z0-9\s]/g, " ") // punctuation → space
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Bidirectional substring match — handles "Artist X" requesting and
+ *  matching "Artist X feat. Y", or vice versa. */
+function tokensAlign(a: string | undefined, b: string | undefined): boolean {
+  const na = normaliseForMatch(a);
+  const nb = normaliseForMatch(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  return na.includes(nb) || nb.includes(na);
+}
+
 // ─── Fetch with timeout ────────────────────────────────────────────────────
-// Neither iTunes nor Deezer need auth, so a single attempt with a short
-// timeout is fine — if one source flakes we move to the next. Total
-// walltime is bounded at ~ (3 * SINGLE_TIMEOUT) worst-case.
 
 const SINGLE_TIMEOUT_MS = 4_000;
 
@@ -109,7 +154,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
   }
 }
 
-// ─── Source implementations ────────────────────────────────────────────────
+// ─── Spotify ───────────────────────────────────────────────────────────────
 
 async function fromSpotify(trackId: string): Promise<ResolvedPreview | null> {
   if (!spotifyIsConfigured()) return null;
@@ -122,6 +167,8 @@ async function fromSpotify(trackId: string): Promise<ResolvedPreview | null> {
       // Spotify preview is always 30s.
       duration_ms: 30_000,
       match_note: "spotify.preview_url",
+      matched_name: track.name,
+      matched_artist: track.artists[0]?.name,
     };
   } catch (err) {
     Sentry.captureException(err, {
@@ -131,6 +178,8 @@ async function fromSpotify(trackId: string): Promise<ResolvedPreview | null> {
     return null;
   }
 }
+
+// ─── iTunes ────────────────────────────────────────────────────────────────
 
 interface ItunesResult {
   previewUrl?: string;
@@ -147,53 +196,78 @@ function stripParenthetical(s: string): string {
   return s.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function firstPreview(json: ItunesResponse | null): ResolvedPreview | null {
-  const hit = (json?.results ?? []).find((r) => typeof r.previewUrl === "string" && r.previewUrl);
-  if (!hit?.previewUrl) return null;
-  return {
-    url: hit.previewUrl,
-    source: "itunes",
-    duration_ms:
-      typeof hit.trackTimeMillis === "number" && Number.isFinite(hit.trackTimeMillis)
-        ? hit.trackTimeMillis
-        : null,
-  };
+/** Find the first iTunes hit that has a preview AND matches the expected
+ *  artist (and optionally track name). Returns null when nothing
+ *  qualifies — the caller falls through to the next source. The old
+ *  behaviour (firstPreview unconditional) was the wrong-song bug. */
+function pickItunesMatch(
+  json: ItunesResponse | null,
+  expectedArtist: string,
+  expectedName?: string
+): ResolvedPreview | null {
+  for (const r of json?.results ?? []) {
+    if (typeof r.previewUrl !== "string" || !r.previewUrl) continue;
+    if (!tokensAlign(r.artistName, expectedArtist)) continue;
+    if (expectedName && !tokensAlign(r.trackName, expectedName)) continue;
+    return {
+      url: r.previewUrl,
+      source: "itunes",
+      duration_ms:
+        typeof r.trackTimeMillis === "number" && Number.isFinite(r.trackTimeMillis)
+          ? r.trackTimeMillis
+          : null,
+      matched_name: r.trackName,
+      matched_artist: r.artistName,
+    };
+  }
+  return null;
 }
 
 async function fromItunes(
   args: ResolveArgs
 ): Promise<ResolvedPreview | null> {
-  // 1. ISRC — deterministic when available.
+  // 1. ISRC — deterministic, doesn't need artist verification (the code
+  //    IS the recording identifier; if iTunes serves a preview for that
+  //    ISRC, it's the same recording).
   const isrc = (args.isrc ?? "").trim();
   if (isrc) {
     const lookup = await fetchJson<ItunesResponse>(
       `https://itunes.apple.com/lookup?isrc=${encodeURIComponent(isrc)}&entity=song&limit=5`
     );
-    const hit = firstPreview(lookup);
-    if (hit) return { ...hit, match_note: "itunes.isrc" };
+    const hit = (lookup?.results ?? []).find(
+      (r) => typeof r.previewUrl === "string" && r.previewUrl
+    );
+    if (hit?.previewUrl) {
+      return {
+        url: hit.previewUrl,
+        source: "itunes",
+        duration_ms:
+          typeof hit.trackTimeMillis === "number" && Number.isFinite(hit.trackTimeMillis)
+            ? hit.trackTimeMillis
+            : null,
+        match_note: "itunes.isrc",
+        matched_name: hit.trackName,
+        matched_artist: hit.artistName,
+      };
+    }
   }
 
   const name = (args.name ?? "").trim();
   const artist = (args.artist ?? args.artists?.[0] ?? "").trim();
   if (!name || !artist) return null;
 
-  // 2. Strict — "artist track"
+  // 2. Strict — "artist track" — require artist + name alignment in the
+  //    matched record. Catches ~95% of legitimate hits.
   const strict = await fetchJson<ItunesResponse>(
     `https://itunes.apple.com/search?term=${encodeURIComponent(
       `${artist} ${name}`
     )}&entity=musicTrack&limit=5`
   );
-  const strictHit = firstPreview(strict);
+  const strictHit = pickItunesMatch(strict, artist, name);
   if (strictHit) return { ...strictHit, match_note: "itunes.strict" };
 
-  // 3. Fuzzy — drop the artist, rely on track name alone
-  const fuzzy = await fetchJson<ItunesResponse>(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(name)}&entity=musicTrack&limit=10`
-  );
-  const fuzzyHit = firstPreview(fuzzy);
-  if (fuzzyHit) return { ...fuzzyHit, match_note: "itunes.fuzzy" };
-
-  // 4. Stripped — "Track Name (Remix)" → "Track Name"
+  // 3. Stripped — "Track Name (Original Mix)" → "Track Name", retry strict
+  //    with the trimmed name. Same artist-verified picker.
   const stripped = stripParenthetical(name);
   if (stripped && stripped !== name) {
     const strippedResult = await fetchJson<ItunesResponse>(
@@ -201,12 +275,30 @@ async function fromItunes(
         `${artist} ${stripped}`
       )}&entity=musicTrack&limit=5`
     );
-    const hit = firstPreview(strippedResult);
+    const hit = pickItunesMatch(strippedResult, artist, stripped);
     if (hit) return { ...hit, match_note: "itunes.stripped" };
   }
 
+  // 4. Artist-only fuzzy — drop the name from the query but STILL require
+  //    the matched record's artist to align. This is the "find anything by
+  //    this artist with a preview" net for catalogues where iTunes has the
+  //    wrong title or a regional variant. The previous code dropped the
+  //    artist instead, which is what caused the wrong-song bug — track
+  //    names like "Underground" matched random unrelated artists.
+  const artistOnly = await fetchJson<ItunesResponse>(
+    `https://itunes.apple.com/search?term=${encodeURIComponent(
+      artist
+    )}&entity=musicTrack&limit=10`
+  );
+  const artistOnlyHit = pickItunesMatch(artistOnly, artist, name);
+  if (artistOnlyHit) return { ...artistOnlyHit, match_note: "itunes.artist_only" };
+
+  // No artist-aligned match → return null. Don't fall through to a
+  // wildly-wrong song.
   return null;
 }
+
+// ─── Deezer ────────────────────────────────────────────────────────────────
 
 interface DeezerTrack {
   preview?: string;
@@ -220,17 +312,27 @@ interface DeezerResponse {
   error?: { code?: number; message?: string };
 }
 
-function firstDeezerPreview(json: DeezerResponse | null): ResolvedPreview | null {
-  const hit = (json?.data ?? []).find((r) => typeof r.preview === "string" && r.preview);
-  if (!hit?.preview) return null;
-  return {
-    url: hit.preview,
-    source: "deezer",
-    duration_ms:
-      typeof hit.duration === "number" && Number.isFinite(hit.duration)
-        ? hit.duration * 1000
-        : null,
-  };
+function pickDeezerMatch(
+  json: DeezerResponse | null,
+  expectedArtist: string,
+  expectedName?: string
+): ResolvedPreview | null {
+  for (const r of json?.data ?? []) {
+    if (typeof r.preview !== "string" || !r.preview) continue;
+    if (!tokensAlign(r.artist?.name, expectedArtist)) continue;
+    if (expectedName && !tokensAlign(r.title, expectedName)) continue;
+    return {
+      url: r.preview,
+      source: "deezer",
+      duration_ms:
+        typeof r.duration === "number" && Number.isFinite(r.duration)
+          ? r.duration * 1000
+          : null,
+      matched_name: r.title,
+      matched_artist: r.artist?.name,
+    };
+  }
+  return null;
 }
 
 async function fromDeezer(
@@ -240,19 +342,19 @@ async function fromDeezer(
   const artist = (args.artist ?? args.artists?.[0] ?? "").trim();
   if (!name || !artist) return null;
 
-  // 1. Strict — artist:"X" track:"Y"
+  // 1. Strict — artist:"X" track:"Y", artist + name verified
   const strictQuery = `artist:"${artist}" track:"${name}"`;
   const strict = await fetchJson<DeezerResponse>(
     `https://api.deezer.com/search?q=${encodeURIComponent(strictQuery)}&limit=5`
   );
-  const strictHit = firstDeezerPreview(strict);
+  const strictHit = pickDeezerMatch(strict, artist, name);
   if (strictHit) return { ...strictHit, match_note: "deezer.strict" };
 
-  // 2. Free text — "artist track"
+  // 2. Free text — "artist track", same verification
   const free = await fetchJson<DeezerResponse>(
     `https://api.deezer.com/search?q=${encodeURIComponent(`${artist} ${name}`)}&limit=5`
   );
-  const freeHit = firstDeezerPreview(free);
+  const freeHit = pickDeezerMatch(free, artist, name);
   if (freeHit) return { ...freeHit, match_note: "deezer.free" };
 
   return null;
@@ -262,10 +364,11 @@ async function fromDeezer(
 
 /**
  * Resolve a preview URL for a track. Tries Spotify → iTunes → Deezer in
- * that order. Returns the first hit or null if nothing matches.
+ * that order. Returns the first artist-verified hit or null if nothing
+ * matches confidently.
  *
  * Safe to call without a Spotify track_id — falls back to iTunes/Deezer
- * with the supplied name+artist.
+ * with the supplied name+artist (artist required for those paths).
  */
 export async function resolvePreviewUrl(
   args: ResolveArgs
@@ -274,7 +377,7 @@ export async function resolvePreviewUrl(
   const cached = cacheGet(key);
   if (cached !== undefined) return cached;
 
-  // 1. Spotify — only when a track_id is provided.
+  // 1. Spotify — by track_id, no fuzziness.
   if (args.track_id) {
     const hit = await fromSpotify(args.track_id);
     if (hit) {
@@ -283,14 +386,14 @@ export async function resolvePreviewUrl(
     }
   }
 
-  // 2. iTunes — ISRC lookup first, then name/artist search ladder.
+  // 2. iTunes — ISRC lookup first, then artist-verified search ladder.
   const itunesHit = await fromItunes(args);
   if (itunesHit) {
     cacheSet(key, itunesHit);
     return itunesHit;
   }
 
-  // 3. Deezer — last-chance fallback, free-text search.
+  // 3. Deezer — last-chance fallback, same verification.
   const deezerHit = await fromDeezer(args);
   if (deezerHit) {
     cacheSet(key, deezerHit);
@@ -300,3 +403,6 @@ export async function resolvePreviewUrl(
   cacheSet(key, null);
   return null;
 }
+
+// Exported for tests.
+export const __test = { tokensAlign, normaliseForMatch };

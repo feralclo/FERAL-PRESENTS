@@ -88,6 +88,11 @@ export interface SpotifyTrack {
   // client hit `itunes.apple.com/lookup?isrc=…` for deterministic Apple
   // Music matches instead of name/artist fuzzy search.
   isrc: string | null;
+  // Spotify's 0–100 popularity score. Optional — older callers (search,
+  // single-track lookup pre-2026-05) pass through without touching this,
+  // and iOS just ignores unknown fields. Used by the trending-pool
+  // smart-mix as the popularity-floor signal.
+  popularity?: number;
 }
 
 // ─── Config ────────────────────────────────────────────────────────────────
@@ -177,6 +182,7 @@ interface RawSpotifyTrack {
   duration_ms?: number;
   external_urls?: { spotify?: string };
   external_ids?: { isrc?: string; ean?: string; upc?: string };
+  popularity?: number;
 }
 
 function pickBestAlbumImage(
@@ -191,7 +197,7 @@ function pickBestAlbumImage(
 
 function mapTrack(raw: RawSpotifyTrack): SpotifyTrack {
   const isrcRaw = typeof raw.external_ids?.isrc === "string" ? raw.external_ids.isrc.trim() : "";
-  return {
+  const out: SpotifyTrack = {
     id: raw.id,
     name: raw.name ?? "",
     artists: (raw.artists ?? [])
@@ -206,6 +212,8 @@ function mapTrack(raw: RawSpotifyTrack): SpotifyTrack {
     external_url: raw.external_urls?.spotify ?? `https://open.spotify.com/track/${raw.id}`,
     isrc: isrcRaw || null,
   };
+  if (typeof raw.popularity === "number") out.popularity = raw.popularity;
+  return out;
 }
 
 // ─── Per-process result cache ──────────────────────────────────────────────
@@ -592,11 +600,18 @@ export async function getPlaylistViaEmbed(
   const entity = parsed.props?.pageProps?.state?.data?.entity;
   const list = entity?.trackList ?? [];
   const tracks: EmbedPlaylistTrack[] = [];
+  // Dedupe by track id — playlists can contain the same track multiple times
+  // (intentionally or via curator copy-paste), and our DB has a UNIQUE
+  // (playlist_id, track_id) PK that would reject the whole INSERT batch on
+  // a duplicate.
+  const seenIds = new Set<string>();
   for (let i = 0; i < list.length; i++) {
     const uri = list[i]?.uri;
     if (!uri || !uri.startsWith("spotify:track:")) continue;
     const id = uri.slice("spotify:track:".length);
     if (!/^[A-Za-z0-9]{22}$/.test(id)) continue; // sanity — Spotify track ids are 22 base62
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
     tracks.push({ id, position: i });
   }
 

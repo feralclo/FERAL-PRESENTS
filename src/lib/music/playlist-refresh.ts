@@ -44,16 +44,22 @@ export interface RefreshResult {
   error?: string;
 }
 
-/** Fetch single-track metadata in chunks so we don't blow Spotify rate limits
- *  or the cron's serverless timeout. 8-wide is fine — ~100 tracks completes
- *  in well under 10s in practice. */
-async function enrichTracks(
+/** Concurrency cap on parallel getTrack calls. 8 was too aggressive — when
+ *  cold-seeding 4 × 100 tracks Spotify started silently 429-ing the
+ *  /v1/tracks/{id} endpoint mid-run (errors aren't 429 in the body, they
+ *  show up as opaque 403/timeout). 3 with a 200ms inter-chunk gap stays
+ *  comfortably under the rate limit and a 100-track playlist still
+ *  finishes in ~7s. */
+const ENRICH_CHUNK_SIZE = 3;
+const ENRICH_INTER_CHUNK_MS = 200;
+const ENRICH_RETRY_DELAY_MS = 2000;
+
+async function enrichOnce(
   ids: string[]
 ): Promise<Map<string, SpotifyTrack>> {
   const out = new Map<string, SpotifyTrack>();
-  const chunkSize = 8;
-  for (let i = 0; i < ids.length; i += chunkSize) {
-    const chunk = ids.slice(i, i + chunkSize);
+  for (let i = 0; i < ids.length; i += ENRICH_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + ENRICH_CHUNK_SIZE);
     const results = await Promise.all(
       chunk.map(async (id) => {
         try {
@@ -71,9 +77,39 @@ async function enrichTracks(
     for (const [id, track] of results) {
       if (track) out.set(id, track);
     }
+    if (i + ENRICH_CHUNK_SIZE < ids.length) {
+      await new Promise((r) => setTimeout(r, ENRICH_INTER_CHUNK_MS));
+    }
   }
   return out;
 }
+
+/**
+ * Fetch single-track metadata for a list of ids. Two-pass: throttled run,
+ * then a small pause + retry of just the misses. Catches transient
+ * rate-limits without hammering on each cron tick.
+ */
+async function enrichTracks(
+  ids: string[]
+): Promise<Map<string, SpotifyTrack>> {
+  const enriched = await enrichOnce(ids);
+  const missing = ids.filter((id) => !enriched.has(id));
+  if (missing.length === 0) return enriched;
+
+  await new Promise((r) => setTimeout(r, ENRICH_RETRY_DELAY_MS));
+  const retry = await enrichOnce(missing);
+  for (const [id, track] of retry) enriched.set(id, track);
+  return enriched;
+}
+
+/** When the failure rate is high enough that we suspect transient issues
+ *  rather than genuinely-missing tracks, leave the snapshot UNCHANGED so
+ *  the next cron run retries the playlist. With the snapshot updated, the
+ *  cheap-path skip-when-unchanged logic would lock in the bad state for
+ *  6h. 10% gives us slack for a few stable-but-unavailable tracks
+ *  (geo-blocked, deleted from catalog) without trapping us in retry-
+ *  forever loops. */
+const SNAPSHOT_FAILURE_TOLERANCE = 0.1;
 
 /**
  * Refresh a single playlist via the embed-scrape path.
@@ -161,10 +197,9 @@ export async function refreshPlaylist(
   const enriched = await enrichTracks(newTrackIds);
   const enrichFailures = newTrackIds.length - enriched.size;
 
-  // Insert new tracks. We don't have curator's `added_at` from the embed,
-  // so we use `first_seen_at = now()` for the freshness signal — the
-  // moment WE noticed the track in the playlist becomes its "added at"
-  // anchor. Existing rows' first_seen_at is preserved (we don't touch it).
+  // Insert new tracks. Embed doesn't expose curator add-date so
+  // first_seen_at = now() becomes the freshness anchor on first sight.
+  // Existing rows' first_seen_at is preserved by not touching it.
   const insertRows = embed.tracks
     .filter((t) => !existingIds.has(t.id))
     .map((t) => {
@@ -174,26 +209,27 @@ export async function refreshPlaylist(
         playlist_id: playlistId,
         track_id: t.id,
         position: t.position,
-        added_at_spotify: nowIso, // best available — embed doesn't expose curator add date
+        added_at_spotify: nowIso,
         first_seen_at: nowIso,
-        // The embed gives us a popularity signal indirectly via position
-        // (curators front-load favorites). Spotify's `popularity` field
-        // also comes back from getTrack — but it's per-track popularity,
-        // not playlist-position. We capture both: popularity from
-        // getTrack response is implicit in track_data; for the column
-        // (used by smart-mix's popularity floor), we read it off meta.
-        popularity:
-          ((meta as unknown as { popularity?: number }).popularity ?? 50),
+        // Real popularity from getTrack, falling back to 50 when Spotify
+        // omits it (rare — usually pre-release or just-uploaded tracks).
+        popularity: typeof meta.popularity === "number" ? meta.popularity : 50,
         track_data: meta,
         refreshed_at: nowIso,
       };
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
 
+  let insertCommitted = 0;
+  let insertError: string | undefined;
   if (insertRows.length > 0) {
+    // Upsert (rather than insert) is defensive — if a duplicate exists
+    // due to a race or stale cache, we update rather than abort the
+    // whole batch. Embed-level dedup should already prevent duplicates
+    // in `insertRows` itself.
     const { error } = await db
       .from("trending_track_pool")
-      .insert(insertRows);
+      .upsert(insertRows, { onConflict: "playlist_id,track_id" });
     if (error) {
       Sentry.captureException(error, {
         level: "warning",
@@ -201,8 +237,12 @@ export async function refreshPlaylist(
           step: "refreshPlaylist:insert",
           playlistId,
           count: insertRows.length,
+          message: error.message,
         },
       });
+      insertError = error.message.slice(0, 200);
+    } else {
+      insertCommitted = insertRows.length;
     }
   }
 
@@ -236,21 +276,44 @@ export async function refreshPlaylist(
     }
   }
 
-  await db.from("trending_playlist_snapshots").upsert({
-    playlist_id: playlistId,
-    snapshot_id: embed.synthetic_snapshot_id,
-    spotify_name: embed.name,
-    total_tracks: embed.total_tracks,
-    last_refreshed_at: nowIso,
-  });
+  // Skip snapshot update when too many enrichments failed (suspected
+  // transient rate-limiting). Leaves the cheap-path skip-when-unchanged
+  // logic disarmed so the next cron tick retries. See doc comment on
+  // SNAPSHOT_FAILURE_TOLERANCE.
+  const newTrackCount = newTrackIds.length;
+  const failureRate =
+    newTrackCount > 0 ? enrichFailures / newTrackCount : 0;
+  const shouldUpdateSnapshot =
+    failureRate <= SNAPSHOT_FAILURE_TOLERANCE && !insertError;
+
+  if (shouldUpdateSnapshot) {
+    await db.from("trending_playlist_snapshots").upsert({
+      playlist_id: playlistId,
+      snapshot_id: embed.synthetic_snapshot_id,
+      spotify_name: embed.name,
+      total_tracks: embed.total_tracks,
+      last_refreshed_at: nowIso,
+    });
+  } else {
+    // Still bump last_refreshed_at + name for observability, but leave
+    // snapshot_id untouched (or insert a sentinel "needs retry" row).
+    await db.from("trending_playlist_snapshots").upsert({
+      playlist_id: playlistId,
+      snapshot_id: existingSnapshot?.snapshot_id ?? "PENDING_RETRY",
+      spotify_name: embed.name,
+      total_tracks: embed.total_tracks,
+      last_refreshed_at: nowIso,
+    });
+  }
 
   return {
     playlist_id: playlistId,
     status: "refreshed",
-    tracks_added: insertRows.length,
+    tracks_added: insertCommitted,
     tracks_removed: toRemove.length,
     tracks_total: embed.tracks.length,
     enrich_failures: enrichFailures > 0 ? enrichFailures : undefined,
+    error: insertError,
   };
 }
 

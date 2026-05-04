@@ -431,15 +431,32 @@ export async function buildSuggestions(
   }
 
   // 2. Genre sections — one per playlist with section_label, in display_order.
-  //    Each section uses ONLY that playlist's tracks (no cross-playlist mix)
-  //    and no affinity weighting (these are browse-by-mood, not personalized).
+  //    Each section uses ONLY that playlist's tracks (no cross-playlist mix),
+  //    no affinity weighting, AND no impression decay. Genre rows are
+  //    browse-by-mood, not personalized: a rep should see the top-ranked
+  //    schranz tracks every time they open the picker, not have them
+  //    vanish after 5 unselected opens. Decay belongs to For You only,
+  //    where it makes sense (the personalized hero needs to rotate).
+  //
+  //    We DO still pass the social-section block so a track they just
+  //    used in their own story doesn't reappear here — but normal
+  //    impression rotation is disabled. Genre track IDs are also NOT
+  //    added to trackIdsLogged so they never count toward the decay
+  //    threshold either.
+  const genreImpressions: RepImpression[] = Array.from(socialIds).map(
+    (track_id) => ({
+      track_id,
+      count: 99,
+      last_shown_at: now.toISOString(),
+    })
+  );
   for (const cfg of genreSectionPlaylists()) {
     const subset = pool.filter((p) => p.playlist_id === cfg.id);
     if (subset.length === 0) continue;
     const picks = buildRankedSection(
       subset,
       {}, // no affinity — pure quality ranking within this genre
-      baseSyntheticImpressions,
+      genreImpressions,
       GENRE_SECTION_LIMIT,
       now
     );
@@ -453,7 +470,7 @@ export async function buildSuggestions(
       subgenres: cfg.subgenres.length > 0 ? cfg.subgenres : undefined,
       tracks: picks.tracks,
     });
-    for (const id of picks.trackIds) trackIdsLogged.add(id);
+    // Intentionally NOT added to trackIdsLogged — see comment above.
   }
 
   // 3. Recent — rep's own past Story picks.
@@ -488,9 +505,9 @@ export async function buildSuggestions(
     });
   }
 
-  // Log impressions for For You + genre tracks (deduped — a track shown in
-  // both For You and Hard Techno counts as one impression for this visit).
-  // Fire-and-forget; slow writes shouldn't block the response.
+  // Log impressions for For You only (genre tracks deliberately excluded —
+  // see the genreImpressions comment above). Fire-and-forget so a slow
+  // write doesn't stall the response.
   if (trackIdsLogged.size > 0) {
     void logImpressions(db, repId, Array.from(trackIdsLogged)).catch(() => {
       // Best-effort. Sentry already wraps the route handler.

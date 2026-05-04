@@ -8,6 +8,7 @@ import {
   type AuthorRow,
   type StoryRow,
 } from "@/lib/stories-mapper";
+import { fetchStoryLikesBatch } from "@/lib/story-likes";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -152,14 +153,18 @@ export async function GET(_request: NextRequest) {
       ((viewsData ?? []) as Array<{ story_id: string }>).map((v) => v.story_id)
     );
 
-    // 5. Author metadata
+    // 5. Author metadata + likes (batched)
     const authorIds = [...new Set(visible.map((s) => s.author_rep_id))];
-    const { data: authorsData } = await db
-      .from("reps")
-      .select("id, display_name, first_name, last_name, photo_url, level")
-      .in("id", authorIds);
+    const visibleStoryIds = visible.map((s) => s.id);
+    const [authorsResult, likesBatch] = await Promise.all([
+      db
+        .from("reps")
+        .select("id, display_name, first_name, last_name, photo_url, level")
+        .in("id", authorIds),
+      fetchStoryLikesBatch(db, visibleStoryIds, me),
+    ]);
     const authorById = new Map<string, AuthorRow>(
-      ((authorsData ?? []) as AuthorRow[]).map((a) => [a.id, a])
+      ((authorsResult.data ?? []) as AuthorRow[]).map((a) => [a.id, a])
     );
 
     // 6. Build author-grouped output. `photo_url` is mirrored from
@@ -179,7 +184,13 @@ export async function GET(_request: NextRequest) {
       const author = authorById.get(row.author_rep_id);
       if (!author) continue;
       const viewedByMe = row.author_rep_id === me || viewedSet.has(row.id);
-      const dto = toStoryDTO(row, author, { viewerId: me, viewedByMe });
+      const dto = toStoryDTO(row, author, {
+        viewerId: me,
+        viewedByMe,
+        likeCount: likesBatch.countByStory.get(row.id) ?? 0,
+        isLikedByMe: likesBatch.likedByMe.has(row.id),
+        recentLikers: likesBatch.recentByStory.get(row.id) ?? [],
+      });
       const group =
         groups.get(row.author_rep_id) ??
         {

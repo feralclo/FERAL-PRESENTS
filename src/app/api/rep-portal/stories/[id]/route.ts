@@ -7,6 +7,7 @@ import {
   type AuthorRow,
   type StoryRow,
 } from "@/lib/stories-mapper";
+import { fetchStoryLikesSingle } from "@/lib/story-likes";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -116,10 +117,18 @@ export async function GET(
       return NextResponse.json({ error: "Story not found" }, { status: 404 });
     }
 
+    const likes = await fetchStoryLikesSingle(db, story.id, auth.rep.id);
+
     const dto = toStoryDTO(
       { ...story, view_count: refreshedViewCount } as StoryRow,
       authorData as AuthorRow,
-      { viewerId: auth.rep.id, viewedByMe }
+      {
+        viewerId: auth.rep.id,
+        viewedByMe,
+        likeCount: likes.count,
+        isLikedByMe: likes.isLikedByMe,
+        recentLikers: likes.recentLikers,
+      }
     );
 
     return NextResponse.json({ data: dto });

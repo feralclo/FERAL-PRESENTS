@@ -7,6 +7,7 @@ import {
   type AuthorRow,
   type StoryRow,
 } from "@/lib/stories-mapper";
+import { fetchStoryLikesBatch } from "@/lib/story-likes";
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -102,23 +103,27 @@ export async function GET(
 
     if (visible.length === 0) return NextResponse.json({ data: [] });
 
-    // Batch-read view state so we can mark each story accordingly.
-    const { data: viewsData } = await db
-      .from("rep_story_views")
-      .select("story_id")
-      .eq("viewer_rep_id", me)
-      .in(
-        "story_id",
-        visible.map((s) => s.id)
-      );
+    // Batch-read view state + likes in one round trip.
+    const visibleIds = visible.map((s) => s.id);
+    const [viewsResult, likesBatch] = await Promise.all([
+      db
+        .from("rep_story_views")
+        .select("story_id")
+        .eq("viewer_rep_id", me)
+        .in("story_id", visibleIds),
+      fetchStoryLikesBatch(db, visibleIds, me),
+    ]);
     const viewedSet = new Set(
-      ((viewsData ?? []) as Array<{ story_id: string }>).map((v) => v.story_id)
+      ((viewsResult.data ?? []) as Array<{ story_id: string }>).map((v) => v.story_id)
     );
 
     const dtos = visible.map((row) =>
       toStoryDTO(row, author as AuthorRow, {
         viewerId: me,
         viewedByMe: isSelf || viewedSet.has(row.id),
+        likeCount: likesBatch.countByStory.get(row.id) ?? 0,
+        isLikedByMe: likesBatch.likedByMe.has(row.id),
+        recentLikers: likesBatch.recentByStory.get(row.id) ?? [],
       })
     );
 

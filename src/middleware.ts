@@ -212,6 +212,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/rep-portal/manifest", // PWA manifest (public, no auth)
   "/api/rep-portal/pwa-icon", // PWA icon (public, no auth)
   "/api/rep-portal/magic-login/callback", // Test magic login — no auth
+  "/api/rep-portal/spotify/oauth-callback", // Spotify redirects browser w/o rep cookie — state-token authed
   "/api/team/accept-invite",
   "/api/announcement/signup",
   "/api/waitlist/",

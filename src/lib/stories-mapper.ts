@@ -38,6 +38,19 @@ export interface StoryTrack {
   start_offset_ms: number | null;
 }
 
+/** A rep who has liked a story. Compact shape — iOS only renders an
+ *  avatar cluster + half-sheet header. The full profile is reachable via
+ *  the standard rep list row. */
+export interface StoryLikerDTO {
+  id: string;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  photo_url: string | null;
+  initials: string;
+  avatar_bg_hex: number;
+}
+
 export interface StoryDTO {
   id: string;
   author: StoryAuthor;
@@ -55,6 +68,12 @@ export interface StoryDTO {
   view_count: number | null;
   is_viewed_by_me: boolean;
   is_mine: boolean;
+  /** Total likes on the story. Always present; defaults to 0. */
+  like_count: number;
+  /** Whether the requesting rep has liked this story. */
+  is_liked_by_me: boolean;
+  /** Up to 3 most recent likers, newest first. */
+  recent_likers: StoryLikerDTO[];
   expires_at: string;
   created_at: string;
 }
@@ -185,7 +204,13 @@ function toStoryTrack(row: StoryRow): StoryTrack {
 export function toStoryDTO(
   row: StoryRow,
   author: AuthorRow,
-  opts: { viewerId: string; viewedByMe: boolean }
+  opts: {
+    viewerId: string;
+    viewedByMe: boolean;
+    likeCount?: number;
+    isLikedByMe?: boolean;
+    recentLikers?: StoryLikerDTO[];
+  }
 ): StoryDTO {
   const isMine = row.author_rep_id === opts.viewerId;
   return {
@@ -205,7 +230,22 @@ export function toStoryDTO(
     view_count: isMine ? row.view_count : null,
     is_viewed_by_me: isMine ? true : opts.viewedByMe,
     is_mine: isMine,
+    like_count: opts.likeCount ?? 0,
+    is_liked_by_me: opts.isLikedByMe ?? false,
+    recent_likers: opts.recentLikers ?? [],
     expires_at: row.expires_at,
     created_at: row.created_at,
+  };
+}
+
+export function toStoryLikerDTO(rep: AuthorRow): StoryLikerDTO {
+  return {
+    id: rep.id,
+    display_name: rep.display_name,
+    first_name: rep.first_name,
+    last_name: rep.last_name,
+    photo_url: rep.photo_url,
+    initials: initialsFor(rep),
+    avatar_bg_hex: avatarBgHexFor(rep.id),
   };
 }

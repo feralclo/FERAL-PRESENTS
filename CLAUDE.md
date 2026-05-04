@@ -190,9 +190,11 @@ See Known Gaps for poster drops, Apple Sign-In, Entry Market admin UI, story mod
 
 ## Stories (Round 2)
 
-Mandatory-Spotify-track ephemeral posts by reps, 24h expiry. `rep_stories` snapshots full Spotify track at submit (track_id, preview_url, clip_start/length, title, artist, album_image, external_url, artists jsonb) + `track_start_offset_ms`, `view_count`, `expires_at`, `deleted_at`, `moderation_*`, `visibility`. Snapshot stabilises playback if upstream changes. `rep_story_views` logs impressions; trigger `rsv_count_sync` syncs count.
+Mandatory-Spotify-track ephemeral posts by reps, 24h expiry. `rep_stories` snapshots full Spotify track at submit (track_id, preview_url, clip_start/length, title, artist, album_image, external_url, artists jsonb) + `track_start_offset_ms`, `view_count`, `expires_at`, `deleted_at`, `moderation_*`, `visibility`. Snapshot stabilises playback if upstream changes. `rep_story_views` logs impressions; trigger `rsv_count_sync` syncs count. **Likes** (`rep_story_likes`, unique `(story_id, rep_id)`): every `StoryDTO` carries `like_count`, `is_liked_by_me`, `recent_likers` (cap 3, newest first) — batch-loaded via `lib/story-likes.ts` `fetchStoryLikesBatch()` in feed/list endpoints. Visibility gate on like POST/DELETE matches `GET /:id` (followers-only requires mutual follow).
 
-Spotify (`lib/spotify/`): `client.ts` (Client Credentials), `preview-resolver.ts` (3-source fallback Spotify → iTunes → Deezer ISRC). Routes `/api/rep-portal/stories/*` (create, feed grouped 24h, single-rep timeline, view-log, delete). Cron `cron/stories-expire` hourly. Mapper `lib/stories-mapper.ts` (DB → iOS DTO) — use in any endpoint surfacing a story.
+Spotify (`lib/spotify/`): `client.ts` (Client Credentials, app-level metadata), `user-auth.ts` (per-rep OAuth: HMAC state, AES-256-GCM token encryption, code/refresh exchange, /me fetch — never write plaintext to `spotify_user_tokens`), `preview-resolver.ts` (3-source fallback Spotify → iTunes → Deezer ISRC). Routes `/api/rep-portal/stories/*` (create, feed grouped 24h, single-rep timeline, view-log, delete, **`[id]/like` POST/DELETE**, **`[id]/likes` GET paginated `RepListEntry`**) + `/api/rep-portal/spotify/*` (`connect-init`, `oauth-callback` PUBLIC, `me`, `connection`). Cron `cron/stories-expire` hourly. Mapper `lib/stories-mapper.ts` (DB → iOS DTO) — use in any endpoint surfacing a story.
+
+**Spotify connect (per-rep OAuth)**: iOS Settings row → `POST /api/rep-portal/spotify/connect-init` returns `{ auth_url }` with HMAC-signed state binding the rep id (15-min window). iOS opens `auth_url` in `ASWebAuthenticationSession`. Spotify redirects browser to `GET /api/rep-portal/spotify/oauth-callback` (PUBLIC — state token IS the rep proof). Callback exchanges code, AES-256-GCM encrypts access + refresh tokens, upserts `spotify_user_tokens`, then 302s to `entry://spotify-callback?status=success|error&display_name=...`. `GET /me` returns `{ connected, display_name?, premium? }` (`connected:false` is normal, NOT 404). `DELETE /connection` removes the row (revoke is best-effort no-op — Spotify doesn't expose a public revoke endpoint as of 2026-05).
 
 ---
 
@@ -241,7 +243,7 @@ Project: `rqtfghzhkkdytkegcifm` (agency-feral, eu-west-1).
 - Identity/social: `reps` (status active|deleted|suspended), `promoters`, `rep_promoter_memberships`, `rep_promoter_follows`, `rep_follows`, `rep_blocks`, `rep_reports`, `rep_event_attendance` (**RLS DISABLED** — populated by `ticket_attendance_sync` trigger).
 - Activity: `rep_quests`, `rep_quest_submissions`, `rep_quest_acceptances`, `rep_rewards`, `rep_reward_claims`, `rep_events`, `rep_milestones`, `rep_event_position_rewards`, `rep_points_log`, `rep_streaks`, `rep_rank_snapshots`, `rep_asset_downloads`.
 - Notifications: `rep_notifications`, `rep_push_subscriptions` (legacy), `device_tokens`, `notification_deliveries`, `rep_event_reminders` (cron dedup, internal only).
-- Stories: `rep_stories`, `rep_story_views`. EP: `platform_ep_config` (singleton), `ep_ledger` (APPEND-ONLY), `ep_tenant_purchases`, `ep_tenant_payouts`. Market: `platform_market_{products,product_variants,claims,vendors}`.
+- Stories: `rep_stories`, `rep_story_views`, `rep_story_likes` (unique `(story_id, rep_id)`). Spotify connect: `spotify_user_tokens` (PK `rep_id`, AES-256-GCM-encrypted `access_token`/`refresh_token`). EP: `platform_ep_config` (singleton), `ep_ledger` (APPEND-ONLY), `ep_tenant_purchases`, `ep_tenant_payouts`. Market: `platform_market_{products,product_variants,claims,vendors}`.
 
 **Legacy/low-row (don't extend)**: `contracts`, `settings` (generic, distinct from `site_settings`), `artists_legacy_payments`.
 
@@ -354,7 +356,7 @@ Events, Artists, Merch, Customers, Discounts (`validate|auto|seed`), Settings, B
 
 **Required**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `RESEND_API_KEY`, `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`.
 
-**Optional integrations**: `NEXT_PUBLIC_GTM_ID`, Klaviyo, `MUX_TOKEN_ID`/`MUX_TOKEN_SECRET`, `VAPID_PUBLIC_KEY`/`_PRIVATE_KEY`/`_SUBJECT`, Apple/Google Wallet certs, `VERCEL_API_TOKEN`, `SPOTIFY_CLIENT_ID`/`_SECRET`, `SHOPIFY_*` (Entry Market), `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (Places API New — venue + city autocomplete in event editor; restrict by HTTP referrer; absent = graceful fallback to plain text input).
+**Optional integrations**: `NEXT_PUBLIC_GTM_ID`, Klaviyo, `MUX_TOKEN_ID`/`MUX_TOKEN_SECRET`, `VAPID_PUBLIC_KEY`/`_PRIVATE_KEY`/`_SUBJECT`, Apple/Google Wallet certs, `VERCEL_API_TOKEN`, `SPOTIFY_CLIENT_ID`/`_SECRET` (app-level metadata + per-rep OAuth), `SPOTIFY_REDIRECT_URI` (must match the URI registered on the Spotify dashboard; defaults to `${NEXT_PUBLIC_SITE_URL}/api/rep-portal/spotify/oauth-callback`), `SPOTIFY_TOKEN_ENC_KEY` (32-byte hex or any string hashed to 32 bytes — encrypts user tokens at rest; falls back to a key derived from `SUPABASE_SERVICE_ROLE_KEY`), `SHOPIFY_*` (Entry Market), `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (Places API New — venue + city autocomplete in event editor; restrict by HTTP referrer; absent = graceful fallback to plain text input).
 
 **Monitoring**: `PLATFORM_ALERT_EMAIL`, `ANTHROPIC_API_KEY` (digest), `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
 
